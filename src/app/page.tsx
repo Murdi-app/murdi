@@ -150,7 +150,7 @@ export default function Home(){
 
       {/* HEADER */}
       <header style={{background:C.navy,padding:"16px 32px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 20px rgba(11,29,58,0.5)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:14}} onClick={()=>window.location.href="/auth/signup"} role="button" style={{cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>
+        <div onClick={()=>window.location.href="/auth/signup"} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>
           <div style={{width:42,height:42,borderRadius:10,background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,display:"flex",alignItems:"center",justifyContent:"center",color:C.navy,fontWeight:900,fontSize:20}}>M</div>
           <div>
             <div style={{fontWeight:900,fontSize:24,color:C.white,letterSpacing:1}}>Murdi™️</div>
