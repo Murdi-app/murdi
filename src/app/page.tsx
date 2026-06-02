@@ -179,7 +179,7 @@ export default function Home(){
             <p style={{fontSize:19,color:"#A8BAD4",lineHeight:1.8,maxWidth:620,margin:"0 auto 44px"}}>
               Murdi يراقب وضع شركتك، ينذرك مبكراً بالمخاطر، ويخبرك بالضبط ماذا تفعل غداً — في 15 دقيقة شهرياً فقط.
             </p>
-            <button onClick={()=>setStep("input")} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 12px 35px ${C.gold}60`}}>
+            <button onClick={()=>window.location.href="/auth/signup"} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 12px 35px ${C.gold}60`}}>
               احصل على تقريرك المجاني الآن
             </button>
             <div style={{marginTop:18,fontSize:14,color:"#7A90AB"}}>بدون التزام — 5 أرقام فقط — نتيجة فورية</div>
@@ -260,7 +260,7 @@ export default function Home(){
           <section style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"72px 24px",textAlign:"center"}}>
             <h2 style={{fontSize:38,fontWeight:900,color:C.white,margin:"0 0 16px"}}>جرّب Murdi الآن — مجاناً</h2>
             <p style={{fontSize:18,color:"#A8BAD4",margin:"0 0 36px"}}>تقريرك الأول جاهز خلال ثوانٍ — بدون أي التزام</p>
-            <button onClick={()=>setStep("input")} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 8px 28px ${C.gold}50`}}>
+            <button onClick={()=>window.location.href="/auth/signup"} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 8px 28px ${C.gold}50`}}>
               ابدأ التقييم المجاني
             </button>
           </section>
