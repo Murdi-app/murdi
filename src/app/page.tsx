@@ -141,7 +141,7 @@ export default function Home(){
     setStep("report"); window.scrollTo(0,0);
   };
   const reset=()=>{
-    setStep("input"); setCompany("");
+    window.location.href="/auth/signup"; setCompany("");
     setForm({balance:"",revenue:"",expenses:"",debts:"",receivables:""}); setResult(null); window.scrollTo(0,0);
   };
 
