@@ -296,7 +296,7 @@ export default function Home(){
             ))}
           </div>
           <div style={{textAlign:"center",fontSize:13,color:C.muted,marginBottom:20}}>🔒 بياناتك سرية — لا تُشارك مع أي طرف</div>
-          <button onClick={run} disabled={!filled} style={{width:"100%",background:filled?`linear-gradient(135deg,${C.gold},${C.goldLight})`:C.border,color:filled?C.navy:C.muted,border:"none",borderRadius:12,padding:18,fontSize:18,fontWeight:800,cursor:filled?"pointer":"not-allowed",fontFamily:F,boxShadow:filled?`0 8px 24px ${C.gold}40`:"none"}}>
+          <button onClick={()=>window.location.href="/auth/signup"} disabled={!filled} style={{width:"100%",background:filled?`linear-gradient(135deg,${C.gold},${C.goldLight})`:C.border,color:filled?C.navy:C.muted,border:"none",borderRadius:12,padding:18,fontSize:18,fontWeight:800,cursor:filled?"pointer":"not-allowed",fontFamily:F,boxShadow:filled?`0 8px 24px ${C.gold}40`:"none"}}>
             احسب Murdi Score الآن
           </button>
         </div>
