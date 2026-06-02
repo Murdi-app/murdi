@@ -403,7 +403,7 @@ export default function Home(){
             </a>
           </div>
 
-          <button onClick={reset} style={{width:"100%",background:"transparent",color:C.slate,border:`1px solid ${C.border}`,borderRadius:12,padding:14,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:F,marginBottom:8}}>
+          <button onClick={()=>window.location.href="/auth/signup"} style={{width:"100%",background:"transparent",color:C.slate,border:`1px solid ${C.border}`,borderRadius:12,padding:14,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:F,marginBottom:8}}>
             تقرير جديد
           </button>
 
