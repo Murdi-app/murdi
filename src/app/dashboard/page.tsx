@@ -166,6 +166,7 @@ export default function Dashboard() {
     { key:'employees', label:'عدد الموظفين', placeholder:'25' },
   ]
 
+  const lastMonth = report ?? null;
   if (!user) return <div style={{background:C.navy,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:C.gold,fontSize:20}}>...</div></div>
 
   return (
