@@ -88,6 +88,35 @@ export default function ReportPage() {
           {report.opportunities.map((o:string,i:number) => <div key={i} style={{color:C.white,fontSize:13,lineHeight:1.7,marginBottom:8,paddingBottom:8,borderBottom:i<report.opportunities.length-1?'1px solid #1E3A6E':'none'}}>{o}</div>)}
         </div>
 
+        {/* WhatsApp Share */}
+        <div style={{textAlign:'center', marginBottom:24}}>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(
+              'السلام عليكم،\n' +
+              'أشارككم تقرير Murdi الذكي لشركة ' + company + '\n\n' +
+              'Murdi Score: ' + report.score + '/85 — ' + (report.score >= 75 ? 'ممتاز' : report.score >= 60 ? 'جيد جداً' : report.score >= 45 ? 'جيد' : 'يحتاج تحسين') + '\n' +
+              'التوقع بعد 3 أشهر: ' + (report.score >= 60 ? 'مستقر' : 'يحتاج تدخل') + '\n\n' +
+              'منصة Murdi للذكاء المالي: murdi.vercel.app'
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display:'inline-block',
+              background:'#25D366',
+              color:'white',
+              padding:'14px 36px',
+              borderRadius:40,
+              fontFamily:'Cairo,sans-serif',
+              fontSize:15,
+              fontWeight:700,
+              textDecoration:'none',
+              boxShadow:'0 4px 20px rgba(37,211,102,0.3)'
+            }}
+          >
+            📤 شارك التقرير على واتساب
+          </a>
+        </div>
+
         {/* Footer */}
         <div style={{textAlign:'center',color:C.gray,fontSize:12,borderTop:'1px solid #1E3A6E',paddingTop:16}}>
           <div style={{color:C.gold,fontWeight:700,marginBottom:4}}>MURDI — نظام تشغيل ذكاء المقاولات</div>
