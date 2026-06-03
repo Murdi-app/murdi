@@ -251,6 +251,17 @@ export default function Dashboard() {
           </div>
         )}
 
+        {lastMonth && (
+          <div style={{background:'#0a1f0a',borderRadius:12,padding:'14px 20px',marginBottom:16,border:'1px solid #22c55e30',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+            <div style={{color:'#22c55e',fontSize:14,fontWeight:700}}>📊 آخر تقرير محفوظ — الشهر {lastMonth.month} / {lastMonth.year}</div>
+            <div style={{display:'flex',gap:16,alignItems:'center'}}>
+              <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:11}}>Murdi Score</div><div style={{color:C.gold,fontSize:18,fontWeight:900}}>{lastMonth.murdi_score}/85</div></div>
+              <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:11}}>الإيرادات</div><div style={{color:C.white,fontSize:14,fontWeight:700}}>{lastMonth.revenue?.toLocaleString('ar-SA')} ر.س</div></div>
+              <button onClick={()=>router.push('/dashboard/memory')} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:12}}>عرض الذاكرة →</button>
+            </div>
+          </div>
+        )}
+
         <div style={{background:C.navyLight,borderRadius:16,padding:'32px',border:`1px solid ${C.border}`,marginBottom:24}}>
           <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:24}}>بيانات الشهر الحالي</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
