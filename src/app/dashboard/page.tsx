@@ -32,9 +32,9 @@ export default function Dashboard() {
     let s = 0
     if (r > 0) {
       const liq = b / e; if (liq >= 3) s+=25; else if (liq >= 1) s+=15; else if (liq > 0) s+=5
-      const cf = (r - e) / r * 100; if (cf >= 15) s+=25; else if (cf > 0) s+=15; else if (cf < 0) s+=0
-      const dso = rec / r * 30; if (dso <= 60) s+=20; else if (dso <= 90) s+=10; else s+=0
-      const dr = d / (r * 12); if (dr <= 0.5) s+=15; else if (dr <= 1) s+=8; else s+=0
+      const cf = (r - e) / r * 100; if (cf >= 15) s+=25; else if (cf > 0) s+=15
+      const dso = rec / r * 30; if (dso <= 60) s+=20; else if (dso <= 90) s+=10
+      const dr = d / (r * 12); if (dr <= 0.5) s+=15; else if (dr <= 1) s+=8
     }
     return Math.min(s, 85)
   }
@@ -73,26 +73,26 @@ export default function Dashboard() {
 
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
-      {/* Header */}
       <div style={{background:C.navyLight,padding:'16px 32px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
           <div style={{fontSize:22,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
           <div style={{fontSize:11,color:C.gray,letterSpacing:1}}>CONSTRUCTION INTELLIGENCE</div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:16}}>
-          <div style={{textAlign:'right'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{textAlign:'right',marginLeft:8}}>
             <div style={{color:C.white,fontWeight:700,fontSize:14}}>{profile?.company_name||'شركتك'}</div>
             <div style={{color:C.gray,fontSize:12}}>{user.email}</div>
           </div>
-          <button onClick={async()=>{await supabase.auth.signOut();router.push('/auth/login')}}
-            style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>
+          <button onClick={()=>router.push('/dashboard/memory')} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>
+            Company Memory
+          </button>
+          <button onClick={async()=>{await supabase.auth.signOut();router.push('/auth/login')}} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>
             خروج
           </button>
         </div>
       </div>
 
       <div style={{maxWidth:900,margin:'0 auto',padding:'32px 24px'}}>
-        {/* Score Card */}
         {score !== null && (
           <div style={{background:C.navyLight,borderRadius:16,padding:'24px 32px',marginBottom:24,border:`1px solid ${C.border}`,textAlign:'center'}}>
             <div style={{color:C.gray,fontSize:14,marginBottom:8}}>Murdi Score</div>
@@ -100,8 +100,6 @@ export default function Dashboard() {
             <div style={{color:C.gray,fontSize:13}}>من 85 نقطة</div>
           </div>
         )}
-
-        {/* Form */}
         <div style={{background:C.navyLight,borderRadius:16,padding:'32px',border:`1px solid ${C.border}`}}>
           <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:24}}>بيانات الشهر الحالي</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
