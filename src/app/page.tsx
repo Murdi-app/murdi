@@ -90,7 +90,7 @@ function scoreLabel(s:number){
 
 function Gauge({score}:{score:number}){
   const{label,color}=scoreLabel(score);
-  const dash=(score/100)*251.2;
+  const dash=(score/85)*251.2;
   return(
     <div style={{textAlign:"center"}}>
       <svg width="200" height="130" viewBox="0 0 200 130">
@@ -100,7 +100,7 @@ function Gauge({score}:{score:number}){
         <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={C.border} strokeWidth="14" strokeLinecap="round"/>
         <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#g)" strokeWidth="14" strokeDasharray={`${dash} 251.2`} strokeLinecap="round"/>
         <text x="100" y="90" textAnchor="middle" fill={C.white} fontSize="46" fontWeight="900" fontFamily="system-ui">{score}</text>
-        <text x="100" y="110" textAnchor="middle" fill="#7A90AB" fontSize="13" fontFamily="system-ui">/ 100</text>
+        <text x="100" y="110" textAnchor="middle" fill="#7A90AB" fontSize="13" fontFamily="system-ui">/ 85</text>
       </svg>
       <div style={{color,fontWeight:800,fontSize:20,marginTop:4}}>{label}</div>
     </div>
@@ -110,7 +110,7 @@ function Gauge({score}:{score:number}){
 const F="system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif";
 
 const SERVICES=[
-  {icon:"📊",title:"Murdi Score الشهري",desc:"درجة مالية من 100 تقيس صحة شركتك بدقة رياضية كل شهر"},
+  {icon:"📊",title:"Murdi Score الشهري",desc:"درجة مالية من 85 تقيس صحة شركتك بدقة رياضية كل شهر"},
   {icon:"⚠️",title:"Top Risks",desc:"أهم المخاطر التي تهدد شركتك مرتبة حسب الأولوية والخطورة"},
   {icon:"⚡",title:"Action Engine",desc:"إجراءات واضحة وقابلة للتنفيذ لكل خطر — لا تشخيص بدون علاج"},
   {icon:"📈",title:"Impact Engine",desc:"اعرف بالأرقام ماذا سيحدث لدرجتك إذا نفّذت كل إجراء"},
@@ -184,7 +184,7 @@ export default function Home(){
             </button>
             <div style={{marginTop:18,fontSize:14,color:"#7A90AB"}}>بدون التزام — 5 أرقام فقط — نتيجة فورية</div>
             <div style={{display:"flex",justifyContent:"center",gap:48,marginTop:60,flexWrap:"wrap"}}>
-              {[{n:"14",l:"فئة مخاطر"},{n:"15",l:"دقيقة شهرياً"},{n:"100",l:"درجة تقييم"},{n:"8",l:"محركات ذكية"}].map((x,i)=>(
+              {[{n:"14",l:"فئة مخاطر"},{n:"15",l:"دقيقة شهرياً"},{n:"85",l:"درجة تقييم"},{n:"8",l:"محركات ذكية"}].map((x,i)=>(
                 <div key={i} style={{textAlign:"center"}}>
                   <div style={{fontSize:40,fontWeight:900,color:C.gold}}>{x.n}</div>
                   <div style={{fontSize:13,color:"#7A90AB",marginTop:4}}>{x.l}</div>

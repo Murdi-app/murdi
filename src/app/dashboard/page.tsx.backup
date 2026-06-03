@@ -238,8 +238,8 @@ export default function Dashboard() {
           <div style={{background:'#112244',borderRadius:16,padding:'20px',border:'1px solid #1E3A6E',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <div style={{textAlign:'center'}}>
               <div style={{color:'#8899BB',fontSize:12,marginBottom:4}}>التغيير عن الشهر الماضي</div>
-              <div style={{fontSize:24,fontWeight:900,color:lastMonth?.murdi_score != null ? (report.score>lastMonth.murdi_score?'#22c55e':report.score<lastMonth.murdi_score?'#ef4444':'#F5C842') : '#F5C842'}}>
-                {lastMonth?.murdi_score != null ? `${report.score > lastMonth.murdi_score ? '↑' : '↓'} ${Math.abs(report.score - lastMonth.murdi_score)} نقطة` : 'أول شهر 🎉'}
+              <div style={{fontSize:24,fontWeight:900,color:report.score>lastMonth.murdi_score?'#22c55e':report.score<lastMonth.murdi_score?'#ef4444':'#F5C842'}}>
+                {report.score>lastMonth.murdi_score?'↑':'↓'} {Math.abs(report.score-lastMonth.murdi_score)} نقطة
               </div>
             </div>
             <div style={{textAlign:'center'}}>
