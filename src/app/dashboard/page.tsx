@@ -183,6 +183,8 @@ export default function Dashboard() {
           </div>
           <button onClick={()=>router.push('/dashboard/trends')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>Trends</button>
           <button onClick={()=>router.push('/dashboard/memory')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>Memory</button>
+          <button onClick={()=>router.push('/dashboard/certificate')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>🏅 الشهادة</button>
+          <button onClick={()=>router.push('/dashboard/market')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>📊 السوق</button>
           <button onClick={async()=>{await supabase.auth.signOut();router.push('/auth/login')}} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>خروج</button>
         </div>
       </div>

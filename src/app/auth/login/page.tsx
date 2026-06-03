@@ -37,6 +37,8 @@ export default function Login() {
         </button>
         {message && <p style={{color:'#ff6b6b',textAlign:'center',marginTop:12,fontSize:14}}>{message}</p>}
         <p style={{textAlign:'center',marginTop:16,color:'#8899BB',fontSize:14}}>
+          <span onClick={()=>router.push('/auth/reset')} style={{color:'#8899BB',cursor:'pointer',fontSize:13}}>نسيت كلمة المرور؟</span>
+          <br/><br/>
           ما عندك حساب؟ <span onClick={()=>router.push('/auth/signup')} style={{color:'#F5C842',cursor:'pointer'}}>سجّل الآن</span>
         </p>
       </div>
