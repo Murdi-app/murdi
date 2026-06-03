@@ -231,6 +231,26 @@ export default function Dashboard() {
             </div>
 
             {/* Top Risks */}
+            {lastMonth && report && (
+          <div style={{background:'#112244',borderRadius:16,padding:'20px',border:'1px solid #1E3A6E',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#8899BB',fontSize:12,marginBottom:4}}>التغيير عن الشهر الماضي</div>
+              <div style={{fontSize:24,fontWeight:900,color:report.score>lastMonth.murdi_score?'#22c55e':report.score<lastMonth.murdi_score?'#ef4444':'#F5C842'}}>
+                {report.score>lastMonth.murdi_score?'↑':'↓'} {Math.abs(report.score-lastMonth.murdi_score)} نقطة
+              </div>
+            </div>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:'#8899BB',fontSize:12,marginBottom:4}}>بطاقة الجاهزية التمويلية</div>
+              <div style={{fontSize:14,fontWeight:700,color:report.score>=70?'#22c55e':report.score>=55?'#F5C842':'#ef4444'}}>
+                {report.score>=70?'جاهز للتمويل ✅':report.score>=55?'جاهزية متوسطة ⚠️':'غير جاهز بعد 🔴'}
+              </div>
+              <div style={{color:'#8899BB',fontSize:11,marginTop:4}}>
+                {report.score>=70?'يمكنك التقدم لتمويل بنكي':report.score>=55?'حسّن السيولة والتحصيل':'ركّز على تحسين Score أولاً'}
+              </div>
+            </div>
+          </div>
+        )}
+
             {report.risks.length > 0 && (
               <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #ef444440'}}>
                 <div style={{color:'#ef4444',fontSize:16,fontWeight:700,marginBottom:16}}>⚠️ Top Risks — المخاطر الحقيقية</div>
