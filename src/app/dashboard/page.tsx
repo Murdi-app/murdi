@@ -157,7 +157,14 @@ function generateReport(f: any) {
 
   const rankedRisks = [...risks].sort((a, b) => b.impact - a.impact)
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, dailyBurn }
+  // Cash Runway
+  const cashRunwayDate = dailyBurn > 0 && daysLeft < 90 ? (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + Math.round(daysLeft));
+    return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+  })() : null;
+
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, dailyBurn, cashRunwayDate }
 }
 
 export default function Dashboard() {
@@ -170,6 +177,9 @@ export default function Dashboard() {
   const [lastMonth, setLastMonth] = useState<any>(null)
   const [mobileMenu, setMobileMenu] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
+  const [advisorMsg, setAdvisorMsg] = useState('')
+  const [loadingAdvisor, setLoadingAdvisor] = useState(false)
+  const [whatIfAmount, setWhatIfAmount] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -212,6 +222,32 @@ export default function Dashboard() {
     setShareUrl(window.location.origin + '/report/' + shareId)
     setSaved(true)
     setTimeout(()=>setSaved(false), 3000)
+  }
+
+  const getAdvisor = async () => {
+    if (!report || loadingAdvisor) return
+    setLoadingAdvisor(true)
+    const topRisk = report.risks[0]?.text || 'لا توجد مخاطر حرجة'
+    try {
+      const res = await fetch('/api/advisor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: profile?.company_name || 'شركتك',
+          balance: parseFloat(form.bank_balance)||0,
+          revenue: parseFloat(form.revenue)||0,
+          expenses: parseFloat(form.expenses)||0,
+          debts: parseFloat(form.debts)||0,
+          receivables: parseFloat(form.receivables)||0,
+          murdiScore: report.score,
+          topRisk,
+          cashRunwayDays: report.daysLeft
+        })
+      })
+      const data = await res.json()
+      setAdvisorMsg(data.message || '')
+    } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
+    setLoadingAdvisor(false)
   }
 
   const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 40 ? C.gold : '#ef4444'
@@ -406,6 +442,92 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Cash Runway Countdown */}
+            {report.cashRunwayDate && (
+              <div style={{background:'#1a0a0a',borderRadius:16,padding:'24px',border:'2px solid #ef444460'}}>
+                <div style={{color:'#ef4444',fontSize:16,fontWeight:800,marginBottom:12}}>⏱️ Cash Runway Countdown™️</div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:8}}>بناءً على معدل صرفك اليومي: {fmt(report.dailyBurn)}</div>
+                <div style={{color:'#ef4444',fontSize:18,fontWeight:900,marginBottom:8}}>
+                  ⚠️ سيولتك ستصل صفر بتاريخ: {report.cashRunwayDate}
+                </div>
+                <div style={{color:C.gray,fontSize:14,marginBottom:12}}>أي خلال {Math.round(report.daysLeft)} يوم من الآن</div>
+                <div style={{color:'#22c55e',fontSize:14,background:'#22c55e10',padding:'10px 14px',borderRadius:8,border:'1px solid #22c55e30'}}>
+                  ✅ إذا حصّلت {fmt(report.rec * 0.5)} هذا الأسبوع — تتجنب الأزمة وترفع التغطية إلى {Math.round(report.daysLeft + (report.rec*0.5)/report.dailyBurn)} يوم
+                </div>
+              </div>
+            )}
+
+            {/* Murdi Advisor */}
+            <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'24px',border:'2px solid #22c55e40'}}>
+              <div style={{color:'#22c55e',fontSize:16,fontWeight:800,marginBottom:12}}>🤖 Murdi Advisor™️</div>
+              {!advisorMsg ? (
+                <button onClick={getAdvisor} disabled={loadingAdvisor} style={{width:'100%',padding:'14px',borderRadius:10,border:'1px solid #22c55e',background:'transparent',color:'#22c55e',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                  {loadingAdvisor ? '⏳ جاري التحليل...' : '💬 اسمع رأي Murdi Advisor'}
+                </button>
+              ) : (
+                <div style={{color:C.white,fontSize:15,lineHeight:2,background:'#ffffff08',padding:'16px',borderRadius:10,borderRight:'4px solid #22c55e',whiteSpace:'pre-line'}}>
+                  {advisorMsg}
+                </div>
+              )}
+            </div>
+
+            {/* What If Engine */}
+            <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
+              <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:12}}>🔮 What If Engine™️</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:12}}>ماذا لو حصّلت مبلغاً من الذمم؟</div>
+              <div style={{display:'flex',gap:8,marginBottom:16}}>
+                <input
+                  value={whatIfAmount}
+                  onChange={e=>setWhatIfAmount(e.target.value)}
+                  placeholder="أدخل المبلغ بالريال"
+                  style={{flex:1,padding:'10px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14}}
+                />
+              </div>
+              {whatIfAmount && parseFloat(whatIfAmount) > 0 && (() => {
+                const extra = parseFloat(whatIfAmount)||0;
+                const newBalance = (parseFloat(form.bank_balance)||0) + extra;
+                const newLiq = (parseFloat(form.expenses)||0) > 0 ? newBalance/(parseFloat(form.expenses)||0) : 0;
+                const newDays = report.dailyBurn > 0 ? newBalance/report.dailyBurn : 0;
+                let newScore = 0;
+                const margin = report.margin;
+                const dso = (parseFloat(form.receivables)||0)/(parseFloat(form.revenue)||1)*30;
+                const dr = (parseFloat(form.debts)||0)/((parseFloat(form.revenue)||1)*12)*100;
+                if (newLiq >= 3) newScore+=25; else if (newLiq >= 1) newScore+=15; else if (newLiq > 0) newScore+=5;
+                if (margin >= 15) newScore+=25; else if (margin > 0) newScore+=15;
+                if (dso <= 60) newScore+=20; else if (dso <= 90) newScore+=10;
+                if (dr <= 50) newScore+=15; else if (dr <= 100) newScore+=8;
+                newScore = Math.min(newScore, 85);
+                let newFunding = 0;
+                if (newLiq >= 3) newFunding+=30; else if (newLiq >= 1) newFunding+=15;
+                if (margin >= 15) newFunding+=25; else if (margin > 0) newFunding+=10;
+                if (dso <= 60) newFunding+=25; else if (dso <= 90) newFunding+=12;
+                if (dr <= 50) newFunding+=20; else if (dr <= 100) newFunding+=8;
+                newFunding = Math.min(newFunding, 100);
+                return (
+                  <div style={{background:C.navy,borderRadius:10,padding:'16px',border:`1px solid ${C.gold}30`}}>
+                    <div style={{color:C.gold,fontSize:13,marginBottom:12}}>إذا حصّلت {fmt(extra)} من الذمم:</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                      <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
+                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>Murdi Score</div>
+                        <div style={{color:newScore>report.score?'#22c55e':C.gold,fontSize:18,fontWeight:900}}>{newScore}/85</div>
+                        <div style={{color:'#22c55e',fontSize:11}}>{newScore>report.score?'+':''}{ newScore-report.score} نقطة</div>
+                      </div>
+                      <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
+                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>السيولة</div>
+                        <div style={{color:'#22c55e',fontSize:18,fontWeight:900}}>{Math.round(newDays)}</div>
+                        <div style={{color:C.gray,fontSize:11}}>يوم</div>
+                      </div>
+                      <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
+                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>جاهزية التمويل</div>
+                        <div style={{color:'#22c55e',fontSize:18,fontWeight:900}}>{newFunding}/100</div>
+                        <div style={{color:'#22c55e',fontSize:11}}>+{newFunding-report.fundingScore} نقطة</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <button onClick={handleSave} style={{width:'100%',padding:'16px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:16,fontWeight:800,cursor:'pointer'}}>
