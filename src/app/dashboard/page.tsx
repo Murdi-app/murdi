@@ -214,12 +214,12 @@ export default function Dashboard() {
   const fundingColor = (s: number) => s >= 70 ? '#22c55e' : s >= 50 ? C.gold : '#ef4444'
 
   const fields = [
-    { key:'revenue', label:'الإيرادات الشهرية', placeholder:'500000' },
-    { key:'expenses', label:'المصروفات الشهرية', placeholder:'350000' },
-    { key:'bank_balance', label:'الرصيد البنكي', placeholder:'200000' },
-    { key:'debts', label:'الديون', placeholder:'100000' },
-    { key:'receivables', label:'الذمم المدينة', placeholder:'150000' },
-    { key:'employees', label:'عدد الموظفين', placeholder:'25' },
+    { key:'revenue', label:'الإيرادات الشهرية', placeholder:'500000', tip:'إجمالي ما دخل لشركتك هذا الشهر من مشاريع وعقود — قبل خصم أي مصروفات' },
+    { key:'expenses', label:'المصروفات الشهرية', placeholder:'350000', tip:'إجمالي ما صرفته هذا الشهر — رواتب ومواد وإيجارات وفواتير' },
+    { key:'bank_balance', label:'الرصيد البنكي', placeholder:'200000', tip:'رصيدك الفعلي في البنك اليوم — ليس الذمم أو الأرباح المتوقعة' },
+    { key:'debts', label:'الديون', placeholder:'100000', tip:'إجمالي ما عليك من قروض بنكية أو التزامات مالية مستحقة للغير' },
+    { key:'receivables', label:'الذمم المدينة', placeholder:'150000', tip:'ما يدين به عملاؤك لشركتك من فواتير لم تُحصَّل بعد' },
+    { key:'employees', label:'عدد الموظفين', placeholder:'25', tip:'إجمالي عدد موظفيك الحاليين بما فيهم العمال والإداريين' },
   ]
 
   if (!user) return <div style={{background:C.navy,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:C.gold,fontSize:20}}>...</div></div>
@@ -271,7 +271,11 @@ export default function Dashboard() {
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16}}>
             {fields.map(f => (
               <div key={f.key}>
-                <div style={{color:C.gray,fontSize:13,marginBottom:6}}>{f.label}</div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                  <div style={{color:C.gray,fontSize:13}}>{f.label}</div>
+                  {f.tip && <div title={f.tip} style={{width:18,height:18,borderRadius:'50%',background:'#1E3A6E',color:C.gray,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',cursor:'help',flexShrink:0}}>?</div>}
+                </div>
+                {f.tip && <div style={{color:'#5a7a99',fontSize:11,marginBottom:6,lineHeight:1.4}}>{f.tip}</div>}
                 <input value={form[f.key as keyof typeof form]} onChange={e=>setForm({...form,[f.key]:e.target.value})}
                   placeholder={f.placeholder}
                   style={{width:'100%',padding:'12px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:15,boxSizing:'border-box'}} />
