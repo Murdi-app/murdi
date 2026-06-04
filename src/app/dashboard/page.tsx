@@ -225,23 +225,25 @@ export default function Dashboard() {
 
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
-      <div style={{background:C.navyLight,padding:'16px 32px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <div style={{fontSize:22,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
-          <div style={{fontSize:11,color:C.gray,letterSpacing:1}}>CONSTRUCTION INTELLIGENCE</div>
-        </div>
+      <div style={{background:C.navyLight,padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:100}}>
+        <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          <div style={{textAlign:'right',marginLeft:8}}>
-            <div style={{color:C.white,fontWeight:700,fontSize:14}}>{profile?.company_name||'شركتك'}</div>
-            <div style={{color:C.gray,fontSize:12}}>{user.email}</div>
+          <div style={{textAlign:'right'}}>
+            <div style={{color:C.white,fontWeight:700,fontSize:13}}>{profile?.company_name||'شركتك'}</div>
           </div>
-          <button onClick={()=>router.push('/dashboard/trends')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>Trends</button>
-          <button onClick={()=>router.push('/dashboard/memory')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>Memory</button>
-          <button onClick={()=>router.push('/dashboard/certificate')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>🏅 الشهادة</button>
-          <button onClick={()=>router.push('/dashboard/market')} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:13}}>📊 السوق</button>
-          <button onClick={async()=>{await supabase.auth.signOut();router.push('/auth/login')}} style={{padding:'8px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>خروج</button>
+          <button onClick={()=>setMobileMenu(!mobileMenu)} style={{padding:'8px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.white,cursor:'pointer',fontSize:20,lineHeight:1}}>☰</button>
         </div>
       </div>
+      {mobileMenu && (
+        <div style={{background:C.navyLight,borderBottom:`1px solid ${C.border}`,padding:'12px 20px',display:'flex',flexDirection:'column',gap:8,position:'sticky',top:53,zIndex:99}}>
+          <div style={{color:C.gray,fontSize:12,padding:'4px 0'}}>{user.email}</div>
+          <button onClick={()=>{router.push('/dashboard/trends');setMobileMenu(false)}} style={{padding:'12px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:14,textAlign:'right'}}>📈 Trends</button>
+          <button onClick={()=>{router.push('/dashboard/memory');setMobileMenu(false)}} style={{padding:'12px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:14,textAlign:'right'}}>🧠 Company Memory</button>
+          <button onClick={()=>{router.push('/dashboard/certificate');setMobileMenu(false)}} style={{padding:'12px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:14,textAlign:'right'}}>🏅 الشهادة</button>
+          <button onClick={()=>{router.push('/dashboard/market');setMobileMenu(false)}} style={{padding:'12px',borderRadius:8,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,cursor:'pointer',fontSize:14,textAlign:'right'}}>📊 مقارنة السوق</button>
+          <button onClick={async()=>{await supabase.auth.signOut();router.push('/auth/login')}} style={{padding:'12px',borderRadius:8,border:'1px solid #ef444440',background:'transparent',color:'#ef4444',cursor:'pointer',fontSize:14,textAlign:'right'}}>🚪 تسجيل الخروج</button>
+        </div>
+      )}
 
       <div style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
         {isNew && (
