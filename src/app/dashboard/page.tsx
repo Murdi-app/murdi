@@ -171,6 +171,7 @@ export default function Dashboard() {
   const [mobileMenu, setMobileMenu] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [shareUrl, setShareUrl] = useState('')
+  const [shareUrl, setShareUrl] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -208,6 +209,9 @@ export default function Dashboard() {
       murdi_score: report.score,
       funding_score: report.fundingScore
     })
+    const shareId = Math.random().toString(36).substring(2, 10)
+    await supabase.from('monthly_data').update({ share_id: shareId }).eq('user_id', user.id).eq('month', now.getMonth()+1).eq('year', now.getFullYear())
+    setShareUrl(window.location.origin + '/report/' + shareId)
     const shareId = Math.random().toString(36).substring(2, 10)
     await supabase.from('monthly_data').update({ share_id: shareId }).eq('user_id', user.id).eq('month', now.getMonth()+1).eq('year', now.getFullYear())
     setShareUrl(window.location.origin + '/report/' + shareId)
