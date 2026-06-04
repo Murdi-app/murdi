@@ -168,6 +168,7 @@ export default function Dashboard() {
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
   const [lastMonth, setLastMonth] = useState<any>(null)
+  const [mobileMenu, setMobileMenu] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -242,7 +243,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{maxWidth:900,margin:'0 auto',padding:'32px 24px'}}>
+      <div style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
         {isNew && (
           <div style={{background:'linear-gradient(135deg,#1a3a6e,#112244)',borderRadius:16,padding:'32px',marginBottom:24,border:`1px solid ${C.gold}`,textAlign:'center'}}>
             <div style={{fontSize:24,fontWeight:900,color:C.gold,marginBottom:8}}>أهلاً {profile?.company_name}! 🎉</div>
@@ -264,7 +265,7 @@ export default function Dashboard() {
 
         <div style={{background:C.navyLight,borderRadius:16,padding:'32px',border:`1px solid ${C.border}`,marginBottom:24}}>
           <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:24}}>بيانات الشهر الحالي</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16}}>
             {fields.map(f => (
               <div key={f.key}>
                 <div style={{color:C.gray,fontSize:13,marginBottom:6}}>{f.label}</div>
