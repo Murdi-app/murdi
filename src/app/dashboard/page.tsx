@@ -203,7 +203,8 @@ export default function Dashboard() {
       revenue: parseFloat(form.revenue)||0, expenses: parseFloat(form.expenses)||0,
       bank_balance: parseFloat(form.bank_balance)||0, debts: parseFloat(form.debts)||0,
       receivables: parseFloat(form.receivables)||0, employees: parseInt(form.employees)||0,
-      murdi_score: report.score
+      murdi_score: report.score,
+      funding_score: report.fundingScore
     })
     setSaved(true)
     setTimeout(()=>setSaved(false), 3000)
