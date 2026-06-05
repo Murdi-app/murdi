@@ -18,6 +18,7 @@ function generateReport(f: any) {
   const r = parseFloat(f.revenue)||0, e = parseFloat(f.expenses)||0
   const b = parseFloat(f.bank_balance)||0, d = parseFloat(f.debts)||0
   const rec = parseFloat(f.receivables)||0
+  const monthlyPayment = parseFloat(f.monthly_payment)||0
   const margin = r>0 ? ((r-e)/r*100) : 0
   const liq = e>0 ? b/e : 0
   const dso = r>0 ? rec/r*30 : 0
@@ -73,15 +74,26 @@ function generateReport(f: any) {
     else strengths.push(`✅ لا ذمم متأخرة — عملاؤك يدفعون فوراً عند الاستحقاق`)
   }
 
-  if (dr > 100) {
-    risks.push({ text: `🔴 ديونك ${fmt(d)} تعادل ${dr.toFixed(0)}% من إيراداتك السنوية — عبء ثقيل`, impact: 6, category: 'debt' })
-    actions.push(`🏦 تفاوض على إعادة جدولة الديون لـ5 سنوات بدل 3 — سيخفف القسط الشهري ${fmt(d/36-d/60)}`)
-    impacts.push(`💡 الجدولة ستحرر ${fmt(d/36-d/60)} شهرياً لمشاريع جديدة`)
-  } else if (dr > 50) {
-    risks.push({ text: `🟡 ديونك ${fmt(d)} تمثل ${dr.toFixed(0)}% من إيراداتك السنوية — راقبها`, impact: 3, category: 'debt' })
-    actions.push(`📉 لا تأخذ ديوناً جديدة حتى تنخفض النسبة تحت 50%`)
+  if (d > 0) {
+    const paymentBurden = monthlyPayment > 0 ? (monthlyPayment / r * 100) : 0
+    if (dr > 100) {
+      risks.push({ text: `🔴 ديونك ${fmt(d)} تعادل ${dr.toFixed(0)}% من إيراداتك السنوية${monthlyPayment > 0 ? ` — قسطك الشهري ${fmt(monthlyPayment)}` : ''} — عبء ثقيل`, impact: 6, category: 'debt' })
+      if (monthlyPayment > 0 && paymentBurden > 20) {
+        actions.push(`🏦 قسطك الشهري ${fmt(monthlyPayment)} يمثل ${paymentBurden.toFixed(0)}% من إيراداتك — فاوض البنك على تمديد الفترة لتخفيف الضغط`)
+        impacts.push(`💡 تمديد القسط سيحرر ${fmt(monthlyPayment * 0.3)} شهرياً لتشغيل الشركة`)
+      } else if (monthlyPayment > 0) {
+        actions.push(`📊 قسطك الشهري ${fmt(monthlyPayment)} مقبول — ركّز على رفع الإيرادات لتحسين النسبة`)
+        impacts.push(`💡 رفع الإيرادات 20% سيخفض نسبة الديون من ${dr.toFixed(0)}% إلى ${(dr*0.83).toFixed(0)}%`)
+      } else {
+        actions.push(`🏦 أدخل قسطك الشهري الفعلي للحصول على توصية دقيقة لهيكلة ديونك`)
+        impacts.push(`💡 معرفة القسط تساعد Murdi على تقييم العبء الحقيقي للديون`)
+      }
+    } else if (dr > 50) {
+      risks.push({ text: `🟡 ديونك ${fmt(d)} تمثل ${dr.toFixed(0)}% من إيراداتك السنوية${monthlyPayment > 0 ? ` — قسط ${fmt(monthlyPayment)}/شهر` : ''} — راقبها`, impact: 3, category: 'debt' })
+      actions.push(`📉 لا تأخذ ديوناً جديدة حتى تنخفض النسبة تحت 50%`)
+    }
   } else if (r > 0) {
-    strengths.push(`✅ نسبة ديونك صحية — ${dr.toFixed(0)}% من الإيرادات السنوية فقط`)
+    strengths.push(`✅ شركتك خالية من الديون — ميزة تنافسية قوية`)
   }
 
   if (margin > 20 && liq > 2) {
@@ -178,7 +190,7 @@ function generateReport(f: any) {
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -229,6 +241,7 @@ export default function Dashboard() {
           expenses: parseFloat(form.expenses)||0,
           bank_balance: parseFloat(form.bank_balance)||0,
           debts: parseFloat(form.debts)||0,
+          monthly_payment: parseFloat(form.monthly_payment)||0,
           receivables: parseFloat(form.receivables)||0,
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
@@ -322,6 +335,7 @@ export default function Dashboard() {
     { key:'debts', label:'الديون', placeholder:'100000', tip:'إجمالي ما عليك من قروض بنكية أو التزامات مالية مستحقة للغير' },
     { key:'receivables', label:'الذمم المدينة', placeholder:'150000', tip:'ما يدين به عملاؤك لشركتك من فواتير لم تُحصَّل بعد' },
     { key:'employees', label:'عدد الموظفين', placeholder:'25', tip:'إجمالي عدد موظفيك الحاليين بما فيهم العمال والإداريين' },
+  { key:'monthly_payment', label:'القسط الشهري للديون', placeholder:'10000', tip:'المبلغ الذي تدفعه شهرياً للبنك أو الدائنين — اتركه صفراً إذا لا يوجد' },
   ]
 
   if (!user) return <div style={{background:C.navy,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:C.gold,fontSize:20}}>...</div></div>
