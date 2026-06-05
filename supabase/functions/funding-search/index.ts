@@ -10,38 +10,55 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { companyName, revenue, expenses, bank_balance, debts, monthly_payment, receivables, employees, murdiScore, fundingScore, debt_status, margin } = await req.json()
+    const { companyName, revenue, expenses, bank_balance, debts, monthly_payment, receivables, employees, murdiScore, fundingScore, debt_status, margin, years_in_business, has_gov_contracts, credit_status } = await req.json()
+    
     const annualRevenue = (revenue||0) * 12
     const debtRatio = annualRevenue > 0 ? (debts/annualRevenue*100) : 0
 
     const prompt = `أنت Murdi — محلل التمويل المتخصص في المقاولات السعودية، مبني على منهجية د. عبدالحكيم المرضي.
 
-بيانات الشركة:
+بيانات الشركة الكاملة:
 - الإيرادات السنوية: ${annualRevenue.toLocaleString('ar-SA')} ريال
 - هامش الربح: ${typeof margin === 'number' ? margin.toFixed(1) : margin}%
 - الرصيد البنكي: ${(bank_balance||0).toLocaleString('ar-SA')} ريال
-- الديون: ${(debts||0).toLocaleString('ar-SA')} ريال (${debtRatio.toFixed(0)}% من الإيرادات السنوية)
+- الديون الإجمالية: ${(debts||0).toLocaleString('ar-SA')} ريال (${debtRatio.toFixed(0)}% من الإيرادات السنوية)
 - القسط الشهري: ${(monthly_payment||0).toLocaleString('ar-SA')} ريال
-- الموظفون: ${employees}
+- الذمم المدينة: ${(receivables||0).toLocaleString('ar-SA')} ريال
+- عدد الموظفين: ${employees}
+- سنوات الشركة في السوق: ${years_in_business} سنة
+- عقود حكومية نشطة: ${has_gov_contracts==='yes'?'نعم':has_gov_contracts==='pending'?'قيد الإرساء':'لا'}
+- السجل الائتماني: ${credit_status==='clean'?'نظيف':credit_status==='minor'?'ملاحظات بسيطة':'ملاحظات جوهرية'}
+- حالة الديون: ${debt_status==='committed'?'ملتزم بالسداد':debt_status==='late'?'متأخر عن السداد':'متعثر عن السداد'}
 - Murdi Score: ${murdiScore}/85
-- حالة الديون: ${debt_status==='committed'?'ملتزم':debt_status==='late'?'متأخر':'متعثر'}
 
-ابحث الآن في الإنترنت عن أحدث منتجات التمويل المتاحة للمقاولات في السعودية من البنوك وشركات التمويل المرخصة من ساما.
-ابحث في مواقع: بنك الرياض، البنك الأهلي، بنك البلاد، بنك الإنماء، مصرف الراجحي، بنك ساب، البنك السعودي الفرنسي، برنامج ضمان كفالة، صندوق المئوية، SRC.
+ابحث في منتجات التمويل السعودية المتاحة للمقاولات وقارنها بهذه البيانات.
+ركز على: بنوك (الرياض، الأهلي، البلاد، الإنماء، الراجحي، ساب، الفرنسي)، برامج حكومية (ضمان كفالة، صندوق المئوية، SRC، صندوق التنمية الصناعية).
 
-قارن بيانات الشركة مع أحدث الشروط وأرجع JSON فقط:
+شروط مهمة تراعيها:
+- سنوات العمل: معظم البنوك تشترط سنتين+
+- العقود الحكومية: تفتح باب تمويل المستخلصات والمشاريع
+- السجل الائتماني: ملاحظات جوهرية تمنع التمويل البنكي
+- نسبة الديون: أغلب البنوك تشترط أقل من 60-80%
+- التعثر: يمنع التمويل حتى تسوية الوضع
+
+أرجع JSON فقط بدون أي نص خارجه:
 {
-  "qualifiedCount": 2,
-  "nearQualifiedCount": 1,
+  "qualifiedCount": 3,
+  "nearQualifiedCount": 2,
   "mainBarrier": "العائق الرئيسي بالأرقام الفعلية",
   "opportunities": [
-    {"type": "نوع التمويل بدون اسم البنك", "amount": "المبلغ المتوقع", "requirement": "الشرط المحقق", "status": "qualified", "note": "ملاحظة"}
+    {
+      "type": "نوع التمويل بدون اسم البنك",
+      "amount": "المبلغ المتوقع التأهل له",
+      "requirement": "الشرط الرئيسي الذي تحققه",
+      "status": "qualified",
+      "note": "ملاحظة مهمة للمقاول"
+    }
   ],
-  "secretDetails": "للمشرف: اذكر اسم البنك المحدد وسبب التأهل بالتفصيل مع الشروط الحالية",
-  "advisorNote": "رسالة للمقاول: جملتان سعوديتان دافئتان عن الفرص المتاحة وأهمية التواصل مع فريق د. عبدالحكيم"
+  "secretDetails": "للمشرف فقط: اذكر اسم كل بنك أو جهة بالتفصيل مع سبب التأهل أو عدمه والشروط الدقيقة",
+  "advisorNote": "رسالة للمقاول: جملتان بلغة سعودية دافئة تخبره أن عنده فرص حقيقية وأن فريق د. عبدالحكيم يقدر يفتح له الأبواب"
 }`
 
-    // استدعاء Claude مع web search
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -59,34 +76,48 @@ Deno.serve(async (req) => {
 
     const data = await response.json()
     const text = data.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') || '{}'
-    const clean = text.replace(/```json|```/g, '').trim()
+    
+    // استخراج JSON بذكاء
+    let clean = text
+    const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/)
+    if (jsonMatch) {
+      clean = jsonMatch[1].trim()
+    } else {
+      const start = text.indexOf('{')
+      const end = text.lastIndexOf('}')
+      if (start !== -1 && end !== -1) clean = text.slice(start, end + 1)
+    }
 
     let parsed: any = {}
-    try { parsed = JSON.parse(clean) } catch { parsed = { error: 'parse error', raw: text.slice(0, 200) } }
+    try { parsed = JSON.parse(clean) } catch { parsed = { error: 'parse error', raw: text.slice(0, 300) } }
 
-    // إرسال إيميل سري
     if (parsed.secretDetails && !parsed.error && RESEND_API_KEY) {
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'Murdi <onboarding@resend.dev>',
-          to: ADMIN_EMAIL,
-          subject: `🏦 فرصة تمويلية — ${companyName}`,
-          html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
-            <h2 style="color:#F5C842;">🏦 تحليل تمويلي جديد</h2>
-            <p><strong>الشركة:</strong> ${companyName}</p>
-            <p><strong>Murdi Score:</strong> ${murdiScore}/85</p>
-            <p><strong>الإيرادات السنوية:</strong> ${annualRevenue.toLocaleString('ar-SA')} ريال</p>
-            <p><strong>حالة الديون:</strong> ${debt_status}</p>
-            <hr style="border-color:#F5C842;">
-            <h3 style="color:#F5C842;">📋 التفاصيل السرية:</h3>
-            <p style="background:#112244;padding:15px;border-radius:8px;">${parsed.secretDetails}</p>
-            <p><strong>عدد المنتجات المؤهلة:</strong> ${parsed.qualifiedCount}</p>
-            <p><strong>العائق الرئيسي:</strong> ${parsed.mainBarrier}</p>
-          </div>`
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Murdi <onboarding@resend.dev>',
+            to: ADMIN_EMAIL,
+            subject: `🏦 فرصة تمويلية — ${companyName}`,
+            html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
+              <h2 style="color:#F5C842;">🏦 تحليل تمويلي جديد</h2>
+              <p><strong>الشركة:</strong> ${companyName}</p>
+              <p><strong>Murdi Score:</strong> ${murdiScore}/85</p>
+              <p><strong>الإيرادات السنوية:</strong> ${annualRevenue.toLocaleString('ar-SA')} ريال</p>
+              <p><strong>سنوات العمل:</strong> ${years_in_business}</p>
+              <p><strong>عقود حكومية:</strong> ${has_gov_contracts}</p>
+              <p><strong>السجل الائتماني:</strong> ${credit_status}</p>
+              <p><strong>حالة الديون:</strong> ${debt_status}</p>
+              <hr style="border-color:#F5C842;">
+              <h3 style="color:#F5C842;">📋 التفاصيل السرية:</h3>
+              <p style="background:#112244;padding:15px;border-radius:8px;white-space:pre-wrap;">${parsed.secretDetails}</p>
+              <p><strong>عدد المنتجات المؤهلة:</strong> ${parsed.qualifiedCount}</p>
+              <p><strong>العائق الرئيسي:</strong> ${parsed.mainBarrier}</p>
+            </div>`
+          })
         })
-      })
+      } catch(e) { console.error('email error', e) }
     }
 
     const { secretDetails, ...publicData } = parsed
