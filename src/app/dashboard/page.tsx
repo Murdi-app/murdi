@@ -185,10 +185,6 @@ export default function Dashboard() {
   const [loadingChat, setLoadingChat] = useState(false)
   const [aiReport, setAiReport] = useState<any>(null)
   const [loadingReport, setLoadingReport] = useState(false)
-  const [aiReport, setAiReport] = useState<any>(null)
-  const [loadingReport, setLoadingReport] = useState(false)
-  const [aiReport, setAiReport] = useState<any>(null)
-  const [loadingReport, setLoadingReport] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
