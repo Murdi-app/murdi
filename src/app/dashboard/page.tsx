@@ -217,6 +217,8 @@ export default function Dashboard() {
   const [loadingChat, setLoadingChat] = useState(false)
   const [aiReport, setAiReport] = useState<any>(null)
   const [loadingReport, setLoadingReport] = useState(false)
+  const [fundingOpp, setFundingOpp] = useState<any>(null)
+  const [loadingFunding, setLoadingFunding] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -339,6 +341,34 @@ export default function Dashboard() {
       setChatMessages(prev => [...prev, { q, a: data.answer || 'تعذر الرد' }])
     } catch { setChatMessages(prev => [...prev, { q, a: 'تعذر الاتصال' }]) }
     setLoadingChat(false)
+  }
+
+  const getFundingOpportunities = async () => {
+    if (!report || loadingFunding) return
+    setLoadingFunding(true)
+    try {
+      const res = await fetch('/api/funding-opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: profile?.company_name || 'شركتك',
+          revenue: parseFloat(form.revenue)||0,
+          expenses: parseFloat(form.expenses)||0,
+          bank_balance: parseFloat(form.bank_balance)||0,
+          debts: parseFloat(form.debts)||0,
+          monthly_payment: parseFloat(form.monthly_payment)||0,
+          receivables: parseFloat(form.receivables)||0,
+          employees: parseInt(form.employees)||0,
+          murdiScore: report.score,
+          fundingScore: report.fundingScore,
+          debt_status: form.debt_status || 'committed',
+          margin: report.margin
+        })
+      })
+      const data = await res.json()
+      if (!data.error) setFundingOpp(data)
+    } catch {}
+    setLoadingFunding(false)
   }
 
   const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 40 ? C.gold : '#ef4444'
@@ -629,6 +659,55 @@ export default function Dashboard() {
                 <div style={{color:C.white,fontSize:14,fontWeight:700,marginBottom:6}}>{report.topFundingAction}</div>
                 <div style={{color:'#22c55e',fontSize:13}}>النتيجة: جاهزيتك ترتفع إلى {report.fundingImpact}/100</div>
               </div>
+            </div>
+
+            {/* Funding Opportunities */}
+            <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`2px solid ${C.gold}60`}}>
+              <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:8}}>🏦 فرص التمويل المتاحة لشركتك</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:16}}>بناءً على منهجية د. عبدالحكيم — تحليل حقيقي من سوق التمويل السعودي</div>
+              {!fundingOpp ? (
+                <button onClick={getFundingOpportunities} disabled={loadingFunding} style={{width:'100%',padding:'14px',borderRadius:10,border:`1px solid ${C.gold}`,background:'transparent',color:C.gold,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                  {loadingFunding ? '⏳ جاري البحث في منتجات التمويل...' : '🔍 اكتشف فرص التمويل المتاحة لشركتك'}
+                </button>
+              ) : (
+                <div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+                    <div style={{background:C.navy,borderRadius:10,padding:'16px',textAlign:'center',border:'1px solid #22c55e40'}}>
+                      <div style={{fontSize:36,fontWeight:900,color:'#22c55e'}}>{fundingOpp.qualifiedCount||0}</div>
+                      <div style={{color:C.gray,fontSize:12}}>منتج مؤهل له</div>
+                    </div>
+                    <div style={{background:C.navy,borderRadius:10,padding:'16px',textAlign:'center',border:`1px solid ${C.gold}40`}}>
+                      <div style={{fontSize:36,fontWeight:900,color:C.gold}}>{fundingOpp.nearQualifiedCount||0}</div>
+                      <div style={{color:C.gray,fontSize:12}}>قريب من التأهل</div>
+                    </div>
+                  </div>
+                  {fundingOpp.mainBarrier && (
+                    <div style={{background:'#ef444415',borderRadius:10,padding:'12px',marginBottom:12,border:'1px solid #ef444430'}}>
+                      <div style={{color:'#ef4444',fontSize:12,marginBottom:4}}>⚠️ العائق الرئيسي</div>
+                      <div style={{color:C.white,fontSize:13}}>{fundingOpp.mainBarrier}</div>
+                    </div>
+                  )}
+                  {(fundingOpp.opportunities||[]).map((opp:any,i:number) => (
+                    <div key={i} style={{background:C.navy,borderRadius:10,padding:'14px',marginBottom:8,border:`1px solid ${opp.status==='qualified'?'#22c55e':'#F5C842'}40`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                        <div style={{color:C.white,fontSize:14,fontWeight:700}}>{opp.type}</div>
+                        <div style={{color:opp.status==='qualified'?'#22c55e':C.gold,fontSize:12,fontWeight:700}}>{opp.status==='qualified'?'✅ مؤهل':'🎯 قريب'}</div>
+                      </div>
+                      {opp.amount && <div style={{color:C.gold,fontSize:13,marginBottom:4}}>💰 {opp.amount}</div>}
+                      <div style={{color:C.gray,fontSize:12}}>{opp.requirement}</div>
+                    </div>
+                  ))}
+                  {fundingOpp.advisorNote && (
+                    <div style={{background:'linear-gradient(135deg,#0d2a5e,#112244)',borderRadius:10,padding:'16px',marginTop:12,border:`1px solid ${C.gold}40`}}>
+                      <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:8}}>📞 رسالة من Murdi</div>
+                      <div style={{color:C.white,fontSize:14,lineHeight:1.8}}>{fundingOpp.advisorNote}</div>
+                      <button onClick={()=>window.open('https://wa.me/966500000000?text=أريد معرفة فرص التمويل لشركتي','_blank')} style={{marginTop:12,width:'100%',padding:'12px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                        تواصل مع فريق د. عبدالحكيم
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {report.strengths.length > 0 && (
