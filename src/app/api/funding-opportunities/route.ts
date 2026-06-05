@@ -7,46 +7,32 @@ const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 export async function POST(req: NextRequest) {
   try {
     const { companyName, revenue, expenses, bank_balance, debts, monthly_payment, receivables, employees, murdiScore, fundingScore, debt_status, margin } = await req.json()
+    const annualRevenue = (revenue||0) * 12
+    const debtRatio = annualRevenue > 0 ? (debts/annualRevenue*100) : 0
 
-    const prompt = `أنت Murdi — محلل التمويل الرقمي المتخصص في شركات المقاولات السعودية، مبني على منهجية د. عبدالحكيم المرضي.
+    const prompt = `أنت Murdi — محلل التمويل المتخصص في المقاولات السعودية، مبني على منهجية د. عبدالحكيم المرضي.
 
 بيانات الشركة:
-- الاسم: ${companyName}
-- الإيرادات الشهرية: ${revenue?.toLocaleString('ar-SA')} ريال (${(revenue*12)?.toLocaleString('ar-SA')} سنوياً)
-- المصروفات الشهرية: ${expenses?.toLocaleString('ar-SA')} ريال
-- هامش الربح: ${margin?.toFixed ? margin.toFixed(1) : margin}%
-- الرصيد البنكي: ${bank_balance?.toLocaleString('ar-SA')} ريال
-- الديون الإجمالية: ${debts?.toLocaleString('ar-SA')} ريال
-- القسط الشهري: ${(monthly_payment||0)?.toLocaleString('ar-SA')} ريال
-- الذمم المدينة: ${receivables?.toLocaleString('ar-SA')} ريال
-- عدد الموظفين: ${employees}
+- الإيرادات السنوية: ${annualRevenue.toLocaleString('ar-SA')} ريال
+- هامش الربح: ${margin?.toFixed?.(1)||margin}%
+- الرصيد البنكي: ${(bank_balance||0).toLocaleString('ar-SA')} ريال
+- الديون: ${(debts||0).toLocaleString('ar-SA')} ريال (${debtRatio.toFixed(0)}% من الإيرادات السنوية)
+- القسط الشهري: ${(monthly_payment||0).toLocaleString('ar-SA')} ريال
+- الموظفون: ${employees}
 - Murdi Score: ${murdiScore}/85
-- جاهزية التمويل: ${fundingScore}/100
-- حالة الديون: ${debt_status === 'committed' ? 'ملتزم' : debt_status === 'late' ? 'متأخر' : 'متعثر'}
+- حالة الديون: ${debt_status==='committed'?'ملتزم':debt_status==='late'?'متأخر':'متعثر'}
 
-مهمتك:
-ابحث في الإنترنت عن منتجات التمويل المتاحة للمقاولات في السعودية من: بنك الرياض، البنك الأهلي، بنك البلاد، بنك الإنماء، البنك السعودي الفرنسي، مصرف الراجحي، بنك ساب، شركة تمويل سهل، شركة أمان للتمويل، صندوق المئوية، برنامج ضمان، صندوق التنمية الصناعية.
-
-ابحث عن شروط كل منتج: الحد الأدنى للإيرادات، نسبة الديون المقبولة، عدد الموظفين، السنوات في السوق، الضمانات المطلوبة.
-
-قارن شروط كل منتج بأرقام الشركة أعلاه.
-
-أرجع JSON بهذا التنسيق:
+استخدم معرفتك الكاملة بمنتجات التمويل السعودية للمقاولات من البنوك وشركات التمويل المرخصة من ساما.
+قارن بيانات الشركة مع شروط كل منتج وأرجع JSON فقط بدون أي نص خارجه:
 {
   "qualifiedCount": 2,
   "nearQualifiedCount": 1,
-  "mainBarrier": "نقطة الضعف الرئيسية بالأرقام",
+  "mainBarrier": "العائق الرئيسي بالأرقام الفعلية",
   "opportunities": [
-    {
-      "type": "نوع التمويل (مثال: تمويل رأس المال العامل)",
-      "amount": "المبلغ المتوقع التأهل له",
-      "requirement": "الشرط الرئيسي",
-      "status": "qualified أو near_qualified",
-      "note": "ملاحظة مهمة"
-    }
+    {"type": "نوع التمويل بدون اسم البنك", "amount": "المبلغ المتوقع", "requirement": "الشرط المحقق", "status": "qualified", "note": "ملاحظة مفيدة"}
   ],
-  "secretDetails": "للمشرف فقط: اذكر اسم البنك أو الجهة المحددة مع التفاصيل الكاملة لكل منتج وسبب التأهل أو عدمه",
-  "advisorNote": "رسالة للمقاول: أخبره أن هناك فرص تمويلية حقيقية ولكن للوصول إليها يحتاج تواصل مع فريق د. عبدالحكيم — جملتان بلغة سعودية دافئة"
+  "secretDetails": "للمشرف: اذكر اسم البنك المحدد وسبب التأهل بالتفصيل لكل منتج",
+  "advisorNote": "رسالة للمقاول: جملتان سعوديتان دافئتان تقول أن هناك فرص حقيقية وأن التواصل مع فريق د. عبدالحكيم سيفتح له الأبواب"
 }`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -58,53 +44,43 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-5',
-        max_tokens: 3000,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }]
       })
     })
 
     const data = await response.json()
-    const text = data.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') || '{}'
-    const clean = text.replace(/```json|```/g, '').trim()
-    
-    let parsed: any = {}
-    try { parsed = JSON.parse(clean) } catch { parsed = { error: 'parse error' } }
+    const text = data.content?.find((b:any)=>b.type==='text')?.text||'{}'
+    const clean = text.replace(/```json|```/g,'').trim()
 
-    // إرسال إيميل سري للمشرف
+    let parsed:any = {}
+    try { parsed = JSON.parse(clean) } catch { parsed = {error:'parse error'} }
+
     if (parsed.secretDetails && !parsed.error) {
       try {
         await resend.emails.send({
           from: 'Murdi <onboarding@resend.dev>',
           to: ADMIN_EMAIL,
           subject: `🏦 فرصة تمويلية — ${companyName}`,
-          html: `
-            <div dir="rtl" style="font-family: Arial; padding: 20px; background: #0B1C3D; color: white;">
-              <h2 style="color: #F5C842;">🏦 تحليل تمويلي جديد</h2>
-              <p><strong>الشركة:</strong> ${companyName}</p>
-              <p><strong>Murdi Score:</strong> ${murdiScore}/85</p>
-              <p><strong>جاهزية التمويل:</strong> ${fundingScore}/100</p>
-              <p><strong>الإيرادات السنوية:</strong> ${(revenue*12)?.toLocaleString('ar-SA')} ريال</p>
-              <p><strong>حالة الديون:</strong> ${debt_status}</p>
-              <hr style="border-color: #F5C842;">
-              <h3 style="color: #F5C842;">📋 التفاصيل السرية:</h3>
-              <p style="background: #112244; padding: 15px; border-radius: 8px;">${parsed.secretDetails}</p>
-              <hr style="border-color: #F5C842;">
-              <p><strong>عدد المنتجات المؤهلة:</strong> ${parsed.qualifiedCount}</p>
-              <p><strong>عائق رئيسي:</strong> ${parsed.mainBarrier}</p>
-            </div>
-          `
+          html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
+            <h2 style="color:#F5C842;">🏦 تحليل تمويلي جديد</h2>
+            <p><strong>الشركة:</strong> ${companyName}</p>
+            <p><strong>Murdi Score:</strong> ${murdiScore}/85</p>
+            <p><strong>الإيرادات السنوية:</strong> ${annualRevenue.toLocaleString('ar-SA')} ريال</p>
+            <p><strong>حالة الديون:</strong> ${debt_status}</p>
+            <hr style="border-color:#F5C842;">
+            <h3 style="color:#F5C842;">📋 التفاصيل السرية:</h3>
+            <p style="background:#112244;padding:15px;border-radius:8px;">${parsed.secretDetails}</p>
+            <p><strong>عدد المنتجات المؤهلة:</strong> ${parsed.qualifiedCount}</p>
+            <p><strong>العائق الرئيسي:</strong> ${parsed.mainBarrier}</p>
+          </div>`
         })
-      } catch (emailErr) {
-        console.error('Email error:', emailErr)
-      }
+      } catch(e) { console.error('email error',e) }
     }
 
-    // إرجاع النتيجة بدون secretDetails للمقاول
     const { secretDetails, ...publicData } = parsed
     return NextResponse.json(publicData)
-
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch(err:any) {
+    return NextResponse.json({error:err.message},{status:500})
   }
 }
