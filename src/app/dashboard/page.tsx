@@ -180,6 +180,9 @@ export default function Dashboard() {
   const [advisorMsg, setAdvisorMsg] = useState('')
   const [loadingAdvisor, setLoadingAdvisor] = useState(false)
   const [whatIfAmount, setWhatIfAmount] = useState('')
+  const [chatMessages, setChatMessages] = useState<{q:string,a:string}[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [loadingChat, setLoadingChat] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -248,6 +251,32 @@ export default function Dashboard() {
       setAdvisorMsg(data.message || '')
     } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
     setLoadingAdvisor(false)
+  }
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || loadingChat || !report) return
+    const q = chatInput.trim()
+    setChatInput('')
+    setLoadingChat(true)
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: profile?.company_name || 'شركتك',
+          balance: parseFloat(form.bank_balance)||0,
+          revenue: parseFloat(form.revenue)||0,
+          expenses: parseFloat(form.expenses)||0,
+          debts: parseFloat(form.debts)||0,
+          receivables: parseFloat(form.receivables)||0,
+          murdiScore: report.score,
+          question: q
+        })
+      })
+      const data = await res.json()
+      setChatMessages(prev => [...prev, { q, a: data.answer || 'تعذر الرد' }])
+    } catch { setChatMessages(prev => [...prev, { q, a: 'تعذر الاتصال' }]) }
+    setLoadingChat(false)
   }
 
   const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 40 ? C.gold : '#ef4444'
@@ -528,6 +557,38 @@ export default function Dashboard() {
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Murdi Chat */}
+            <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
+              <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:16}}>💬 Murdi Chat™️ — اسأل عن أي شيء</div>
+              <div style={{marginBottom:12,display:'flex',gap:8,flexWrap:'wrap'}}>
+                {['وش لو أخذت قرض 500 ألف؟','هل أدخل مشروع جديد؟','متى أقدر أطلب تمويل؟','ليش درجتي كذا؟'].map((q,i) => (
+                  <button key={i} onClick={()=>setChatInput(q)} style={{padding:'6px 12px',borderRadius:20,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:12}}>{q}</button>
+                ))}
+              </div>
+              {chatMessages.length > 0 && (
+                <div style={{marginBottom:12,maxHeight:300,overflowY:'auto'}}>
+                  {chatMessages.map((m,i) => (
+                    <div key={i} style={{marginBottom:12}}>
+                      <div style={{background:'#ffffff10',borderRadius:'12px 12px 4px 12px',padding:'10px 14px',color:C.white,fontSize:13,marginBottom:4,textAlign:'left'}}>{m.q}</div>
+                      <div style={{background:`${C.gold}15`,borderRadius:'4px 12px 12px 12px',padding:'10px 14px',color:C.white,fontSize:13,lineHeight:1.6,borderRight:`3px solid ${C.gold}`}}>{m.a}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{display:'flex',gap:8}}>
+                <input
+                  value={chatInput}
+                  onChange={e=>setChatInput(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&sendChat()}
+                  placeholder="اسأل Murdi عن شركتك..."
+                  style={{flex:1,padding:'12px 14px',borderRadius:10,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14}}
+                />
+                <button onClick={sendChat} disabled={loadingChat} style={{padding:'12px 20px',borderRadius:10,border:'none',background:C.gold,color:C.navy,cursor:'pointer',fontSize:14,fontWeight:700}}>
+                  {loadingChat ? '...' : 'إرسال'}
+                </button>
+              </div>
             </div>
 
             <button onClick={handleSave} style={{width:'100%',padding:'16px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:16,fontWeight:800,cursor:'pointer'}}>
