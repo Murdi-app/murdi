@@ -384,15 +384,26 @@ export default function Dashboard() {
         {report && (
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
+            {loadingReport && (
+              <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'28px',border:'2px solid #22c55e40',textAlign:'center'}}>
+                <div style={{color:'#22c55e',fontSize:16,fontWeight:700,marginBottom:8}}>🤖 Murdi يحلل شركتك...</div>
+                <div style={{color:C.gray,fontSize:13}}>جاري إعداد تقريرك الذكي</div>
+              </div>
+            )}
+            {aiReport?.advisorNote && (
+              <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'28px',border:'2px solid #22c55e60'}}>
+                <div style={{color:'#22c55e',fontSize:16,fontWeight:800,marginBottom:16}}>🤖 Murdi Advisor™️</div>
+                <div style={{color:C.white,fontSize:15,lineHeight:2,whiteSpace:'pre-line',borderRight:'4px solid #22c55e',paddingRight:16}}>{aiReport.advisorNote}</div>
+              </div>
+            )}
             <div style={{background:'linear-gradient(135deg,#0d2a5e,#112244)',borderRadius:16,padding:'28px',border:`2px solid ${C.gold}60`}}>
               <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:16,letterSpacing:1}}>📋 Executive Summary — ملخص المدير التنفيذي</div>
-              <div style={{color:C.white,fontSize:16,fontWeight:700,marginBottom:6,lineHeight:1.7}}>{report.executiveSummary.cashFlow}</div>
-              <div style={{color:report.daysLeft < 30 ? '#ef4444' : report.daysLeft < 90 ? C.gold : '#22c55e',fontSize:15,marginBottom:16,lineHeight:1.7}}>{report.executiveSummary.liquidityAlert}</div>
+              <div style={{color:C.white,fontSize:15,lineHeight:1.9,marginBottom:16}}>{aiReport?.executiveSummary || (report.executiveSummary.cashFlow + ' — ' + report.executiveSummary.liquidityAlert)}</div>
               <div style={{background:C.navy,borderRadius:12,padding:'16px',borderRight:`4px solid ${C.gold}`}}>
                 <div style={{color:C.gray,fontSize:12,marginBottom:6}}>أولوية هذا الشهر</div>
-                <div style={{color:C.white,fontSize:15,fontWeight:700,marginBottom:8}}>{report.executiveSummary.priority}</div>
+                <div style={{color:C.white,fontSize:15,fontWeight:700,marginBottom:8}}>{aiReport?.topPriority || report.executiveSummary.priority}</div>
                 <div style={{color:C.gray,fontSize:12,marginBottom:4}}>الأثر المتوقع</div>
-                <div style={{color:'#22c55e',fontSize:14}}>{report.executiveSummary.scoreImpact}</div>
+                <div style={{color:'#22c55e',fontSize:14}}>{aiReport?.priorityImpact || report.executiveSummary.scoreImpact}</div>
               </div>
             </div>
 
