@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 - نسبة الديون: أغلب البنوك تشترط أقل من 60-80%
 - التعثر: يمنع التمويل حتى تسوية الوضع
 
-أرجع JSON فقط بدون أي نص خارجه:
+IMPORTANT: أرجع JSON فقط، ابدأ مباشرة بـ { لا تكتب أي نص قبله:
 {
   "qualifiedCount": 3,
   "nearQualifiedCount": 2,
@@ -76,20 +76,12 @@ Deno.serve(async (req) => {
 
     const data = await response.json()
     const text = data.content?.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') || '{}'
-    
-    // استخراج JSON بذكاء
-    let clean = text
-    const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/)
-    if (jsonMatch) {
-      clean = jsonMatch[1].trim()
-    } else {
-      const start = text.indexOf('{')
-      const end = text.lastIndexOf('}')
-      if (start !== -1 && end !== -1) clean = text.slice(start, end + 1)
-    }
-
     let parsed: any = {}
-    try { parsed = JSON.parse(clean) } catch { parsed = { error: 'parse error', raw: text.slice(0, 300) } }
+    try {
+      const s = text.indexOf('{'), e = text.lastIndexOf('}')
+      if (s !== -1 && e !== -1) parsed = JSON.parse(text.slice(s, e+1))
+    } catch {}
+    if (!parsed.qualifiedCount) parsed = { qualifiedCount:0, nearQualifiedCount:0, mainBarrier:'تعذر التحليل — حاول مرة أخرى', opportunities:[], advisorNote:'حاول مرة أخرى خلال دقيقة' }
 
     if (parsed.secretDetails && !parsed.error && RESEND_API_KEY) {
       try {
