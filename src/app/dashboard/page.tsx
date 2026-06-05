@@ -198,7 +198,7 @@ function generateReport(f: any) {
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -251,6 +251,9 @@ export default function Dashboard() {
           debts: parseFloat(form.debts)||0,
           monthly_payment: parseFloat(form.monthly_payment)||0,
           debt_status: form.debt_status || 'committed',
+          late_months: form.late_months || '',
+          bank_contacted: form.bank_contacted || '',
+          payment_included: form.payment_included || 'yes',
           receivables: parseFloat(form.receivables)||0,
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
@@ -412,20 +415,97 @@ export default function Dashboard() {
             ))}
           </div>
           {parseFloat(form.debts) > 0 && (
-            <div style={{marginTop:8,padding:'16px',background:C.navy,borderRadius:12,border:`1px solid ${C.border}`}}>
-              <div style={{color:C.gray,fontSize:13,marginBottom:10}}>حالة الديون الحالية</div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {[
-                  {value:'committed', label:'✅ ملتزم بالسداد', color:'#22c55e'},
-                  {value:'late', label:'⚠️ متأخر عن القسط', color:C.gold},
-                  {value:'default', label:'🔴 متعثر عن السداد', color:'#ef4444'},
-                ].map(opt => (
-                  <button key={opt.value} onClick={()=>setForm({...form, debt_status:opt.value})}
-                    style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.debt_status===opt.value?opt.color:C.border}`,background:form.debt_status===opt.value?opt.color+'20':'transparent',color:form.debt_status===opt.value?opt.color:C.gray,cursor:'pointer',fontSize:13,fontWeight:form.debt_status===opt.value?700:400}}>
-                    {opt.label}
-                  </button>
-                ))}
+            <div style={{marginTop:12,padding:'20px',background:C.navy,borderRadius:12,border:`1px solid ${C.border}`,display:'flex',flexDirection:'column',gap:16}}>
+              
+              {/* حالة الديون */}
+              <div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:10}}>حالة الديون الحالية</div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {[
+                    {value:'committed', label:'✅ ملتزم بالسداد', color:'#22c55e'},
+                    {value:'late', label:'⚠️ متأخر عن القسط', color:C.gold},
+                    {value:'default', label:'🔴 متعثر عن السداد', color:'#ef4444'},
+                  ].map(opt => (
+                    <button key={opt.value} onClick={()=>setForm({...form, debt_status:opt.value, late_months:'', bank_contacted:''})}
+                      style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.debt_status===opt.value?opt.color:C.border}`,background:form.debt_status===opt.value?opt.color+'20':'transparent',color:form.debt_status===opt.value?opt.color:C.gray,cursor:'pointer',fontSize:13,fontWeight:form.debt_status===opt.value?700:400}}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* إذا متأخر — كم شهر */}
+              {form.debt_status === 'late' && (
+                <div>
+                  <div style={{color:C.gold,fontSize:13,marginBottom:10}}>كم شهر التأخر؟</div>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    {[
+                      {value:'1-2', label:'1-2 شهر'},
+                      {value:'3-6', label:'3-6 أشهر'},
+                      {value:'6+', label:'أكثر من 6 أشهر'},
+                    ].map(opt => (
+                      <button key={opt.value} onClick={()=>setForm({...form, late_months:opt.value})}
+                        style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.late_months===opt.value?C.gold:C.border}`,background:form.late_months===opt.value?C.gold+'20':'transparent',color:form.late_months===opt.value?C.gold:C.gray,cursor:'pointer',fontSize:13}}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* إذا متعثر — تفاصيل */}
+              {form.debt_status === 'default' && (
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  <div>
+                    <div style={{color:'#ef4444',fontSize:13,marginBottom:10}}>منذ متى توقفت عن السداد؟</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {[
+                        {value:'1-3', label:'أقل من 3 أشهر'},
+                        {value:'3-6', label:'3-6 أشهر'},
+                        {value:'6+', label:'أكثر من 6 أشهر'},
+                      ].map(opt => (
+                        <button key={opt.value} onClick={()=>setForm({...form, late_months:opt.value})}
+                          style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.late_months===opt.value?'#ef4444':C.border}`,background:form.late_months===opt.value?'#ef444420':'transparent',color:form.late_months===opt.value?'#ef4444':C.gray,cursor:'pointer',fontSize:13}}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{color:'#ef4444',fontSize:13,marginBottom:10}}>هل تواصلت مع البنك؟</div>
+                    <div style={{display:'flex',gap:8}}>
+                      {[
+                        {value:'yes', label:'✅ نعم، جاري التفاوض'},
+                        {value:'no', label:'❌ لا، لم أتواصل بعد'},
+                      ].map(opt => (
+                        <button key={opt.value} onClick={()=>setForm({...form, bank_contacted:opt.value})}
+                          style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.bank_contacted===opt.value?'#ef4444':C.border}`,background:form.bank_contacted===opt.value?'#ef444420':'transparent',color:form.bank_contacted===opt.value?'#ef4444':C.gray,cursor:'pointer',fontSize:13}}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* هل القسط مشمول في المصروفات */}
+              {parseFloat(form.monthly_payment) > 0 && (
+                <div>
+                  <div style={{color:C.gray,fontSize:13,marginBottom:10}}>هل القسط الشهري مشمول في المصروفات التي أدخلتها؟</div>
+                  <div style={{display:'flex',gap:8}}>
+                    {[
+                      {value:'yes', label:'نعم، مشمول'},
+                      {value:'no', label:'لا، غير مشمول'},
+                    ].map(opt => (
+                      <button key={opt.value} onClick={()=>setForm({...form, payment_included:opt.value})}
+                        style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.payment_included===opt.value?C.gold:C.border}`,background:form.payment_included===opt.value?C.gold+'20':'transparent',color:form.payment_included===opt.value?C.gold:C.gray,cursor:'pointer',fontSize:13}}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
           <button onClick={handleAnalyze} style={{marginTop:24,width:'100%',padding:'16px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:800,cursor:'pointer'}}>
