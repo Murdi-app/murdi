@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { companyName, revenue, expenses, bank_balance, debts, monthly_payment, receivables, employees, murdiScore, fundingScore, cashRunwayDays } = await req.json()
+    const { companyName, revenue, expenses, bank_balance, debts, monthly_payment, receivables, employees, murdiScore, fundingScore, cashRunwayDays, debt_status, late_months, bank_contacted, payment_included } = await req.json()
 
     const profit = revenue - expenses
     const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : '0'
@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
 - صافي الربح: ${profit?.toLocaleString('ar-SA')} ريال (هامش ${margin}%)
 - الرصيد البنكي: ${bank_balance?.toLocaleString('ar-SA')} ريال
 - الديون الإجمالية: ${debts?.toLocaleString('ar-SA')} ريال
-- القسط الشهري للديون: ${(monthly_payment||0)?.toLocaleString('ar-SA')} ريال (إذا صفر فلا يوجد قسط)
+- القسط الشهري للديون: ${(monthly_payment||0)?.toLocaleString('ar-SA')} ريال${payment_included==='no' ? ' (غير مشمول في المصروفات — يجب إضافته للعبء الفعلي)' : ' (مشمول في المصروفات)'}
+- حالة سداد الديون: ${debt_status==='committed' ? 'ملتزم بالسداد' : debt_status==='late' ? `متأخر عن السداد ${late_months ? late_months+' أشهر' : ''} — خطر على السجل الائتماني` : `متعثر عن السداد منذ ${late_months || 'مدة غير محددة'} — ${bank_contacted==='yes' ? 'جاري التفاوض مع البنك' : 'لم يتواصل مع البنك بعد — خطر قانوني'}`}
 - الذمم المدينة: ${receivables?.toLocaleString('ar-SA')} ريال
 - عدد الموظفين: ${employees}
 - متوسط دورة التحصيل: ${dso} يوم
