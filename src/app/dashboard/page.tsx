@@ -381,7 +381,20 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {report && (
+        {report && loadingReport && !aiReport && (
+          <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'48px 28px',border:'2px solid #22c55e40',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,margin:'0 0 16px'}}>
+            <div style={{fontSize:48}}>🤖</div>
+            <div style={{color:'#22c55e',fontSize:20,fontWeight:800}}>Murdi يحلل شركتك</div>
+            <div style={{color:C.gray,fontSize:14,lineHeight:1.8}}>جاري إعداد تقريرك الذكي المخصص</div>
+            <div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap',justifyContent:'center'}}>
+              {['السيولة','الربحية','المخاطر','الفرص'].map((item,i) => (
+                <div key={i} style={{background:'#22c55e20',border:'1px solid #22c55e40',borderRadius:20,padding:'4px 12px',color:'#22c55e',fontSize:12}}>{item}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {report && (!loadingReport || aiReport) && (
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
             {loadingReport && (
