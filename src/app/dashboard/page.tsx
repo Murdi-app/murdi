@@ -33,7 +33,7 @@ function generateReport(f: any) {
   const opportunities: string[] = []
 
   if (liq < 1) {
-    risks.push({ text: `🔴 رصيدك ${fmt(b)} يغطي فقط ${days(daysLeft)} من مصروفاتك اليومية البالغة ${fmt(dailyBurn)} — خطر نقدي حقيقي`, impact: 9, category: 'liquidity' })
+    risks.push({ text: `🔴 رصيدك ${fmt(b)} يغطي فقط ${days(daysLeft)} من مصروفاتك — معدل الصرف اليومي ${Math.round(dailyBurn).toLocaleString("ar-SA")} ريال/يوم — خطر نقدي حقيقي`, impact: 9, category: 'liquidity' })
     actions.push(`⚡ حصل فوراً من الذمم المدينة ${fmt(rec)} — هذا المبلغ سينقذ سيولتك`)
     impacts.push(`💡 تحصيل 50% من الذمم سيرفع رصيدك إلى ${fmt(b + rec*0.5)} ويرفع Score +15 نقطة`)
   } else if (liq < 3) {
