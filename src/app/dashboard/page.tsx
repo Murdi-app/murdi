@@ -347,7 +347,7 @@ export default function Dashboard() {
     if (!report || loadingFunding) return
     setLoadingFunding(true)
     try {
-      const res = await fetch('/api/funding-opportunities', {
+      const res = await fetch('https://padfsejgeywbcxidlbea.supabase.co/functions/v1/funding-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
