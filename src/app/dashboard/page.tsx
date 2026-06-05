@@ -209,7 +209,7 @@ export default function Dashboard() {
     const r = generateReport(form)
     setReport(r)
     setAiReport(null)
-    setTimeout(() => window.scrollTo({top: 500, behavior: 'smooth'}), 100)
+    setTimeout(() => window.scrollTo({top: 400, behavior: "smooth"}), 200)
     setLoadingReport(true)
     try {
       const res = await fetch('/api/report', {
