@@ -346,6 +346,15 @@ export default function Dashboard() {
 
   const getFundingOpportunities = async () => {
     if (!report || loadingFunding) return
+    // تحقق من الحقول المطلوبة
+    if (!form.years_in_business) {
+      alert('⚠️ يرجى تحديد عدد سنوات شركتك في السوق أولاً — هذا يؤثر على نتائج التمويل')
+      return
+    }
+    if (!form.has_gov_contracts) {
+      alert('⚠️ يرجى تحديد هل لديك عقود حكومية — هذا يفتح منتجات تمويل إضافية')
+      return
+    }
     setLoadingFunding(true)
     try {
       const res = await fetch('https://padfsejgeywbcxidlbea.supabase.co/functions/v1/funding-search', {
