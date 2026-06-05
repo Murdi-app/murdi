@@ -243,7 +243,6 @@ export default function Dashboard() {
           debts: parseFloat(form.debts)||0,
           monthly_payment: parseFloat(form.monthly_payment)||0,
           receivables: parseFloat(form.receivables)||0,
-          monthly_payment: parseFloat(form.monthly_payment)||0,
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
           fundingScore: r.fundingScore,
