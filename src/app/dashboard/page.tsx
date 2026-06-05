@@ -243,6 +243,7 @@ export default function Dashboard() {
     const r = generateReport(form)
     setReport(r)
     setAiReport(null)
+    setFundingOpp(null)
     setTimeout(() => window.scrollTo({top: 400, behavior: "smooth"}), 200)
     setLoadingReport(true)
     try {
@@ -369,8 +370,10 @@ export default function Dashboard() {
         })
       })
       const data = await res.json()
-      if (!data.error) setFundingOpp(data)
-    } catch {}
+      setFundingOpp(data)
+    } catch(e) {
+      setFundingOpp({error: 'تعذر الاتصال', qualifiedCount:0, nearQualifiedCount:0, mainBarrier:'', opportunities:[], advisorNote:''})
+    }
     setLoadingFunding(false)
   }
 
@@ -606,12 +609,7 @@ export default function Dashboard() {
         {report && (!loadingReport || aiReport) && (
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
-            {loadingReport && (
-              <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'28px',border:'2px solid #22c55e40',textAlign:'center'}}>
-                <div style={{color:'#22c55e',fontSize:16,fontWeight:700,marginBottom:8}}>🤖 Murdi يحلل شركتك...</div>
-                <div style={{color:C.gray,fontSize:13}}>جاري إعداد تقريرك الذكي</div>
-              </div>
-            )}
+
             {aiReport?.advisorNote && (
               <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'28px',border:'2px solid #22c55e60'}}>
                 <div style={{color:'#22c55e',fontSize:16,fontWeight:800,marginBottom:16}}>🤖 Murdi Advisor™️</div>
@@ -666,19 +664,21 @@ export default function Dashboard() {
                 })}
               </div>
 
-            {aiReport && (
-              <>
+            {(aiReport?.risks||[]).filter((r:any)=>r.action).length > 0 && (
               <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #3b82f640'}}>
                 <div style={{color:'#3b82f6',fontSize:16,fontWeight:700,marginBottom:16}}>⚡ Action Engine — افعل هذا الأسبوع</div>
-                {(aiReport.risks||[]).filter((r:any)=>r.action).map((r:any,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.action).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>⚡ {r.action}</div>)}
+                {(aiReport.risks||[]).filter((r:any)=>r.action).map((r:any,i:number) => (
+                  <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.action).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>⚡ {r.action}</div>
+                ))}
               </div>
-              {(aiReport.risks||[]).some((r:any)=>r.result) && (
-                <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #a855f740'}}>
-                  <div style={{color:'#a855f7',fontSize:16,fontWeight:700,marginBottom:16}}>🎯 Impact Engine — ماذا سيحدث إذا تحركت</div>
-                  {(aiReport.risks||[]).filter((r:any)=>r.result).map((r:any,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.result).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>💡 {r.result}</div>)}
-                </div>
-              )}
-              </>
+            )}
+            {(aiReport?.risks||[]).filter((r:any)=>r.result).length > 0 && (
+              <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #a855f740'}}>
+                <div style={{color:'#a855f7',fontSize:16,fontWeight:700,marginBottom:16}}>🎯 Impact Engine — ماذا سيحدث إذا تحركت</div>
+                {(aiReport.risks||[]).filter((r:any)=>r.result).map((r:any,i:number) => (
+                  <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.result).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>💡 {r.result}</div>
+                ))}
+              </div>
             )}
 
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${fundingColor(report.fundingScore)}40`}}>
