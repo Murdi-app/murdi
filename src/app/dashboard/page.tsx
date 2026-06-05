@@ -148,8 +148,8 @@ function generateReport(f: any) {
   else if (margin < 15) fundingWeaknesses.push('🟡 الهامش أقل من معيار القطاع')
 
   const topFundingAction = liq < 1
-    ? `حصّل ${fmt(rec)} من الذمم هذا الشهر`
-    : dr > 100 ? `أعد جدولة الديون لتخفيض نسبتها تحت 80%`
+    ? (rec > 0 ? `حصّل ${fmt(rec)} من الذمم هذا الشهر` : `خفّض مصروفاتك الشهرية بمقدار ${fmt(e*0.2)} فوراً`)
+    : dr > 100 ? (monthlyPayment > 0 ? `فاوض البنك على تمديد قسطك الشهري ${fmt(monthlyPayment)}` : `أعد جدولة الديون لتخفيض نسبتها تحت 80%`)
     : dso > 90 ? `اخفض دورة التحصيل إلى 60 يوم`
     : `حافظ على هامشك فوق 15%`
 
@@ -166,7 +166,7 @@ function generateReport(f: any) {
       ? `والسيولة تغطي ${days(daysLeft)} — أقل من المعيار الموصى به`
       : `والسيولة جيدة — تغطي ${days(daysLeft)} من المصروفات`,
     priority: topRisk
-      ? `أولوية هذا الشهر: ${topRisk.category === 'liquidity' ? `تحصيل ${fmt(rec)} من الذمم المتأخرة` : topRisk.category === 'profit' ? `خفض المصروفات بمقدار ${fmt(Math.abs(monthlyProfit))}` : topRisk.category === 'collection' ? `تسريع التحصيل من ${days(dso)} إلى 60 يوم` : `خفض نسبة الديون تحت 50%`}`
+      ? `أولوية هذا الشهر: ${topRisk.category === 'liquidity' ? (rec > 0 ? `تحصيل ${fmt(rec)} من الذمم المتأخرة` : `خفض المصروفات اليومية من ${Math.round(dailyBurn).toLocaleString('ar-SA')} ريال/يوم`) : topRisk.category === 'profit' ? `خفض المصروفات بمقدار ${fmt(Math.abs(monthlyProfit))}` : topRisk.category === 'collection' ? `تسريع التحصيل من ${days(dso)} إلى 60 يوم` : `خفض نسبة الديون تحت 50%`}`
       : `شركتك في وضع جيد — ركّز على التوسع`,
     scoreImpact: topRisk
       ? topRisk.category === 'liquidity'
@@ -243,6 +243,7 @@ export default function Dashboard() {
           debts: parseFloat(form.debts)||0,
           monthly_payment: parseFloat(form.monthly_payment)||0,
           receivables: parseFloat(form.receivables)||0,
+          monthly_payment: parseFloat(form.monthly_payment)||0,
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
           fundingScore: r.fundingScore,
@@ -482,12 +483,13 @@ export default function Dashboard() {
                 })}
               </div>
 
-            <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #3b82f640'}}>
-              <div style={{color:'#3b82f6',fontSize:16,fontWeight:700,marginBottom:16}}>⚡ Action Engine — افعل هذا الأسبوع</div>
-              {report.actions.map((a:string,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<report.actions.length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>{a}</div>)}
-            </div>
-
-            {report.impacts.length > 0 && (
+            {!aiReport && (
+              <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #3b82f640'}}>
+                <div style={{color:'#3b82f6',fontSize:16,fontWeight:700,marginBottom:16}}>⚡ Action Engine — افعل هذا الأسبوع</div>
+                {report.actions.map((a:string,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<report.actions.length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>{a}</div>)}
+              </div>
+            )}
+            {!aiReport && report.impacts.length > 0 && (
               <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #a855f740'}}>
                 <div style={{color:'#a855f7',fontSize:16,fontWeight:700,marginBottom:16}}>🎯 Impact Engine — ماذا سيحدث إذا تحركت</div>
                 {report.impacts.map((imp:string,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<report.impacts.length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>{imp}</div>)}
