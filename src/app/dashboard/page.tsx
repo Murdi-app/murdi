@@ -19,6 +19,7 @@ function generateReport(f: any) {
   const b = parseFloat(f.bank_balance)||0, d = parseFloat(f.debts)||0
   const rec = parseFloat(f.receivables)||0
   const monthlyPayment = parseFloat(f.monthly_payment)||0
+  const debtStatus = f.debt_status || 'committed' // committed | late | default | none
   const margin = r>0 ? ((r-e)/r*100) : 0
   const liq = e>0 ? b/e : 0
   const dso = r>0 ? rec/r*30 : 0
@@ -77,16 +78,23 @@ function generateReport(f: any) {
   if (d > 0) {
     const paymentBurden = monthlyPayment > 0 ? (monthlyPayment / r * 100) : 0
     if (dr > 100) {
-      risks.push({ text: `🔴 ديونك ${fmt(d)} تعادل ${dr.toFixed(0)}% من إيراداتك السنوية${monthlyPayment > 0 ? ` — قسطك الشهري ${fmt(monthlyPayment)}` : ''} — عبء ثقيل`, impact: 6, category: 'debt' })
-      if (monthlyPayment > 0 && paymentBurden > 20) {
-        actions.push(`🏦 قسطك الشهري ${fmt(monthlyPayment)} يمثل ${paymentBurden.toFixed(0)}% من إيراداتك — فاوض البنك على تمديد الفترة لتخفيف الضغط`)
+      const debtStatusText = debtStatus === 'late' ? ' — متأخر عن السداد ⚠️' : debtStatus === 'default' ? ' — متعثر عن السداد 🔴' : ''
+      risks.push({ text: `🔴 ديونك ${fmt(d)} تعادل ${dr.toFixed(0)}% من إيراداتك السنوية${monthlyPayment > 0 ? ` — قسط ${fmt(monthlyPayment)}/شهر` : ''}${debtStatusText}`, impact: debtStatus === 'default' ? 9 : debtStatus === 'late' ? 7 : 6, category: 'debt' })
+      if (debtStatus === 'default') {
+        actions.push(`🚨 وضعك التعثر خطير — تواصل فوراً مع البنك لإعادة الهيكلة قبل الإجراءات القانونية`)
+        impacts.push(`💡 إعادة الهيكلة المبكرة تحمي سجلك الائتماني وتمنع الحجز على الأصول`)
+      } else if (debtStatus === 'late') {
+        actions.push(`⚠️ تأخرك عن السداد يؤثر على تصنيفك الائتماني — سدد المتأخرات فوراً ولو جزئياً`)
+        impacts.push(`💡 السداد الجزئي يوقف الغرامات ويحافظ على علاقتك مع البنك`)
+      } else if (monthlyPayment > 0 && paymentBurden > 20) {
+        actions.push(`🏦 قسطك ${fmt(monthlyPayment)} يمثل ${paymentBurden.toFixed(0)}% من إيراداتك — فاوض البنك على تمديد الفترة`)
         impacts.push(`💡 تمديد القسط سيحرر ${fmt(monthlyPayment * 0.3)} شهرياً لتشغيل الشركة`)
       } else if (monthlyPayment > 0) {
-        actions.push(`📊 قسطك الشهري ${fmt(monthlyPayment)} مقبول — ركّز على رفع الإيرادات لتحسين النسبة`)
+        actions.push(`📊 قسطك ${fmt(monthlyPayment)} مقبول — ركّز على رفع الإيرادات لتحسين نسبة الديون`)
         impacts.push(`💡 رفع الإيرادات 20% سيخفض نسبة الديون من ${dr.toFixed(0)}% إلى ${(dr*0.83).toFixed(0)}%`)
       } else {
-        actions.push(`🏦 أدخل قسطك الشهري الفعلي للحصول على توصية دقيقة لهيكلة ديونك`)
-        impacts.push(`💡 معرفة القسط تساعد Murdi على تقييم العبء الحقيقي للديون`)
+        actions.push(`🏦 حدد حالة ديونك للحصول على توصية دقيقة`)
+        impacts.push(`💡 معرفة حالة الديون تساعد Murdi على تقييم العبء الحقيقي`)
       }
     } else if (dr > 50) {
       risks.push({ text: `🟡 ديونك ${fmt(d)} تمثل ${dr.toFixed(0)}% من إيراداتك السنوية${monthlyPayment > 0 ? ` — قسط ${fmt(monthlyPayment)}/شهر` : ''} — راقبها`, impact: 3, category: 'debt' })
@@ -190,7 +198,7 @@ function generateReport(f: any) {
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -242,6 +250,7 @@ export default function Dashboard() {
           bank_balance: parseFloat(form.bank_balance)||0,
           debts: parseFloat(form.debts)||0,
           monthly_payment: parseFloat(form.monthly_payment)||0,
+          debt_status: form.debt_status || 'committed',
           receivables: parseFloat(form.receivables)||0,
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
@@ -334,8 +343,9 @@ export default function Dashboard() {
     { key:'bank_balance', label:'الرصيد البنكي', placeholder:'200000', tip:'رصيدك الفعلي في البنك اليوم — ليس الذمم أو الأرباح المتوقعة' },
     { key:'debts', label:'الديون', placeholder:'100000', tip:'إجمالي ما عليك من قروض بنكية أو التزامات مالية مستحقة للغير' },
     { key:'receivables', label:'الذمم المدينة', placeholder:'150000', tip:'ما يدين به عملاؤك لشركتك من فواتير لم تُحصَّل بعد' },
+  { key:'monthly_payment', label:'القسط الشهري للديون', placeholder:'10000', tip:'المبلغ الذي تدفعه شهرياً — اتركه صفراً إذا لا توجد ديون' },
     { key:'employees', label:'عدد الموظفين', placeholder:'25', tip:'إجمالي عدد موظفيك الحاليين بما فيهم العمال والإداريين' },
-  { key:'monthly_payment', label:'القسط الشهري للديون', placeholder:'10000', tip:'المبلغ الذي تدفعه شهرياً للبنك أو الدائنين — اتركه صفراً إذا لا يوجد' },
+
   ]
 
   if (!user) return <div style={{background:C.navy,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{color:C.gold,fontSize:20}}>...</div></div>
@@ -401,6 +411,23 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          {parseFloat(form.debts) > 0 && (
+            <div style={{marginTop:8,padding:'16px',background:C.navy,borderRadius:12,border:`1px solid ${C.border}`}}>
+              <div style={{color:C.gray,fontSize:13,marginBottom:10}}>حالة الديون الحالية</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {[
+                  {value:'committed', label:'✅ ملتزم بالسداد', color:'#22c55e'},
+                  {value:'late', label:'⚠️ متأخر عن القسط', color:C.gold},
+                  {value:'default', label:'🔴 متعثر عن السداد', color:'#ef4444'},
+                ].map(opt => (
+                  <button key={opt.value} onClick={()=>setForm({...form, debt_status:opt.value})}
+                    style={{padding:'8px 16px',borderRadius:20,border:`2px solid ${form.debt_status===opt.value?opt.color:C.border}`,background:form.debt_status===opt.value?opt.color+'20':'transparent',color:form.debt_status===opt.value?opt.color:C.gray,cursor:'pointer',fontSize:13,fontWeight:form.debt_status===opt.value?700:400}}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <button onClick={handleAnalyze} style={{marginTop:24,width:'100%',padding:'16px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:800,cursor:'pointer'}}>
             🔍 احلل وأظهر التقرير الذكي
           </button>
@@ -482,17 +509,19 @@ export default function Dashboard() {
                 })}
               </div>
 
-            {!aiReport && (
+            {aiReport && (
+              <>
               <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #3b82f640'}}>
                 <div style={{color:'#3b82f6',fontSize:16,fontWeight:700,marginBottom:16}}>⚡ Action Engine — افعل هذا الأسبوع</div>
-                {report.actions.map((a:string,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<report.actions.length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>{a}</div>)}
+                {(aiReport.risks||[]).filter((r:any)=>r.action).map((r:any,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.action).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>⚡ {r.action}</div>)}
               </div>
-            )}
-            {!aiReport && report.impacts.length > 0 && (
-              <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #a855f740'}}>
-                <div style={{color:'#a855f7',fontSize:16,fontWeight:700,marginBottom:16}}>🎯 Impact Engine — ماذا سيحدث إذا تحركت</div>
-                {report.impacts.map((imp:string,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<report.impacts.length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>{imp}</div>)}
-              </div>
+              {(aiReport.risks||[]).some((r:any)=>r.result) && (
+                <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #a855f740'}}>
+                  <div style={{color:'#a855f7',fontSize:16,fontWeight:700,marginBottom:16}}>🎯 Impact Engine — ماذا سيحدث إذا تحركت</div>
+                  {(aiReport.risks||[]).filter((r:any)=>r.result).map((r:any,i:number) => <div key={i} style={{color:C.white,fontSize:14,padding:'12px 0',borderBottom:i<(aiReport.risks||[]).filter((x:any)=>x.result).length-1?`1px solid ${C.border}`:'none',lineHeight:1.6}}>💡 {r.result}</div>)}
+                </div>
+              )}
+              </>
             )}
 
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${fundingColor(report.fundingScore)}40`}}>
