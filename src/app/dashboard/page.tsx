@@ -143,6 +143,8 @@ function generateReport(f: any) {
   if (margin >= 15) fundingScore += 25; else if (margin > 0) fundingScore += 10
   if (dso <= 60) fundingScore += 25; else if (dso <= 90) fundingScore += 12
   if (dr <= 50) fundingScore += 20; else if (dr <= 100) fundingScore += 8
+  if (debtStatus === 'default') fundingScore = Math.min(fundingScore, 15)
+  else if (debtStatus === 'late') fundingScore = Math.min(fundingScore, 35)
   fundingScore = Math.min(fundingScore, 100)
 
   const fundingWeaknesses: string[] = []
@@ -154,6 +156,8 @@ function generateReport(f: any) {
   else if (dso > 60) fundingWeaknesses.push('🟡 الذمم أعلى من الحد المطلوب')
   if (margin < 0) fundingWeaknesses.push('🔴 الشركة تخسر حالياً')
   else if (margin < 15) fundingWeaknesses.push('🟡 الهامش أقل من معيار القطاع')
+  if (debtStatus === 'default') fundingWeaknesses.push('🔴 تعثر في السداد — يمنع أي تمويل بنكي حالياً')
+  else if (debtStatus === 'late') fundingWeaknesses.push('🔴 تأخر في الأقساط — يؤثر على التصنيف الائتماني')
 
   const topFundingAction = liq < 1
     ? (rec > 0 ? `حصّل ${fmt(rec)} من الذمم هذا الشهر` : `خفّض مصروفاتك الشهرية بمقدار ${fmt(e*0.2)} فوراً`)
