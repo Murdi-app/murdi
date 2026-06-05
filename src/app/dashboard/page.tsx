@@ -183,6 +183,12 @@ export default function Dashboard() {
   const [chatMessages, setChatMessages] = useState<{q:string,a:string}[]>([])
   const [chatInput, setChatInput] = useState('')
   const [loadingChat, setLoadingChat] = useState(false)
+  const [aiReport, setAiReport] = useState<any>(null)
+  const [loadingReport, setLoadingReport] = useState(false)
+  const [aiReport, setAiReport] = useState<any>(null)
+  const [loadingReport, setLoadingReport] = useState(false)
+  const [aiReport, setAiReport] = useState<any>(null)
+  const [loadingReport, setLoadingReport] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -203,10 +209,33 @@ export default function Dashboard() {
     getUser()
   }, [])
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     const r = generateReport(form)
     setReport(r)
+    setAiReport(null)
     setTimeout(() => window.scrollTo({top: 500, behavior: 'smooth'}), 100)
+    setLoadingReport(true)
+    try {
+      const res = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: profile?.company_name || 'شركتك',
+          revenue: parseFloat(form.revenue)||0,
+          expenses: parseFloat(form.expenses)||0,
+          bank_balance: parseFloat(form.bank_balance)||0,
+          debts: parseFloat(form.debts)||0,
+          receivables: parseFloat(form.receivables)||0,
+          employees: parseInt(form.employees)||0,
+          murdiScore: r.score,
+          fundingScore: r.fundingScore,
+          cashRunwayDays: r.daysLeft
+        })
+      })
+      const data = await res.json()
+      if (!data.error) setAiReport(data)
+    } catch {}
+    setLoadingReport(false)
   }
 
   const handleSave = async () => {
