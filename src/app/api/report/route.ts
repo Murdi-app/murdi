@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 - Murdi Score: ${murdiScore}/85
 - جاهزية التمويل: ${fundingScore}/100
 - السيولة المتبقية: ${Math.round(cashRunwayDays)} يوم
+- المعدل اليومي للصرف: ${Math.round(dailyBurn).toLocaleString("ar-SA")} ريال/يوم
 
 مهمتك: حلل هذه الأرقام بعمق وأرجع تقريراً مالياً ذكياً ومرناً بالتنسيق التالي بالضبط (JSON فقط بدون أي نص خارجه):
 
