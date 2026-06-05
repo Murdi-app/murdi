@@ -202,7 +202,7 @@ function generateReport(f: any) {
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -362,7 +362,10 @@ export default function Dashboard() {
           murdiScore: report.score,
           fundingScore: report.fundingScore,
           debt_status: form.debt_status || 'committed',
-          margin: report.margin
+          margin: report.margin,
+          years_in_business: parseInt(form.years_in_business)||0,
+          has_gov_contracts: form.has_gov_contracts || 'no',
+          credit_status: form.credit_status || 'clean'
         })
       })
       const data = await res.json()
@@ -542,6 +545,46 @@ export default function Dashboard() {
 
             </div>
           )}
+          {/* حقول إضافية لتحليل التمويل */}
+          <div style={{marginTop:16,padding:'16px',background:C.navy,borderRadius:12,border:`1px solid ${C.gold}30`}}>
+            <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:12}}>🏦 معلومات إضافية لتحليل فرص التمويل</div>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:6}}>كم سنة شركتك في السوق؟</div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {[{v:'1',l:'أقل من سنة'},{v:'2',l:'1-2 سنة'},{v:'3',l:'3-5 سنوات'},{v:'7',l:'5-10 سنوات'},{v:'11',l:'أكثر من 10 سنوات'}].map(opt=>(
+                    <button key={opt.v} onClick={()=>setForm({...form,years_in_business:opt.v})}
+                      style={{padding:'6px 14px',borderRadius:20,border:`1px solid ${form.years_in_business===opt.v?C.gold:C.border}`,background:form.years_in_business===opt.v?C.gold+'20':'transparent',color:form.years_in_business===opt.v?C.gold:C.gray,cursor:'pointer',fontSize:12}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:6}}>هل لديك عقود حكومية نشطة؟</div>
+                <div style={{display:'flex',gap:8}}>
+                  {[{v:'yes',l:'✅ نعم'},{v:'no',l:'❌ لا'},{v:'pending',l:'⏳ قيد الإرساء'}].map(opt=>(
+                    <button key={opt.v} onClick={()=>setForm({...form,has_gov_contracts:opt.v})}
+                      style={{padding:'6px 14px',borderRadius:20,border:`1px solid ${form.has_gov_contracts===opt.v?C.gold:C.border}`,background:form.has_gov_contracts===opt.v?C.gold+'20':'transparent',color:form.has_gov_contracts===opt.v?C.gold:C.gray,cursor:'pointer',fontSize:12}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:6}}>السجل الائتماني للشركة</div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {[{v:'clean',l:'✅ نظيف بدون ملاحظات',c:'#22c55e'},{v:'minor',l:'🟡 ملاحظات بسيطة',c:C.gold},{v:'major',l:'🔴 ملاحظات جوهرية',c:'#ef4444'}].map(opt=>(
+                    <button key={opt.v} onClick={()=>setForm({...form,credit_status:opt.v})}
+                      style={{padding:'6px 14px',borderRadius:20,border:`1px solid ${form.credit_status===opt.v?opt.c:C.border}`,background:form.credit_status===opt.v?opt.c+'20':'transparent',color:form.credit_status===opt.v?opt.c:C.gray,cursor:'pointer',fontSize:12}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button onClick={handleAnalyze} style={{marginTop:24,width:'100%',padding:'16px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:800,cursor:'pointer'}}>
             🔍 احلل وأظهر التقرير الذكي
           </button>
