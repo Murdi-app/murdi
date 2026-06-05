@@ -420,21 +420,37 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {report.risks.length > 0 && (
-              <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #ef444440'}}>
+            <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #ef444440'}}>
                 <div style={{color:'#ef4444',fontSize:16,fontWeight:700,marginBottom:16}}>⚠️ Top Risks — مرتبة بالتأثير</div>
-                {report.risks.map((risk: RiskItem, i: number) => (
-                  <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 0',borderBottom:i<report.risks.length-1?`1px solid ${C.border}`:'none'}}>
-                    <div style={{minWidth:32,height:32,borderRadius:'50%',background:risk.impact>=7?'#ef444420':risk.impact>=5?'#F5C84220':'#22c55e20',border:`1px solid ${risk.impact>=7?'#ef4444':risk.impact>=5?C.gold:'#22c55e'}`,display:'flex',alignItems:'center',justifyContent:'center',color:risk.impact>=7?'#ef4444':risk.impact>=5?C.gold:'#22c55e',fontSize:12,fontWeight:900}}>{i+1}</div>
-                    <div style={{flex:1}}><div style={{color:C.white,fontSize:14,lineHeight:1.6}}>{risk.text}</div></div>
-                    <div style={{textAlign:'center',minWidth:60}}>
-                      <div style={{color:C.gray,fontSize:10,marginBottom:2}}>التأثير</div>
-                      <div style={{color:risk.impact>=7?'#ef4444':risk.impact>=5?C.gold:'#22c55e',fontSize:16,fontWeight:900}}>{risk.impact}/10</div>
+                {(aiReport?.risks || report.risks).map((risk: any, i: number) => {
+                  const imp = risk.impact || 5;
+                  const rc = imp>=7?'#ef4444':imp>=5?C.gold:'#22c55e';
+                  return (
+                    <div key={i} style={{padding:'14px 0',borderBottom:i<(aiReport?.risks||report.risks).length-1?`1px solid ${C.border}`:'none'}}>
+                      <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:risk.action?8:0}}>
+                        <div style={{minWidth:32,height:32,borderRadius:'50%',background:rc+'20',border:`1px solid ${rc}`,display:'flex',alignItems:'center',justifyContent:'center',color:rc,fontSize:12,fontWeight:900}}>{i+1}</div>
+                        <div style={{flex:1}}><div style={{color:C.white,fontSize:14,lineHeight:1.6}}>{risk.text}</div></div>
+                        <div style={{textAlign:'center',minWidth:60}}>
+                          <div style={{color:C.gray,fontSize:10,marginBottom:2}}>التأثير</div>
+                          <div style={{color:rc,fontSize:16,fontWeight:900}}>{imp}/10</div>
+                        </div>
+                      </div>
+                      {risk.action && (
+                        <div style={{marginRight:44}}>
+                          <div style={{background:'#3b82f620',borderRadius:8,padding:'8px 12px',marginBottom:4,borderRight:'3px solid #3b82f6'}}>
+                            <div style={{color:'#3b82f6',fontSize:12,marginBottom:2}}>⚡ الإجراء</div>
+                            <div style={{color:C.white,fontSize:13}}>{risk.action}</div>
+                          </div>
+                          <div style={{background:'#22c55e15',borderRadius:8,padding:'8px 12px',borderRight:'3px solid #22c55e'}}>
+                            <div style={{color:'#22c55e',fontSize:12,marginBottom:2}}>💡 النتيجة</div>
+                            <div style={{color:'#22c55e',fontSize:13}}>{risk.result}</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
 
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:'1px solid #3b82f640'}}>
               <div style={{color:'#3b82f6',fontSize:16,fontWeight:700,marginBottom:16}}>⚡ Action Engine — افعل هذا الأسبوع</div>
@@ -526,30 +542,18 @@ export default function Dashboard() {
             {report.cashRunwayDate && (
               <div style={{background:'#1a0a0a',borderRadius:16,padding:'24px',border:'2px solid #ef444460'}}>
                 <div style={{color:'#ef4444',fontSize:16,fontWeight:800,marginBottom:12}}>⏱️ Cash Runway Countdown™️</div>
-                <div style={{color:C.gray,fontSize:13,marginBottom:8}}>بناءً على معدل صرفك اليومي: {fmt(report.dailyBurn)}</div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:8}}>بناءً على معدل صرفك اليومي: {Math.round(report.dailyBurn).toLocaleString('ar-SA')} ريال/يوم</div>
                 <div style={{color:'#ef4444',fontSize:18,fontWeight:900,marginBottom:8}}>
                   ⚠️ سيولتك ستصل صفر بتاريخ: {report.cashRunwayDate}
                 </div>
                 <div style={{color:C.gray,fontSize:14,marginBottom:12}}>أي خلال {Math.round(report.daysLeft)} يوم من الآن</div>
                 <div style={{color:'#22c55e',fontSize:14,background:'#22c55e10',padding:'10px 14px',borderRadius:8,border:'1px solid #22c55e30'}}>
-                  ✅ إذا حصّلت {fmt(report.rec * 0.5)} هذا الأسبوع — تتجنب الأزمة وترفع التغطية إلى {Math.round(report.daysLeft + (report.rec*0.5)/report.dailyBurn)} يوم
+                  {report.rec > 0 ? `✅ إذا حصّلت ${Math.round(report.rec * 0.5).toLocaleString('ar-SA')} ريال هذا الأسبوع — ترفع التغطية إلى ${Math.round(report.daysLeft + (report.rec*0.5)/report.dailyBurn)} يوم` : `✅ خفّض مصروفاتك ${Math.round(report.dailyBurn * 10).toLocaleString('ar-SA')} ريال هذا الأسبوع — تربح 10 أيام إضافية`}
                 </div>
               </div>
             )}
 
-            {/* Murdi Advisor */}
-            <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'24px',border:'2px solid #22c55e40'}}>
-              <div style={{color:'#22c55e',fontSize:16,fontWeight:800,marginBottom:12}}>🤖 Murdi Advisor™️</div>
-              {!advisorMsg ? (
-                <button onClick={getAdvisor} disabled={loadingAdvisor} style={{width:'100%',padding:'14px',borderRadius:10,border:'1px solid #22c55e',background:'transparent',color:'#22c55e',fontSize:14,fontWeight:700,cursor:'pointer'}}>
-                  {loadingAdvisor ? '⏳ جاري التحليل...' : '💬 اسمع رأي Murdi Advisor'}
-                </button>
-              ) : (
-                <div style={{color:C.white,fontSize:15,lineHeight:2,background:'#ffffff08',padding:'16px',borderRadius:10,borderRight:'4px solid #22c55e',whiteSpace:'pre-line'}}>
-                  {advisorMsg}
-                </div>
-              )}
-            </div>
+
 
             {/* What If Engine */}
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
