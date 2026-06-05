@@ -34,8 +34,13 @@ function generateReport(f: any) {
 
   if (liq < 1) {
     risks.push({ text: `🔴 رصيدك ${fmt(b)} يغطي فقط ${days(daysLeft)} من مصروفاتك — معدل الصرف اليومي ${Math.round(dailyBurn).toLocaleString("ar-SA")} ريال/يوم — خطر نقدي حقيقي`, impact: 9, category: 'liquidity' })
-    actions.push(`⚡ حصل فوراً من الذمم المدينة ${fmt(rec)} — هذا المبلغ سينقذ سيولتك`)
-    impacts.push(`💡 تحصيل 50% من الذمم سيرفع رصيدك إلى ${fmt(b + rec*0.5)} ويرفع Score +15 نقطة`)
+    if (rec > 0) {
+      actions.push(`⚡ حصل فوراً من الذمم المدينة ${fmt(rec)} — هذا المبلغ سينقذ سيولتك`)
+      impacts.push(`💡 تحصيل 50% من الذمم سيرفع رصيدك إلى ${fmt(b + rec*0.5)} ويرفع Score +15 نقطة`)
+    } else {
+      actions.push(`⚡ رصيدك حرج — راجع مصروفاتك وخفض أكبر بند 20% (توفير ${fmt(e*0.2)} شهرياً)`)
+      impacts.push(`💡 خفض المصروفات 20% يرفع تغطيتك من ${days(daysLeft)} إلى ${days(daysLeft*1.25)} ويمنع الأزمة`)
+    }
   } else if (liq < 3) {
     risks.push({ text: `🟡 رصيدك ${fmt(b)} يغطي ${days(daysLeft)} فقط — أقل من المعيار الموصى به (90 يوم)`, impact: 6, category: 'liquidity' })
     actions.push(`📊 ابن احتياطياً نقدياً يصل إلى ${fmt(e*3)} يعادل 3 أشهر من المصروفات`)
@@ -64,7 +69,8 @@ function generateReport(f: any) {
     risks.push({ text: `🟡 متوسط التحصيل ${days(dso)} — يمكن تحسينه`, impact: 4, category: 'collection' })
     actions.push(`📋 طبّق فواتير إلكترونية مع تذكير تلقائي كل 30 يوم`)
   } else if (r > 0) {
-    strengths.push(`✅ تحصيلك سريع — عملاؤك يدفعون خلال ${days(dso)} في المتوسط`)
+    if (rec > 0) strengths.push(`✅ تحصيلك سريع — عملاؤك يدفعون خلال ${days(dso)} في المتوسط`)
+    else strengths.push(`✅ لا ذمم متأخرة — عملاؤك يدفعون فوراً عند الاستحقاق`)
   }
 
   if (dr > 100) {
@@ -84,12 +90,14 @@ function generateReport(f: any) {
   }
   if (rec > r*0.5) {
     opportunities.push(`💰 لديك ${fmt(rec)} في الذمم — تحصيلها يمول مشاريع جديدة دون ديون إضافية`)
+  } else if (rec > 0) {
+    opportunities.push(`💰 ذممك ${fmt(rec)} بسيطة — حصّلها لتعزيز السيولة`)
   }
   if (margin > 15 && dr < 50) {
     opportunities.push(`📈 بناءً على أرقامك، يمكنك استيعاب مشروع إضافي بقيمة تصل ${fmt(r*0.3)} شهرياً`)
   }
   if (opportunities.length === 0) {
-    opportunities.push(`📈 بعد تحسين النقاط أعلاه ستظهر فرص توسع — ابدأ بالسيولة والتحصيل`)
+    opportunities.push(`📈 بعد تحسين السيولة والربحية ستظهر فرص توسع — ابدأ بخفض المصروفات وتحسين الهامش`)
   }
 
   const forecast3m = monthlyProfit > 0
@@ -321,7 +329,10 @@ export default function Dashboard() {
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
       <div style={{background:C.navyLight,padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:100}}>
-        <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start'}}>
+          <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2,lineHeight:1}}>MURDI</div>
+          <div style={{fontSize:11,color:C.gold,opacity:0.7,letterSpacing:1}}>مُرضي</div>
+        </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{textAlign:'right'}}>
             <div style={{color:C.white,fontWeight:700,fontSize:13}}>{profile?.company_name||'شركتك'}</div>
@@ -383,7 +394,7 @@ export default function Dashboard() {
 
         {report && loadingReport && !aiReport && (
           <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'48px 28px',border:'2px solid #22c55e40',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,margin:'0 0 16px'}}>
-            <div style={{fontSize:48}}>🤖</div>
+            <div style={{fontSize:48}}>📊</div>
             <div style={{color:'#22c55e',fontSize:20,fontWeight:800}}>Murdi يحلل شركتك</div>
             <div style={{color:C.gray,fontSize:14,lineHeight:1.8}}>جاري إعداد تقريرك الذكي المخصص</div>
             <div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap',justifyContent:'center'}}>
@@ -417,6 +428,11 @@ export default function Dashboard() {
                 <div style={{color:C.white,fontSize:15,fontWeight:700,marginBottom:8}}>{aiReport?.topPriority || report.executiveSummary.priority}</div>
                 <div style={{color:C.gray,fontSize:12,marginBottom:4}}>الأثر المتوقع</div>
                 <div style={{color:'#22c55e',fontSize:14}}>{aiReport?.priorityImpact || report.executiveSummary.scoreImpact}</div>
+              </div>
+              <div style={{marginTop:16,borderTop:`1px solid ${C.border}`,paddingTop:12,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                <div style={{color:C.gold,fontSize:12}}>✦</div>
+                <div style={{color:C.gray,fontSize:11,textAlign:'center'}}>هذا التحليل مبني على منهجية د. عبدالحكيم المرضي | مستشار أعمال معتمد | دكتوراه إدارة أعمال</div>
+                <div style={{color:C.gold,fontSize:12}}>✦</div>
               </div>
             </div>
 
