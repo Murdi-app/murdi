@@ -131,29 +131,17 @@ ${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : '
     console.log('CLAUDE_RAW_FIRST_200:', text.slice(0, 200))
     console.log('CLAUDE_RAW_LAST_200:', text.slice(-200))
 
+    // استخراج JSON من النص
     let parsed: any = {}
-    try {
-      // إزالة كل أنواع code blocks
-      const clean = text
-        .replace(/^```json\s*/gm, '')
-        .replace(/^```\s*/gm, '')
-        .replace(/\s*```$/gm, '')
-        .trim()
-      const s = clean.indexOf('{')
-      const e = clean.lastIndexOf('}')
-      if (s !== -1 && e !== -1) {
-        parsed = JSON.parse(clean.slice(s, e + 1))
-      } else {
-        parsed = { executiveSummary: clean }
-      }
-    } catch(parseErr) {
-      // محاولة ثانية — استخراج JSON مباشرة
-      try {
-        const match = text.match(/\{[\s\S]*\}/)
-        if (match) parsed = JSON.parse(match[0])
-        else parsed = { executiveSummary: text }
-      } catch { parsed = { executiveSummary: text } }
+    const attempts = [
+      () => JSON.parse(text),
+      () => JSON.parse(text.replace(/^```json\n?/,'').replace(/\n?```$/,'')),
+      () => { const m = text.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw new Error('no match') }
+    ]
+    for (const attempt of attempts) {
+      try { parsed = attempt(); break } catch {}
     }
+    if (!parsed.rootCause) parsed = { executiveSummary: text }
 
     return NextResponse.json(parsed)
   } catch (err: any) {
