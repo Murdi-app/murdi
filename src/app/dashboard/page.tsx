@@ -239,6 +239,9 @@ export default function Dashboard() {
   const [loadingReport, setLoadingReport] = useState(false)
   const [fundingOpp, setFundingOpp] = useState<any>(null)
   const [loadingFunding, setLoadingFunding] = useState(false)
+  const [activeQuestion, setActiveQuestion] = useState<number|null>(null)
+  const [questionAnswer, setQuestionAnswer] = useState<string>('')
+  const [loadingQuestion, setLoadingQuestion] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -704,6 +707,53 @@ export default function Dashboard() {
                     <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{aiReport.fundingPath}</div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Murdi Proactive Intelligence — الأسئلة الاستباقية */}
+            {aiReport?.proactiveQuestions && aiReport.proactiveQuestions.length > 0 && (
+              <div style={{background:'linear-gradient(135deg,#1a0d2e,#0d0820)',borderRadius:16,padding:'28px',border:'1px solid #a855f740'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <span style={{fontSize:18}}>🧠</span>
+                  <div style={{color:'#c084fc',fontSize:16,fontWeight:800,letterSpacing:1}}>Murdi يسألك</div>
+                </div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:20}}>لاحظت أشياء في أرقامك — دعني أفهم أكثر لأعطيك تحليلاً أعمق</div>
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  {aiReport.proactiveQuestions.map((q:any, i:number) => (
+                    <div key={i} style={{background:'#0d0820',borderRadius:12,padding:'18px',border:'1px solid #a855f730'}}>
+                      <div style={{color:'#c084fc',fontSize:12,fontWeight:700,marginBottom:6}}>💡 {q.trigger}</div>
+                      <div style={{color:C.white,fontSize:15,fontWeight:700,marginBottom:14,lineHeight:1.6}}>{q.question}</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                        {(q.options||[]).map((opt:string, j:number) => (
+                          <button key={j} onClick={async () => {
+                            setActiveQuestion(i); setQuestionAnswer(''); setLoadingQuestion(true)
+                            try {
+                              const res = await fetch('/api/chat', {
+                                method:'POST', headers:{'Content-Type':'application/json'},
+                                body: JSON.stringify({
+                                  message: `بخصوص ملاحظتك: "${q.trigger}". سؤالك كان: "${q.question}". إجابتي: "${opt}". الآن حلل هذا السبب بعمق وأعطني خطة عملية محددة بالأرقام لمعالجته، مبنية على وضع شركتي ومنهجية د. عبدالحكيم وواقع قطاع المقاولات السعودي.`,
+                                  context: { companyName: profile?.company_name, ...form, murdiScore: report.score }
+                                })
+                              })
+                              const data = await res.json()
+                              setQuestionAnswer(data.reply || data.answer || 'تعذّر التحليل، حاول مرة أخرى')
+                            } catch { setQuestionAnswer('تعذّر الاتصال، حاول مرة أخرى') }
+                            setLoadingQuestion(false)
+                          }} style={{background: activeQuestion===i ? '#a855f7' : '#1a1030', color: activeQuestion===i ? '#fff' : '#c084fc', border:'1px solid #a855f750', borderRadius:8, padding:'8px 14px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit'}}>{opt}</button>
+                        ))}
+                      </div>
+                      {activeQuestion===i && (
+                        <div style={{marginTop:14, padding:'16px', background:'#150a28', borderRadius:10, border:'1px solid #a855f730'}}>
+                          {loadingQuestion ? (
+                            <div style={{color:'#c084fc',fontSize:13}}>⏳ Murdi يحلل إجابتك...</div>
+                          ) : (
+                            <div style={{color:C.white,fontSize:14,lineHeight:1.9,whiteSpace:'pre-line'}}>{questionAnswer}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
