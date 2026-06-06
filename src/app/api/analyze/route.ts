@@ -129,12 +129,27 @@ ${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : '
 
     let parsed: any = {}
     try {
-      // إزالة code blocks إذا وجدت
-      const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      // إزالة كل أنواع code blocks
+      const clean = text
+        .replace(/^```json\s*/gm, '')
+        .replace(/^```\s*/gm, '')
+        .replace(/\s*```$/gm, '')
+        .trim()
       const s = clean.indexOf('{')
       const e = clean.lastIndexOf('}')
-      if (s !== -1 && e !== -1) parsed = JSON.parse(clean.slice(s, e + 1))
-    } catch { parsed = { executiveSummary: text } }
+      if (s !== -1 && e !== -1) {
+        parsed = JSON.parse(clean.slice(s, e + 1))
+      } else {
+        parsed = { executiveSummary: clean }
+      }
+    } catch(parseErr) {
+      // محاولة ثانية — استخراج JSON مباشرة
+      try {
+        const match = text.match(/\{[\s\S]*\}/)
+        if (match) parsed = JSON.parse(match[0])
+        else parsed = { executiveSummary: text }
+      } catch { parsed = { executiveSummary: text } }
+    }
 
     return NextResponse.json(parsed)
   } catch (err: any) {
