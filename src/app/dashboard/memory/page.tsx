@@ -31,39 +31,45 @@ const MONTH_NAMES = [
   'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'
 ]
 
-const fmt = (n: number) => n?.toLocaleString('ar-SA') || '0'
+const fmt = (n: number) => (n||0).toLocaleString('ar-SA')
+
+function safe(m: MonthlyData) {
+  return {
+    ...m,
+    revenue: m.revenue || 0,
+    expenses: m.expenses || 0,
+    bank_balance: m.bank_balance || 0,
+    debts: m.debts || 0,
+    receivables: m.receivables || 0,
+    murdi_score: m.murdi_score || 0,
+    employees: m.employees || 0,
+  }
+}
 
 function calcVelocity(months: MonthlyData[]): VelocityResult[] {
-  if (months.length < 2) return []
-  const last3 = months.slice(-3)
+  if (!months || months.length < 2) return []
+  const safeMonths = months.map(safe)
+  const last3 = safeMonths.slice(-3)
 
   const metrics = [
     {
-      label: 'السيولة',
-      icon: '💧',
+      label: 'السيولة', icon: '💧',
       getValue: (m: MonthlyData) => m.expenses > 0 ? Math.round(m.bank_balance / m.expenses * 30) : 0,
-      unit: 'يوم',
       higherIsBetter: true,
     },
     {
-      label: 'الربحية',
-      icon: '📈',
+      label: 'الربحية', icon: '📈',
       getValue: (m: MonthlyData) => m.revenue > 0 ? Math.round((m.revenue - m.expenses) / m.revenue * 100) : 0,
-      unit: '%',
       higherIsBetter: true,
     },
     {
-      label: 'التحصيل',
-      icon: '🔄',
+      label: 'التحصيل', icon: '🔄',
       getValue: (m: MonthlyData) => m.revenue > 0 ? Math.round(m.receivables / m.revenue * 30) : 0,
-      unit: 'يوم',
       higherIsBetter: false,
     },
     {
-      label: 'Murdi Score',
-      icon: '⭐',
+      label: 'Murdi Score', icon: '⭐',
       getValue: (m: MonthlyData) => m.murdi_score,
-      unit: 'نقطة',
       higherIsBetter: true,
     },
   ]
@@ -71,7 +77,6 @@ function calcVelocity(months: MonthlyData[]): VelocityResult[] {
   return metrics.map(metric => {
     const values = last3.map(m => metric.getValue(m))
     const n = values.length
-
     let status: VelocityResult['status'] = 'stable'
     let message = ''
     let urgent = false
@@ -80,11 +85,9 @@ function calcVelocity(months: MonthlyData[]): VelocityResult[] {
       const allDecline = metric.higherIsBetter
         ? values.every((v, i) => i === 0 || v <= values[i - 1])
         : values.every((v, i) => i === 0 || v >= values[i - 1])
-
       const allImprove = metric.higherIsBetter
         ? values.every((v, i) => i === 0 || v >= values[i - 1])
         : values.every((v, i) => i === 0 || v <= values[i - 1])
-
       const first = values[0]
       const last = values[n - 1]
       const changePct = first !== 0 ? Math.abs((last - first) / first * 100) : 0
@@ -120,35 +123,41 @@ export default function MemoryPage() {
   useEffect(() => { load() }, [])
 
   async function load() {
-    setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
+    try {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
 
-    const { data: p } = await supabase.from('profiles').select('company_name').eq('id', user.id).single()
-    if (p) setCompanyName(p.company_name || '')
+      const { data: p } = await supabase.from('profiles').select('company_name').eq('id', user.id).single()
+      if (p) setCompanyName(p.company_name || '')
 
-    const { data: m } = await supabase
-      .from('monthly_data')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('year', { ascending: true })
-      .order('month', { ascending: true })
+      const { data: m, error } = await supabase
+        .from('monthly_data')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('year', { ascending: true })
+        .order('month', { ascending: true })
 
-    if (m) setMonths(m)
-    setLoading(false)
+      if (error) console.error('monthly_data error:', error)
+      if (m) setMonths(m)
+    } catch(e) {
+      console.error('load error:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function getMemoryAnalysis() {
     if (aiMemory) return
     setAnalyzing(true)
-
-    const summary = months.map(m =>
+    const safeMonths = months.map(safe)
+    const summary = safeMonths.map(m =>
       `${MONTH_NAMES[m.month-1]} ${m.year}: إيرادات ${fmt(m.revenue)} | مصروفات ${fmt(m.expenses)} | رصيد ${fmt(m.bank_balance)} | ديون ${fmt(m.debts)} | Score ${m.murdi_score}`
     ).join('\n')
 
-    const first = months[0]
-    const last = months[months.length - 1]
-    const scoreChange = last?.murdi_score - first?.murdi_score
+    const first = safeMonths[0]
+    const last = safeMonths[safeMonths.length - 1]
+    const scoreChange = (last?.murdi_score || 0) - (first?.murdi_score || 0)
 
     try {
       const res = await fetch('/api/memory', {
@@ -193,7 +202,6 @@ export default function MemoryPage() {
         .month-header { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
         .month-name { font-size:15px; font-weight:700; color:#F5C842; }
         .score-badge { padding:4px 14px; border-radius:20px; font-size:13px; font-weight:700; }
-        .metric { }
         .metric-label { font-size:11px; color:#5a7a99; margin-bottom:2px; }
         .metric-val { font-size:13px; color:#c0d8f0; font-weight:600; }
         .score-bar { grid-column:1/-1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; margin-top:4px; }
@@ -224,68 +232,56 @@ export default function MemoryPage() {
                 <div className="stat-label">شهر محفوظ</div>
               </div>
               <div className="stat">
-                <div className="stat-val">{months[months.length-1]?.murdi_score || 0}</div>
+                <div className="stat-val">{safe(months[months.length-1]).murdi_score}</div>
                 <div className="stat-label">آخر Murdi Score</div>
               </div>
               <div className="stat">
-                <div className="stat-val" style={{ color: (months[months.length-1]?.murdi_score - months[0]?.murdi_score) >= 0 ? '#4ade80' : '#f87171' }}>
-                  {(months[months.length-1]?.murdi_score - months[0]?.murdi_score) >= 0 ? '+' : ''}
-                  {months[months.length-1]?.murdi_score - months[0]?.murdi_score}
+                <div className="stat-val" style={{ color: (safe(months[months.length-1]).murdi_score - safe(months[0]).murdi_score) >= 0 ? '#4ade80' : '#f87171' }}>
+                  {(safe(months[months.length-1]).murdi_score - safe(months[0]).murdi_score) >= 0 ? '+' : ''}
+                  {safe(months[months.length-1]).murdi_score - safe(months[0]).murdi_score}
                 </div>
                 <div className="stat-label">التغير الكلي</div>
               </div>
             </div>
 
-            {/* Risk Velocity™️ */}
             {velocity.length > 0 && (
               <div style={{background:'#0a1628',border:`2px solid ${urgentCount > 0 ? '#ef444460' : '#F5C84240'}`,borderRadius:16,padding:'24px',marginBottom:24}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-                  <div style={{color:'#F5C842',fontSize:18,fontWeight:800,fontFamily:'Amiri,serif'}}>
-                    ⚡ Murdi Risk Velocity™️
-                  </div>
+                  <div style={{color:'#F5C842',fontSize:18,fontWeight:800,fontFamily:'Amiri,serif'}}>⚡ Murdi Risk Velocity™️</div>
                   {urgentCount > 0 && (
                     <div style={{background:'#ef444420',border:'1px solid #ef4444',borderRadius:20,padding:'4px 14px',color:'#ef4444',fontSize:13,fontWeight:700}}>
                       {urgentCount} تحذير فوري
                     </div>
                   )}
                 </div>
-                <div style={{color:'#8899BB',fontSize:12,marginBottom:16}}>
-                  تحليل سرعة تغير المؤشرات — الفرق بين "عندك خطر" و"خطرك يتسارع"
-                </div>
+                <div style={{color:'#8899BB',fontSize:12,marginBottom:16}}>تحليل سرعة تغير المؤشرات — الفرق بين "عندك خطر" و"خطرك يتسارع"</div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   {velocity.map((v, i) => (
                     <div key={i} style={{
                       background: v.urgent ? '#ef444410' : v.status === 'recovering' ? '#22c55e10' : '#ffffff08',
                       border: `1px solid ${v.urgent ? '#ef444440' : v.status === 'recovering' ? '#22c55e40' : '#1E3A6E'}`,
-                      borderRadius:12,
-                      padding:'16px'
+                      borderRadius:12, padding:'16px'
                     }}>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
                         <div style={{color:'#fff',fontSize:14,fontWeight:700}}>{v.icon} {v.label}</div>
-                        <div style={{
-                          fontSize:11,fontWeight:700,padding:'2px 10px',borderRadius:12,
+                        <div style={{fontSize:11,fontWeight:700,padding:'2px 10px',borderRadius:12,
                           background: v.urgent ? '#ef444420' : v.status === 'recovering' ? '#22c55e20' : '#F5C84220',
-                          color: v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#F5C842'
-                        }}>
+                          color: v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#F5C842'}}>
                           {v.status === 'accelerating' ? 'يتدهور' : v.status === 'recovering' ? 'يتحسن' : 'مستقر'}
                         </div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
                         {v.values.map((val, j) => (
                           <div key={j} style={{flex:1,textAlign:'center'}}>
-                            <div style={{
-                              fontSize:15,fontWeight:900,
-                              color: j === v.values.length-1 ? (v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#F5C842') : '#8899BB'
-                            }}>{val}</div>
+                            <div style={{fontSize:15,fontWeight:900,
+                              color: j === v.values.length-1 ? (v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#F5C842') : '#8899BB'}}>{val}</div>
                             <div style={{fontSize:9,color:'#5a7a99',marginTop:2}}>
-                              {months.slice(-v.values.length)[j] ? MONTH_NAMES[months.slice(-v.values.length)[j].month-1].slice(0,3) : ''}
+                              {months.slice(-v.values.length)[j] ? MONTH_NAMES[(months.slice(-v.values.length)[j].month||1)-1]?.slice(0,3) : ''}
                             </div>
                           </div>
                         ))}
                       </div>
-                      <div style={{color: v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#8899BB', fontSize:12,lineHeight:1.5}}>
-                        {v.message}
-                      </div>
+                      <div style={{color: v.urgent ? '#ef4444' : v.status === 'recovering' ? '#22c55e' : '#8899BB', fontSize:12,lineHeight:1.5}}>{v.message}</div>
                     </div>
                   ))}
                 </div>
@@ -303,43 +299,24 @@ export default function MemoryPage() {
             <div className="timeline">
               <div className="tl-title">السجل الشهري الكامل</div>
               {[...months].reverse().map(m => {
-                const profit = m.revenue - m.expenses
-                const scoreColor = m.murdi_score >= 60 ? '#4ade80' : m.murdi_score >= 40 ? '#F5C842' : '#f87171'
+                const sm = safe(m)
+                const profit = sm.revenue - sm.expenses
+                const scoreColor = sm.murdi_score >= 60 ? '#4ade80' : sm.murdi_score >= 40 ? '#F5C842' : '#f87171'
                 return (
-                  <div className="month-card" key={`${m.year}-${m.month}`}>
+                  <div className="month-card" key={`${sm.year}-${sm.month}`}>
                     <div className="month-header">
-                      <div className="month-name">{MONTH_NAMES[m.month-1]} {m.year}</div>
+                      <div className="month-name">{MONTH_NAMES[(sm.month||1)-1]} {sm.year}</div>
                       <div className="score-badge" style={{ background: `${scoreColor}22`, color: scoreColor, border: `1px solid ${scoreColor}44` }}>
-                        {m.murdi_score} نقطة
+                        {sm.murdi_score} نقطة
                       </div>
                     </div>
-                    <div className="metric">
-                      <div className="metric-label">الإيرادات</div>
-                      <div className="metric-val">{fmt(m.revenue)} ر.س</div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">المصروفات</div>
-                      <div className="metric-val">{fmt(m.expenses)} ر.س</div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">صافي الربح</div>
-                      <div className="metric-val" style={{ color: profit >= 0 ? '#4ade80' : '#f87171' }}>{fmt(Math.abs(profit))} {profit >= 0 ? '▲' : '▼'}</div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">الرصيد البنكي</div>
-                      <div className="metric-val">{fmt(m.bank_balance)} ر.س</div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">الديون</div>
-                      <div className="metric-val">{fmt(m.debts)} ر.س</div>
-                    </div>
-                    <div className="metric">
-                      <div className="metric-label">الذمم المدينة</div>
-                      <div className="metric-val">{fmt(m.receivables)} ر.س</div>
-                    </div>
-                    <div className="score-bar">
-                      <div className="score-fill" style={{ width: `${(m.murdi_score/85)*100}%` }} />
-                    </div>
+                    <div><div className="metric-label">الإيرادات</div><div className="metric-val">{fmt(sm.revenue)} ر.س</div></div>
+                    <div><div className="metric-label">المصروفات</div><div className="metric-val">{fmt(sm.expenses)} ر.س</div></div>
+                    <div><div className="metric-label">صافي الربح</div><div className="metric-val" style={{ color: profit >= 0 ? '#4ade80' : '#f87171' }}>{fmt(Math.abs(profit))} {profit >= 0 ? '▲' : '▼'}</div></div>
+                    <div><div className="metric-label">الرصيد البنكي</div><div className="metric-val">{fmt(sm.bank_balance)} ر.س</div></div>
+                    <div><div className="metric-label">الديون</div><div className="metric-val">{fmt(sm.debts)} ر.س</div></div>
+                    <div><div className="metric-label">الذمم المدينة</div><div className="metric-val">{fmt(sm.receivables)} ر.س</div></div>
+                    <div className="score-bar"><div className="score-fill" style={{ width: `${(sm.murdi_score/85)*100}%` }} /></div>
                   </div>
                 )
               })}
