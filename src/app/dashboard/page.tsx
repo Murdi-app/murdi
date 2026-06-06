@@ -147,6 +147,16 @@ function generateReport(f: any) {
   else if (debtStatus === 'late') fundingScore = Math.min(fundingScore, 35)
   fundingScore = Math.min(fundingScore, 100)
 
+  // Murdi Distress Index™️
+  let distress = 0
+  if (liq < 0.5) distress += 35; else if (liq < 1) distress += 25; else if (liq < 3) distress += 12; else distress += 0
+  if (monthlyProfit < 0) distress += 25; else if (margin < 10) distress += 15; else if (margin < 15) distress += 8
+  if (debtStatus === 'default') distress += 25; else if (debtStatus === 'late') distress += 18; else if (dr > 100) distress += 12; else if (dr > 50) distress += 6
+  if (dso > 90) distress += 15; else if (dso > 60) distress += 8; else distress += 0
+  distress = Math.min(distress, 100)
+  const distressLabel = distress >= 70 ? 'خطر تعثر مرتفع' : distress >= 45 ? 'ضغط مالي متوسط' : distress >= 20 ? 'وضع مستقر مع مخاطر' : 'وضع مالي آمن'
+  const distressColor = distress >= 70 ? '#ef4444' : distress >= 45 ? '#f97316' : distress >= 20 ? '#F5C842' : '#22c55e'
+
   const fundingWeaknesses: string[] = []
   if (liq < 1) fundingWeaknesses.push('🔴 السيولة أقل من شهر واحد')
   else if (liq < 3) fundingWeaknesses.push('🟡 السيولة أقل من 3 أشهر')
@@ -196,7 +206,7 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, dailyBurn, cashRunwayDate }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor }
 }
 
 export default function Dashboard() {
@@ -625,6 +635,34 @@ export default function Dashboard() {
                 <div style={{color:C.white,fontSize:15,lineHeight:2,whiteSpace:'pre-line',borderRight:'4px solid #22c55e',paddingRight:16}}>{aiReport.advisorNote}</div>
               </div>
             )}
+            {/* Murdi Distress Index™️ */}
+            <div style={{background:report.distress>=70?'linear-gradient(135deg,#2d0a0a,#1a0505)':report.distress>=45?'linear-gradient(135deg,#2d1a0a,#1a0f05)':report.distress>=20?'linear-gradient(135deg,#1a1a0a,#0f0f05)':'linear-gradient(135deg,#0a2d1a,#051a0f)',borderRadius:16,padding:'28px',border:`2px solid ${report.distressColor}40`}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+                <div>
+                  <div style={{color:report.distressColor,fontSize:16,fontWeight:800,letterSpacing:1}}>⚡ Murdi Distress Index™️</div>
+                  <div style={{color:C.gray,fontSize:12,marginTop:4}}>احتمالية التعثر خلال 90 يوماً — من 0 إلى 100</div>
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <div style={{fontSize:52,fontWeight:900,color:report.distressColor,lineHeight:1}}>{report.distress}</div>
+                  <div style={{fontSize:11,color:C.gray,marginTop:4}}>/100</div>
+                </div>
+              </div>
+              <div style={{background:'rgba(0,0,0,0.3)',borderRadius:8,height:12,marginBottom:16,overflow:'hidden'}}>
+                <div style={{height:'100%',borderRadius:8,background:`linear-gradient(90deg,#22c55e,${report.distressColor})`,width:`${report.distress}%`,transition:'width 1s ease'}}/>
+              </div>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div style={{background:`${report.distressColor}20`,border:`1px solid ${report.distressColor}40`,borderRadius:20,padding:'6px 18px',color:report.distressColor,fontSize:13,fontWeight:700}}>{report.distressLabel}</div>
+                <div style={{display:'flex',gap:16}}>
+                  {[{l:'السيولة',ok:report.distress<25},{l:'التدفق',ok:report.monthlyProfit>=0},{l:'الديون',ok:report.fundingScore>50},{l:'التحصيل',ok:true}].map((x,i)=>(
+                    <div key={i} style={{textAlign:'center'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:x.ok?'#22c55e':'#ef4444',margin:'0 auto 4px'}}/>
+                      <div style={{fontSize:10,color:C.gray}}>{x.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div style={{background:'linear-gradient(135deg,#0d2a5e,#112244)',borderRadius:16,padding:'28px',border:`2px solid ${C.gold}60`}}>
               <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:16,letterSpacing:1}}>📋 Executive Summary — ملخص المدير التنفيذي</div>
               <div style={{color:C.white,fontSize:15,lineHeight:1.9,marginBottom:16}}>{aiReport?.executiveSummary || (report.executiveSummary.cashFlow + ' — ' + report.executiveSummary.liquidityAlert)}</div>
