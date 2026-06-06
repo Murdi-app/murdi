@@ -216,7 +216,7 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr }
 }
 
 export default function Dashboard() {
@@ -295,8 +295,8 @@ export default function Dashboard() {
           margin: r.margin,
           daysLeft: r.daysLeft,
           monthlyProfit: r.monthlyProfit,
-          dso: r.collectionDays || 0,
-          debtRatio: r.debtRatio || 0,
+          dso: r.dso || 0,
+          debtRatio: r.dr || 0,
           cashRunwayDate: r.cashRunwayDate || null
         })
       })
