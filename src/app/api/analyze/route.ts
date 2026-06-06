@@ -3,26 +3,111 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { companyName, myScore, myLiquidity, myDebtRatio, myCashMonths, marketScore, liquidityMarket, debtMarket, cashMarket, betterThan, revenue, expenses, bankBalance, debts, monthsCount } = body
+    const {
+      companyName,
+      revenue, expenses, bank_balance, debts, receivables,
+      rec_current, rec_late, rec_bad,
+      monthly_payment, employees,
+      debt_status, late_months, bank_contacted,
+      years_in_business, has_gov_contracts, credit_status,
+      murdiScore, fundingScore, distress,
+      margin, daysLeft, monthlyProfit, dso, debtRatio,
+      cashRunwayDate
+    } = body
 
-    const prompt = `أنت مستشار مالي متخصص في شركات المقاولات السعودية.
+    const recCurrentN = parseFloat(rec_current)||0
+    const recLateN = parseFloat(rec_late)||0
+    const recBadN = parseFloat(rec_bad)||0
+    const recReal = recCurrentN + (recLateN * 0.4) + (recBadN * 0.05)
+    const recTotal = recCurrentN + recLateN + recBadN
 
-بيانات شركة "${companyName}":
-- Murdi Score: ${myScore}/85 (متوسط السوق: ${marketScore})
-- السيولة: ${myLiquidity} شهر (السوق: ${liquidityMarket} شهر)
-- نسبة الديون: ${myDebtRatio}% (السوق: ${debtMarket}%)
-- أشهر التدفق الموجب: ${myCashMonths} من ${monthsCount} شهر
-- الإيرادات الشهرية: ${Number(revenue).toLocaleString()} ريال
-- المصروفات الشهرية: ${Number(expenses).toLocaleString()} ريال
-- الرصيد البنكي: ${Number(bankBalance).toLocaleString()} ريال
-- الديون: ${Number(debts).toLocaleString()} ريال
-- الشركة أفضل من ${betterThan}% من شركات المقاولات السعودية
+    const debtStatusText = debt_status === 'committed' ? 'ملتزم بالسداد' : debt_status === 'late' ? `متأخر ${late_months || ''} أشهر${bank_contacted === 'yes' ? ' (تواصل مع البنك)' : ' (لم يتواصل مع البنك)'}` : 'متعثر عن السداد'
+    const govText = has_gov_contracts === 'yes' ? 'نعم' : has_gov_contracts === 'pending' ? 'قيد الإرساء' : 'لا'
+    const creditText = credit_status === 'clean' ? 'نظيف' : credit_status === 'minor' ? 'ملاحظات بسيطة' : 'ملاحظات جوهرية'
 
-اكتب تحليلاً مالياً احترافياً بالعربي في 3 فقرات بدون عناوين أو نقاط:
-اكتب 3 جمل فقط — جملة واحدة لكل نقطة — مكتملة وغير مقتطعة:
-جملة 1: وضع الشركة مقارنة بالسوق.
-جملة 2: أبرز نقطة قوة + أبرز خطر بالأرقام في جملة واحدة.
-جملة 3: القرار الأهم الآن بالأرقام في جملة واحدة مكتملة.`
+    const systemPrompt = `أنت Murdi — مستشار مالي استراتيجي متخصص في شركات المقاولات السعودية، مبني على منهجية د. عبدالحكيم المرضي (مستشار أعمال معتمد، دكتوراه إدارة أعمال، عضو البورد الأمريكي للمستشارين).
+
+مهمتك: تحليل شامل وعميق لكل جانب من جوانب الشركة — لا تشخيص سطحي. أنت لا تعطي إجابات عامة — أنت تعطي إجابات مخصصة لهذه الشركة بالذات بناءً على أرقامها الفعلية.
+
+قواعد لا تُكسر:
+- استخدم الأرقام الفعلية دائماً — لا نصائح عامة
+- شخص السبب الجذري لا الأعراض
+- كل توصية قابلة للتنفيذ غداً
+- لا تذكر الذمم إلا إذا كانت قابلة للتحصيل فعلا (recReal لا recTotal)
+- أرجع JSON فقط بدون أي نص قبله أو بعده`
+
+    const userPrompt = `حلل هذه الشركة بعمق كامل:
+
+الشركة: ${companyName}
+سنوات في السوق: ${years_in_business || 'غير محدد'}
+عدد الموظفين: ${employees || 0}
+عقود حكومية: ${govText}
+السجل الائتماني: ${creditText}
+
+البيانات المالية:
+- الإيرادات الشهرية: ${Number(revenue||0).toLocaleString('ar-SA')} ريال
+- المصروفات الشهرية: ${Number(expenses||0).toLocaleString('ar-SA')} ريال
+- صافي الربح الشهري: ${Number(monthlyProfit||0).toLocaleString('ar-SA')} ريال
+- هامش الربح: ${Number(margin||0).toFixed(1)}%
+- الرصيد البنكي: ${Number(bank_balance||0).toLocaleString('ar-SA')} ريال
+- أيام السيولة المتبقية: ${Math.round(daysLeft||0)} يوم
+- الديون الإجمالية: ${Number(debts||0).toLocaleString('ar-SA')} ريال
+- القسط الشهري: ${Number(monthly_payment||0).toLocaleString('ar-SA')} ريال
+- حالة الديون: ${debtStatusText}
+- نسبة الديون للإيرادات السنوية: ${Number(debtRatio||0).toFixed(0)}%
+
+الذمم المصنفة:
+- ذمم سائلة (أقل من 60 يوم): ${recCurrentN.toLocaleString('ar-SA')} ريال — تُحتسب 100%
+- ذمم متأخرة (60-180 يوم): ${recLateN.toLocaleString('ar-SA')} ريال — تُحتسب 40%
+- ذمم مشكوك فيها (أكثر من 180 يوم): ${recBadN.toLocaleString('ar-SA')} ريال — تُحتسب 5%
+- الذمم القابلة للتحصيل فعلاً: ${Math.round(recReal).toLocaleString('ar-SA')} ريال
+- إجمالي الذمم في الدفاتر: ${recTotal.toLocaleString('ar-SA')} ريال
+
+المؤشرات:
+- Murdi Score: ${murdiScore}/85
+- Distress Index: ${distress}/100
+- Funding Score: ${fundingScore}/100
+- دورة التحصيل: ${Math.round(dso||0)} يوم
+${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : ''}
+
+أرجع JSON فقط بهذا الهيكل بالضبط:
+{
+  "rootCause": "السبب الجذري الحقيقي لأكبر مشكلة في الشركة — جملة واحدة دقيقة بالأرقام",
+  "executiveSummary": "فقرة واحدة من 3 جمل: وضع الشركة الحقيقي + أبرز نقطة قوة + أبرز خطر — بالأرقام الفعلية لا الكلام العام",
+  "topRisks": [
+    {
+      "rank": 1,
+      "title": "عنوان الخطر",
+      "detail": "شرح الخطر بالأرقام الفعلية",
+      "action": "إجراء واحد محدد قابل للتنفيذ غداً",
+      "result": "النتيجة المتوقعة بالأرقام",
+      "impact": 9
+    }
+  ],
+  "strengths": [
+    {
+      "title": "نقطة القوة",
+      "detail": "شرح بالأرقام وكيف تستثمرها"
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "الفرصة",
+      "detail": "كيف تستغلها بالأرقام والخطوات"
+    }
+  ],
+  "distressNarrative": "تفسير رقم Distress Index بالسياق الحقيقي للشركة — ليس فقط الرقم",
+  "scenarios": {
+    "worst": "إذا لم تتحرك خلال 30 يوماً — ماذا سيحدث بالأرقام؟",
+    "realistic": "إذا نفّذت الإجراء الأول فقط — ماذا سيتغير؟",
+    "best": "إذا نفّذت كل التوصيات خلال 90 يوماً — أين ستكون شركتك؟"
+  },
+  "fundingPath": "مسار تمويل محدد مناسب لهذه الشركة بالذات — ليس كلاماً عاماً",
+  "advisorNote": "رسالة شخصية دافئة من د. عبدالحكيم — جملتان بلغة سعودية تشعر صاحب الشركة أن أحداً يفهمه فعلاً",
+  "weeklyPulse": "أهم شيء يجب مراقبته هذا الأسبوع — رقم واحد أو مؤشر واحد محدد",
+  "topPriority": "الإجراء الواحد الأهم هذا الشهر",
+  "priorityImpact": "الأثر المتوقع من هذا الإجراء بالأرقام"
+}`
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,14 +118,23 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-opus-4-5',
-        max_tokens: 400,
-        messages: [{ role: 'user', content: prompt }]
+        max_tokens: 3000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
       })
     })
 
     const data = await response.json()
     const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
-    return NextResponse.json({ analysis: text })
+
+    let parsed: any = {}
+    try {
+      const s = text.indexOf('{')
+      const e = text.lastIndexOf('}')
+      if (s !== -1 && e !== -1) parsed = JSON.parse(text.slice(s, e + 1))
+    } catch { parsed = { executiveSummary: text } }
+
+    return NextResponse.json(parsed)
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
