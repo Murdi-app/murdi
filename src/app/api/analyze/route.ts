@@ -126,6 +126,8 @@ ${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : '
 
     const data = await response.json()
     const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
+    console.log('CLAUDE_RAW_FIRST_200:', text.slice(0, 200))
+    console.log('CLAUDE_RAW_LAST_200:', text.slice(-200))
 
     let parsed: any = {}
     try {
