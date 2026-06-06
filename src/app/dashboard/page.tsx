@@ -17,12 +17,17 @@ interface RiskItem {
 function generateReport(f: any) {
   const r = parseFloat(f.revenue)||0, e = parseFloat(f.expenses)||0
   const b = parseFloat(f.bank_balance)||0, d = parseFloat(f.debts)||0
-  const rec = parseFloat(f.receivables)||0
+  const recCurrent = parseFloat(f.rec_current)||0
+  const recLate = parseFloat(f.rec_late)||0
+  const recBad = parseFloat(f.rec_bad)||0
+  const rec = recCurrent + recLate + recBad
+  const recReal = recCurrent + (recLate * 0.4) + (recBad * 0.05)
+  const recWriteoff = recBad
   const monthlyPayment = parseFloat(f.monthly_payment)||0
   const debtStatus = f.debt_status || 'committed' // committed | late | default | none
   const margin = r>0 ? ((r-e)/r*100) : 0
   const liq = e>0 ? b/e : 0
-  const dso = r>0 ? rec/r*30 : 0
+  const dso = r>0 ? recReal/r*30 : 0
   const dr = r>0 ? d/(r*12)*100 : 0
   const dailyBurn = e/30
   const daysLeft = dailyBurn>0 ? b/dailyBurn : 0
@@ -36,9 +41,14 @@ function generateReport(f: any) {
 
   if (liq < 1) {
     risks.push({ text: `🔴 رصيدك ${fmt(b)} يغطي فقط ${days(daysLeft)} من مصروفاتك — معدل الصرف اليومي ${Math.round(dailyBurn).toLocaleString("ar-SA")} ريال/يوم — خطر نقدي حقيقي`, impact: 9, category: 'liquidity' })
-    if (rec > 0) {
-      actions.push(`⚡ حصل فوراً من الذمم المدينة ${fmt(rec)} — هذا المبلغ سينقذ سيولتك`)
-      impacts.push(`💡 تحصيل 50% من الذمم سيرفع رصيدك إلى ${fmt(b + rec*0.5)} ويرفع Score +15 نقطة`)
+    if (recReal > 0) {
+      const recAction = recCurrent > 0
+        ? `⚡ ركّز على تحصيل الذمم السائلة ${fmt(recCurrent)} — عميلها ملتزم وقابلة للتحصيل هذا الشهر`
+        : recLate > 0
+        ? `📞 تابع الذمم المتأخرة ${fmt(recLate)} — تفاوض على جدول سداد أو خصم 20% للتسوية الفورية`
+        : `⚖️ الذمم المشكوك فيها ${fmt(recBad)} — استشر محامياً أو اشطبها محاسبياً كخسارة ضريبية`
+      actions.push(recAction)
+      impacts.push(`💡 الذمم القابلة للتحصيل فعلياً: ${fmt(recReal)} (بعد تصنيف المخاطر) — تحصيلها سيرفع رصيدك إلى ${fmt(b + recReal)} ويرفع Score +15 نقطة`)
     } else {
       actions.push(`⚡ رصيدك حرج — راجع مصروفاتك وخفض أكبر بند 20% (توفير ${fmt(e*0.2)} شهرياً)`)
       impacts.push(`💡 خفض المصروفات 20% يرفع تغطيتك من ${days(daysLeft)} إلى ${days(daysLeft*1.25)} ويمنع الأزمة`)
@@ -206,13 +216,13 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor }
 }
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', receivables:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', rec_current:'', rec_late:'', rec_bad:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -404,7 +414,9 @@ export default function Dashboard() {
     { key:'expenses', label:'المصروفات الشهرية', placeholder:'350000', tip:'إجمالي ما صرفته هذا الشهر — رواتب ومواد وإيجارات وفواتير' },
     { key:'bank_balance', label:'الرصيد البنكي', placeholder:'200000', tip:'رصيدك الفعلي في البنك اليوم — ليس الذمم أو الأرباح المتوقعة' },
     { key:'debts', label:'الديون', placeholder:'100000', tip:'إجمالي ما عليك من قروض بنكية أو التزامات مالية مستحقة للغير' },
-    { key:'receivables', label:'الذمم المدينة', placeholder:'150000', tip:'ما يدين به عملاؤك لشركتك من فواتير لم تُحصَّل بعد' },
+    { key:'rec_current', label:'ذمم سائلة (أقل من 60 يوم)', placeholder:'100000', tip:'فواتير منجزة وعميلها ملتزم — قابلة للتحصيل قريباً' },
+    { key:'rec_late', label:'ذمم متأخرة (60-180 يوم)', placeholder:'30000', tip:'فواتير تأخر سدادها — محتملة التحصيل بمتابعة' },
+    { key:'rec_bad', label:'ذمم مشكوك فيها (أكثر من 180 يوم)', placeholder:'20000', tip:'ذمم قديمة أو عميل متعثر — احتمال تحصيلها منخفض' },
   { key:'monthly_payment', label:'القسط الشهري للديون', placeholder:'10000', tip:'المبلغ الذي تدفعه شهرياً — اتركه صفراً إذا لا توجد ديون' },
     { key:'employees', label:'عدد الموظفين', placeholder:'25', tip:'إجمالي عدد موظفيك الحاليين بما فيهم العمال والإداريين' },
 
@@ -635,6 +647,52 @@ export default function Dashboard() {
                 <div style={{color:C.white,fontSize:15,lineHeight:2,whiteSpace:'pre-line',borderRight:'4px solid #22c55e',paddingRight:16}}>{aiReport.advisorNote}</div>
               </div>
             )}
+            {/* بطاقة تصنيف الذمم */}
+            {(report.recCurrent > 0 || report.recLate > 0 || report.recBad > 0) && (
+              <div style={{background:'linear-gradient(135deg,#0d1f3a,#112244)',borderRadius:16,padding:'28px',border:`1px solid ${C.border}`}}>
+                <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:6,letterSpacing:1}}>🔬 تحليل الذمم الحقيقية</div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:20}}>Murdi يحسب ما يمكن تحصيله فعلاً — لا ما هو مكتوب في الدفاتر</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+                  <div style={{background:'#0a2d1a',borderRadius:12,padding:'16px',border:'1px solid #22c55e30',textAlign:'center'}}>
+                    <div style={{fontSize:11,color:'#22c55e',marginBottom:6,fontWeight:700}}>🟢 ذمم سائلة</div>
+                    <div style={{fontSize:20,fontWeight:900,color:'#22c55e'}}>{report.recCurrent.toLocaleString('ar-SA')}</div>
+                    <div style={{fontSize:10,color:C.gray,marginTop:4}}>ر.س • أقل من 60 يوم</div>
+                    <div style={{fontSize:10,color:'#22c55e',marginTop:6,fontWeight:700}}>تحتسب 100%</div>
+                  </div>
+                  <div style={{background:'#2d1a0a',borderRadius:12,padding:'16px',border:'1px solid #f9731630',textAlign:'center'}}>
+                    <div style={{fontSize:11,color:'#f97316',marginBottom:6,fontWeight:700}}>🟠 ذمم متأخرة</div>
+                    <div style={{fontSize:20,fontWeight:900,color:'#f97316'}}>{report.recLate.toLocaleString('ar-SA')}</div>
+                    <div style={{fontSize:10,color:C.gray,marginTop:4}}>ر.س • 60-180 يوم</div>
+                    <div style={{fontSize:10,color:'#f97316',marginTop:6,fontWeight:700}}>تُحتسب 40%</div>
+                  </div>
+                  <div style={{background:'#2d0a0a',borderRadius:12,padding:'16px',border:'1px solid #ef444430',textAlign:'center'}}>
+                    <div style={{fontSize:11,color:'#ef4444',marginBottom:6,fontWeight:700}}>🔴 ذمم مشكوك فيها</div>
+                    <div style={{fontSize:20,fontWeight:900,color:'#ef4444'}}>{report.recBad.toLocaleString('ar-SA')}</div>
+                    <div style={{fontSize:10,color:C.gray,marginTop:4}}>ر.س • أكثر من 180 يوم</div>
+                    <div style={{fontSize:10,color:'#ef4444',marginTop:6,fontWeight:700}}>تُحتسب 5% فقط</div>
+                  </div>
+                </div>
+                <div style={{background:C.navy,borderRadius:12,padding:'16px',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+                  <div>
+                    <div style={{color:C.gray,fontSize:12,marginBottom:4}}>إجمالي الذمم في الدفاتر</div>
+                    <div style={{color:C.white,fontSize:18,fontWeight:700}}>{report.rec.toLocaleString('ar-SA')} ر.س</div>
+                  </div>
+                  <div style={{color:C.gold,fontSize:20,fontWeight:900}}>←</div>
+                  <div>
+                    <div style={{color:C.gray,fontSize:12,marginBottom:4}}>الذمم القابلة للتحصيل فعلاً</div>
+                    <div style={{color:'#22c55e',fontSize:22,fontWeight:900}}>{Math.round(report.recReal).toLocaleString('ar-SA')} ر.س</div>
+                  </div>
+                  {report.recBad > 0 && (
+                    <div style={{background:'#2d0a0a',borderRadius:8,padding:'10px 14px',border:'1px solid #ef444430'}}>
+                      <div style={{color:'#ef4444',fontSize:11,fontWeight:700}}>⚖️ اشطبها ضريبياً</div>
+                      <div style={{color:C.white,fontSize:14,fontWeight:700,marginTop:2}}>{report.recBad.toLocaleString('ar-SA')} ر.س</div>
+                      <div style={{color:C.gray,fontSize:10,marginTop:2}}>خسارة ضريبية قابلة للاسترداد</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Murdi Distress Index™️ */}
             <div style={{background:report.distress>=70?'linear-gradient(135deg,#2d0a0a,#1a0505)':report.distress>=45?'linear-gradient(135deg,#2d1a0a,#1a0f05)':report.distress>=20?'linear-gradient(135deg,#1a1a0a,#0f0f05)':'linear-gradient(135deg,#0a2d1a,#051a0f)',borderRadius:16,padding:'28px',border:`2px solid ${report.distressColor}40`}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
