@@ -267,7 +267,7 @@ export default function Dashboard() {
     setTimeout(() => window.scrollTo({top: 400, behavior: "smooth"}), 200)
     setLoadingReport(true)
     try {
-      const res = await fetch('/api/report', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
