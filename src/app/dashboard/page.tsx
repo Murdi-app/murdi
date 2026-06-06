@@ -282,10 +282,22 @@ export default function Dashboard() {
           bank_contacted: form.bank_contacted || '',
           payment_included: form.payment_included || 'yes',
           receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0),
+          rec_current: parseFloat(form.rec_current)||0,
+          rec_late: parseFloat(form.rec_late)||0,
+          rec_bad: parseFloat(form.rec_bad)||0,
           employees: parseInt(form.employees)||0,
+          years_in_business: form.years_in_business || '',
+          has_gov_contracts: form.has_gov_contracts || 'no',
+          credit_status: form.credit_status || 'clean',
           murdiScore: r.score,
           fundingScore: r.fundingScore,
-          cashRunwayDays: r.daysLeft
+          distress: r.distress,
+          margin: r.margin,
+          daysLeft: r.daysLeft,
+          monthlyProfit: r.monthlyProfit,
+          dso: r.collectionDays || 0,
+          debtRatio: r.debtRatio || 0,
+          cashRunwayDate: r.cashRunwayDate || null
         })
       })
       const data = await res.json()
