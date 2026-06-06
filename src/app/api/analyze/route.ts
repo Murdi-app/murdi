@@ -133,15 +133,33 @@ ${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : '
 
     // استخراج JSON من النص
     let parsed: any = {}
-    const attempts = [
-      () => JSON.parse(text),
-      () => JSON.parse(text.replace(/^```json\n?/,'').replace(/\n?```$/,'')),
-      () => { const m = text.match(/\{[\s\S]*\}/); if(m) return JSON.parse(m[0]); throw new Error('no match') }
-    ]
-    for (const attempt of attempts) {
-      try { parsed = attempt(); break } catch {}
+    try {
+      // محاولة parse مباشر
+      const firstParse = JSON.parse(text)
+      // إذا كان النص string يحتوي JSON — نعمل parse مرة ثانية
+      if (typeof firstParse === 'object' && firstParse.executiveSummary && typeof firstParse.executiveSummary === 'string' && firstParse.executiveSummary.includes('{')) {
+        try { parsed = JSON.parse(firstParse.executiveSummary) } catch { parsed = firstParse }
+      } else {
+        parsed = firstParse
+      }
+    } catch {
+      // محاولة استخراج JSON من النص مباشرة
+      try {
+        const m = text.match(/\{[\s\S]*\}/)
+        if (m) {
+          const candidate = JSON.parse(m[0])
+          // double parse إذا لزم
+          if (candidate.executiveSummary && typeof candidate.executiveSummary === 'string' && candidate.executiveSummary.startsWith('{')) {
+            try { parsed = JSON.parse(candidate.executiveSummary) } catch { parsed = candidate }
+          } else {
+            parsed = candidate
+          }
+        } else {
+          parsed = { executiveSummary: text }
+        }
+      } catch { parsed = { executiveSummary: text } }
     }
-    if (!parsed.rootCause) parsed = { executiveSummary: text }
+    if (!parsed.rootCause && !parsed.scenarios) parsed = { executiveSummary: text }
 
     return NextResponse.json(parsed)
   } catch (err: any) {
