@@ -281,7 +281,7 @@ export default function Dashboard() {
           late_months: form.late_months || '',
           bank_contacted: form.bank_contacted || '',
           payment_included: form.payment_included || 'yes',
-          receivables: parseFloat(form.receivables)||0,
+          receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0),
           employees: parseInt(form.employees)||0,
           murdiScore: r.score,
           fundingScore: r.fundingScore,
@@ -301,7 +301,7 @@ export default function Dashboard() {
       user_id: user.id, month: now.getMonth()+1, year: now.getFullYear(),
       revenue: parseFloat(form.revenue)||0, expenses: parseFloat(form.expenses)||0,
       bank_balance: parseFloat(form.bank_balance)||0, debts: parseFloat(form.debts)||0,
-      receivables: parseFloat(form.receivables)||0, employees: parseInt(form.employees)||0,
+      receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0), employees: parseInt(form.employees)||0,
       murdi_score: report.score,
       funding_score: report.fundingScore
     })
@@ -326,7 +326,7 @@ export default function Dashboard() {
           revenue: parseFloat(form.revenue)||0,
           expenses: parseFloat(form.expenses)||0,
           debts: parseFloat(form.debts)||0,
-          receivables: parseFloat(form.receivables)||0,
+          receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0),
           murdiScore: report.score,
           topRisk,
           cashRunwayDays: report.daysLeft
@@ -353,7 +353,7 @@ export default function Dashboard() {
           revenue: parseFloat(form.revenue)||0,
           expenses: parseFloat(form.expenses)||0,
           debts: parseFloat(form.debts)||0,
-          receivables: parseFloat(form.receivables)||0,
+          receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0),
           murdiScore: report.score,
           question: q
         })
@@ -387,7 +387,7 @@ export default function Dashboard() {
           bank_balance: parseFloat(form.bank_balance)||0,
           debts: parseFloat(form.debts)||0,
           monthly_payment: parseFloat(form.monthly_payment)||0,
-          receivables: parseFloat(form.receivables)||0,
+          receivables: (parseFloat(form.rec_current)||0) + (parseFloat(form.rec_late)||0) + (parseFloat(form.rec_bad)||0),
           employees: parseInt(form.employees)||0,
           murdiScore: report.score,
           fundingScore: report.fundingScore,
@@ -945,7 +945,7 @@ export default function Dashboard() {
                 const newDays = report.dailyBurn > 0 ? newBalance/report.dailyBurn : 0;
                 let newScore = 0;
                 const margin = report.margin;
-                const dso = (parseFloat(form.receivables)||0)/(parseFloat(form.revenue)||1)*30;
+                const dso = ((parseFloat(form.rec_current)||0)+(parseFloat(form.rec_late)||0)+(parseFloat(form.rec_bad)||0))/(parseFloat(form.revenue)||1)*30;
                 const dr = (parseFloat(form.debts)||0)/((parseFloat(form.revenue)||1)*12)*100;
                 if (newLiq >= 3) newScore+=25; else if (newLiq >= 1) newScore+=15; else if (newLiq > 0) newScore+=5;
                 if (margin >= 15) newScore+=25; else if (margin > 0) newScore+=15;
