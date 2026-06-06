@@ -129,9 +129,11 @@ ${cashRunwayDate ? `- تاريخ نفاد السيولة: ${cashRunwayDate}` : '
 
     let parsed: any = {}
     try {
-      const s = text.indexOf('{')
-      const e = text.lastIndexOf('}')
-      if (s !== -1 && e !== -1) parsed = JSON.parse(text.slice(s, e + 1))
+      // إزالة code blocks إذا وجدت
+      const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const s = clean.indexOf('{')
+      const e = clean.lastIndexOf('}')
+      if (s !== -1 && e !== -1) parsed = JSON.parse(clean.slice(s, e + 1))
     } catch { parsed = { executiveSummary: text } }
 
     return NextResponse.json(parsed)
