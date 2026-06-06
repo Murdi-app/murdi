@@ -231,6 +231,51 @@ export default function Home(){
             </div>
           </section>
 
+
+          {/* من بنى Murdi */}
+          <section style={{padding:"80px 24px",background:C.white}}>
+            <div style={{maxWidth:860,margin:"0 auto"}}>
+              <div style={{textAlign:"center",marginBottom:52}}>
+                <div style={{display:"inline-block",background:"#0B1D3A",color:"#C8A84B",padding:"6px 22px",borderRadius:20,fontSize:13,fontWeight:700,marginBottom:24,letterSpacing:1}}>
+                  الخبرة خلف المنهجية
+                </div>
+                <h2 style={{fontSize:38,fontWeight:900,margin:"0 0 14px",color:C.navy}}>من بنى Murdi؟</h2>
+                <p style={{fontSize:17,color:C.slate,maxWidth:560,margin:"0 auto"}}>
+                  Murdi ليس مجرد برنامج — هو تجسيد رقمي لمنهجية علمية في إدارة الصحة المالية للمقاولات
+                </p>
+              </div>
+              <div style={{background:`linear-gradient(135deg,${C.navy} 0%,#132850 100%)`,borderRadius:24,padding:"48px 40px",display:"flex",gap:40,alignItems:"center",flexWrap:"wrap",border:`1px solid ${C.gold}30`}}>
+                {/* الصورة */}
+                <div style={{flexShrink:0,textAlign:"center"}}>
+                  <div style={{width:160,height:160,borderRadius:"50%",background:`linear-gradient(135deg,${C.gold}30,${C.gold}10)`,border:`3px solid ${C.gold}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:64}}>
+                    👨‍💼
+                  </div>
+                  <div style={{color:C.gold,fontWeight:800,fontSize:15}}>د. عبدالحكيم المرضي</div>
+                  <div style={{color:"#7A90AB",fontSize:12,marginTop:4}}>مؤسس المنهجية</div>
+                </div>
+                {/* المحتوى */}
+                <div style={{flex:1,minWidth:260}}>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:24}}>
+                    {["دكتوراه إدارة أعمال","مستشار أعمال معتمد","عضو البورد الأمريكي للمستشارين","15+ سنة في قطاع المقاولات"].map((badge,i)=>(
+                      <div key={i} style={{background:`${C.gold}18`,color:C.gold,padding:"5px 14px",borderRadius:20,fontSize:12,fontWeight:700,border:`1px solid ${C.gold}30`}}>
+                        ✦ {badge}
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{fontSize:15,color:"#A8BAD4",lineHeight:1.9,margin:"0 0 20px"}}>
+                    بعد أكثر من 15 عاماً من العمل مع شركات المقاولات في المملكة، لاحظ د. عبدالحكيم نمطاً متكرراً: شركات تنهار ليس بسبب نقص العمل، بل بسبب غياب الوضوح المالي في الوقت الصحيح.
+                  </p>
+                  <p style={{fontSize:15,color:"#A8BAD4",lineHeight:1.9,margin:"0 0 24px"}}>
+                    من هذه التجربة وُلدت منهجية Murdi — نظام يحوّل الأرقام المالية لقرارات واضحة يفهمها المقاول، لا المحاسب فقط.
+                  </p>
+                  <a href={WA} target="_blank" style={{display:"inline-block",background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:800,textDecoration:"none"}}>
+                    تواصل مع د. عبدالحكيم مباشرة
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* الباقات */}
           <section style={{padding:"72px 24px",background:C.white}}>
             <div style={{maxWidth:860,margin:"0 auto"}}>
