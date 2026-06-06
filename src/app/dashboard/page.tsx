@@ -647,6 +647,54 @@ export default function Dashboard() {
                 <div style={{color:C.white,fontSize:15,lineHeight:2,whiteSpace:'pre-line',borderRight:'4px solid #22c55e',paddingRight:16}}>{aiReport.advisorNote}</div>
               </div>
             )}
+            {/* السبب الجذري */}
+            {aiReport?.rootCause && (
+              <div style={{background:'linear-gradient(135deg,#1a0a2d,#0f0520)',borderRadius:16,padding:'24px',border:'2px solid #a855f760'}}>
+                <div style={{color:'#a855f7',fontSize:14,fontWeight:800,marginBottom:10,letterSpacing:1}}>🔍 السبب الجذري — منهجية د. عبدالحكيم</div>
+                <div style={{color:C.white,fontSize:15,lineHeight:1.8,borderRight:'4px solid #a855f7',paddingRight:16}}>{aiReport.rootCause}</div>
+              </div>
+            )}
+
+            {/* السيناريوهات الثلاثة */}
+            {aiReport?.scenarios && (
+              <div style={{background:'linear-gradient(135deg,#0d1f3a,#112244)',borderRadius:16,padding:'28px',border:`1px solid ${C.border}`}}>
+                <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:6,letterSpacing:1}}>🔮 السيناريوهات الثلاثة — خلال 90 يوما</div>
+                <div style={{color:C.gray,fontSize:12,marginBottom:20}}>بناءً على منهجية د. عبدالحكيم المرضي المالية</div>
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{background:'#2d0a0a',borderRadius:12,padding:'16px',border:'1px solid #ef444430'}}>
+                    <div style={{color:'#ef4444',fontSize:12,fontWeight:800,marginBottom:8}}>⛔ السيناريو الأسوأ — إذا لم تتحرك</div>
+                    <div style={{color:'#ffaaaa',fontSize:14,lineHeight:1.7}}>{aiReport.scenarios.worst}</div>
+                  </div>
+                  <div style={{background:'#1a1a0a',borderRadius:12,padding:'16px',border:'1px solid #F5C84230'}}>
+                    <div style={{color:C.gold,fontSize:12,fontWeight:800,marginBottom:8}}>⚡ السيناريو الواقعي — إجراء واحد</div>
+                    <div style={{color:'#ffe599',fontSize:14,lineHeight:1.7}}>{aiReport.scenarios.realistic}</div>
+                  </div>
+                  <div style={{background:'#0a2d1a',borderRadius:12,padding:'16px',border:'1px solid #22c55e30'}}>
+                    <div style={{color:'#22c55e',fontSize:12,fontWeight:800,marginBottom:8}}>🚀 السيناريو الأمثل — كل التوصيات</div>
+                    <div style={{color:'#aaffcc',fontSize:14,lineHeight:1.7}}>{aiReport.scenarios.best}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* مؤشر الأسبوع + مسار التمويل */}
+            {(aiReport?.weeklyPulse || aiReport?.fundingPath) && (
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                {aiReport?.weeklyPulse && (
+                  <div style={{background:'linear-gradient(135deg,#0a1f2d,#051520)',borderRadius:16,padding:'24px',border:'1px solid #38bdf830'}}>
+                    <div style={{color:'#38bdf8',fontSize:14,fontWeight:800,marginBottom:10}}>📡 راقب هذا الأسبوع</div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{aiReport.weeklyPulse}</div>
+                  </div>
+                )}
+                {aiReport?.fundingPath && (
+                  <div style={{background:'linear-gradient(135deg,#0a2d1a,#051a0f)',borderRadius:16,padding:'24px',border:'1px solid #22c55e30'}}>
+                    <div style={{color:'#22c55e',fontSize:14,fontWeight:800,marginBottom:10}}>🏦 مسار التمويل المناسب</div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{aiReport.fundingPath}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* بطاقة تصنيف الذمم */}
             {(report.recCurrent > 0 || report.recLate > 0 || report.recBad > 0) && (
               <div style={{background:'linear-gradient(135deg,#0d1f3a,#112244)',borderRadius:16,padding:'28px',border:`1px solid ${C.border}`}}>
