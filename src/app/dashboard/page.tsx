@@ -1108,24 +1108,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* مؤشر الأسبوع + مسار التمويل */}
-            {(aiReport?.weeklyPulse || aiReport?.fundingPath) && (
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-                {aiReport?.weeklyPulse && (
-                  <div style={{background:'linear-gradient(135deg,#0a1f2d,#051520)',borderRadius:16,padding:'24px',border:'1px solid #38bdf830'}}>
-                    <div style={{color:'#38bdf8',fontSize:14,fontWeight:800,marginBottom:10}}>📡 راقب هذا الأسبوع</div>
-                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{aiReport.weeklyPulse}</div>
-                  </div>
-                )}
-                {aiReport?.fundingPath && (
-                  <div style={{background:'linear-gradient(135deg,#0a2d1a,#051a0f)',borderRadius:16,padding:'24px',border:'1px solid #22c55e30'}}>
-                    <div style={{color:'#22c55e',fontSize:14,fontWeight:800,marginBottom:10}}>🏦 مسار التمويل المناسب</div>
-                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{aiReport.fundingPath}</div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Murdi Proactive Intelligence — الأسئلة الاستباقية */}
             {aiReport?.proactiveQuestions && aiReport.proactiveQuestions.length > 0 && (
               <div style={{background:'linear-gradient(135deg,#1a0d2e,#0d0820)',borderRadius:16,padding:'28px',border:'1px solid #a855f740'}}>
@@ -1502,23 +1484,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Cash Runway Countdown */}
-            {report.cashRunwayDate && (
-              <div style={{background:'#1a0a0a',borderRadius:16,padding:'24px',border:'2px solid #ef444460'}}>
-                <div style={{color:'#ef4444',fontSize:16,fontWeight:800,marginBottom:12}}>⏱️ Cash Runway Countdown™️</div>
-                <div style={{color:C.gray,fontSize:13,marginBottom:8}}>بناءً على معدل صرفك اليومي: {Math.round(report.dailyBurn).toLocaleString('ar-SA')} ريال/يوم</div>
-                <div style={{color:'#ef4444',fontSize:18,fontWeight:900,marginBottom:8}}>
-                  ⚠️ سيولتك ستصل صفر بتاريخ: {report.cashRunwayDate}
-                </div>
-                <div style={{color:C.gray,fontSize:14,marginBottom:12}}>أي خلال {Math.round(report.daysLeft)} يوم من الآن</div>
-                <div style={{color:'#22c55e',fontSize:14,background:'#22c55e10',padding:'10px 14px',borderRadius:8,border:'1px solid #22c55e30'}}>
-                  {report.rec > 0 ? `✅ إذا حصّلت ${Math.round(report.rec * 0.5).toLocaleString('ar-SA')} ريال هذا الأسبوع — ترفع التغطية إلى ${Math.round(report.daysLeft + (report.rec*0.5)/report.dailyBurn)} يوم` : `✅ خفّض مصروفاتك ${Math.round(report.dailyBurn * 10).toLocaleString('ar-SA')} ريال هذا الأسبوع — تربح 10 أيام إضافية`}
-                </div>
-              </div>
-            )}
-
-
-
             {/* كاشف الربح الوهمي — يظهر فقط عند وجود فجوة */}
             {report.hasPhantomProfit && (
               <div style={{background:'linear-gradient(135deg,#2d1f0a,#1f1505)',borderRadius:16,padding:'24px',border:`1px solid #f59e0b60`}}>
@@ -1623,39 +1588,6 @@ export default function Dashboard() {
                 <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{istikhlasResult.error}</div>
               )}
             </div>
-
-            {/* نبض الالتزامات الحكومية */}
-            {report.govObligations && report.govObligations.length > 0 && (
-              <div style={{background:'linear-gradient(135deg,#2d0a1f,#1f0515)',borderRadius:16,padding:'24px',border:`1px solid #ec489960`}}>
-                <div style={{color:'#f9a8d4',fontSize:16,fontWeight:800,marginBottom:6}}>🏛️ نبض الالتزامات الحكومية™️</div>
-                <div style={{color:C.gray,fontSize:13,marginBottom:8,lineHeight:1.6}}>الالتزامات التي تأخّرها يوقف خدماتك الحكومية ويمنعك من العطاءات — تقدير مبني على {parseInt(form.employees)||0} موظف</div>
-                <div style={{color:'#fbbf24',fontSize:12,marginBottom:16,lineHeight:1.6}}>⚠️ هذه تقديرات إرشادية — راجع أرقامك الفعلية في منصات التأمينات وقوى وزاتكا</div>
-
-                <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  {report.govObligations.map((ob:any,i:number)=>(
-                    <div key={i} style={{background:C.navy,borderRadius:10,padding:'14px',border:`1px solid ${C.border}`}}>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:6}}>
-                        <span style={{color:C.white,fontSize:14,fontWeight:700}}>{ob.name}</span>
-                        {ob.amount>0
-                          ? <span style={{color:'#f9a8d4',fontSize:15,fontWeight:900}}>≈ {fmt(ob.amount)}</span>
-                          : <span style={{color:C.gray,fontSize:12}}>حسب نشاطك</span>}
-                      </div>
-                      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:6}}>
-                        <span style={{color:'#7dd3fc',fontSize:12}}>🔁 {ob.cycle}</span>
-                        <span style={{color:C.gray,fontSize:12}}>📅 {ob.due}</span>
-                      </div>
-                      <div style={{color:'#fca5a5',fontSize:12,lineHeight:1.6}}>عند التأخر: {ob.consequence}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{marginTop:14,padding:'14px',borderRadius:10,background:'#1f0515',borderRight:`3px solid #ec4899`}}>
-                  <div style={{color:C.white,fontSize:13,lineHeight:1.8}}>
-                    التزاماتك الحكومية الشهرية التقديرية: <span style={{color:'#f9a8d4',fontWeight:800}}>≈ {fmt(report.totalMonthlyGov)}</span>. احجزها في تدفقك النقدي قبل أي صرف آخر — تأخّرها يوقف نشاطك كله، لا مجرد غرامة.
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* نبض الالتزامات الحكومية */}
             {report.govObligations && report.govObligations.length > 0 && (
