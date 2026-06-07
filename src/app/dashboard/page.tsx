@@ -193,11 +193,23 @@ function generateReport(f: any) {
   if (debtStatus === 'default') fundingWeaknesses.push('🔴 تعثر في السداد — يمنع أي تمويل بنكي حالياً')
   else if (debtStatus === 'late') fundingWeaknesses.push('🔴 تأخر في الأقساط — يؤثر على التصنيف الائتماني')
 
-  const topFundingAction = liq < 1
-    ? (rec > 0 ? `حصّل ${fmt(rec)} من الذمم هذا الشهر` : `خفّض مصروفاتك الشهرية بمقدار ${fmt(e*0.2)} فوراً`)
-    : dr > 100 ? (monthlyPayment > 0 ? `فاوض البنك على تمديد قسطك الشهري ${fmt(monthlyPayment)}` : `أعد جدولة الديون لتخفيض نسبتها تحت 80%`)
-    : dso > 90 ? `اخفض دورة التحصيل إلى 60 يوم`
-    : `حافظ على هامشك فوق 15%`
+  // الإجراء التمويلي يتبع السبب الجذري الفعلي — لا يقفز للذمم تلقائياً
+  const topFundingAction = (() => {
+    // 1) خسارة أو هامش ضعيف = المشكلة في الربحية لا التمويل
+    if (margin < 0) return `أوقف النزيف: راجع تسعير مشاريعك ومصروفاتك — الشركة تخسر ${fmt(Math.abs(monthlyProfit))} شهرياً`
+    if (margin < 8) return `ارفع هامشك من ${margin.toFixed(0)}% — راجع تسعير العقود ووفّر في المصروفات قبل طلب أي تمويل`
+    // 2) ثقل الدين = إعادة هيكلة
+    if (dr > 100) return monthlyPayment > 0 ? `فاوض البنك على تمديد قسطك الشهري ${fmt(monthlyPayment)} لتخفيف الضغط` : `أعد جدولة ديونك لتخفيض نسبتها تحت 80%`
+    // 3) سيولة قصيرة — الحل حسب توفّر ذمم قابلة للتحصيل فعلاً
+    if (liq < 1) {
+      if (recReal > e * 0.5) return `حصّل ${fmt(recReal)} من ذممك القابلة للتحصيل فعلاً — تكفي لتغطية فجوتك`
+      return `خفّض مصروفاتك الشهرية ${fmt(e*0.2)} فوراً — سيولتك أقصر من شهر ولا ذمم كافية للتحصيل`
+    }
+    // 4) تحصيل بطيء حقيقي
+    if (dso > 90 && recReal > 0) return `سرّع التحصيل: دورتك ${dso.toFixed(0)} يوم — استهدف 60 يوماً`
+    // 5) الوضع صحي
+    return `حافظ على هامشك فوق 15% وسيولتك فوق 3 أشهر — أنت مؤهل للتمويل`
+  })()
 
   const fundingImpact = Math.min(fundingScore + 15, 100)
 
@@ -247,6 +259,7 @@ export default function Dashboard() {
   const [advisorMsg, setAdvisorMsg] = useState('')
   const [loadingAdvisor, setLoadingAdvisor] = useState(false)
   const [whatIfAmount, setWhatIfAmount] = useState('')
+  const [whatIfMode, setWhatIfMode] = useState<'collect'|'cut'|'funding'>('collect')
   const [chatMessages, setChatMessages] = useState<{q:string,a:string}[]>([])
   const [chatInput, setChatInput] = useState('')
   const [loadingChat, setLoadingChat] = useState(false)
@@ -1303,58 +1316,86 @@ export default function Dashboard() {
 
 
 
-            {/* What If Engine */}
+            {/* What If Engine — متعدد السيناريوهات */}
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
-              <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:12}}>🔮 What If Engine™️</div>
-              <div style={{color:C.gray,fontSize:13,marginBottom:12}}>ماذا لو حصّلت مبلغاً من الذمم؟</div>
-              <div style={{display:'flex',gap:8,marginBottom:16}}>
-                <input
-                  value={whatIfAmount}
-                  onChange={e=>setWhatIfAmount(e.target.value)}
-                  placeholder="أدخل المبلغ بالريال"
-                  style={{flex:1,padding:'10px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14}}
-                />
+              <div style={{color:C.gold,fontSize:16,fontWeight:800,marginBottom:6}}>🔮 What If Engine™️</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:14}}>جرّب قراراً — وشوف أثره على شركتك</div>
+
+              <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+                {[
+                  {k:'collect',label:'💰 أحصّل ذمم'},
+                  {k:'cut',label:'✂️ أخفّض مصروفات'},
+                  {k:'funding',label:'🏦 آخذ تمويل'},
+                ].map(o=>(
+                  <button key={o.k} onClick={()=>{setWhatIfMode(o.k as any);setWhatIfAmount('')}}
+                    style={{flex:1,minWidth:110,padding:'10px',borderRadius:8,border:`1px solid ${whatIfMode===o.k?C.gold:C.border}`,background:whatIfMode===o.k?C.gold:'transparent',color:whatIfMode===o.k?C.navy:C.white,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>{o.label}</button>
+                ))}
               </div>
+
+              <input value={whatIfAmount} onChange={e=>setWhatIfAmount(e.target.value)}
+                placeholder={whatIfMode==='collect'?'كم ستحصّل من ذممك؟':whatIfMode==='cut'?'كم ستخفّض من مصروفاتك الشهرية؟':'كم مبلغ التمويل؟'}
+                style={{width:'100%',padding:'10px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14,boxSizing:'border-box',marginBottom:16}} />
+
               {whatIfAmount && parseFloat(whatIfAmount) > 0 && (() => {
-                const extra = parseFloat(whatIfAmount)||0;
-                const newBalance = (parseFloat(form.bank_balance)||0) + extra;
-                const newLiq = (parseFloat(form.expenses)||0) > 0 ? newBalance/(parseFloat(form.expenses)||0) : 0;
-                const newDays = report.dailyBurn > 0 ? newBalance/report.dailyBurn : 0;
-                let newScore = 0;
+                const amt = parseFloat(whatIfAmount)||0;
+                const bal = parseFloat(form.bank_balance)||0;
+                const exp = parseFloat(form.expenses)||0;
+                const rev = parseFloat(form.revenue)||1;
+                const debts = parseFloat(form.debts)||0;
                 const margin = report.margin;
-                const dso = ((parseFloat(form.rec_current)||0)+(parseFloat(form.rec_late)||0)+(parseFloat(form.rec_bad)||0))/(parseFloat(form.revenue)||1)*30;
-                const dr = (parseFloat(form.debts)||0)/((parseFloat(form.revenue)||1)*12)*100;
-                if (newLiq >= 3) newScore+=25; else if (newLiq >= 1) newScore+=15; else if (newLiq > 0) newScore+=5;
-                if (margin >= 15) newScore+=25; else if (margin > 0) newScore+=15;
-                if (dso <= 60) newScore+=20; else if (dso <= 90) newScore+=10;
-                if (dr <= 50) newScore+=15; else if (dr <= 100) newScore+=8;
-                newScore = Math.min(newScore, 85);
-                let newFunding = 0;
-                if (newLiq >= 3) newFunding+=30; else if (newLiq >= 1) newFunding+=15;
-                if (margin >= 15) newFunding+=25; else if (margin > 0) newFunding+=10;
-                if (dso <= 60) newFunding+=25; else if (dso <= 90) newFunding+=12;
-                if (dr <= 50) newFunding+=20; else if (dr <= 100) newFunding+=8;
-                newFunding = Math.min(newFunding, 100);
+                const recRealLocal = report.recReal||0;
+                // حساب الأثر حسب نوع القرار
+                let newBalance = bal, newExp = exp, newDebts = debts, label = '', caution = '';
+                if (whatIfMode==='collect') {
+                  const capped = Math.min(amt, recRealLocal);
+                  newBalance = bal + capped;
+                  label = `إذا حصّلت ${fmt(capped)} من ذممك القابلة للتحصيل`;
+                  if (amt > recRealLocal) caution = `⚠️ ذممك القابلة للتحصيل فعلاً ${fmt(recRealLocal)} فقط — حسبنا على أساسها`;
+                } else if (whatIfMode==='cut') {
+                  newExp = Math.max(0, exp - amt);
+                  newBalance = bal + amt;
+                  label = `إذا خفّضت مصروفاتك ${fmt(amt)} شهرياً`;
+                } else {
+                  newBalance = bal + amt;
+                  newDebts = debts + amt;
+                  label = `إذا أخذت تمويلاً ${fmt(amt)}`;
+                  caution = `⚠️ التمويل يرفع سيولتك الآن لكنه يزيد ديونك — انتبه للقسط القادم`;
+                }
+                const newDailyBurn = newExp/30;
+                const newLiq = newExp>0 ? newBalance/newExp : 0;
+                const newDays = newDailyBurn>0 ? newBalance/newDailyBurn : 999;
+                const newMargin = whatIfMode==='cut' ? ((rev-newExp)/rev*100) : margin;
+                const dso = recRealLocal/rev*30;
+                const newDr = newDebts/(rev*12)*100;
+                let newScore=0;
+                if (newLiq>=3) newScore+=25; else if (newLiq>=1) newScore+=15; else if (newLiq>0) newScore+=5;
+                if (newMargin>=15) newScore+=25; else if (newMargin>0) newScore+=15;
+                if (dso<=60) newScore+=20; else if (dso<=90) newScore+=10;
+                if (newDr<=50) newScore+=15; else if (newDr<=100) newScore+=8;
+                newScore=Math.min(newScore,85);
+                const dDays = Math.round(newDays)-Math.round(report.daysLeft);
+                const dScore = newScore-report.score;
                 return (
                   <div style={{background:C.navy,borderRadius:10,padding:'16px',border:`1px solid ${C.gold}30`}}>
-                    <div style={{color:C.gold,fontSize:13,marginBottom:12}}>إذا حصّلت {fmt(extra)} من الذمم:</div>
+                    <div style={{color:C.gold,fontSize:13,marginBottom:12,fontWeight:700}}>{label}:</div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
                       <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
                         <div style={{color:C.gray,fontSize:10,marginBottom:4}}>Murdi Score</div>
-                        <div style={{color:newScore>report.score?'#22c55e':C.gold,fontSize:18,fontWeight:900}}>{newScore}/85</div>
-                        <div style={{color:'#22c55e',fontSize:11}}>{newScore>report.score?'+':''}{ newScore-report.score} نقطة</div>
+                        <div style={{color:dScore>=0?'#22c55e':'#ef4444',fontSize:18,fontWeight:900}}>{newScore}/85</div>
+                        <div style={{color:dScore>=0?'#22c55e':'#ef4444',fontSize:11}}>{dScore>=0?'+':''}{dScore} نقطة</div>
                       </div>
                       <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
-                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>السيولة</div>
-                        <div style={{color:'#22c55e',fontSize:18,fontWeight:900}}>{Math.round(newDays)}</div>
-                        <div style={{color:C.gray,fontSize:11}}>يوم</div>
+                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>أيام البقاء</div>
+                        <div style={{color:dDays>=0?'#22c55e':'#ef4444',fontSize:18,fontWeight:900}}>{Math.round(newDays)>=999?'999+':Math.round(newDays)}</div>
+                        <div style={{color:dDays>=0?'#22c55e':'#ef4444',fontSize:11}}>{dDays>=0?'+':''}{dDays} يوم</div>
                       </div>
                       <div style={{textAlign:'center',background:C.navyLight,borderRadius:8,padding:'10px'}}>
-                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>جاهزية التمويل</div>
-                        <div style={{color:'#22c55e',fontSize:18,fontWeight:900}}>{newFunding}/100</div>
-                        <div style={{color:'#22c55e',fontSize:11}}>+{newFunding-report.fundingScore} نقطة</div>
+                        <div style={{color:C.gray,fontSize:10,marginBottom:4}}>{whatIfMode==='cut'?'الهامش':'السيولة'}</div>
+                        <div style={{color:'#22c55e',fontSize:18,fontWeight:900}}>{whatIfMode==='cut'?newMargin.toFixed(0)+'%':newLiq.toFixed(1)}</div>
+                        <div style={{color:C.gray,fontSize:11}}>{whatIfMode==='cut'?'هامش الربح':'شهر تغطية'}</div>
                       </div>
                     </div>
+                    {caution && <div style={{color:'#f9a826',fontSize:12,marginTop:12,lineHeight:1.6}}>{caution}</div>}
                   </div>
                 );
               })()}
