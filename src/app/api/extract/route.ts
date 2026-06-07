@@ -96,14 +96,21 @@ export async function POST(req: NextRequest) {
     })
 
     const data = await response.json()
-    const text = data.content?.find((b: any) => b.type === 'text')?.text || '{}'
+    // كشف أخطاء الـ API نفسها (حجم كبير، رفض، إلخ)
+    if (data.error) {
+      return NextResponse.json({ error: 'خطأ من المعالج: ' + (data.error.message || JSON.stringify(data.error)), debug: data.error }, { status: 200 })
+    }
+    const text = data.content?.find((b: any) => b.type === 'text')?.text || ''
+    if (!text) {
+      return NextResponse.json({ error: 'لم يصل رد من المعالج', debug: JSON.stringify(data).slice(0,300) }, { status: 200 })
+    }
     let parsed: any = {}
     try {
       parsed = JSON.parse(text)
     } catch {
       const m = text.match(/\{[\s\S]*\}/)
-      if (m) { try { parsed = JSON.parse(m[0]) } catch { parsed = { error: 'تعذّر قراءة المستند' } } }
-      else parsed = { error: 'تعذّر قراءة المستند' }
+      if (m) { try { parsed = JSON.parse(m[0]) } catch { parsed = { error: 'تعذّر تحليل الرد', debug: text.slice(0,300) } } }
+      else parsed = { error: 'الرد ليس JSON', debug: text.slice(0,300) }
     }
 
     return NextResponse.json(parsed)
