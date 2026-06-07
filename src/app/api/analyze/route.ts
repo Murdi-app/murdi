@@ -12,7 +12,9 @@ export async function POST(req: NextRequest) {
       years_in_business, has_gov_contracts, credit_status,
       murdiScore, fundingScore, distress,
       margin, daysLeft, monthlyProfit, dso, debtRatio,
-      cashRunwayDate
+      cashRunwayDate,
+      month_timing, expected_inflow, expected_inflow_days,
+      upcoming_obligations, upcoming_obligations_days
     } = body
 
     const recCurrentN = parseFloat(rec_current)||0
@@ -25,6 +27,12 @@ export async function POST(req: NextRequest) {
     const govText = has_gov_contracts === 'yes' ? 'نعم' : has_gov_contracts === 'pending' ? 'قيد الإرساء' : 'لا'
     const creditText = credit_status === 'clean' ? 'نظيف' : credit_status === 'minor' ? 'ملاحظات بسيطة' : 'ملاحظات جوهرية'
 
+    const timingText = month_timing === 'start' ? 'بداية الشهر (قبل تحصيل المستخلصات والدفعات عادةً)' : month_timing === 'end' ? 'نهاية الشهر (بعد دخول معظم التحصيلات عادةً)' : 'منتصف الشهر'
+    const inflowN = parseFloat(expected_inflow)||0
+    const obligN = parseFloat(upcoming_obligations)||0
+    const inflowText = inflowN > 0 ? `${inflowN.toLocaleString('ar-SA')} ريال متوقعة خلال ${expected_inflow_days||'؟'} يوم` : 'لا توجد دفعات متوقعة مدخلة'
+    const obligText = obligN > 0 ? `${obligN.toLocaleString('ar-SA')} ريال مستحقة خلال ${upcoming_obligations_days||'؟'} يوم` : 'لا توجد التزامات قادمة مدخلة'
+
     const systemPrompt = `أنت Murdi — التجسيد الرقمي لمنهجية د. عبدالحكيم المرضي المالية. د. عبدالحكيم مستشار أعمال معتمد، دكتوراه إدارة أعمال، عضو البورد الأمريكي للمستشارين، وخبرة 15+ سنة مع شركات المقاولات السعودية. كل تحليل تقدمه هو تطبيق مباشر لمنهجيته — لا رأي عام، بل منهجية علمية مثبتة في السوق السعودي.
 
 تعليمات تقنية صارمة: أرجع JSON خاماً فقط بدون أي markdown أو code blocks أو backticks. ابدأ مباشرة بـ { وانتهِ بـ } بدون أي نص قبلها أو بعدها.
@@ -35,6 +43,7 @@ export async function POST(req: NextRequest) {
 - استخدم الأرقام الفعلية دائماً — لا نصائح عامة
 - قاعدة منع الاختراع الصارمة: لا تخترع أبداً أي معلومة غير موجودة في البيانات المُعطاة لك. لا تذكر مدة الدين، ولا عمر الشركة إن لم يُعطَ، ولا اسم بنك، ولا نوع مشروع، ولا أي رقم أو تفصيل لم يصلك صراحةً. إن لم تكن المعلومة بين يديك، لا تشر إليها إطلاقاً. الاختراع يدمّر ثقة المقاول فوراً. استخدم فقط: الإيرادات، المصروفات، الربح، الهامش، الرصيد، الديون، القسط، حالة الديون، الذمم بتصنيفها، عدد الموظفين، التصنيف الائتماني، وسنوات السوق إن أُعطيت فقط.
 - شخص السبب الجذري لا الأعراض
+- قاعدة الذكاء السياقي للسيولة: لا تطلق إنذار سيولة أعمى. فسّر الرصيد دائماً في ضوء توقيت الشهر والدفعات المتوقعة والالتزامات القادمة. إذا كان الرصيد منخفضاً لكن هناك دفعة كبيرة متوقعة قريباً، اشرح أن الضغط مؤقت وحدد اليوم الحرج الحقيقي. وإذا كان الرصيد منخفضاً في بداية الشهر فهذا قد يكون طبيعياً قبل التحصيل. قارن دائماً بين (الرصيد + الدفعات المتوقعة قبل موعدها) و(الالتزامات القادمة) لتحدد إن كان هناك خطر فعلي أم لا. هذا التحليل الزمني الدقيق هو ما يميّز Murdi.
 - كل توصية قابلة للتنفيذ غداًً
 - قاعدة الذمم الصارمة: لا تذكر كلمة "ذمم" أو "تحصيل" نهائياً إلا إذا كانت الذمم السائلة (recCurrent) أكبر من صفر فعلياً. إذا كانت صفر، الكلمة ممنوعة في كل التقرير. وحتى عند ذكرها، اعتمد على القيمة القابلة للتحصيل فعلاً (recReal) لا الإجمالي. لا تجعل التحصيل الحل الوحيد أبداً — شخّص أولاً ثم اختر الحل المناسب للسبب الجذري (قد يكون ضعف هامش، ثقل دين، تضخم مصروفات، أو ضعف تشغيلي).
 
@@ -76,6 +85,11 @@ export async function POST(req: NextRequest) {
 - القسط الشهري: ${Number(monthly_payment||0).toLocaleString('ar-SA')} ريال
 - حالة الديون: ${debtStatusText}
 - نسبة الديون للإيرادات السنوية: ${Number(debtRatio||0).toFixed(0)}%
+
+السياق الزمني للسيولة (مهم جداً لتفسير الرصيد بدقة):
+- توقيت إدخال البيانات: ${timingText}
+- دفعات/مستخلصات متوقعة: ${inflowText}
+- التزامات ثابتة قادمة: ${obligText}
 
 الذمم المصنفة:
 - ذمم سائلة (أقل من 60 يوم): ${recCurrentN.toLocaleString('ar-SA')} ريال — تُحتسب 100%
