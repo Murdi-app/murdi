@@ -692,8 +692,8 @@ export default function Dashboard() {
   ]
 
   const fields = [
-    { key:'revenue', label:'الإيرادات الشهرية', placeholder:'500000', tip:'إجمالي ما دخل لشركتك هذا الشهر من مشاريع وعقود — قبل خصم أي مصروفات' },
-    { key:'expenses', label:'المصروفات الشهرية', placeholder:'350000', tip:'إجمالي ما صرفته هذا الشهر — رواتب ومواد وإيجارات وفواتير' },
+    { key:'revenue', label:'متوسط دخلك الشهري من المشاريع', placeholder:'500000', tip:'كم يدخلك من مشاريعك شهرياً في المتوسط (وأنت في مشروع)؟ لو بين مشروعين الآن، قدّر المتوسط المعتاد — لا تكتب صفراً' },
+    { key:'expenses', label:'مصروفاتك الشهرية', placeholder:'350000', tip:'إجمالي ما تصرفه شهرياً — رواتب وإيجارات ومواد وفواتير، سواء كنت في مشروع أو بين مشروعين' },
     { key:'bank_balance', label:'الرصيد البنكي', placeholder:'200000', tip:'رصيدك الفعلي في البنك اليوم — ليس الذمم أو الأرباح المتوقعة' },
     { key:'debts', label:'الديون', placeholder:'100000', tip:'إجمالي ما عليك من قروض بنكية أو التزامات مالية مستحقة للغير' },
     { key:'rec_current', label:'ذمم سائلة (أقل من 60 يوم)', placeholder:'100000', tip:'فواتير منجزة وعميلها ملتزم — قابلة للتحصيل قريباً' },
@@ -862,7 +862,8 @@ export default function Dashboard() {
         </div>
 
         <div style={{background:C.navyLight,borderRadius:16,padding:'32px',border:`1px solid ${C.border}`,marginBottom:24}}>
-          <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:24}}>بيانات الشهر الحالي</div>
+          <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:6}}>وضع شركتك الآن</div>
+          <div style={{color:C.gray,fontSize:13,marginBottom:24,lineHeight:1.6}}>Murdi يحلل شركتك كمقاول — لا كمحل بدخل يومي. أعطه صورتك المعتادة، وأضف مشاريعك بالأسفل لتحليل أدق.</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16}}>
             {fields.map(f => (
               <div key={f.key}>
