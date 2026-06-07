@@ -158,12 +158,25 @@ function generateReport(f: any) {
     margin > 10 ? `هامش ربحك أعلى من 35% من شركات المقاولات السعودية` :
     `هامش ربحك أقل من 70% من شركات المقاولات السعودية — مجال للتحسين`
 
+  // عبء القسط على التدفق النقدي الشهري (مهم في قطاع المقاولات)
+  const paymentBurden = r > 0 ? (monthlyPayment / r) * 100 : (monthlyPayment > 0 ? 100 : 0)
   let score = 0
+  // السيولة (25)
   if (liq >= 3) score+=25; else if (liq >= 1) score+=15; else if (liq > 0) score+=5
-  if (margin >= 15) score+=25; else if (margin > 0) score+=15
-  if (dso <= 60) score+=20; else if (dso <= 90) score+=10
-  if (dr <= 50) score+=15; else if (dr <= 100) score+=8
-  score = Math.min(score, 85)
+  // الربحية (25) — الخسارة تُعاقب فعلياً لا تكتفي بصفر
+  if (margin >= 15) score+=25; else if (margin >= 8) score+=18; else if (margin > 0) score+=10; else score-=10
+  // دورة التحصيل (15)
+  if (dso <= 60) score+=15; else if (dso <= 90) score+=8
+  // نسبة الدين (10)
+  if (dr <= 50) score+=10; else if (dr <= 100) score+=5
+  // عبء القسط (10) — جديد: القسط الذي يلتهم الدخل خطر حقيقي
+  if (paymentBurden === 0) score+=10; else if (paymentBurden <= 15) score+=8; else if (paymentBurden <= 30) score+=4; else if (paymentBurden <= 50) score+=1; else score-=5
+  // سقوف حالة الدين — التعثر يمنع أي درجة مرتفعة
+  if (debtStatus === 'default') score = Math.min(score, 25)
+  else if (debtStatus === 'late') score = Math.min(score, 45)
+  // الخسارة تمنع تصنيف "قوي"
+  if (monthlyProfit < 0) score = Math.min(score, 50)
+  score = Math.max(0, Math.min(score, 85))
 
   const scoreLabel = score >= 70 ? 'شركة قوية — جاهزة للتوسع' : score >= 55 ? 'شركة متوسطة — تحتاج تحسين' : score >= 40 ? 'شركة تحت الضغط — تدخل عاجل' : 'وضع حرج — يحتاج إجراء فوري'
 
@@ -232,11 +245,11 @@ function generateReport(f: any) {
       return `وسيولتك جيدة — تغطي ${days(dl)}${extra}`
     })(),
     priority: topRisk
-      ? `أولوية هذا الشهر: ${topRisk.category === 'liquidity' ? (rec > 0 ? `تحصيل ${fmt(rec)} من الذمم المتأخرة` : `خفض المصروفات اليومية من ${Math.round(dailyBurn).toLocaleString('ar-SA')} ريال/يوم`) : topRisk.category === 'profit' ? `خفض المصروفات بمقدار ${fmt(Math.abs(monthlyProfit))}` : topRisk.category === 'collection' ? `تسريع التحصيل من ${days(dso)} إلى 60 يوم` : `خفض نسبة الديون تحت 50%`}`
+      ? `أولوية هذا الشهر: ${topRisk.category === 'liquidity' ? (recReal > e*0.5 ? `تحصيل ${fmt(recReal)} من ذممك القابلة للتحصيل` : `خفض المصروفات اليومية من ${Math.round(dailyBurn).toLocaleString('ar-SA')} ريال/يوم`) : topRisk.category === 'profit' ? `أوقف الخسارة: خفّض المصروفات أو ارفع تسعيرك بمقدار ${fmt(Math.abs(monthlyProfit))}` : topRisk.category === 'collection' ? `تسريع التحصيل من ${days(dso)} إلى 60 يوم` : `خفض نسبة الديون تحت 50%`}`
       : `شركتك في وضع جيد — ركّز على التوسع`,
     scoreImpact: topRisk
-      ? topRisk.category === 'liquidity'
-        ? `التغطية ترتفع من ${days(daysLeft)} إلى ${days(daysLeft + rec*0.5/dailyBurn)} • درجتك ترتفع +15 نقطة`
+      ? (topRisk.category === 'liquidity' && recReal > e*0.5)
+        ? `التغطية ترتفع من ${days(daysLeft)} إلى ${days(daysLeft + recReal/dailyBurn)} • درجتك ترتفع +15 نقطة`
         : `درجتك ترتفع +8 نقاط بعد التنفيذ`
       : `درجتك مؤهلة للتحسين بالتوسع`
   }
