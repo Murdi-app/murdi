@@ -306,6 +306,9 @@ export default function Dashboard() {
   const [twinProject, setTwinProject] = useState({description:'',value:'',margin:'',duration:'',paymentDelay:'',needsFunding:false,fundingAmount:''})
   const [twinResult, setTwinResult] = useState<any>(null)
   const [twinLoading, setTwinLoading] = useState(false)
+  const [invoices, setInvoices] = useState<any[]>([{value:'',submittedDaysAgo:'',status:'قيد المراجعة',entity:''}])
+  const [istikhlasResult, setIstikhlasResult] = useState<any>(null)
+  const [istikhlasLoading, setIstikhlasLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -488,6 +491,33 @@ export default function Dashboard() {
       setAdvisorMsg(data.message || '')
     } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
     setLoadingAdvisor(false)
+  }
+
+  const runIstikhlas = async () => {
+    const valid = invoices.filter(inv => parseFloat(inv.value) > 0)
+    if (valid.length === 0 || !report) return
+    setIstikhlasLoading(true); setIstikhlasResult(null)
+    try {
+      const res = await fetch('/api/istikhlas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoices: valid.map(inv => ({
+            value: parseFloat(inv.value)||0,
+            submittedDaysAgo: parseInt(inv.submittedDaysAgo)||0,
+            status: inv.status,
+            entity: inv.entity
+          })),
+          current: { bank_balance: parseFloat(form.bank_balance)||0, expenses: parseFloat(form.expenses)||0 }
+        })
+      })
+      const data = await res.json()
+      if (data.error) setIstikhlasResult({ error: data.error })
+      else setIstikhlasResult(data)
+    } catch {
+      setIstikhlasResult({ error: 'تعذّر تحليل المستخلصات' })
+    }
+    setIstikhlasLoading(false)
   }
 
   const runTwin = async () => {
@@ -1429,6 +1459,76 @@ export default function Dashboard() {
             )}
 
 
+
+            {/* محرك المستخلصات */}
+            <div style={{background:'linear-gradient(135deg,#0d2818,#0a1f12)',borderRadius:16,padding:'24px',border:`1px solid #22c55e50`}}>
+              <div style={{color:'#4ade80',fontSize:16,fontWeight:800,marginBottom:6}}>📋 محرك المستخلصات™️ — سيولتك المجمّدة</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:16,lineHeight:1.6}}>كم من فلوسك محتجزة في مستخلصات حكومية؟ أدخلها ودع Murdi يتابعها معك</div>
+
+              {invoices.map((inv,idx)=>(
+                <div key={idx} style={{background:C.navy,borderRadius:10,padding:'14px',marginBottom:10,border:`1px solid ${C.border}`}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                    <input value={inv.value} onChange={e=>{const n=[...invoices];n[idx].value=e.target.value;setInvoices(n)}} placeholder="قيمة المستخلص" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                    <input value={inv.submittedDaysAgo} onChange={e=>{const n=[...invoices];n[idx].submittedDaysAgo=e.target.value;setInvoices(n)}} placeholder="قُدّم قبل كم يوم؟" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                    <select value={inv.status} onChange={e=>{const n=[...invoices];n[idx].status=e.target.value;setInvoices(n)}} style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box',fontFamily:'inherit'}}>
+                      <option>قيد المراجعة</option>
+                      <option>قيد الاعتماد</option>
+                      <option>معتمد بانتظار الصرف</option>
+                      <option>عليه ملاحظات فنية</option>
+                    </select>
+                    <input value={inv.entity} onChange={e=>{const n=[...invoices];n[idx].entity=e.target.value;setInvoices(n)}} placeholder="الجهة (اختياري)" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                  </div>
+                  {invoices.length>1 && (
+                    <button onClick={()=>setInvoices(invoices.filter((_,i)=>i!==idx))} style={{marginTop:8,background:'transparent',border:'none',color:'#fca5a5',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>× حذف</button>
+                  )}
+                </div>
+              ))}
+
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <button onClick={()=>setInvoices([...invoices,{value:'',submittedDaysAgo:'',status:'قيد المراجعة',entity:''}])} style={{flex:1,padding:'10px',borderRadius:8,border:`1px dashed #22c55e60`,background:'transparent',color:'#4ade80',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>+ أضف مستخلصاً</button>
+              </div>
+
+              <button onClick={runIstikhlas} disabled={istikhlasLoading||invoices.every(i=>!parseFloat(i.value))}
+                style={{width:'100%',padding:'14px',borderRadius:10,border:'none',background:invoices.some(i=>parseFloat(i.value)>0)?'linear-gradient(135deg,#16a34a,#22c55e)':'#333',color:'#fff',fontSize:15,fontWeight:800,cursor:invoices.some(i=>parseFloat(i.value)>0)?'pointer':'default',fontFamily:'inherit'}}>
+                {istikhlasLoading?'📋 Murdi يتابع مستخلصاتك...':'حلّل مستخلصاتي'}
+              </button>
+
+              {istikhlasResult && !istikhlasResult.error && (
+                <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:12}}>
+                  {[
+                    {t:'🧊 سيولتك المجمّدة',v:istikhlasResult.frozenLiquidity,c:'#fca5a5'},
+                    {t:'🚨 الأعجل للمتابعة',v:istikhlasResult.criticalInvoice,c:'#fbbf24'},
+                    {t:'⏱️ توقيت الصرف',v:istikhlasResult.expectedTiming,c:'#4ade80'},
+                    {t:'🔒 ضمان حسن التنفيذ المحتجز',v:istikhlasResult.guaranteeHeld,c:'#94a3b8'},
+                    {t:'🔓 لو صُرف الأقرب',v:istikhlasResult.cashUnlock,c:'#4ade80'},
+                  ].map((it,i)=>it.v&&(
+                    <div key={i} style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:it.c,fontSize:13,fontWeight:700,marginBottom:6}}>{it.t}</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{it.v}</div>
+                    </div>
+                  ))}
+                  {istikhlasResult.actions?.length>0 && (
+                    <div style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:'#4ade80',fontSize:13,fontWeight:700,marginBottom:8}}>✅ متابعتك هذا الأسبوع</div>
+                      {istikhlasResult.actions.map((a:string,i:number)=>(
+                        <div key={i} style={{color:C.white,fontSize:13,lineHeight:1.8}}>• {a}</div>
+                      ))}
+                    </div>
+                  )}
+                  {istikhlasResult.advisorNote && (
+                    <div style={{padding:'16px',borderRadius:12,background:'#0a2540',borderRight:`3px solid ${C.gold}`}}>
+                      <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:6}}>🎓 د. عبدالحكيم المرضي</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{istikhlasResult.advisorNote}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {istikhlasResult?.error && (
+                <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{istikhlasResult.error}</div>
+              )}
+            </div>
 
             {/* Murdi Twin — التوأم المالي */}
             <div style={{background:'linear-gradient(135deg,#0d1b2e,#13243d)',borderRadius:16,padding:'24px',border:`1px solid #a855f7${'50'}`}}>
