@@ -290,6 +290,9 @@ export default function Dashboard() {
   const [showBuilder, setShowBuilder] = useState(false)
   const [builderStep, setBuilderStep] = useState(0)
   const [builderData, setBuilderData] = useState<any>({})
+  const [twinProject, setTwinProject] = useState({description:'',value:'',margin:'',duration:'',paymentDelay:'',needsFunding:false,fundingAmount:''})
+  const [twinResult, setTwinResult] = useState<any>(null)
+  const [twinLoading, setTwinLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -472,6 +475,36 @@ export default function Dashboard() {
       setAdvisorMsg(data.message || '')
     } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
     setLoadingAdvisor(false)
+  }
+
+  const runTwin = async () => {
+    if (!twinProject.description.trim() || !report) return
+    setTwinLoading(true); setTwinResult(null)
+    try {
+      const res = await fetch('/api/twin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current: {
+            revenue: parseFloat(form.revenue)||0,
+            expenses: parseFloat(form.expenses)||0,
+            bank_balance: parseFloat(form.bank_balance)||0,
+            recReal: Math.round(report.recReal),
+            debts: parseFloat(form.debts)||0,
+            monthly_payment: parseFloat(form.monthly_payment)||0,
+            survivalDays: Math.round(report.survivalDays),
+            score: report.score
+          },
+          project: twinProject
+        })
+      })
+      const data = await res.json()
+      if (data.error) setTwinResult({ error: data.error })
+      else setTwinResult(data)
+    } catch {
+      setTwinResult({ error: 'تعذّر تشغيل المحاكاة' })
+    }
+    setTwinLoading(false)
   }
 
   const sendChat = async () => {
@@ -1383,6 +1416,74 @@ export default function Dashboard() {
             )}
 
 
+
+            {/* Murdi Twin — التوأم المالي */}
+            <div style={{background:'linear-gradient(135deg,#0d1b2e,#13243d)',borderRadius:16,padding:'24px',border:`1px solid #a855f7${'50'}`}}>
+              <div style={{color:'#c084fc',fontSize:16,fontWeight:800,marginBottom:6}}>🧬 Murdi Twin™️ — توأمك المالي</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:16,lineHeight:1.6}}>تفكّر في مشروع أو قرار كبير؟ شغّل نسخة افتراضية من شركتك وشوف الأثر قبل أن تقرّر</div>
+
+              <textarea value={twinProject.description} onChange={e=>setTwinProject({...twinProject,description:e.target.value})}
+                placeholder="اوصف القرار — مثال: مشروع حكومي قيمته 2 مليون، دفعاته كل 3 أشهر"
+                style={{width:'100%',padding:'12px 14px',borderRadius:10,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14,boxSizing:'border-box',minHeight:70,fontFamily:'inherit',marginBottom:12}} />
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                <input value={twinProject.value} onChange={e=>setTwinProject({...twinProject,value:e.target.value})} placeholder="قيمة المشروع (ريال)" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                <input value={twinProject.margin} onChange={e=>setTwinProject({...twinProject,margin:e.target.value})} placeholder="هامش الربح %" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                <input value={twinProject.duration} onChange={e=>setTwinProject({...twinProject,duration:e.target.value})} placeholder="مدة التنفيذ (أشهر)" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                <input value={twinProject.paymentDelay} onChange={e=>setTwinProject({...twinProject,paymentDelay:e.target.value})} placeholder="تأخر الدفعات (يوم)" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+              </div>
+
+              <label style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,cursor:'pointer',color:C.white,fontSize:13}}>
+                <input type="checkbox" checked={twinProject.needsFunding} onChange={e=>setTwinProject({...twinProject,needsFunding:e.target.checked})} style={{width:16,height:16,cursor:'pointer'}} />
+                سأحتاج تمويلاً لهذا المشروع
+              </label>
+              {twinProject.needsFunding && (
+                <input value={twinProject.fundingAmount} onChange={e=>setTwinProject({...twinProject,fundingAmount:e.target.value})} placeholder="مبلغ التمويل (ريال)" type="number" style={{width:'100%',padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box',marginBottom:14}} />
+              )}
+
+              <button onClick={runTwin} disabled={twinLoading||!twinProject.description.trim()}
+                style={{width:'100%',padding:'14px',borderRadius:10,border:'none',background:twinProject.description.trim()?'linear-gradient(135deg,#a855f7,#c084fc)':'#333',color:'#fff',fontSize:15,fontWeight:800,cursor:twinProject.description.trim()?'pointer':'default',fontFamily:'inherit'}}>
+                {twinLoading?'🧬 التوأم يحاكي شركتك...':'شغّل المحاكاة'}
+              </button>
+
+              {twinResult && !twinResult.error && (
+                <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{padding:'16px',borderRadius:12,background:twinResult.verdict==='go'?'#0a2d1a':twinResult.verdict==='stop'?'#2d0a0a':'#2d1f0a',border:`1px solid ${twinResult.verdict==='go'?'#22c55e':twinResult.verdict==='stop'?'#ef4444':'#f59e0b'}60`}}>
+                    <div style={{fontSize:13,fontWeight:800,marginBottom:6,color:twinResult.verdict==='go'?'#22c55e':twinResult.verdict==='stop'?'#ef4444':'#f59e0b'}}>
+                      {twinResult.verdict==='go'?'✅ الحكم: ادخل':twinResult.verdict==='stop'?'🛑 الحكم: لا تدخل':'⚠️ الحكم: بحذر'}
+                    </div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{twinResult.verdictText}</div>
+                  </div>
+                  {[
+                    {t:'💵 أثر السيولة',v:twinResult.cashImpact},
+                    {t:'📉 أصعب شهر',v:twinResult.worstMonth},
+                    {t:'💰 الربح الحقيقي',v:twinResult.profitReality},
+                  ].map((it,i)=>it.v&&(
+                    <div key={i} style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:'#c084fc',fontSize:13,fontWeight:700,marginBottom:6}}>{it.t}</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{it.v}</div>
+                    </div>
+                  ))}
+                  {twinResult.conditions?.length>0 && (
+                    <div style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:'#c084fc',fontSize:13,fontWeight:700,marginBottom:8}}>📋 شروط الدخول</div>
+                      {twinResult.conditions.map((c:string,i:number)=>(
+                        <div key={i} style={{color:C.white,fontSize:13,lineHeight:1.8}}>• {c}</div>
+                      ))}
+                    </div>
+                  )}
+                  {twinResult.advisorNote && (
+                    <div style={{padding:'16px',borderRadius:12,background:'#0a2540',borderRight:`3px solid ${C.gold}`}}>
+                      <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:6}}>🎓 د. عبدالحكيم المرضي</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{twinResult.advisorNote}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {twinResult?.error && (
+                <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{twinResult.error}</div>
+              )}
+            </div>
 
             {/* What If Engine — متعدد السيناريوهات */}
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
