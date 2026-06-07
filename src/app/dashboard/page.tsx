@@ -132,10 +132,15 @@ function generateReport(f: any) {
     opportunities.push(`🚀 وضعك المالي يؤهلك للتوسع — ربحيتك ${margin.toFixed(0)}% وسيولتك ${days(daysLeft)} تسمح بمشروع جديد`)
     opportunities.push(`💳 يمكنك التقدم لتمويل بنكي بضمان إيراداتك ${fmt(r)} شهرياً`)
   }
-  if (rec > r*0.5) {
-    opportunities.push(`💰 لديك ${fmt(rec)} في الذمم — تحصيلها يمول مشاريع جديدة دون ديون إضافية`)
-  } else if (rec > 0) {
-    opportunities.push(`💰 ذممك ${fmt(rec)} بسيطة — حصّلها لتعزيز السيولة`)
+  if (recReal > r*0.5) {
+    // في الخسارة: التحصيل يسدّ الفجوة لا يموّل توسعاً
+    if (monthlyProfit < 0) {
+      opportunities.push(`💰 لديك ${fmt(recReal)} ذمم قابلة للتحصيل — حصّلها لتغطية فجوتك النقدية قبل أي توسع`)
+    } else {
+      opportunities.push(`💰 لديك ${fmt(recReal)} ذمم قابلة للتحصيل — تحصيلها يموّل نموك دون ديون إضافية`)
+    }
+  } else if (recReal > 0) {
+    opportunities.push(`💰 ذممك القابلة للتحصيل ${fmt(recReal)} — حصّلها لتعزيز سيولتك`)
   }
   if (margin > 15 && dr < 50) {
     opportunities.push(`📈 بناءً على أرقامك، يمكنك استيعاب مشروع إضافي بقيمة تصل ${fmt(r*0.3)} شهرياً`)
@@ -218,11 +223,14 @@ function generateReport(f: any) {
     cashFlow: monthlyProfit > 0
       ? `شركتك تحقق تدفقاً نقدياً إيجابياً (+${fmt(monthlyProfit)}/شهر)`
       : `شركتك تسجل خسارة شهرية (${fmt(Math.abs(monthlyProfit))}/شهر)`,
-    liquidityAlert: daysLeft < 30
-      ? `لكن السيولة الحالية تغطي ${days(daysLeft)} فقط من مصروفاتك — خطر حرج`
-      : daysLeft < 90
-      ? `والسيولة تغطي ${days(daysLeft)} — أقل من المعيار الموصى به`
-      : `والسيولة جيدة — تغطي ${days(daysLeft)} من المصروفات`,
+    liquidityAlert: (() => {
+      const sd = Math.round(survivalDays)
+      const dl = Math.round(daysLeft)
+      const extra = (expInflow > 0 && sd > dl) ? ` — ومع دفعتك المتوقعة (${fmt(expInflow)}) تمتد إلى ${days(sd)}` : ''
+      if (sd < 30) return `لكن رصيدك يغطي ${days(dl)} فقط من مصروفاتك${extra} — خطر حرج`
+      if (sd < 90) return `ورصيدك يغطي ${days(dl)}${extra} — أقل من المعيار الموصى به`
+      return `وسيولتك جيدة — تغطي ${days(dl)}${extra}`
+    })(),
     priority: topRisk
       ? `أولوية هذا الشهر: ${topRisk.category === 'liquidity' ? (rec > 0 ? `تحصيل ${fmt(rec)} من الذمم المتأخرة` : `خفض المصروفات اليومية من ${Math.round(dailyBurn).toLocaleString('ar-SA')} ريال/يوم`) : topRisk.category === 'profit' ? `خفض المصروفات بمقدار ${fmt(Math.abs(monthlyProfit))}` : topRisk.category === 'collection' ? `تسريع التحصيل من ${days(dso)} إلى 60 يوم` : `خفض نسبة الديون تحت 50%`}`
       : `شركتك في وضع جيد — ركّز على التوسع`,
