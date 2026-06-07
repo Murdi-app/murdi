@@ -241,6 +241,7 @@ export default function Dashboard() {
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
   const [lastMonth, setLastMonth] = useState<any>(null)
+  const [history, setHistory] = useState<any[]>([])
   const [mobileMenu, setMobileMenu] = useState(false)
   const [shareUrl, setShareUrl] = useState('')
   const [advisorMsg, setAdvisorMsg] = useState('')
@@ -273,6 +274,7 @@ export default function Dashboard() {
         setIsNew(true)
       } else {
         setLastMonth(records[0])
+        setHistory(records.slice(0, 6))
       }
     }
     getUser()
@@ -308,6 +310,7 @@ export default function Dashboard() {
           years_in_business: form.years_in_business || '',
           has_gov_contracts: form.has_gov_contracts || 'no',
           credit_status: form.credit_status || 'clean',
+          history: history.map((h:any)=>({ month:h.month, year:h.year, revenue:h.revenue, expenses:h.expenses, bank_balance:h.bank_balance, debts:h.debts, receivables:h.receivables, murdi_score:h.murdi_score, funding_score:h.funding_score })),
           month_timing: form.month_timing || 'mid',
           expected_inflow: parseFloat(form.expected_inflow)||0,
           expected_inflow_days: parseInt(form.expected_inflow_days)||0,
@@ -709,6 +712,28 @@ export default function Dashboard() {
               <div style={{background:'linear-gradient(135deg,#1a0a2d,#0f0520)',borderRadius:16,padding:'24px',border:'2px solid #a855f760'}}>
                 <div style={{color:'#a855f7',fontSize:14,fontWeight:800,marginBottom:10,letterSpacing:1}}>🔍 السبب الجذري — منهجية د. عبدالحكيم</div>
                 <div style={{color:C.white,fontSize:15,lineHeight:1.8,borderRight:'4px solid #a855f7',paddingRight:16}}>{aiReport.rootCause}</div>
+              </div>
+            )}
+
+            {/* ذاكرة Murdi الزمنية */}
+            {(aiReport?.patternInsight || aiReport?.decisionImpact) && (
+              <div style={{background:'linear-gradient(135deg,#0a1a2d,#05101a)',borderRadius:16,padding:'24px',border:'2px solid #38bdf850'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+                  <span style={{fontSize:18}}>🧬</span>
+                  <div style={{color:'#38bdf8',fontSize:15,fontWeight:800,letterSpacing:1}}>ذاكرة Murdi — ما يعرفه عن رحلتك</div>
+                </div>
+                {aiReport?.patternInsight && (
+                  <div style={{marginBottom:aiReport?.decisionImpact?14:0}}>
+                    <div style={{color:'#7dd3fc',fontSize:12,fontWeight:700,marginBottom:6}}>📈 نمط اكتشفه Murdi عبر الأشهر</div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.8,borderRight:'4px solid #38bdf8',paddingRight:14}}>{aiReport.patternInsight}</div>
+                  </div>
+                )}
+                {aiReport?.decisionImpact && (
+                  <div>
+                    <div style={{color:'#7dd3fc',fontSize:12,fontWeight:700,marginBottom:6}}>⚖️ أثر التغيّرات في أرقامك</div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.8,borderRight:'4px solid #38bdf8',paddingRight:14}}>{aiReport.decisionImpact}</div>
+                  </div>
+                )}
               </div>
             )}
 
