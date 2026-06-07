@@ -259,6 +259,8 @@ export default function Dashboard() {
   const [loadingQuestion, setLoadingQuestion] = useState(false)
   const [simExpenseCut, setSimExpenseCut] = useState(0)
   const [simCollect, setSimCollect] = useState(0)
+  const [sendingAlert, setSendingAlert] = useState(false)
+  const [alertSent, setAlertSent] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -349,6 +351,31 @@ export default function Dashboard() {
     setShareUrl(window.location.origin + '/report/' + shareId)
     setSaved(true)
     setTimeout(()=>setSaved(false), 3000)
+  }
+
+  const sendAlert = async () => {
+    if (!report || !user?.email) return
+    setSendingAlert(true)
+    try {
+      await fetch('/api/alert', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: profile?.company_name || 'شركتك',
+          email: user.email,
+          revenue: parseFloat(form.revenue)||0,
+          expenses: parseFloat(form.expenses)||0,
+          bank_balance: parseFloat(form.bank_balance)||0,
+          debts: parseFloat(form.debts)||0,
+          murdiScore: report.score,
+          survivalDays: Math.round(report.survivalDays),
+          distress: report.distress,
+          margin: Number(report.margin).toFixed(1),
+          history: history.map((h:any)=>({ month:h.month, year:h.year, revenue:h.revenue, expenses:h.expenses, bank_balance:h.bank_balance, murdi_score:h.murdi_score }))
+        })
+      })
+      setAlertSent(true); setTimeout(()=>setAlertSent(false), 4000)
+    } catch {}
+    setSendingAlert(false)
   }
 
   const getAdvisor = async () => {
@@ -1261,6 +1288,9 @@ export default function Dashboard() {
 
             <button onClick={handleSave} style={{width:'100%',padding:'16px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:16,fontWeight:800,cursor:'pointer'}}>
               {saved ? '✓ تم الحفظ في Company Memory!' : '💾 احفظ التقرير في Company Memory'}
+            </button>
+            <button onClick={sendAlert} disabled={sendingAlert} style={{width:'100%',padding:'14px',borderRadius:12,border:'1px solid #38bdf8',background:'transparent',color:'#38bdf8',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:8}}>
+              {sendingAlert ? '⏳ Murdi يجهز تنبيهك...' : alertSent ? '✓ وصلك التنبيه على بريدك!' : '🔔 أرسل لي تنبيه Murdi الذكي على الإيميل'}
             </button>
             <button onClick={()=>{sessionStorage.setItem('murdi_report',JSON.stringify(report));sessionStorage.setItem('murdi_company',profile?.company_name||'');router.push('/dashboard/report')}} style={{width:'100%',padding:'14px',borderRadius:12,border:'1px solid #F5C842',background:'transparent',color:'#F5C842',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:8}}>
               📄 عرض وتحميل PDF
