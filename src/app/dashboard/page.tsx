@@ -279,6 +279,9 @@ export default function Dashboard() {
   const [extractMsg, setExtractMsg] = useState('')
   const [extractedMonths, setExtractedMonths] = useState<any[]>([])
   const [needsInput, setNeedsInput] = useState<string[]>([])
+  const [showBuilder, setShowBuilder] = useState(false)
+  const [builderStep, setBuilderStep] = useState(0)
+  const [builderData, setBuilderData] = useState<any>({})
   const router = useRouter()
   const supabase = createClient()
 
@@ -534,6 +537,17 @@ export default function Dashboard() {
   const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 40 ? C.gold : '#ef4444'
   const fundingColor = (s: number) => s >= 70 ? '#22c55e' : s >= 50 ? C.gold : '#ef4444'
 
+  // خطوات بناء "صورتك المالية" — أسئلة بلغة بسيطة للمقاول الذي لا يملك ميزان
+  const builderSteps = [
+    { key:'revenue', q:'كم قيمة العقود والفواتير التي أنجزتها هذا الشهر؟', hint:'كل ما حقّقته من مشاريع — حتى لو لم تُحصّله بعد', placeholder:'500000' },
+    { key:'expenses', q:'كم صرفت هذا الشهر إجمالاً؟', hint:'الرواتب + المواد + الإيجار + الفواتير + كل المصروفات', placeholder:'400000' },
+    { key:'bank_balance', q:'كم رصيدك في البنك الآن؟', hint:'الرقم الفعلي في حسابك اليوم', placeholder:'150000' },
+    { key:'rec_current', q:'كم لك عند العملاء (فواتير لم تُحصّل بعد)؟', hint:'مستحقاتك على مشاريع منجزة — اكتب 0 إن لا يوجد', placeholder:'100000' },
+    { key:'debts', q:'كم عليك من قروض أو ديون؟', hint:'إجمالي القروض البنكية والالتزامات — اكتب 0 إن لا يوجد', placeholder:'0' },
+    { key:'monthly_payment', q:'كم تدفع شهرياً على هذه الديون؟', hint:'القسط الشهري — اكتب 0 إن لا يوجد', placeholder:'0' },
+    { key:'employees', q:'كم عدد موظفيك؟', hint:'العمال والإداريون', placeholder:'25' },
+  ]
+
   const fields = [
     { key:'revenue', label:'الإيرادات الشهرية', placeholder:'500000', tip:'إجمالي ما دخل لشركتك هذا الشهر من مشاريع وعقود — قبل خصم أي مصروفات' },
     { key:'expenses', label:'المصروفات الشهرية', placeholder:'350000', tip:'إجمالي ما صرفته هذا الشهر — رواتب ومواد وإيجارات وفواتير' },
@@ -555,6 +569,45 @@ export default function Dashboard() {
 
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
+
+      {/* نافذة بناء صورتك المالية */}
+      {showBuilder && (() => {
+        const step = builderSteps[builderStep]
+        const isLast = builderStep === builderSteps.length - 1
+        return (
+          <div style={{position:'fixed',inset:0,background:'#00000099',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setShowBuilder(false)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:C.navyLight,borderRadius:20,padding:'32px',maxWidth:480,width:'100%',border:`2px solid ${C.gold}50`,boxShadow:'0 20px 60px #000'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <div style={{color:C.gold,fontSize:17,fontWeight:800}}>🖼️ صورتك المالية مع Murdi</div>
+                <button onClick={()=>setShowBuilder(false)} style={{background:'transparent',border:'none',color:C.gray,fontSize:22,cursor:'pointer'}}>×</button>
+              </div>
+              <div style={{height:6,background:C.navy,borderRadius:4,marginBottom:24,overflow:'hidden'}}>
+                <div style={{height:'100%',background:C.gold,width:`${((builderStep+1)/builderSteps.length)*100}%`,transition:'width 0.3s'}}/>
+              </div>
+              <div style={{color:C.gray,fontSize:12,marginBottom:8}}>سؤال {builderStep+1} من {builderSteps.length}</div>
+              <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:8,lineHeight:1.5}}>{step.q}</div>
+              <div style={{color:'#5a7a99',fontSize:13,marginBottom:18,lineHeight:1.5}}>{step.hint}</div>
+              <input autoFocus type="number" value={builderData[step.key]||''}
+                onChange={e=>setBuilderData({...builderData,[step.key]:e.target.value})}
+                onKeyDown={e=>{if(e.key==='Enter'){if(isLast){const nd={...form,...builderData};setForm(nd);setShowBuilder(false);} else setBuilderStep(builderStep+1)}}}
+                placeholder={step.placeholder}
+                style={{width:'100%',padding:'14px 16px',borderRadius:10,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:16,boxSizing:'border-box',marginBottom:20}} />
+              <div style={{display:'flex',gap:10}}>
+                {builderStep>0 && (
+                  <button onClick={()=>setBuilderStep(builderStep-1)} style={{flex:1,padding:'14px',borderRadius:10,border:`1px solid ${C.border}`,background:'transparent',color:C.white,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>السابق</button>
+                )}
+                <button onClick={()=>{
+                  if(isLast){const nd={...form,...builderData};setForm(nd);setShowBuilder(false);}
+                  else setBuilderStep(builderStep+1)
+                }} style={{flex:2,padding:'14px',borderRadius:10,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:15,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>
+                  {isLast ? '✓ اكتملت صورتك — املأ النموذج' : 'التالي'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <div style={{background:C.navyLight,padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`,position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start'}}>
           <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2,lineHeight:1}}>MURDI</div>
@@ -612,6 +665,13 @@ export default function Dashboard() {
             </button>
             <button onClick={()=>setUploadDocType('bank')} style={{flex:1,minWidth:160,padding:'14px',borderRadius:10,border:`1px solid ${uploadDocType==='bank'?C.gold:C.border}`,background:uploadDocType==='bank'?C.gold:'transparent',color:uploadDocType==='bank'?C.navy:C.white,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
               🏦 كشف حساب بنكي
+            </button>
+          </div>
+
+          <div style={{textAlign:'center',margin:'4px 0 14px'}}>
+            <button onClick={()=>{setShowBuilder(true);setBuilderStep(0);setBuilderData({})}}
+              style={{background:'transparent',border:'none',color:'#7dd3fc',fontSize:13,cursor:'pointer',fontFamily:'inherit',textDecoration:'underline'}}>
+              ما عندك مستند؟ دع Murdi يبني صورتك المالية بأسئلة بسيطة ←
             </button>
           </div>
 
