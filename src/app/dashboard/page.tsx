@@ -33,6 +33,16 @@ function generateReport(f: any) {
   const daysLeft = dailyBurn>0 ? b/dailyBurn : 0
   const monthlyProfit = r - e
 
+  // كاشف الربح الوهمي — الفجوة بين الربح الدفتري والنقد الفعلي
+  // الربح الدفتري يفترض تحصيل كل الإيرادات، لكن جزءاً منها عالق في ذمم غير قابلة للتحصيل فوراً
+  const uncollectibleGap = rec - recReal  // الذمم المعلّقة/المشكوك فيها (ربح على الورق لا في اليد)
+  const paperProfit = monthlyProfit  // الربح الدفتري المعلن
+  // الربح النقدي لا ينزل تحت صفر — نخصم العالق بحدود الربح نفسه (الفجوة قد تخص أشهراً سابقة)
+  const cashProfit = Math.max(0, monthlyProfit - (uncollectibleGap > 0 ? uncollectibleGap : 0))
+  // جودة الربح = نسبة النقد الفعلي من الربح المعلن
+  const profitQuality = paperProfit > 0 ? Math.max(0, Math.min(100, (cashProfit / paperProfit) * 100)) : (paperProfit < 0 ? 0 : 100)
+  const hasPhantomProfit = paperProfit > 0 && profitQuality < 60
+
   // Survival Clock — ساعة البقاء الذكية (تدمج السياق الزمني)
   const expInflow = parseFloat(f.expected_inflow)||0
   const expInflowDays = parseInt(f.expected_inflow_days)||0
@@ -263,7 +273,7 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr, survivalDays, survivalColor, survivalLabel, effectiveLiquidity, expInflow, upcomingOblig }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr, survivalDays, survivalColor, survivalLabel, effectiveLiquidity, expInflow, upcomingOblig, paperProfit, cashProfit, profitQuality, hasPhantomProfit, uncollectibleGap }
 }
 
 export default function Dashboard() {
@@ -1459,6 +1469,41 @@ export default function Dashboard() {
             )}
 
 
+
+            {/* كاشف الربح الوهمي — يظهر فقط عند وجود فجوة */}
+            {report.hasPhantomProfit && (
+              <div style={{background:'linear-gradient(135deg,#2d1f0a,#1f1505)',borderRadius:16,padding:'24px',border:`1px solid #f59e0b60`}}>
+                <div style={{color:'#fbbf24',fontSize:16,fontWeight:800,marginBottom:6}}>👻 كاشف الربح الوهمي™️</div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:18,lineHeight:1.6}}>ربحك على الورق شيء، وما في جيبك شيء آخر — Murdi يكشف الفرق</div>
+
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+                  <div style={{background:C.navy,borderRadius:12,padding:'16px',textAlign:'center',border:`1px solid ${C.border}`}}>
+                    <div style={{color:C.gray,fontSize:12,marginBottom:6}}>ربحك على الورق</div>
+                    <div style={{color:'#94a3b8',fontSize:22,fontWeight:900}}>{fmt(report.paperProfit)}</div>
+                  </div>
+                  <div style={{background:C.navy,borderRadius:12,padding:'16px',textAlign:'center',border:`1px solid #22c55e40`}}>
+                    <div style={{color:C.gray,fontSize:12,marginBottom:6}}>ربحك في يدك فعلاً</div>
+                    <div style={{color:'#4ade80',fontSize:22,fontWeight:900}}>{fmt(report.cashProfit)}</div>
+                  </div>
+                </div>
+
+                <div style={{background:C.navy,borderRadius:12,padding:'16px',marginBottom:14}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <span style={{color:C.white,fontSize:13,fontWeight:700}}>جودة ربحك (كم منه نقد حقيقي)</span>
+                    <span style={{color:report.profitQuality>=60?'#4ade80':report.profitQuality>=30?'#fbbf24':'#fca5a5',fontSize:18,fontWeight:900}}>{Math.round(report.profitQuality)}%</span>
+                  </div>
+                  <div style={{height:8,background:'#0a1420',borderRadius:6,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:`${Math.round(report.profitQuality)}%`,background:report.profitQuality>=60?'#22c55e':report.profitQuality>=30?'#f59e0b':'#ef4444',transition:'width 0.4s'}}/>
+                  </div>
+                </div>
+
+                <div style={{background:'#1f1505',borderRadius:10,padding:'16px',borderRight:`3px solid #f59e0b`}}>
+                  <div style={{color:C.white,fontSize:14,lineHeight:1.8}}>
+                    لديك <span style={{color:'#fbbf24',fontWeight:800}}>{fmt(report.uncollectibleGap)}</span> ربح معلّق في ذمم غير قابلة للتحصيل فوراً. ربحك المعلن {fmt(report.paperProfit)}، لكن النقد الحقيقي في يدك {fmt(report.cashProfit)} فقط. <span style={{color:'#fbbf24'}}>لا تبنِ قراراتك على ربح لم تقبضه بعد.</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* محرك المستخلصات */}
             <div style={{background:'linear-gradient(135deg,#0d2818,#0a1f12)',borderRadius:16,padding:'24px',border:`1px solid #22c55e50`}}>
