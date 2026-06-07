@@ -43,6 +43,21 @@ function generateReport(f: any) {
   const profitQuality = paperProfit > 0 ? Math.max(0, Math.min(100, (cashProfit / paperProfit) * 100)) : (paperProfit < 0 ? 0 : 100)
   const hasPhantomProfit = paperProfit > 0 && profitQuality < 60
 
+  // نبض الالتزامات الحكومية — تقدير ذكي من عدد الموظفين والمصروفات
+  const empCount = parseInt(f.employees)||0
+  // تقدير متوسط الراتب من المصروفات (افتراض الرواتب ~50% من المصروفات)
+  const estPayroll = e * 0.5
+  // التأمينات الاجتماعية ~ 12% من الرواتب (نصيب المنشأة للسعوديين + أخطار مهنية للوافدين)
+  const estGosiMonthly = Math.round(estPayroll * 0.12)
+  // رسوم العمالة الوافدة (المقابل المالي) ~ تقدير 800 ريال/عامل شهرياً وسطياً
+  const estLaborFees = empCount * 800
+  const govObligations = empCount > 0 ? [
+    { name: 'التأمينات الاجتماعية (GOSI)', amount: estGosiMonthly, cycle: 'شهري', due: 'آخر كل شهر', consequence: 'إيقاف الخدمات الحكومية ومنع التقديم على العطاءات' },
+    { name: 'المقابل المالي للعمالة الوافدة', amount: estLaborFees, cycle: 'شهري', due: 'مع تجديد الإقامات', consequence: 'تعذّر تجديد إقامات العمالة' },
+    { name: 'الزكاة وضريبة القيمة المضافة', amount: 0, cycle: 'ربعي', due: 'نهاية كل ربع', consequence: 'غرامات تأخير + إيقاف الشهادات' },
+  ] : []
+  const totalMonthlyGov = estGosiMonthly + estLaborFees
+
   // Survival Clock — ساعة البقاء الذكية (تدمج السياق الزمني)
   const expInflow = parseFloat(f.expected_inflow)||0
   const expInflowDays = parseInt(f.expected_inflow_days)||0
@@ -273,7 +288,7 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr, survivalDays, survivalColor, survivalLabel, effectiveLiquidity, expInflow, upcomingOblig, paperProfit, cashProfit, profitQuality, hasPhantomProfit, uncollectibleGap }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr, survivalDays, survivalColor, survivalLabel, effectiveLiquidity, expInflow, upcomingOblig, paperProfit, cashProfit, profitQuality, hasPhantomProfit, uncollectibleGap, govObligations, totalMonthlyGov, estGosiMonthly }
 }
 
 export default function Dashboard() {
@@ -1608,6 +1623,72 @@ export default function Dashboard() {
                 <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{istikhlasResult.error}</div>
               )}
             </div>
+
+            {/* نبض الالتزامات الحكومية */}
+            {report.govObligations && report.govObligations.length > 0 && (
+              <div style={{background:'linear-gradient(135deg,#2d0a1f,#1f0515)',borderRadius:16,padding:'24px',border:`1px solid #ec489960`}}>
+                <div style={{color:'#f9a8d4',fontSize:16,fontWeight:800,marginBottom:6}}>🏛️ نبض الالتزامات الحكومية™️</div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:8,lineHeight:1.6}}>الالتزامات التي تأخّرها يوقف خدماتك الحكومية ويمنعك من العطاءات — تقدير مبني على {parseInt(form.employees)||0} موظف</div>
+                <div style={{color:'#fbbf24',fontSize:12,marginBottom:16,lineHeight:1.6}}>⚠️ هذه تقديرات إرشادية — راجع أرقامك الفعلية في منصات التأمينات وقوى وزاتكا</div>
+
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  {report.govObligations.map((ob:any,i:number)=>(
+                    <div key={i} style={{background:C.navy,borderRadius:10,padding:'14px',border:`1px solid ${C.border}`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:6}}>
+                        <span style={{color:C.white,fontSize:14,fontWeight:700}}>{ob.name}</span>
+                        {ob.amount>0
+                          ? <span style={{color:'#f9a8d4',fontSize:15,fontWeight:900}}>≈ {fmt(ob.amount)}</span>
+                          : <span style={{color:C.gray,fontSize:12}}>حسب نشاطك</span>}
+                      </div>
+                      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:6}}>
+                        <span style={{color:'#7dd3fc',fontSize:12}}>🔁 {ob.cycle}</span>
+                        <span style={{color:C.gray,fontSize:12}}>📅 {ob.due}</span>
+                      </div>
+                      <div style={{color:'#fca5a5',fontSize:12,lineHeight:1.6}}>عند التأخر: {ob.consequence}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{marginTop:14,padding:'14px',borderRadius:10,background:'#1f0515',borderRight:`3px solid #ec4899`}}>
+                  <div style={{color:C.white,fontSize:13,lineHeight:1.8}}>
+                    التزاماتك الحكومية الشهرية التقديرية: <span style={{color:'#f9a8d4',fontWeight:800}}>≈ {fmt(report.totalMonthlyGov)}</span>. احجزها في تدفقك النقدي قبل أي صرف آخر — تأخّرها يوقف نشاطك كله، لا مجرد غرامة.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* نبض الالتزامات الحكومية */}
+            {report.govObligations && report.govObligations.length > 0 && (
+              <div style={{background:'linear-gradient(135deg,#2d0a1f,#1f0515)',borderRadius:16,padding:'24px',border:`1px solid #ec489960`}}>
+                <div style={{color:'#f9a8d4',fontSize:16,fontWeight:800,marginBottom:6}}>🏛️ نبض الالتزامات الحكومية™️</div>
+                <div style={{color:C.gray,fontSize:13,marginBottom:8,lineHeight:1.6}}>الالتزامات التي تأخّرها يوقف خدماتك الحكومية ويمنعك من العطاءات — تقدير مبني على {parseInt(form.employees)||0} موظف</div>
+                <div style={{color:'#fbbf24',fontSize:12,marginBottom:16,lineHeight:1.6}}>⚠️ هذه تقديرات إرشادية — راجع أرقامك الفعلية في منصات التأمينات وقوى وزاتكا</div>
+
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  {report.govObligations.map((ob:any,i:number)=>(
+                    <div key={i} style={{background:C.navy,borderRadius:10,padding:'14px',border:`1px solid ${C.border}`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:6}}>
+                        <span style={{color:C.white,fontSize:14,fontWeight:700}}>{ob.name}</span>
+                        {ob.amount>0
+                          ? <span style={{color:'#f9a8d4',fontSize:15,fontWeight:900}}>≈ {fmt(ob.amount)}</span>
+                          : <span style={{color:C.gray,fontSize:12}}>حسب نشاطك</span>}
+                      </div>
+                      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:6}}>
+                        <span style={{color:'#7dd3fc',fontSize:12}}>🔁 {ob.cycle}</span>
+                        <span style={{color:C.gray,fontSize:12}}>📅 {ob.due}</span>
+                      </div>
+                      <div style={{color:'#fca5a5',fontSize:12,lineHeight:1.6}}>عند التأخر: {ob.consequence}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{marginTop:14,padding:'14px',borderRadius:10,background:'#1f0515',borderRight:`3px solid #ec4899`}}>
+                  <div style={{color:C.white,fontSize:13,lineHeight:1.8}}>
+                    التزاماتك الحكومية الشهرية التقديرية: <span style={{color:'#f9a8d4',fontWeight:800}}>≈ {fmt(report.totalMonthlyGov)}</span>. احجزها في تدفقك النقدي قبل أي صرف آخر — تأخّرها يوقف نشاطك كله، لا مجرد غرامة.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* مؤشر جاهزية العطاء */}
             <div style={{background:'linear-gradient(135deg,#0d1f2d,#0a151f)',borderRadius:16,padding:'24px',border:`1px solid #38bdf850`}}>
