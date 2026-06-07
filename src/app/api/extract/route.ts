@@ -17,8 +17,9 @@ export async function POST(req: NextRequest) {
 
 تعليمات صارمة جداً:
 - أرجع JSON خاماً فقط. ابدأ بـ { وانتهِ بـ }.
-- كشف الحساب البنكي يُظهر فقط: الرصيد ختامي + إجمالي الإيداعات (الداخل) + إجمالي السحوبات (الخارج) خلال الفترة. هذه الأرقام عادة مكتوبة صراحة في رأس الكشف (Closing Balance, Total Deposits, Total Withdrawals).
-- اقرأها من الملخص في أعلى الكشف إن وُجد، لا تجمعها يدوياً من الحركات.
+- ركّز فقط على صفحة الملخص (عادة الصفحة الأولى) التي تحتوي: الرصيد الختامي (Closing Balance)، إجمالي الإيداعات (Total Deposits)، إجمالي السحوبات (Total Withdrawals)، والفترة (On The Period).
+- تجاهل تماماً صفحات تفاصيل الحركات — لا تقرأها ولا تجمعها. كل ما تحتاجه موجود في صفحة الملخص.
+- اقرأ الأرقام كما هي مكتوبة في الملخص مباشرة.
 - الرصيد الختامي = closing balance. إجمالي الداخل = total deposits. إجمالي الخارج = total withdrawals.
 - حدد الفترة: من تاريخ أول حركة إلى آخر حركة (الشهر والسنة).
 - مهم جداً: كشف الحساب البنكي لا يفرّق بين الدخل التجاري والشخصي، ولا يُظهر الذمم ولا الديون ولا القسط. لذلك اترك هذه الحقول صفراً دائماً (receivables_total=0, debts=0) — سنسأل المقاول عنها لاحقاً. لا تخمّنها أبداً.
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-opus-4-5',
-        max_tokens: 2000,
+        max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content }]
       })
