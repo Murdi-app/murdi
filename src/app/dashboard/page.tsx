@@ -265,6 +265,7 @@ export default function Dashboard() {
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState('')
   const [extractedMonths, setExtractedMonths] = useState<any[]>([])
+  const [needsInput, setNeedsInput] = useState<string[]>([])
   const router = useRouter()
   const supabase = createClient()
 
@@ -388,7 +389,12 @@ export default function Dashboard() {
         rec_current: String(latest.receivables_total||0),
       }))
       setExtractedMonths(months)
-      setExtractMsg(`✅ استخرج Murdi ${months.length} ${months.length===1?'شهر':'أشهر'} — راجع الأرقام وأكمل تصنيف الذمم بالأسفل`)
+      setNeedsInput(result.needsInput || [])
+      if (result.needsInput && result.needsInput.length > 0) {
+        setExtractMsg(`✅ استخرج Murdi حركتك النقدية — أكمل الأرقام الناقصة بالأسفل ليكتمل التحليل`)
+      } else {
+        setExtractMsg(`✅ استخرج Murdi ${months.length} ${months.length===1?'شهر':'أشهر'} — راجع الأرقام بالأسفل`)
+      }
     } catch (e:any) { setExtractMsg('⚠️ تعذّر المعالجة: ' + e.message) }
     setExtracting(false)
   }
@@ -607,6 +613,19 @@ export default function Dashboard() {
 
           {extractMsg && (
             <div style={{marginTop:16,padding:'14px 18px',borderRadius:10,background:extractMsg.startsWith('✅')?'#0a2d1a':extractMsg.startsWith('⚠️')?'#2d1a0a':'#112244',border:`1px solid ${extractMsg.startsWith('✅')?'#22c55e40':extractMsg.startsWith('⚠️')?'#f9731640':C.border}`,color:C.white,fontSize:13,lineHeight:1.7}}>{extractMsg}</div>
+          )}
+
+          {needsInput.length > 0 && (
+            <div style={{marginTop:14,padding:'18px',background:'linear-gradient(135deg,#1a1505,#0f0c02)',borderRadius:12,border:`1px solid ${C.gold}50`}}>
+              <div style={{color:C.gold,fontSize:14,fontWeight:800,marginBottom:8}}>📝 أكمل الصورة — 3 أرقام يحتاجها Murdi</div>
+              <div style={{color:C.white,fontSize:13,lineHeight:1.9,marginBottom:6}}>كشف الحساب أظهر حركتك النقدية، لكنه لا يكشف:</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {needsInput.includes('receivables') && <div style={{color:'#7dd3fc',fontSize:13}}>• ذممك المدينة (المبالغ المستحقة لك من العملاء) — صنفها بالأسفل</div>}
+                {needsInput.includes('debts') && <div style={{color:'#7dd3fc',fontSize:13}}>• ديونك وقروضك — أدخلها في خانة الديون</div>}
+                {needsInput.includes('monthly_payment') && <div style={{color:'#7dd3fc',fontSize:13}}>• القسط الشهري — أدخله في خانته</div>}
+              </div>
+              <div style={{color:C.gray,fontSize:12,marginTop:10,lineHeight:1.7}}>💡 للتحليل الأدق مستقبلاً، ارفع <span style={{color:C.gold}}>ميزان المراجعة</span> — يحتوي كل شيء في مستند واحد.</div>
+            </div>
           )}
 
           {extractedMonths.length > 1 && (
