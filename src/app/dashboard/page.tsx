@@ -337,6 +337,9 @@ export default function Dashboard() {
   const [tender, setTender] = useState({description:'',value:'',duration:'',entity:''})
   const [bidResult, setBidResult] = useState<any>(null)
   const [bidLoading, setBidLoading] = useState(false)
+  const [projectsList, setProjectsList] = useState<any[]>([{name:'',value:'',margin:'',duration:'',status:'جاري التنفيذ',monthsElapsed:'',nextPaymentDays:'',nextPaymentValue:''}])
+  const [projectsResult, setProjectsResult] = useState<any>(null)
+  const [projectsLoading, setProjectsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -519,6 +522,38 @@ export default function Dashboard() {
       setAdvisorMsg(data.message || '')
     } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
     setLoadingAdvisor(false)
+  }
+
+  const runProjects = async () => {
+    const valid = projectsList.filter(p => parseFloat(p.value) > 0)
+    if (valid.length === 0 || !report) return
+    setProjectsLoading(true); setProjectsResult(null)
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projects: valid.map(p => ({
+            name: p.name, value: parseFloat(p.value)||0, margin: p.margin, duration: p.duration,
+            status: p.status, monthsElapsed: p.monthsElapsed,
+            nextPaymentDays: p.nextPaymentDays, nextPaymentValue: parseFloat(p.nextPaymentValue)||0
+          })),
+          current: {
+            bank_balance: parseFloat(form.bank_balance)||0,
+            expenses: parseFloat(form.expenses)||0,
+            fixedExpenses: parseFloat(form.expenses)||0,
+            recReal: Math.round(report.recReal),
+            debts: parseFloat(form.debts)||0
+          }
+        })
+      })
+      const data = await res.json()
+      if (data.error) setProjectsResult({ error: data.error })
+      else setProjectsResult(data)
+    } catch {
+      setProjectsResult({ error: 'تعذّر تحليل المشاريع' })
+    }
+    setProjectsLoading(false)
   }
 
   const runBid = async () => {
@@ -1027,6 +1062,78 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* محرك المشاريع — العمود الفقري للمقاول */}
+          <div style={{marginTop:24,background:'linear-gradient(135deg,#0d1b2e,#0a1320)',borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
+            <div style={{color:C.gold,fontSize:17,fontWeight:800,marginBottom:6}}>🏗️ مشاريعك — قلب تحليلك</div>
+            <div style={{color:C.gray,fontSize:13,marginBottom:18,lineHeight:1.7}}>أنت مقاول، لا محل بدخل شهري ثابت. أدخل مشاريعك الجارية والقادمة، وMurdi يحسب تدفقك النقدي عبر الزمن — متى تدخل دفعاتك، ومتى قد تواجه فجوة، ومتى تبحث عن المشروع القادم.</div>
+
+            {projectsList.map((p,idx)=>(
+              <div key={idx} style={{background:C.navy,borderRadius:10,padding:'14px',marginBottom:10,border:`1px solid ${C.border}`}}>
+                <input value={p.name} onChange={e=>{const n=[...projectsList];n[idx].name=e.target.value;setProjectsList(n)}} placeholder="اسم المشروع (مثال: مدرسة الرياض)" style={{width:'100%',padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box',marginBottom:8}} />
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                  <input value={p.value} onChange={e=>{const n=[...projectsList];n[idx].value=e.target.value;setProjectsList(n)}} placeholder="قيمة المشروع" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                  <input value={p.margin} onChange={e=>{const n=[...projectsList];n[idx].margin=e.target.value;setProjectsList(n)}} placeholder="الهامش %" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                  <input value={p.duration} onChange={e=>{const n=[...projectsList];n[idx].duration=e.target.value;setProjectsList(n)}} placeholder="المدة (أشهر)" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                  <input value={p.monthsElapsed} onChange={e=>{const n=[...projectsList];n[idx].monthsElapsed=e.target.value;setProjectsList(n)}} placeholder="بدأ قبل كم شهر؟" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                </div>
+                <select value={p.status} onChange={e=>{const n=[...projectsList];n[idx].status=e.target.value;setProjectsList(n)}} style={{width:'100%',padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box',fontFamily:'inherit',marginBottom:8}}>
+                  <option>جاري التنفيذ</option>
+                  <option>قادم (تعاقدت ولم يبدأ)</option>
+                  <option>أوشك على الانتهاء</option>
+                  <option>فرصة محتملة (لم أتعاقد)</option>
+                </select>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  <input value={p.nextPaymentValue} onChange={e=>{const n=[...projectsList];n[idx].nextPaymentValue=e.target.value;setProjectsList(n)}} placeholder="الدفعة القادمة (ريال)" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                  <input value={p.nextPaymentDays} onChange={e=>{const n=[...projectsList];n[idx].nextPaymentDays=e.target.value;setProjectsList(n)}} placeholder="بعد كم يوم؟" type="number" style={{padding:'9px 11px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navyLight,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                </div>
+                {projectsList.length>1 && (
+                  <button onClick={()=>setProjectsList(projectsList.filter((_,i)=>i!==idx))} style={{marginTop:8,background:'transparent',border:'none',color:'#fca5a5',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>× حذف المشروع</button>
+                )}
+              </div>
+            ))}
+
+            <button onClick={()=>setProjectsList([...projectsList,{name:'',value:'',margin:'',duration:'',status:'جاري التنفيذ',monthsElapsed:'',nextPaymentDays:'',nextPaymentValue:''}])} style={{width:'100%',padding:'10px',borderRadius:8,border:`1px dashed ${C.gold}60`,background:'transparent',color:C.gold,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit',marginBottom:12}}>+ أضف مشروعاً</button>
+
+            <button onClick={runProjects} disabled={projectsLoading||projectsList.every(p=>!parseFloat(p.value))}
+              style={{width:'100%',padding:'14px',borderRadius:10,border:'none',background:projectsList.some(p=>parseFloat(p.value)>0)?`linear-gradient(135deg,${C.gold},${C.goldLight})`:'#333',color:projectsList.some(p=>parseFloat(p.value)>0)?C.navy:'#888',fontSize:15,fontWeight:800,cursor:projectsList.some(p=>parseFloat(p.value)>0)?'pointer':'default',fontFamily:'inherit'}}>
+              {projectsLoading?'🏗️ Murdi يحلل تدفق مشاريعك...':'حلّل محفظة مشاريعي'}
+            </button>
+
+            {projectsResult && !projectsResult.error && (
+              <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:12}}>
+                {[
+                  {t:'📊 صحة محفظتك',v:projectsResult.portfolioHealth,c:C.gold},
+                  {t:'🏜️ صمودك بين المشاريع',v:projectsResult.survivalBetweenProjects,c:'#fbbf24'},
+                  {t:'⚠️ الفجوة النقدية القادمة',v:projectsResult.cashGap,c:'#fca5a5'},
+                  {t:'⏰ متى تبحث عن المشروع القادم',v:projectsResult.nextProjectUrgency,c:'#7dd3fc'},
+                  {t:'💰 ربحك الحقيقي المتوقع',v:projectsResult.realProfit,c:'#4ade80'},
+                ].map((it,i)=>it.v&&(
+                  <div key={i} style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                    <div style={{color:it.c,fontSize:13,fontWeight:700,marginBottom:6}}>{it.t}</div>
+                    <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{it.v}</div>
+                  </div>
+                ))}
+                {projectsResult.topAdvice?.length>0 && (
+                  <div style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                    <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:8}}>✅ خطوات عملية</div>
+                    {projectsResult.topAdvice.map((a:string,i:number)=>(<div key={i} style={{color:C.white,fontSize:13,lineHeight:1.8}}>• {a}</div>))}
+                  </div>
+                )}
+                {projectsResult.advisorNote && (
+                  <div style={{padding:'16px',borderRadius:12,background:'#0a2540',borderRight:`3px solid ${C.gold}`}}>
+                    <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:6}}>🎓 د. عبدالحكيم المرضي</div>
+                    <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{projectsResult.advisorNote}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {projectsResult?.error && (
+              <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{projectsResult.error}</div>
+            )}
           </div>
 
           <button onClick={handleAnalyze} style={{marginTop:24,width:'100%',padding:'16px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:800,cursor:'pointer'}}>
