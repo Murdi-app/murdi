@@ -222,7 +222,7 @@ function generateReport(f: any) {
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
-  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', rec_current:'', rec_late:'', rec_bad:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean' })
+  const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', rec_current:'', rec_late:'', rec_bad:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean', month_timing:'mid', expected_inflow:'', expected_inflow_days:'', upcoming_obligations:'', upcoming_obligations_days:'' })
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -292,6 +292,11 @@ export default function Dashboard() {
           years_in_business: form.years_in_business || '',
           has_gov_contracts: form.has_gov_contracts || 'no',
           credit_status: form.credit_status || 'clean',
+          month_timing: form.month_timing || 'mid',
+          expected_inflow: parseFloat(form.expected_inflow)||0,
+          expected_inflow_days: parseInt(form.expected_inflow_days)||0,
+          upcoming_obligations: parseFloat(form.upcoming_obligations)||0,
+          upcoming_obligations_days: parseInt(form.upcoming_obligations_days)||0,
           murdiScore: r.score,
           fundingScore: r.fundingScore,
           distress: r.distress,
@@ -434,6 +439,10 @@ export default function Dashboard() {
     { key:'rec_bad', label:'ذمم مشكوك فيها (أكثر من 180 يوم)', placeholder:'20000', tip:'ذمم قديمة أو عميل متعثر — احتمال تحصيلها منخفض' },
   { key:'monthly_payment', label:'القسط الشهري للديون', placeholder:'10000', tip:'المبلغ الذي تدفعه شهرياً — اتركه صفراً إذا لا توجد ديون' },
     { key:'employees', label:'عدد الموظفين', placeholder:'25', tip:'إجمالي عدد موظفيك الحاليين بما فيهم العمال والإداريين' },
+    { key:'expected_inflow', label:'دفعات/مستخلصات متوقعة (30 يوم)', placeholder:'300000', tip:'مبلغ تتوقع دخوله خلال 30 يوماً — مستخلص حكومي أو دفعة عميل. اتركه صفراً إن لا يوجد' },
+    { key:'expected_inflow_days', label:'بعد كم يوم تتوقع الدفعة؟', placeholder:'7', tip:'كم يوماً يفصلك عن دخول هذه الدفعة تقريباً' },
+    { key:'upcoming_obligations', label:'التزامات ثابتة قادمة', placeholder:'200000', tip:'رواتب أو مستحقات ثابتة عليك دفعها قريباً — اتركه صفراً إن لا يوجد' },
+    { key:'upcoming_obligations_days', label:'بعد كم يوم الالتزام؟', placeholder:'10', tip:'كم يوماً يفصلك عن موعد هذا الالتزام تقريباً' },
 
   ]
 
@@ -500,6 +509,23 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+
+          {/* توقيت الشهر — ذكاء سياقي للسيولة */}
+          <div style={{marginTop:12,padding:'20px',background:C.navy,borderRadius:12,border:`1px solid ${C.border}`}}>
+            <div style={{color:C.gray,fontSize:13,marginBottom:4}}>أين أنت في دورة الشهر؟</div>
+            <div style={{color:'#5a7a99',fontSize:11,marginBottom:10,lineHeight:1.4}}>يساعد Murdi على تفسير رصيدك بدقة — الرصيد المنخفض أول الشهر يختلف عن آخره</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {[
+                {value:'start', label:'🌅 بداية الشهر'},
+                {value:'mid', label:'☀️ منتصف الشهر'},
+                {value:'end', label:'🌙 نهاية الشهر'},
+              ].map(opt => (
+                <button key={opt.value} onClick={()=>setForm({...form,month_timing:opt.value})}
+                  style={{flex:1,minWidth:100,padding:'12px',borderRadius:8,border:`1px solid ${form.month_timing===opt.value?C.gold:C.border}`,background:form.month_timing===opt.value?C.gold:C.navy,color:form.month_timing===opt.value?C.navy:C.white,fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>{opt.label}</button>
+              ))}
+            </div>
+          </div>
+
           {parseFloat(form.debts) > 0 && (
             <div style={{marginTop:12,padding:'20px',background:C.navy,borderRadius:12,border:`1px solid ${C.border}`,display:'flex',flexDirection:'column',gap:16}}>
               
