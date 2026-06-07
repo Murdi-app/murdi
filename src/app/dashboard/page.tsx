@@ -33,6 +33,20 @@ function generateReport(f: any) {
   const daysLeft = dailyBurn>0 ? b/dailyBurn : 0
   const monthlyProfit = r - e
 
+  // Survival Clock — ساعة البقاء الذكية (تدمج السياق الزمني)
+  const expInflow = parseFloat(f.expected_inflow)||0
+  const expInflowDays = parseInt(f.expected_inflow_days)||0
+  const upcomingOblig = parseFloat(f.upcoming_obligations)||0
+  // السيولة الفعلية المتاحة = الرصيد + الدفعات المتوقعة − الالتزامات القادمة
+  const effectiveLiquidity = b + expInflow - upcomingOblig
+  // أيام البقاء الواقعية مع الأخذ بالحسبان الدخل القادم
+  let survivalDays = dailyBurn>0 ? effectiveLiquidity/dailyBurn : 999
+  if (survivalDays < 0) survivalDays = 0
+  if (survivalDays > 999) survivalDays = 999
+  // التصنيف اللوني
+  const survivalColor = survivalDays >= 90 ? '#22c55e' : survivalDays >= 45 ? '#C8A84B' : survivalDays >= 21 ? '#f97316' : '#ef4444'
+  const survivalLabel = survivalDays >= 90 ? 'منطقة آمنة' : survivalDays >= 45 ? 'منطقة مراقبة' : survivalDays >= 21 ? 'منطقة تحذير' : 'منطقة خطر'
+
   const risks: RiskItem[] = []
   const actions: string[] = []
   const impacts: string[] = []
@@ -216,7 +230,7 @@ function generateReport(f: any) {
     return d.toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
   })() : null;
 
-  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr }
+  return { risks: rankedRisks, actions, impacts, strengths, opportunities, score, scoreLabel, forecast3m, vsMarket, margin, daysLeft, monthlyProfit, fundingScore, fundingWeaknesses, topFundingAction, fundingImpact, executiveSummary, rec, recReal, recCurrent, recLate, recBad, recWriteoff, dailyBurn, cashRunwayDate, distress, distressLabel, distressColor, dso, dr, survivalDays, survivalColor, survivalLabel, effectiveLiquidity, expInflow, upcomingOblig }
 }
 
 export default function Dashboard() {
@@ -242,6 +256,8 @@ export default function Dashboard() {
   const [activeQuestion, setActiveQuestion] = useState<number|null>(null)
   const [questionAnswer, setQuestionAnswer] = useState<string>('')
   const [loadingQuestion, setLoadingQuestion] = useState(false)
+  const [simExpenseCut, setSimExpenseCut] = useState(0)
+  const [simCollect, setSimCollect] = useState(0)
   const router = useRouter()
   const supabase = createClient()
 
@@ -828,6 +844,73 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+
+            {/* Murdi Survival Clock™️ — ساعة البقاء التفاعلية */}
+            <div style={{background:'linear-gradient(135deg,#0a1828,#050f1a)',borderRadius:16,padding:'28px',border:`2px solid ${report.survivalColor}50`,marginBottom:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                <span style={{fontSize:18}}>⏳</span>
+                <div style={{color:report.survivalColor,fontSize:16,fontWeight:800,letterSpacing:1}}>Murdi Survival Clock™️ — ساعة البقاء</div>
+              </div>
+              <div style={{color:C.gray,fontSize:12,marginBottom:20}}>كم يوماً تصمد شركتك بسيولتها الفعلية — محسوبة بالرصيد والدفعات القادمة والالتزامات</div>
+
+              {(() => {
+                const cutAmount = report.dailyBurn * 30 * (simExpenseCut/100)
+                const collectAmount = report.recReal * (simCollect/100)
+                const simLiquidity = report.effectiveLiquidity + (cutAmount) + collectAmount
+                const simBurn = report.dailyBurn * (1 - simExpenseCut/100)
+                let simDays = simBurn>0 ? simLiquidity/simBurn : 999
+                if (simDays<0) simDays=0; if (simDays>999) simDays=999
+                const simColor = simDays>=90?'#22c55e':simDays>=45?'#C8A84B':simDays>=21?'#f97316':'#ef4444'
+                const baseDays = Math.round(report.survivalDays)
+                const newDays = Math.round(simDays)
+                const diff = newDays - baseDays
+                return (
+                  <div>
+                    <div style={{textAlign:'center',marginBottom:20}}>
+                      <div style={{fontSize:64,fontWeight:900,color:simColor,lineHeight:1,transition:'color 0.4s'}}>{newDays >= 999 ? '999+' : newDays}</div>
+                      <div style={{color:C.gray,fontSize:14,marginTop:4}}>يوم متبقٍ</div>
+                      {diff !== 0 && (
+                        <div style={{color:diff>0?'#22c55e':'#ef4444',fontSize:14,fontWeight:700,marginTop:8}}>
+                          {diff>0?'▲ +':'▼ '}{diff} يوم {diff>0?'بقرارك':''}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{height:12,background:'#0a1420',borderRadius:8,overflow:'hidden',marginBottom:8}}>
+                      <div style={{height:'100%',borderRadius:8,background:simColor,width:`${Math.min(100,(newDays/120)*100)}%`,transition:'width 0.6s ease, background 0.4s'}}/>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+                      <div style={{background:`${simColor}20`,border:`1px solid ${simColor}40`,borderRadius:20,padding:'6px 18px',color:simColor,fontSize:13,fontWeight:700}}>
+                        {simDays>=90?'منطقة آمنة':simDays>=45?'منطقة مراقبة':simDays>=21?'منطقة تحذير':'منطقة خطر'}
+                      </div>
+                    </div>
+
+                    <div style={{background:'#0a1420',borderRadius:12,padding:'20px',display:'flex',flexDirection:'column',gap:20}}>
+                      <div style={{color:C.gold,fontSize:13,fontWeight:700,textAlign:'center'}}>🎛️ جرّب قراراتك — وشوف الساعة تتحرك</div>
+                      <div>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                          <span style={{color:C.white,fontSize:13}}>خفّض مصروفاتك</span>
+                          <span style={{color:C.gold,fontSize:13,fontWeight:700}}>{simExpenseCut}%</span>
+                        </div>
+                        <input type="range" min="0" max="40" value={simExpenseCut} onChange={e=>setSimExpenseCut(parseInt(e.target.value))}
+                          style={{width:'100%',accentColor:C.gold,cursor:'pointer'}} />
+                      </div>
+                      <div>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                          <span style={{color:C.white,fontSize:13}}>حصّل من ذممك القابلة للتحصيل</span>
+                          <span style={{color:C.gold,fontSize:13,fontWeight:700}}>{simCollect}%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={simCollect} onChange={e=>setSimCollect(parseInt(e.target.value))}
+                          style={{width:'100%',accentColor:C.gold,cursor:'pointer'}} />
+                      </div>
+                      {(simExpenseCut>0||simCollect>0) && (
+                        <button onClick={()=>{setSimExpenseCut(0);setSimCollect(0)}}
+                          style={{background:'transparent',border:`1px solid ${C.border}`,borderRadius:8,padding:'8px',color:C.gray,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>↺ إعادة تعيين</button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
 
             {/* Murdi Distress Index™️ */}
             <div style={{background:report.distress>=70?'linear-gradient(135deg,#2d0a0a,#1a0505)':report.distress>=45?'linear-gradient(135deg,#2d1a0a,#1a0f05)':report.distress>=20?'linear-gradient(135deg,#1a1a0a,#0f0f05)':'linear-gradient(135deg,#0a2d1a,#051a0f)',borderRadius:16,padding:'28px',border:`2px solid ${report.distressColor}40`}}>
