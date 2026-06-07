@@ -261,6 +261,10 @@ export default function Dashboard() {
   const [simCollect, setSimCollect] = useState(0)
   const [sendingAlert, setSendingAlert] = useState(false)
   const [alertSent, setAlertSent] = useState(false)
+  const [uploadDocType, setUploadDocType] = useState<'trial'|'bank'>('trial')
+  const [extracting, setExtracting] = useState(false)
+  const [extractMsg, setExtractMsg] = useState('')
+  const [extractedMonths, setExtractedMonths] = useState<any[]>([])
   const router = useRouter()
   const supabase = createClient()
 
@@ -351,6 +355,42 @@ export default function Dashboard() {
     setShareUrl(window.location.origin + '/report/' + shareId)
     setSaved(true)
     setTimeout(()=>setSaved(false), 3000)
+  }
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setExtracting(true); setExtractMsg('Murdi يقرأ مستنداتك...'); setExtractedMonths([])
+    try {
+      const docs = await Promise.all(Array.from(files).slice(0,3).map(async (file) => {
+        const data = await new Promise<string>((res, rej) => {
+          const r = new FileReader()
+          r.onload = () => res((r.result as string).split(',')[1])
+          r.onerror = () => rej(new Error('فشل قراءة الملف'))
+          r.readAsDataURL(file)
+        })
+        return { media_type: file.type, data }
+      }))
+      const res = await fetch('/api/extract', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documents: docs, docType: uploadDocType })
+      })
+      const result = await res.json()
+      if (result.error) { setExtractMsg('⚠️ ' + result.error); setExtracting(false); return }
+      const months = result.months || []
+      if (months.length === 0) { setExtractMsg('⚠️ لم أتمكن من استخراج أرقام واضحة — جرّب مستنداً أوضح أو أدخل يدوياً'); setExtracting(false); return }
+      // الأحدث = آخر شهر في القائمة، نعبّي النموذج به
+      const latest = months[months.length - 1]
+      setForm(prev => ({ ...prev,
+        revenue: String(latest.revenue||0),
+        expenses: String(latest.expenses||0),
+        bank_balance: String(latest.bank_balance||0),
+        debts: String(latest.debts||0),
+        rec_current: String(latest.receivables_total||0),
+      }))
+      setExtractedMonths(months)
+      setExtractMsg(`✅ استخرج Murdi ${months.length} ${months.length===1?'شهر':'أشهر'} — راجع الأرقام وأكمل تصنيف الذمم بالأسفل`)
+    } catch (e:any) { setExtractMsg('⚠️ تعذّر المعالجة: ' + e.message) }
+    setExtracting(false)
   }
 
   const sendAlert = async () => {
@@ -538,6 +578,53 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* منطقة رفع المستندات — استخراج ذكي عبر Murdi */}
+        <div style={{background:'linear-gradient(135deg,#0f1f3a,#0a1628)',borderRadius:16,padding:'28px',border:`2px solid ${C.gold}40`,marginBottom:24}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+            <span style={{fontSize:20}}>📄</span>
+            <div style={{color:C.gold,fontSize:17,fontWeight:800}}>دع Murdi يقرأ مستنداتك</div>
+          </div>
+          <div style={{color:C.gray,fontSize:13,marginBottom:20,lineHeight:1.7}}>بدل الإدخال اليدوي — ارفع مستندك ويستخرج Murdi الأرقام تلقائياً. <span style={{color:C.gold}}>ارفع آخر 3 أشهر</span> ليكتشف أنماطك من اليوم الأول، أو ابدأ بشهر واحد.</div>
+
+          <div style={{display:'flex',gap:10,marginBottom:18,flexWrap:'wrap'}}>
+            <button onClick={()=>setUploadDocType('trial')} style={{flex:1,minWidth:160,padding:'14px',borderRadius:10,border:`1px solid ${uploadDocType==='trial'?C.gold:C.border}`,background:uploadDocType==='trial'?C.gold:'transparent',color:uploadDocType==='trial'?C.navy:C.white,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
+              📊 ميزان مراجعة <span style={{fontSize:11,opacity:0.8}}>(الأدق)</span>
+            </button>
+            <button onClick={()=>setUploadDocType('bank')} style={{flex:1,minWidth:160,padding:'14px',borderRadius:10,border:`1px solid ${uploadDocType==='bank'?C.gold:C.border}`,background:uploadDocType==='bank'?C.gold:'transparent',color:uploadDocType==='bank'?C.navy:C.white,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>
+              🏦 كشف حساب بنكي
+            </button>
+          </div>
+
+          <label style={{display:'block',cursor:'pointer'}}>
+            <input type="file" accept=".pdf,image/*" multiple onChange={e=>handleUpload(e.target.files)} style={{display:'none'}} disabled={extracting} />
+            <div style={{border:`2px dashed ${C.gold}60`,borderRadius:12,padding:'32px',textAlign:'center',background:'#0a142080',transition:'all 0.3s'}}>
+              <div style={{fontSize:36,marginBottom:8}}>{extracting?'⏳':'⬆️'}</div>
+              <div style={{color:C.white,fontSize:15,fontWeight:700,marginBottom:4}}>{extracting?'Murdi يقرأ ويحلل...':'اضغط لرفع المستند'}</div>
+              <div style={{color:C.gray,fontSize:12}}>PDF أو صورة — حتى 3 ملفات ({uploadDocType==='trial'?'ميزان مراجعة':'كشف حساب'})</div>
+            </div>
+          </label>
+
+          {extractMsg && (
+            <div style={{marginTop:16,padding:'14px 18px',borderRadius:10,background:extractMsg.startsWith('✅')?'#0a2d1a':extractMsg.startsWith('⚠️')?'#2d1a0a':'#112244',border:`1px solid ${extractMsg.startsWith('✅')?'#22c55e40':extractMsg.startsWith('⚠️')?'#f9731640':C.border}`,color:C.white,fontSize:13,lineHeight:1.7}}>{extractMsg}</div>
+          )}
+
+          {extractedMonths.length > 1 && (
+            <div style={{marginTop:14,padding:'16px',background:'#0a1420',borderRadius:10,border:`1px solid ${C.border}`}}>
+              <div style={{color:C.gold,fontSize:12,fontWeight:700,marginBottom:10}}>📅 الأشهر المستخرجة (ستُحفظ كتاريخ لذاكرة Murdi)</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {extractedMonths.map((m:any,i:number)=>(
+                  <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:C.gray,padding:'6px 0',borderBottom:i<extractedMonths.length-1?`1px solid ${C.border}`:'none'}}>
+                    <span>{m.month}/{m.year}</span>
+                    <span>إيراد {Number(m.revenue||0).toLocaleString('ar-SA')} • ربح {Number((m.revenue||0)-(m.expenses||0)).toLocaleString('ar-SA')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{marginTop:16,textAlign:'center',color:C.gray,fontSize:12}}>— أو أدخل أرقامك يدوياً بالأسفل —</div>
+        </div>
 
         <div style={{background:C.navyLight,borderRadius:16,padding:'32px',border:`1px solid ${C.border}`,marginBottom:24}}>
           <div style={{color:C.white,fontSize:18,fontWeight:700,marginBottom:24}}>بيانات الشهر الحالي</div>
