@@ -319,6 +319,9 @@ export default function Dashboard() {
   const [invoices, setInvoices] = useState<any[]>([{value:'',submittedDaysAgo:'',status:'قيد المراجعة',entity:''}])
   const [istikhlasResult, setIstikhlasResult] = useState<any>(null)
   const [istikhlasLoading, setIstikhlasLoading] = useState(false)
+  const [tender, setTender] = useState({description:'',value:'',duration:'',entity:''})
+  const [bidResult, setBidResult] = useState<any>(null)
+  const [bidLoading, setBidLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -501,6 +504,37 @@ export default function Dashboard() {
       setAdvisorMsg(data.message || '')
     } catch { setAdvisorMsg('تعذر الاتصال بـ Murdi Advisor') }
     setLoadingAdvisor(false)
+  }
+
+  const runBid = async () => {
+    if (!tender.description.trim() || !report) return
+    setBidLoading(true); setBidResult(null)
+    try {
+      const res = await fetch('/api/bid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tender,
+          current: {
+            revenue: parseFloat(form.revenue)||0,
+            expenses: parseFloat(form.expenses)||0,
+            bank_balance: parseFloat(form.bank_balance)||0,
+            recReal: Math.round(report.recReal),
+            debts: parseFloat(form.debts)||0,
+            survivalDays: Math.round(report.survivalDays),
+            score: report.score,
+            employees: parseFloat(form.employees)||0,
+            years: form.years_in_business||''
+          }
+        })
+      })
+      const data = await res.json()
+      if (data.error) setBidResult({ error: data.error })
+      else setBidResult(data)
+    } catch {
+      setBidResult({ error: 'تعذّر تحليل العطاء' })
+    }
+    setBidLoading(false)
   }
 
   const runIstikhlas = async () => {
@@ -1572,6 +1606,68 @@ export default function Dashboard() {
               )}
               {istikhlasResult?.error && (
                 <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{istikhlasResult.error}</div>
+              )}
+            </div>
+
+            {/* مؤشر جاهزية العطاء */}
+            <div style={{background:'linear-gradient(135deg,#0d1f2d,#0a151f)',borderRadius:16,padding:'24px',border:`1px solid #38bdf850`}}>
+              <div style={{color:'#7dd3fc',fontSize:16,fontWeight:800,marginBottom:6}}>🎯 مؤشر جاهزية العطاء™️</div>
+              <div style={{color:C.gray,fontSize:13,marginBottom:16,lineHeight:1.6}}>تفكّر في التقديم على عطاء؟ Murdi يقيّم جاهزيتك ويحسب أقل سعر آمن قبل أن تقدّم</div>
+
+              <textarea value={tender.description} onChange={e=>setTender({...tender,description:e.target.value})}
+                placeholder="وصف العطاء — مثال: إنشاء مدرسة ابتدائية، وزارة التعليم"
+                style={{width:'100%',padding:'12px 14px',borderRadius:10,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:14,boxSizing:'border-box',minHeight:60,fontFamily:'inherit',marginBottom:12}} />
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+                <input value={tender.value} onChange={e=>setTender({...tender,value:e.target.value})} placeholder="قيمة المشروع (ريال)" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+                <input value={tender.duration} onChange={e=>setTender({...tender,duration:e.target.value})} placeholder="مدة التنفيذ (أشهر)" type="number" style={{padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box'}} />
+              </div>
+              <input value={tender.entity} onChange={e=>setTender({...tender,entity:e.target.value})} placeholder="الجهة (اختياري)" style={{width:'100%',padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.navy,color:C.white,fontSize:13,boxSizing:'border-box',marginBottom:14}} />
+
+              <button onClick={runBid} disabled={bidLoading||!tender.description.trim()}
+                style={{width:'100%',padding:'14px',borderRadius:10,border:'none',background:tender.description.trim()?'linear-gradient(135deg,#0284c7,#38bdf8)':'#333',color:'#fff',fontSize:15,fontWeight:800,cursor:tender.description.trim()?'pointer':'default',fontFamily:'inherit'}}>
+                {bidLoading?'🎯 Murdi يقيّم جاهزيتك...':'قيّم جاهزيتي للعطاء'}
+              </button>
+
+              {bidResult && !bidResult.error && (
+                <div style={{marginTop:18,display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{padding:'16px',borderRadius:12,background:bidResult.readiness==='ready'?'#0a2d1a':bidResult.readiness==='notReady'?'#2d0a0a':'#2d1f0a',border:`1px solid ${bidResult.readiness==='ready'?'#22c55e':bidResult.readiness==='notReady'?'#ef4444':'#f59e0b'}60`}}>
+                    <div style={{fontSize:13,fontWeight:800,marginBottom:6,color:bidResult.readiness==='ready'?'#22c55e':bidResult.readiness==='notReady'?'#ef4444':'#f59e0b'}}>
+                      {bidResult.readiness==='ready'?'✅ جاهز — قدّم':bidResult.readiness==='notReady'?'🛑 غير جاهز':'⚠️ جاهز بشروط'}
+                    </div>
+                    <div style={{color:C.white,fontSize:14,lineHeight:1.7}}>{bidResult.readinessText}</div>
+                  </div>
+                  {[
+                    {t:'🏗️ قدرتك على التنفيذ',v:bidResult.capacityCheck,c:'#7dd3fc'},
+                    {t:'💵 أقل سعر آمن (لا تنزل تحته)',v:bidResult.pricingFloor,c:'#fbbf24'},
+                  ].map((it,i)=>it.v&&(
+                    <div key={i} style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:it.c,fontSize:13,fontWeight:700,marginBottom:6}}>{it.t}</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{it.v}</div>
+                    </div>
+                  ))}
+                  {bidResult.risks?.length>0 && (
+                    <div style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:'#fca5a5',fontSize:13,fontWeight:700,marginBottom:8}}>⚠️ مخاطر هذا العطاء</div>
+                      {bidResult.risks.map((rk:string,i:number)=>(<div key={i} style={{color:C.white,fontSize:13,lineHeight:1.8}}>• {rk}</div>))}
+                    </div>
+                  )}
+                  {bidResult.conditions?.length>0 && (
+                    <div style={{padding:'14px',borderRadius:10,background:C.navy,border:`1px solid ${C.border}`}}>
+                      <div style={{color:'#7dd3fc',fontSize:13,fontWeight:700,marginBottom:8}}>📋 شروط التقديم</div>
+                      {bidResult.conditions.map((c:string,i:number)=>(<div key={i} style={{color:C.white,fontSize:13,lineHeight:1.8}}>• {c}</div>))}
+                    </div>
+                  )}
+                  {bidResult.advisorNote && (
+                    <div style={{padding:'16px',borderRadius:12,background:'#0a2540',borderRight:`3px solid ${C.gold}`}}>
+                      <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:6}}>🎓 د. عبدالحكيم المرضي</div>
+                      <div style={{color:C.white,fontSize:13,lineHeight:1.7}}>{bidResult.advisorNote}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {bidResult?.error && (
+                <div style={{marginTop:14,padding:'12px',borderRadius:8,background:'#2d1a0a',color:'#fca5a5',fontSize:13}}>{bidResult.error}</div>
               )}
             </div>
 
