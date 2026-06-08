@@ -5,7 +5,7 @@ const C = { navy:'#0B1C3D', navyLight:'#112244', border:'#1E3A6E', gold:'#F5C842
 
 export default function PricingPage() {
   const router = useRouter()
-  const features = ['Murdi Score الشهري من 85 نقطة','Executive Summary — ملخص المدير التنفيذي','Top Risks مرتبة بالتأثير','Action Engine — إجراءات قابلة للتنفيذ','Impact Engine — الأثر بالأرقام','Funding Readiness Engine','Opportunity Engine — فرصك الآن','Risk Velocity™️ — سرعة تدهور المؤشرات','Company Memory™️ — تاريخ شركتك','Financial Advisor — كشف الأنماط الخفية','مشاركة التقرير برابط للبنك','شهادة Murdi Score السنوية','مقارنة مع السوق السعودي']
+  const features = ['محرك المشاريع — تحليل تدفقك عبر دورات المشاريع','محرك المستخلصات — سيولتك المجمّدة في اعتماد','كاشف الربح الوهمي — ربح الورق مقابل النقد','مؤشر جاهزية العطاء — قبل أن تقدّم','التوأم المالي — حاكِ قرارك الكبير قبل اتخاذه','ساعة البقاء — كم تصمد بين المشاريع','Murdi Score + المخاطر مرتبة بالتأثير','نبض الالتزامات الحكومية (GOSI والتأمينات)','ذاكرة Murdi الزمنية — تاريخ شركتك','شهادة Murdi Score السنوية للبنوك','مقارنة مع السوق السعودي','أكثر من 12 محركا ذكياً يعمل لصالحك']
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
       <div style={{background:C.navyLight,padding:'16px 32px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
@@ -44,7 +44,7 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
-          <button onClick={()=>window.open('https://wa.me/966500000000?text=أريد الاشتراك في Murdi','_blank')} style={{width:'100%',padding:'18px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:900,cursor:'pointer',marginBottom:12}}>انضم الآن عبر WhatsApp</button>
+          <button onClick={()=>window.open('https://wa.me/966570749196?text=السلام عليكم، أريد الاشتراك في Murdi','_blank')} style={{width:'100%',padding:'18px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:17,fontWeight:900,cursor:'pointer',marginBottom:12}}>انضم الآن عبر WhatsApp</button>
           <button onClick={()=>router.push('/auth/signup')} style={{width:'100%',padding:'14px',borderRadius:12,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,fontSize:14,cursor:'pointer'}}>جرّب مجاناً أولاً — بدون التزام</button>
           <div style={{textAlign:'center',marginTop:12,color:C.gray,fontSize:12}}>الاشتراك السنوي يمنح شهرين مجاناً</div>
         </div>
