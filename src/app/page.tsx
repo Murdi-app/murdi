@@ -175,7 +175,7 @@ export default function Home(){
             <div style={{fontWeight:900,fontSize:20,color:C.white,lineHeight:1}}>
               Murdi™️ &nbsp;<span style={{color:C.gold,fontFamily:"'Tajawal',sans-serif"}}>| مُرضي</span>
             </div>
-            <div style={{fontSize:10,color:"#7A90AB",letterSpacing:1.5,marginTop:3}}>CONSTRUCTION INTELLIGENCE</div>
+            <div style={{fontSize:10,color:"#7A90AB",letterSpacing:1.5,marginTop:3}}>مستشارك المالي الذكي للمقاولين</div>
           </div>
         </div>
 

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Murdi — نظام تشغيل ذكاء المقاولات",
+  title: "Murdi | مستشارك المالي الذكي للمقاولين",
   description: "منصة الذكاء المالي للمقاولين السعوديين",
   manifest: "/manifest.json",
   appleWebApp: {
