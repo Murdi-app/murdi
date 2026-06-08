@@ -1556,7 +1556,7 @@ export default function Dashboard() {
                     <div style={{background:'linear-gradient(135deg,#0d2a5e,#112244)',borderRadius:10,padding:'16px',marginTop:12,border:`1px solid ${C.gold}40`}}>
                       <div style={{color:C.gold,fontSize:13,fontWeight:700,marginBottom:8}}>📞 رسالة من Murdi</div>
                       <div style={{color:C.white,fontSize:14,lineHeight:1.8}}>{fundingOpp.advisorNote}</div>
-                      <button onClick={()=>window.open('https://wa.me/966500000000?text=أريد معرفة فرص التمويل لشركتي','_blank')} style={{marginTop:12,width:'100%',padding:'12px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                      <button onClick={()=>window.open('https://wa.me/966570749196?text=السلام عليكم، أريد معرفة فرص التمويل لشركتي','_blank')} style={{marginTop:12,width:'100%',padding:'12px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:14,fontWeight:700,cursor:'pointer'}}>
                         تواصل مع فريق د. عبدالحكيم
                       </button>
                     </div>

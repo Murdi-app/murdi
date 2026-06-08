@@ -36,7 +36,7 @@ export default function ReportPage() {
         {/* Header */}
         <div style={{textAlign:'center',marginBottom:32,borderBottom:`1px solid #1E3A6E`,paddingBottom:24}}>
           <div style={{fontSize:32,fontWeight:900,color:C.gold,letterSpacing:3}}>MURDI</div>
-          <div style={{fontSize:12,color:C.gray,letterSpacing:2,marginBottom:16}}>CONSTRUCTION INTELLIGENCE</div>
+          <div style={{fontSize:12,color:C.gray,letterSpacing:2,marginBottom:16}}>مستشارك المالي الذكي</div>
           <div style={{fontSize:20,color:C.white,fontWeight:700}}>{company}</div>
           <div style={{fontSize:14,color:C.gray,marginTop:4}}>التقرير المالي الذكي — {new Date().toLocaleDateString('ar-SA', {year:'numeric',month:'long'})}</div>
         </div>
@@ -119,7 +119,7 @@ export default function ReportPage() {
 
         {/* Footer */}
         <div style={{textAlign:'center',color:C.gray,fontSize:12,borderTop:'1px solid #1E3A6E',paddingTop:16}}>
-          <div style={{color:C.gold,fontWeight:700,marginBottom:4}}>MURDI — نظام تشغيل ذكاء المقاولات</div>
+          <div style={{color:C.gold,fontWeight:700,marginBottom:4}}>MURDI — مستشارك المالي الذكي</div>
           <div>murdi.vercel.app | تقرير سري ومخصص لـ {company}</div>
         </div>
       </div>
