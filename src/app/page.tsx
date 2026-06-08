@@ -27,14 +27,19 @@ function calc(b:number,r:number,e:number,d:number,rec:number):Result {
   const cm=e>0?b/e:0, cd=cm*30, cf=r-e;
   const col=r>0?(rec/r)*30:0, dr=(r*12)>0?d/(r*12):0;
   let fh=0;
-  fh+=cm>=3?25:cm>=1?15:0;
-  fh+=cf>0?(cf/r>0.15?25:15):0;
+  fh+=cm>=3?25:cm>=1?15:cm>0?5:0;
+  // الربحية: الخسارة تُعاقب فعليا لا تكتفي بصفر (فلسفة Murdi)
+  fh+=cf>0?(cf/r>0.15?25:cf/r>0.08?18:10):-10;
   fh+=col<60?20:col<90?10:0;
   fh+=dr<0.5?15:dr<1?8:0;
-  const score=Math.round(fh*0.4+65*0.25+65*0.2+60*0.15);
+  let score=Math.round(fh*0.4+65*0.25+65*0.2+60*0.15);
+  if(cf<0) score=Math.min(score,50); // الخسارة تمنع تصنيف عالٍ
+  score=Math.max(0,Math.min(score,85));
   const risks:Risk[]=[], strengths:Strength[]=[], opportunities:Opportunity[]=[];
-  if(cm<1) risks.push({level:"حرج",color:C.red,bg:C.redPale,title:"السيولة في خطر حرج",detail:`رصيدك الحالي يغطي ${Math.round(cd)} يوماً فقط من مصروفاتك`,action:`حصّل جزءاً من الذمم المتأخرة — ${num(rec*0.3)} ريال على الأقل هذا الأسبوع`,impact:`التغطية ترتفع من ${Math.round(cd)} إلى ${Math.round(((b+rec*0.3)/e)*30)} يوماً`,scoreLift:"+15 نقطة"});
-  else if(cm<3) risks.push({level:"تنبيه",color:C.orange,bg:C.orangePale,title:"السيولة تحتاج تعزيزاً",detail:`رصيدك يغطي ${Math.round(cd)} يوماً — أقل من 3 أشهر آمنة`,action:`حصّل الذمم وتجنّب مشاريع جديدة — ${num(rec*0.4)} ريال تعيدك للمنطقة الآمنة`,impact:`تغطيتك ترتفع فوق 90 يوماً`,scoreLift:"+10 نقاط"});
+  // تشخيص السبب الجذري — لا قفز للذمم تلقائياً (فلسفة Murdi)
+  if(cf<0) risks.push({level:"حرج",color:C.red,bg:C.redPale,title:"شركتك تسجل خسارة شهرية",detail:`مصروفاتك تتجاوز إيراداتك بـ ${num(Math.abs(cf))} ريال شهرياً — هذا هو السبب الجذري لضغط السيولة`,action:`أوقف النزيف أولاً: راجع تسعير مشاريعك وأكبر بنود مصروفاتك قبل أي شيء آخر`,impact:`إيقاف الخسارة يحمي رصيدك من النفاد`,scoreLift:"+15 نقطة"});
+  else if(cm<1) risks.push({level:"حرج",color:C.red,bg:C.redPale,title:"السيولة في خطر حرج",detail:`رصيدك يغطي ${Math.round(cd)} يوماً فقط من مصروفاتك`,action: rec>e*0.5 ? `لديك ذمم كبيرة (${num(rec)}) — تحصيل جزء منها يسدّ الفجوة` : `رصيدك قصير وذممك محدودة — قلّص أكبر بند مصروفات فوراً`,impact:`معالجة السيولة ترفع تغطيتك فوق 30 يوماً`,scoreLift:"+15 نقطة"});
+  else if(cm<3) risks.push({level:"تنبيه",color:C.orange,bg:C.orangePale,title:"السيولة تحتاج تعزيزاً",detail:`رصيدك يغطي ${Math.round(cd)} يوماً — أقل من 3 أشهر آمنة`,action:`ابنِ احتياطياً نقدياً تدريجياً يصل إلى ${num(e*3)} (3 أشهر مصروفات)`,impact:`الاحتياطي يحميك بين المشاريع ويؤهلك للتمويل`,scoreLift:"+10 نقاط"});
   if(col>=90) risks.push({level:"مرتفع",color:C.red,bg:C.redPale,title:"دورة التحصيل خطيرة",detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل`,action:"راجع شروط الدفع وضع حدا أقصى 60 يوماً في عقودك الجديدة",impact:"تقليل الدورة يحرر سيولة فورية",scoreLift:"+12 نقطة"});
   else if(col>=60) risks.push({level:"متوسط",color:C.yellow,bg:C.yellowPale,title:"دورة التحصيل تحتاج متابعة",detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل`,action:"تابع الذمم أسبوعياً وذكّر العملاء قبل الاستحقاق",impact:"تحسين التحصيل يعزز سيولتك مباشرة",scoreLift:"+8 نقاط"});
   if(dr>1) risks.push({level:"مرتفع",color:C.orange,bg:C.orangePale,title:"مستوى المديونية مرتفع",detail:`ديونك تمثل ${(dr*100).toFixed(0)}٪ من إيراداتك السنوية`,action:"لا تضف ديوناً جديدة وضع خطة سداد واضحة",impact:"خفض المديونية يرفع جاهزيتك للتمويل",scoreLift:"+10 نقاط"});
@@ -198,7 +203,7 @@ export default function Home(){
             <div style={{position:"absolute",top:-150,left:"50%",transform:"translateX(-50%)",width:800,height:800,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}12 0%,transparent 65%)`,pointerEvents:"none"}}/>
             <div style={{position:"relative",maxWidth:760,margin:"0 auto"}}>
               <div className="feature-badge" style={{marginBottom:28}}>
-                🇸🇦 نظام تشغيل ذكاء المقاولات — المملكة العربية السعودية
+                🇸🇦 المستشار المالي الذكي لمقاولي المملكة
               </div>
               <h1 className="hero-title" style={{fontSize:54,fontWeight:900,lineHeight:1.2,margin:"0 0 24px",color:C.white,fontFamily:"'Cairo',sans-serif"}}>
                 اعرف صحة شركتك المالية<br/>
