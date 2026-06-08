@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Murdi — نظام تشغيل ذكاء المقاولات",
   description: "منصة الذكاء المالي للمقاولين السعوديين",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Murdi",
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +35,8 @@ export default function RootLayout({
         <meta name="theme-color" content="#0B1C3D" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
