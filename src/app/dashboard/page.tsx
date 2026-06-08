@@ -1195,6 +1195,16 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ===== قسم: تعمّق أكثر (قابل للطي) ===== */}
+            <div onClick={()=>setOpenSection(openSection==='deep'?null:'deep')} style={{cursor:'pointer',background:'linear-gradient(135deg,#1a0d2e,#0d0820)',borderRadius:14,padding:'18px 22px',border:'1px solid #a855f740',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{color:'#c084fc',fontSize:16,fontWeight:800}}>🔬 تعمّق أكثر</div>
+                <div style={{color:C.gray,fontSize:12,marginTop:4}}>السيناريوهات الثلاثة • الأسئلة الاستباقية • تصنيف الذمم</div>
+              </div>
+              <div style={{color:'#c084fc',fontSize:22,fontWeight:900,transform:openSection==='deep'?'rotate(180deg)':'none',transition:'transform 0.3s'}}>⌄</div>
+            </div>
+
+            {openSection==='deep' && (<>
             {/* السيناريوهات الثلاثة */}
             {aiReport?.scenarios && (
               <div style={{background:'linear-gradient(135deg,#0d1f3a,#112244)',borderRadius:16,padding:'28px',border:`1px solid ${C.border}`}}>
@@ -1309,6 +1319,9 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+
+            </>)}
+            {/* نهاية قسم تعمّق أكثر */}
 
             {/* Murdi Survival Clock™️ — ساعة البقاء التفاعلية */}
             <div style={{background:'linear-gradient(135deg,#0a1828,#050f1a)',borderRadius:16,padding:'28px',border:`2px solid ${report.survivalColor}50`,marginBottom:0}}>
