@@ -295,6 +295,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [form, setForm] = useState({ revenue:'', expenses:'', bank_balance:'', debts:'', rec_current:'', rec_late:'', rec_bad:'', employees:'', monthly_payment:'', debt_status:'committed', late_months:'', bank_contacted:'', payment_included:'', years_in_business:'', has_gov_contracts:'', credit_status:'clean', month_timing:'mid', expected_inflow:'', expected_inflow_days:'', upcoming_obligations:'', upcoming_obligations_days:'' })
+  const [openSection, setOpenSection] = useState<string|null>(null)
   const [report, setReport] = useState<any>(null)
   const [saved, setSaved] = useState(false)
   const [isNew, setIsNew] = useState(false)
@@ -1627,6 +1628,16 @@ export default function Dashboard() {
               </div>
             )}
 
+            {/* ===== قسم: أدواتك التفاعلية (قابل للطي) ===== */}
+            <div onClick={()=>setOpenSection(openSection==='tools'?null:'tools')} style={{cursor:'pointer',background:'linear-gradient(135deg,#13243d,#0d1b2e)',borderRadius:14,padding:'18px 22px',border:`1px solid ${C.gold}40`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{color:C.gold,fontSize:16,fontWeight:800}}>🛠️ أدواتك التفاعلية</div>
+                <div style={{color:C.gray,fontSize:12,marginTop:4}}>المستخلصات • جاهزية العطاء • التوأم المالي • ماذا لو</div>
+              </div>
+              <div style={{color:C.gold,fontSize:22,fontWeight:900,transform:openSection==='tools'?'rotate(180deg)':'none',transition:'transform 0.3s'}}>⌄</div>
+            </div>
+
+            {openSection==='tools' && (<>
             {/* محرك المستخلصات */}
             <div style={{background:'linear-gradient(135deg,#0d2818,#0a1f12)',borderRadius:16,padding:'24px',border:`1px solid #22c55e50`}}>
               <div style={{color:'#4ade80',fontSize:16,fontWeight:800,marginBottom:6}}>📋 محرك المستخلصات™️ — سيولتك المجمّدة</div>
@@ -1944,6 +1955,8 @@ export default function Dashboard() {
                 );
               })()}
             </div>
+            </>)}
+            {/* نهاية قسم الأدوات التفاعلية */}
 
             {/* Murdi Chat */}
             <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.gold}40`}}>
