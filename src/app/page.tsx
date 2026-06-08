@@ -159,7 +159,13 @@ export default function Home(){
         borderBottom:`1px solid rgba(200,168,75,${scrolled?0.2:0})`
       }} className="header-inner">
         <div onClick={()=>{setStep("landing");window.scrollTo(0,0);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,display:"flex",alignItems:"center",justifyContent:"center",color:C.navy,fontWeight:900,fontSize:20,boxShadow:`0 4px 12px rgba(200,168,75,0.4)`}}>م</div>
+          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px rgba(200,168,75,0.4)`}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M3 16.5 L8 11 L12 14 L20 5.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15 5.5 L20 5.5 L20 10.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="3" cy="16.5" r="1.6" fill={C.navy}/>
+            </svg>
+          </div>
           <div>
             <div style={{fontWeight:900,fontSize:20,color:C.white,lineHeight:1}}>
               Murdi™️ &nbsp;<span style={{color:C.gold,fontFamily:"'Tajawal',sans-serif"}}>| مُرضي</span>

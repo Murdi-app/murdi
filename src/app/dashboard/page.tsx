@@ -1143,15 +1143,25 @@ export default function Dashboard() {
         </div>
 
         {report && loadingReport && !aiReport && (
-          <div style={{background:'linear-gradient(135deg,#0d2a1a,#0a1f15)',borderRadius:16,padding:'48px 28px',border:'2px solid #22c55e40',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,margin:'0 0 16px'}}>
-            <div style={{fontSize:48}}>📊</div>
-            <div style={{color:'#22c55e',fontSize:20,fontWeight:800}}>Murdi يحلل شركتك</div>
-            <div style={{color:C.gray,fontSize:14,lineHeight:1.8}}>جاري إعداد تقريرك الذكي المخصص</div>
-            <div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap',justifyContent:'center'}}>
-              {['السيولة','الربحية','المخاطر','الفرص'].map((item,i) => (
-                <div key={i} style={{background:'#22c55e20',border:'1px solid #22c55e40',borderRadius:20,padding:'4px 12px',color:'#22c55e',fontSize:12}}>{item}</div>
+          <div style={{background:'linear-gradient(135deg,#0a1828,#0d1f2e)',borderRadius:20,padding:'52px 28px',border:`2px solid ${C.gold}40`,textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:18,margin:'0 0 16px',position:'relative',overflow:'hidden'}}>
+            {/* مؤشر مالي نابض */}
+            <svg width="120" height="64" viewBox="0 0 120 64" style={{marginBottom:4}}>
+              <polyline points="4,50 22,42 38,46 56,28 74,34 92,14 116,8" fill="none" stroke={C.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="260" strokeDashoffset="260">
+                <animate attributeName="stroke-dashoffset" from="260" to="0" dur="1.6s" repeatCount="indefinite"/>
+              </polyline>
+              <circle r="3.5" fill={C.goldLight}>
+                <animateMotion path="M4,50 L22,42 L38,46 L56,28 L74,34 L92,14 L116,8" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+            <div style={{color:C.gold,fontSize:21,fontWeight:900,fontFamily:"'Cairo',sans-serif"}}>Murdi يحلل شركتك بعمق</div>
+            <div style={{color:C.gray,fontSize:14,lineHeight:1.8,maxWidth:420}}>يطبّق منهجية د. عبدالحكيم المرضي على أرقامك — لا تحليلاً عاماً، بل قراءة مقاول يفهم قطاعك</div>
+            <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap',justifyContent:'center',maxWidth:480}}>
+              {['تدفق المشاريع','المستخلصات المجمّدة','عبء الأقساط','الربح الحقيقي','جاهزية العطاءات','صمودك بين المشاريع'].map((item,i) => (
+                <div key={i} style={{background:`${C.gold}15`,border:`1px solid ${C.gold}35`,borderRadius:20,padding:'5px 13px',color:C.goldLight,fontSize:12,fontWeight:600,opacity:0,animation:`fadeUp 0.5s ease ${i*0.25}s forwards`}}>{item}</div>
               ))}
             </div>
+            <div style={{color:'#5a7a99',fontSize:12,marginTop:8}}>قد يستغرق التحليل لحظات — نحن نقرأ قصة شركتك، لا أرقامها فقط</div>
+            <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
           </div>
         )}
 
