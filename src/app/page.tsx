@@ -236,7 +236,7 @@ export default function Home(){
               <div style={{textAlign:"center",marginBottom:56}}>
                 <div className="feature-badge" style={{marginBottom:16}}>المحركات الذكية</div>
                 <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 14px",color:C.white,fontFamily:"'Cairo',sans-serif"}}>ماذا تحصل بعد الاشتراك؟</h2>
-                <p style={{fontSize:16,color:"#7A90AB",maxWidth:480,margin:"0 auto"}}>8 محركات ذكية تعمل لصالح شركتك كل شهر</p>
+                <p style={{fontSize:16,color:"#7A90AB",maxWidth:480,margin:"0 auto"}}>أكثر من 12 محركاً ذكياً يعمل لصالح شركتك — هذه أبرزها</p>
               </div>
               <div className="services-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
                 {SERVICES.map((s,i)=>(
@@ -285,8 +285,8 @@ export default function Home(){
               </div>
               <div className="founder-inner" style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,borderRadius:24,padding:"48px 44px",display:"flex",gap:44,alignItems:"center",border:`1px solid rgba(200,168,75,0.2)`,boxShadow:"0 24px 64px rgba(11,29,58,0.12)"}}>
                 <div style={{flexShrink:0,textAlign:"center"}}>
-                  <div style={{width:150,height:150,borderRadius:"50%",background:`linear-gradient(135deg,rgba(200,168,75,0.2),rgba(200,168,75,0.05))`,border:`3px solid ${C.gold}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:60,boxShadow:`0 8px 32px rgba(200,168,75,0.2)`}}>
-                    👨‍💼
+                  <div style={{width:150,height:150,borderRadius:"50%",border:`3px solid ${C.gold}`,margin:"0 auto 16px",boxShadow:`0 8px 32px rgba(200,168,75,0.2)`,overflow:"hidden"}}>
+                    <img src="/founder.jpg" alt="د. عبدالحكيم المرضي" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top"}} />
                   </div>
                   <div style={{color:C.gold,fontWeight:800,fontSize:15}}>د. عبدالحكيم المرضي</div>
                   <div style={{color:"#7A90AB",fontSize:13,marginTop:4}}>مؤسس المنهجية</div>
@@ -325,7 +325,7 @@ export default function Home(){
                 </div>
                 <div style={{fontSize:14,color:"#6A80A0",marginBottom:40}}>شهرياً — مجمّد مدى الحياة</div>
                 <div className="pricing-features" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,maxWidth:500,margin:"0 auto 40px",textAlign:"right"}}>
-                  {["جميع المحركات الذكية الثمانية","سعر مجمّد مدى الحياة","اسمك في صفحة مؤسسي Murdi","وصول مباشر لد. عبدالحكيم","تأثير على تطوير المنهجية","أول تقرير مجاناً بدون التزام"].map((x,i)=>(
+                  {["جميع المحركات الذكية (+12 محرك)","سعر مجمّد مدى الحياة","اسمك في صفحة مؤسسي Murdi","وصول مباشر لد. عبدالحكيم","تأثير على تطوير المنهجية","أول تقرير مجاناً بدون التزام"].map((x,i)=>(
                     <div key={i} style={{display:"flex",alignItems:"center",gap:10,color:C.white,fontSize:13,background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
                       <span style={{color:C.gold,flexShrink:0}}>✦</span>{x}
                     </div>
