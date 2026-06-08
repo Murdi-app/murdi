@@ -51,7 +51,16 @@ export default function SharedReport() {
   return (
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
       <div style={{background:C.navyLight,padding:'16px 24px',borderBottom:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:34,height:34,borderRadius:9,background:`linear-gradient(135deg,${C.gold},#F5C842)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M3 16.5 L8 11 L12 14 L20 5.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15 5.5 L20 5.5 L20 10.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="3" cy="16.5" r="1.6" fill={C.navy}/>
+            </svg>
+          </div>
+          <div style={{fontSize:20,fontWeight:900,color:C.gold,letterSpacing:2}}>MURDI</div>
+        </div>
         <div style={{color:C.gray,fontSize:12}}>تقرير مشترك — للقراءة فقط</div>
       </div>
 
