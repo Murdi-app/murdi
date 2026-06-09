@@ -1,10 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const C = {
-  navy:"#0B1D3A", navyMid:"#132850", navyLight:"#1A3A6B",
-  gold:"#C8A84B", goldLight:"#E8CC7A", goldPale:"#FBF5E6",
-  white:"#FFFFFF", ink:"#0B1D3A", slate:"#4A5568",
+  navy:"#0B1D3A", navyMid:"#132850", gold:"#C8A84B", goldLight:"#E8CC7A",
+  goldPale:"#FBF5E6", white:"#FFFFFF", ink:"#0B1D3A", slate:"#4A5568",
   muted:"#8A95A3", border:"#E8EDF4", bg:"#F4F7FB", cream:"#FAFBFE",
   red:"#C0392B", redPale:"#FEF2F2", orange:"#D35400", orangePale:"#FFF4EE",
   yellow:"#B7860B", yellowPale:"#FFFBEC", green:"#1A7A4A", greenPale:"#EDFAF4",
@@ -27,76 +26,98 @@ function calc(b:number,r:number,e:number,d:number,rec:number):Result {
   const cm=e>0?b/e:0, cd=cm*30, cf=r-e;
   const col=r>0?(rec/r)*30:0, dr=(r*12)>0?d/(r*12):0;
   let fh=0;
-  fh+=cm>=3?25:cm>=1?15:cm>0?5:0;
-  // الربحية: الخسارة تُعاقب فعليا لا تكتفي بصفر (فلسفة Murdi)
-  fh+=cf>0?(cf/r>0.15?25:cf/r>0.08?18:10):-10;
+  fh+=cm>=3?25:cm>=1?15:0;
+  fh+=cf>0?(cf/r>0.15?25:15):0;
   fh+=col<60?20:col<90?10:0;
   fh+=dr<0.5?15:dr<1?8:0;
-  let score=Math.round(fh*0.4+65*0.25+65*0.2+60*0.15);
-  if(cf<0) score=Math.min(score,50); // الخسارة تمنع تصنيف عالٍ
-  score=Math.max(0,Math.min(score,85));
+  fh+=dr<0.5?15:dr<1?8:0;
+  const score=Math.round(fh*0.4+65*0.25+65*0.2+60*0.15);
   const risks:Risk[]=[], strengths:Strength[]=[], opportunities:Opportunity[]=[];
-  // تشخيص السبب الجذري — لا قفز للذمم تلقائياً (فلسفة Murdi)
-  if(cf<0) risks.push({level:"حرج",color:C.red,bg:C.redPale,title:"شركتك تسجل خسارة شهرية",detail:`مصروفاتك تتجاوز إيراداتك بـ ${num(Math.abs(cf))} ريال شهرياً — هذا هو السبب الجذري لضغط السيولة`,action:`أوقف النزيف أولاً: راجع تسعير مشاريعك وأكبر بنود مصروفاتك قبل أي شيء آخر`,impact:`إيقاف الخسارة يحمي رصيدك من النفاد`,scoreLift:"+15 نقطة"});
-  else if(cm<1) risks.push({level:"حرج",color:C.red,bg:C.redPale,title:"السيولة في خطر حرج",detail:`رصيدك يغطي ${Math.round(cd)} يوماً فقط من مصروفاتك`,action: rec>e*0.5 ? `لديك ذمم كبيرة (${num(rec)}) — تحصيل جزء منها يسدّ الفجوة` : `رصيدك قصير وذممك محدودة — قلّص أكبر بند مصروفات فوراً`,impact:`معالجة السيولة ترفع تغطيتك فوق 30 يوماً`,scoreLift:"+15 نقطة"});
-  else if(cm<3) risks.push({level:"تنبيه",color:C.orange,bg:C.orangePale,title:"السيولة تحتاج تعزيزاً",detail:`رصيدك يغطي ${Math.round(cd)} يوماً — أقل من 3 أشهر آمنة`,action:`ابنِ احتياطياً نقدياً تدريجياً يصل إلى ${num(e*3)} (3 أشهر مصروفات)`,impact:`الاحتياطي يحميك بين المشاريع ويؤهلك للتمويل`,scoreLift:"+10 نقاط"});
-  if(col>=90) risks.push({level:"مرتفع",color:C.red,bg:C.redPale,title:"دورة التحصيل خطيرة",detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل`,action:"راجع شروط الدفع وضع حدا أقصى 60 يوماً في عقودك الجديدة",impact:"تقليل الدورة يحرر سيولة فورية",scoreLift:"+12 نقطة"});
-  else if(col>=60) risks.push({level:"متوسط",color:C.yellow,bg:C.yellowPale,title:"دورة التحصيل تحتاج متابعة",detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل`,action:"تابع الذمم أسبوعياً وذكّر العملاء قبل الاستحقاق",impact:"تحسين التحصيل يعزز سيولتك مباشرة",scoreLift:"+8 نقاط"});
-  if(dr>1) risks.push({level:"مرتفع",color:C.orange,bg:C.orangePale,title:"مستوى المديونية مرتفع",detail:`ديونك تمثل ${(dr*100).toFixed(0)}٪ من إيراداتك السنوية`,action:"لا تضف ديوناً جديدة وضع خطة سداد واضحة",impact:"خفض المديونية يرفع جاهزيتك للتمويل",scoreLift:"+10 نقاط"});
+
+  if(cm<1) risks.push({level:"حرج",color:C.red,bg:C.redPale,
+    title:"السيولة في خطر حرج",
+    detail:`رصيدك الحالي يغطي ${Math.round(cd)} يوماً فقط من مصروفاتك`,
+    action:`حصّل جزءاً من الذمم المتأخرة — ${num(rec*0.3)} ريال على الأقل هذا الأسبوع`,
+    impact:`التغطية ترتفع من ${Math.round(cd)} إلى ${Math.round(((b+rec*0.3)/e)*30)} يوماً`,
+    scoreLift:"+15 نقطة"});
+  else if(cm<3) risks.push({level:"تنبيه",color:C.orange,bg:C.orangePale,
+    title:"السيولة تحتاج تعزيزاً",
+    detail:`رصيدك يغطي ${Math.round(cd)} يوماً — أقل من 3 أشهر آمنة`,
+    action:`حصّل الذمم وتجنّب مشاريع جديدة — ${num(rec*0.4)} ريال تعيدك للمنطقة الآمنة`,
+    impact:`تغطيتك ترتفع فوق 90 يوماً`,
+    scoreLift:"+10 نقاط"});
+
+  if(col>=90) risks.push({level:"مرتفع",color:C.red,bg:C.redPale,
+    title:"دورة التحصيل خطيرة",
+    detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل — أعلى من الحد الآمن`,
+    action:"راجع شروط الدفع وضع حداً أقصى 60 يوماً في عقودك الجديدة",
+    impact:"تقليل الدورة يحرّر سيولة فورية من الذمم المتراكمة",
+    scoreLift:"+12 نقطة"});
+  else if(col>=60) risks.push({level:"متوسط",color:C.yellow,bg:C.yellowPale,
+    title:"دورة التحصيل تحتاج متابعة",
+    detail:`ذممك تحتاج ${Math.round(col)} يوماً للتحصيل`,
+    action:"تابع الذمم أسبوعياً وذكّر العملاء قبل الاستحقاق",
+    impact:"تحسين التحصيل يعزز سيولتك مباشرة",
+    scoreLift:"+8 نقاط"});
+
+  if(dr>1) risks.push({level:"مرتفع",color:C.orange,bg:C.orangePale,
+    title:"مستوى المديونية مرتفع",
+    detail:`ديونك تمثل ${(dr*100).toFixed(0)}٪ من إيراداتك السنوية`,
+    action:"لا تضف ديوناً جديدة وضع خطة سداد واضحة",
+    impact:"خفض المديونية يرفع جاهزيتك للتمويل ويحسّن درجتك",
+    scoreLift:"+10 نقاط"});
+
   if(cf>0) strengths.push({title:"التدفق النقدي إيجابي",detail:`تربح ${num(cf)} ريال شهرياً بعد المصروفات`});
-  if(dr<0.5) strengths.push({title:"مستوى الديون ممتاز",detail:`نسبة مديونيتك ${(dr*100).toFixed(0)}٪ فقط`});
+  if(dr<0.5) strengths.push({title:"مستوى الديون ممتاز",detail:`نسبة مديونيتك ${(dr*100).toFixed(0)}٪ فقط من إيراداتك السنوية`});
   if(cm>=3) strengths.push({title:"سيولة قوية",detail:`رصيدك يغطي ${cm.toFixed(1)} أشهر من المصروفات`});
-  if(col<60&&col>0) strengths.push({title:"تحصيل سريع",detail:`دورة تحصيلك ${Math.round(col)} يوماً`});
-  if(cf>0&&dr<0.8) opportunities.push({title:"فرصة تمويل",detail:"تدفقك الإيجابي ونسبة ديونك المنخفضة يجعلانك مرشحاً جيداً"});
-  if(cm>=3&&cf>0) opportunities.push({title:"فرصة توسع",detail:"سيولتك وتدفقك يسمحان بدخول مشروع جديد بأمان"});
-  if(score>=75) opportunities.push({title:"جاهزية استراتيجية",detail:"درجتك تؤهلك للشراكات الاستراتيجية والمشاريع الكبرى"});
+  if(col<60&&col>0) strengths.push({title:"تحصيل سريع",detail:`دورة تحصيلك ${Math.round(col)} يوماً — ضمن الحد الآمن`});
+
+  if(cf>0&&dr<0.8) opportunities.push({title:"فرصة تمويل",detail:`تدفقك الإيجابي ونسبة ديونك المنخفضة يجعلانك مرشحاً جيداً للتمويل الآن`});
+  if(cm>=3&&cf>0) opportunities.push({title:"فرصة توسع",detail:`سيولتك وتدفقك يسمحان بدخول مشروع جديد بأمان`});
+  if(col<45&&col>0) opportunities.push({title:"ميزة تنافسية في التحصيل",detail:`دورتك أفضل من متوسط السوق — استثمرها في التفاوض مع الموردين`});
+  if(score>=75) opportunities.push({title:"جاهزية استراتيجية",detail:`درجتك تؤهلك للشراكات الاستراتيجية والمشاريع الكبرى`});
+
   return{score,coverageDays:cd,cashFlow:cf,collectionDays:col,debtRatio:dr,balance:b,revenue:r,expenses:e,debts:d,receivables:rec,risks,strengths,opportunities};
 }
 
 function scoreLabel(s:number){
-  if(s>=75) return{label:"ممتازة",color:C.green};
-  if(s>=60) return{label:"جيدة",color:"#1A56DB"};
-  if(s>=45) return{label:"متوسطة",color:C.orange};
-  return{label:"في خطر",color:C.red};
+  if(s>=90) return{label:"ممتازة",color:C.green};
+  if(s>=75) return{label:"جيدة جداً",color:"#1A56DB"};
+  if(s>=60) return{label:"متوسطة",color:C.orange};
+  if(s>=45) return{label:"في خطر",color:C.red};
+  return{label:"خطر حرج",color:"#7F1D1D"};
 }
 
 function Gauge({score}:{score:number}){
   const{label,color}=scoreLabel(score);
-  const dash=(score/85)*251.2;
+  const dash=(score/100)*251.2;
   return(
     <div style={{textAlign:"center"}}>
       <svg width="200" height="130" viewBox="0 0 200 130">
         <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor={color}/><stop offset="100%" stopColor={C.goldLight}/>
         </linearGradient></defs>
-        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="14" strokeLinecap="round"/>
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={C.border} strokeWidth="14" strokeLinecap="round"/>
         <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#g)" strokeWidth="14" strokeDasharray={`${dash} 251.2`} strokeLinecap="round"/>
         <text x="100" y="90" textAnchor="middle" fill={C.white} fontSize="46" fontWeight="900" fontFamily="system-ui">{score}</text>
-        <text x="100" y="110" textAnchor="middle" fill="#7A90AB" fontSize="13" fontFamily="system-ui">/ 85</text>
+        <text x="100" y="110" textAnchor="middle" fill="#7A90AB" fontSize="13" fontFamily="system-ui">/ 100</text>
       </svg>
       <div style={{color,fontWeight:800,fontSize:20,marginTop:4}}>{label}</div>
     </div>
   );
 }
 
-const F="'Tajawal','Cairo',system-ui,sans-serif";
+const F="system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif";
 
 const SERVICES=[
-  {icon:"🏗️",title:"محرك المشاريع",desc:"يحلّل تدفق مشاريعك عبر الزمن — متى تدخل دفعاتك، ومتى تواجه فجوة، ومتى تبحث عن المشروع القادم. لأنك مقاول لا محل بدخل شهري"},
-  {icon:"📋",title:"محرك المستخلصات",desc:"يتتبّع سيولتك المجمّدة في مستخلصات اعتماد — أيها متأخر، متى يُصرف، وكم يحتجز ضمان حسن التنفيذ من فلوسك"},
-  {icon:"👻",title:"كاشف الربح الوهمي",desc:"يكشف الفرق بين ربحك على الورق وما في جيبك فعلاً — لا تبنِ قراراتك على ربح لم تقبضه بعد"},
-  {icon:"🎯",title:"مؤشر جاهزية العطاء",desc:"قبل أن تقدّم على مناقصة: هل تتحمّلها مالياً؟ وكم أقل سعر آمن دون أن تقع في لعنة الفائز؟"},
-  {icon:"🧬",title:"التوأم المالي",desc:"يحاكي قرارك الكبير قبل أن تتخذه — يشغّل نسخة افتراضية من شركتك ويريك الأثر على سيولتك خلال التنفيذ"},
-  {icon:"⏱️",title:"ساعة البقاء",desc:"كم يوماً تصمد شركتك؟ تحسب الدفعات القادمة والالتزامات لتعطيك يوم الخطر الحقيقي — لا إنذارا أعمى"},
-  {icon:"📊",title:"Murdi Score + المخاطر",desc:"درجة مالية تقيس صحتك بصدق (تعاقب الخسارة وعبء الأقساط)، مع أهم مخاطرك مرتبة بالأولوية"},
-  {icon:"🧠",title:"ذاكرة Murdi الزمنية",desc:"يتذكّر رحلة شركتك شهراً بشهر، يكتشف الأنماط، ويقيس أثر قراراتك — شاهد على مسيرتك لا محلل لقطة"},
-];
-
-const STATS=[
-  {n:"12+",l:"محرك ذكي",sub:"يعمل لصالحك"},
-  {n:"85",l:"درجة التقييم",sub:"من 85 نقطة"},
-  {n:"15",l:"دقيقة شهرياً",sub:"فقط لا غير"},
-  {n:"14",l:"فئة مخاطر",sub:"تُرصد تلقائياً"},
+  {icon:"📊",title:"Murdi Score الشهري",desc:"درجة مالية من 100 تقيس صحة شركتك بدقة رياضية كل شهر"},
+  {icon:"⚠️",title:"Top Risks",desc:"أهم المخاطر التي تهدد شركتك مرتبة حسب الأولوية والخطورة"},
+  {icon:"⚡",title:"Action Engine",desc:"إجراءات واضحة وقابلة للتنفيذ لكل خطر — لا تشخيص بدون علاج"},
+  {icon:"📈",title:"Impact Engine",desc:"اعرف بالأرقام ماذا سيحدث لدرجتك إذا نفّذت كل إجراء"},
+  {icon:"🎯",title:"Opportunity Engine",desc:"الفرص المالية المتاحة لشركتك بناءً على وضعها الفعلي"},
+  {icon:"📉",title:"Trend Engine",desc:"بعد 3 أشهر — اقرأ اتجاه شركتك: هل تتحسن أم تتراجع؟"},
+  {icon:"🧠",title:"Company Memory™️",desc:"تاريخ شركتك الكامل محفوظ — كل تقرير وقرار موثق"},
+  {icon:"🏆",title:"شهادة Murdi Score",desc:"وثيقة رسمية موقعة تثبت جاهزيتك للبنوك والشركاء"},
 ];
 
 export default function Home(){
@@ -104,268 +125,148 @@ export default function Home(){
   const[company,setCompany]=useState("");
   const[form,setForm]=useState({balance:"",revenue:"",expenses:"",debts:"",receivables:""});
   const[result,setResult]=useState<Result|null>(null);
-  const[scrolled,setScrolled]=useState(false);
-
-  useEffect(()=>{
-    const onScroll=()=>setScrolled(window.scrollY>40);
-    window.addEventListener("scroll",onScroll);
-    return()=>window.removeEventListener("scroll",onScroll);
-  },[]);
 
   const fields=[
-    {key:"balance",label:"الرصيد البنكي الحالي",ph:"مثال: 450,000",icon:"🏦"},
-    {key:"revenue",label:"متوسط الإيرادات الشهرية المحصّلة",ph:"مثال: 1,000,000",icon:"📥"},
-    {key:"expenses",label:"متوسط المصروفات الشهرية",ph:"مثال: 600,000",icon:"📤"},
-    {key:"debts",label:"إجمالي الديون والقروض",ph:"مثال: 1,200,000",icon:"💳"},
-    {key:"receivables",label:"إجمالي الذمم المدينة",ph:"مثال: 2,000,000",icon:"📋"},
+    {key:"balance",label:"الرصيد البنكي الحالي",ph:"مثال: 450,000"},
+    {key:"revenue",label:"متوسط الإيرادات الشهرية المحصّلة",ph:"مثال: 1,000,000"},
+    {key:"expenses",label:"متوسط المصروفات الشهرية",ph:"مثال: 600,000"},
+    {key:"debts",label:"إجمالي الديون والقروض",ph:"مثال: 1,200,000"},
+    {key:"receivables",label:"إجمالي الذمم المدينة",ph:"مثال: 2,000,000"},
   ];
 
   const filled=company.trim()!==""&&fields.every(f=>(form as Record<string,string>)[f.key].trim()!=="");
+  const run=()=>{
+    const f=form as Record<string,string>;
+    setResult(calc(parse(f.balance),parse(f.revenue),parse(f.expenses),parse(f.debts),parse(f.receivables)));
+    setStep("report"); window.scrollTo(0,0);
+  };
+  const reset=()=>{
+    window.location.href="/auth/signup"; setCompany("");
+    setForm({balance:"",revenue:"",expenses:"",debts:"",receivables:""}); setResult(null); window.scrollTo(0,0);
+  };
 
   return(
     <div dir="rtl" style={{minHeight:"100vh",background:C.bg,fontFamily:F,color:C.ink}}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;900&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0;}
-        html{scroll-behavior:smooth;}
-        .nav-link{color:rgba(255,255,255,0.7);font-size:14px;cursor:pointer;padding:6px 0;transition:color 0.2s;text-decoration:none;font-family:'Tajawal',sans-serif;}
-        .nav-link:hover{color:#C8A84B;}
-        .service-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-top:3px solid #C8A84B;border-radius:16px;padding:22px;transition:transform 0.2s,box-shadow 0.2s;}
-        .service-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.2);}
-        .why-card{background:white;border-radius:16px;padding:28px;border:1px solid #E8EDF4;transition:transform 0.2s,box-shadow 0.2s;}
-        .why-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(11,29,58,0.08);}
-        .input-field{width:100%;box-sizing:border-box;padding:14px 16px;border-radius:12px;border:1.5px solid #E8EDF4;font-size:16px;font-family:'Tajawal',sans-serif;outline:none;background:#F4F7FB;transition:border-color 0.2s;}
-        .input-field:focus{border-color:#C8A84B;background:white;}
-        .btn-gold{background:linear-gradient(135deg,#C8A84B,#E8CC7A);color:#0B1D3A;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:800;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;}
-        .btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(200,168,75,0.5);}
-        .feature-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(200,168,75,0.12);color:#C8A84B;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;border:1px solid rgba(200,168,75,0.3);}
-        .pulse{animation:pulse 2s infinite;}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
-        @media(max-width:768px){
-          .hero-title{font-size:32px!important;}
-          .stats-grid{grid-template-columns:1fr 1fr!important;}
-          .services-grid{grid-template-columns:1fr 1fr!important;}
-          .why-grid{grid-template-columns:1fr!important;}
-          .founder-inner{flex-direction:column!important;text-align:center!important;}
-          .pricing-features{grid-template-columns:1fr!important;}
-          .header-nav{display:none!important;}
-          .header-inner{padding:0 20px!important;}
-        }
-      `}</style>
 
       {/* HEADER */}
-      <header style={{
-        background:scrolled?'rgba(11,29,58,0.97)':C.navy,
-        backdropFilter:scrolled?'blur(12px)':'none',
-        padding:"0 40px",height:68,display:"flex",justifyContent:"space-between",
-        alignItems:"center",position:"sticky",top:0,zIndex:100,
-        boxShadow:scrolled?"0 2px 24px rgba(0,0,0,0.3)":"none",
-        transition:"all 0.3s ease",
-        borderBottom:`1px solid rgba(200,168,75,${scrolled?0.2:0})`
-      }} className="header-inner">
-        <div onClick={()=>{setStep("landing");window.scrollTo(0,0);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px rgba(200,168,75,0.4)`}}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M3 16.5 L8 11 L12 14 L20 5.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M15 5.5 L20 5.5 L20 10.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="3" cy="16.5" r="1.6" fill={C.navy}/>
-            </svg>
-          </div>
+      <header style={{background:C.navy,padding:"16px 32px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 20px rgba(11,29,58,0.5)"}}>
+<div onClick={()=>window.location.href="/auth/signup"} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>           <div style={{width:42,height:42,borderRadius:10,background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,display:"flex",alignItems:"center",justifyContent:"center",color:C.navy,fontWeight:900,fontSize:20}}>M</div>
           <div>
-            <div style={{fontWeight:900,fontSize:20,color:C.white,lineHeight:1}}>
-              Murdi™️ &nbsp;<span style={{color:C.gold,fontFamily:"'Tajawal',sans-serif"}}>| مُرضي</span>
-            </div>
-            <div style={{fontSize:10,color:"#7A90AB",letterSpacing:1.5,marginTop:3}}>مستشارك المالي الذكي للمقاولين</div>
+            <div style={{fontWeight:900,fontSize:24,color:C.white,letterSpacing:1}}>Murdi™️</div>
+            <div style={{fontSize:11,color:C.gold,letterSpacing:1}}>CONSTRUCTION INTELLIGENCE</div>
           </div>
         </div>
-
-        <nav className="header-nav" style={{display:"flex",gap:28,alignItems:"center"}}>
-          <a href="#services" className="nav-link">الخدمات</a>
-          <a href="#why" className="nav-link">لماذا Murdi</a>
-          <a href="#founder" className="nav-link">من بنانا</a>
-          <a href="#pricing" className="nav-link">الأسعار</a>
-        </nav>
-
-        <div style={{display:"flex",gap:10,alignItems:"center"}}>
-          <a href="/auth/login" style={{background:"transparent",border:`1px solid rgba(200,168,75,0.35)`,borderRadius:8,color:C.gold,fontSize:13,padding:"7px 16px",textDecoration:"none",fontFamily:F}}>
-            دخول
-          </a>
-          <a href={WA} target="_blank" className="btn-gold" style={{padding:"8px 18px",fontSize:13,borderRadius:8,textDecoration:"none",display:"inline-block"}}>
-            انضم الآن
-          </a>
+        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+          {step!=="landing"&&<button onClick={()=>window.location.href="/auth/signup"} style={{background:"transparent",border:`1px solid ${C.gold}60`,borderRadius:8,color:C.gold,fontSize:13,cursor:"pointer",fontFamily:F,padding:"6px 16px"}}>الرئيسية</button>}
+          <a href={WA} target="_blank" style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:800,textDecoration:"none"}}>تواصل معنا</a>
         </div>
       </header>
 
+      {/* LANDING */}
       {step==="landing"&&(
         <div>
           {/* HERO */}
-          <section style={{background:`linear-gradient(160deg,${C.navy} 0%,${C.navyMid} 55%,${C.navyLight} 100%)`,padding:"110px 24px 90px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",top:-150,left:"50%",transform:"translateX(-50%)",width:800,height:800,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}12 0%,transparent 65%)`,pointerEvents:"none"}}/>
-            <div style={{position:"relative",maxWidth:760,margin:"0 auto"}}>
-              <div className="feature-badge" style={{marginBottom:28}}>
-                🇸🇦 المستشار المالي الذكي لمقاولي المملكة
-              </div>
-              <h1 className="hero-title" style={{fontSize:54,fontWeight:900,lineHeight:1.2,margin:"0 0 24px",color:C.white,fontFamily:"'Cairo',sans-serif"}}>
-                اعرف صحة شركتك المالية<br/>
-                <span style={{color:C.gold}}>قبل أن تتحول لأزمة</span>
-              </h1>
-              <p style={{fontSize:19,color:"#A8BAD4",lineHeight:1.9,maxWidth:580,margin:"0 auto 44px"}}>
-                Murdi يراقب وضع شركتك، ينذرك مبكراً بالمخاطر،<br/>ويخبرك بالضبط ماذا تفعل غداً — في 15 دقيقة شهرياً فقط.
-              </p>
-              <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginBottom:20}}>
-                <button onClick={()=>window.location.href="/auth/signup"} className="btn-gold" style={{padding:"16px 44px",fontSize:18,borderRadius:14,boxShadow:`0 12px 35px rgba(200,168,75,0.5)`}}>
-                  احصل على تقريرك المجاني
-                </button>
-                <a href={WA} target="_blank" style={{display:"inline-flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.08)",color:C.white,border:"1px solid rgba(255,255,255,0.15)",borderRadius:14,padding:"16px 28px",fontSize:15,textDecoration:"none",fontWeight:600}}>
-                  💬 تواصل معنا
-                </a>
-              </div>
-              <div style={{fontSize:13,color:"#6A80A0",marginBottom:64}}>بدون التزام — 5 أرقام فقط — نتيجة فورية</div>
-
-              {/* Stats */}
-              <div className="stats-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderTop:"1px solid rgba(255,255,255,0.08)",paddingTop:48}}>
-                {STATS.map((x,i)=>(
-                  <div key={i} style={{textAlign:"center",padding:"0 16px",borderRight:i<3?"1px solid rgba(255,255,255,0.08)":"none"}}>
-                    <div style={{fontSize:44,fontWeight:900,color:C.gold,lineHeight:1,fontFamily:"'Cairo',sans-serif"}}>{x.n}</div>
-                    <div style={{fontSize:14,color:C.white,fontWeight:700,marginTop:8}}>{x.l}</div>
-                    <div style={{fontSize:12,color:"#6A80A0",marginTop:4}}>{x.sub}</div>
-                  </div>
-                ))}
-              </div>
+          <section style={{background:`linear-gradient(160deg,${C.navy} 0%,${C.navyMid} 60%,#1A3A6B 100%)`,padding:"100px 24px 80px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:-100,left:"50%",transform:"translateX(-50%)",width:700,height:700,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}15 0%,transparent 70%)`,pointerEvents:"none"}}/>
+            <div style={{display:"inline-block",background:`${C.gold}22`,color:C.gold,padding:"8px 22px",borderRadius:20,fontSize:13,fontWeight:700,marginBottom:32,border:`1px solid ${C.gold}40`,letterSpacing:1}}>
+              نظام تشغيل ذكاء المقاولات — المملكة العربية السعودية
+            </div>
+            <h1 style={{fontSize:52,fontWeight:900,lineHeight:1.25,margin:"0 0 24px",color:C.white}}>
+              اعرف صحة شركتك المالية<br/>
+              <span style={{color:C.gold}}>قبل أن تتحول لأزمة</span>
+            </h1>
+            <p style={{fontSize:19,color:"#A8BAD4",lineHeight:1.8,maxWidth:620,margin:"0 auto 44px"}}>
+              Murdi يراقب وضع شركتك، ينذرك مبكراً بالمخاطر، ويخبرك بالضبط ماذا تفعل غداً — في 15 دقيقة شهرياً فقط.
+            </p>
+            <button onClick={()=>window.location.href="/auth/signup"} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 12px 35px ${C.gold}60`}}>
+              احصل على تقريرك المجاني الآن
+            </button>
+            <div style={{marginTop:18,fontSize:14,color:"#7A90AB"}}>بدون التزام — 5 أرقام فقط — نتيجة فورية</div>
+            <div style={{display:"flex",justifyContent:"center",gap:48,marginTop:60,flexWrap:"wrap"}}>
+              {[{n:"14",l:"فئة مخاطر"},{n:"15",l:"دقيقة شهرياً"},{n:"100",l:"درجة تقييم"},{n:"8",l:"محركات ذكية"}].map((x,i)=>(
+                <div key={i} style={{textAlign:"center"}}>
+                  <div style={{fontSize:40,fontWeight:900,color:C.gold}}>{x.n}</div>
+                  <div style={{fontSize:13,color:"#7A90AB",marginTop:4}}>{x.l}</div>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* SERVICES */}
-          <section id="services" style={{padding:"88px 24px",background:C.navy}}>
-            <div style={{maxWidth:1000,margin:"0 auto"}}>
-              <div style={{textAlign:"center",marginBottom:56}}>
-                <div className="feature-badge" style={{marginBottom:16}}>المحركات الذكية</div>
-                <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 14px",color:C.white,fontFamily:"'Cairo',sans-serif"}}>ماذا تحصل بعد الاشتراك؟</h2>
-                <p style={{fontSize:16,color:"#7A90AB",maxWidth:480,margin:"0 auto"}}>أكثر من 12 محركاً ذكياً يعمل لصالح شركتك — هذه أبرزها</p>
-              </div>
-              <div className="services-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
-                {SERVICES.map((s,i)=>(
-                  <div key={i} className="service-card">
-                    <div style={{fontSize:28,marginBottom:12}}>{s.icon}</div>
-                    <div style={{fontWeight:800,fontSize:14,marginBottom:8,color:C.white}}>{s.title}</div>
-                    <div style={{fontSize:13,color:"#7A90AB",lineHeight:1.7}}>{s.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* WHY */}
-          <section id="why" style={{padding:"88px 24px",background:C.bg}}>
+          {/* خدمات Murdi */}
+          <section style={{padding:"72px 24px",background:C.white}}>
             <div style={{maxWidth:960,margin:"0 auto"}}>
               <div style={{textAlign:"center",marginBottom:52}}>
-                <div className="feature-badge" style={{marginBottom:16,background:"rgba(11,29,58,0.07)",color:C.navy,border:"1px solid rgba(11,29,58,0.12)"}}>المشكلة الحقيقية</div>
-                <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 12px",fontFamily:"'Cairo',sans-serif"}}>لماذا تتعثر شركات المقاولات؟</h2>
-                <p style={{fontSize:16,color:C.slate,maxWidth:460,margin:"0 auto"}}>ثلاثة أسباب متكررة — Murdi يعالج الثلاثة</p>
+                <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 14px"}}>ماذا تحصل بعد الاشتراك؟</h2>
+                <p style={{fontSize:18,color:C.slate,maxWidth:560,margin:"0 auto"}}>8 محركات ذكية تعمل لصالح شركتك كل شهر</p>
               </div>
-              <div className="why-grid" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20}}>
-                {[
-                  {icon:"🔕",t:"غياب الإنذار المبكر",d:"تكتشف المشكلة بعد أن تصبح أزمة — لا قبلها بأشهر",fix:"Murdi ينذرك قبل 60-90 يوماً"},
-                  {icon:"👁️",t:"لا أحد يراقب التدفق",d:"90٪ من شركات المقاولات بلا مدير مالي متخصص",fix:"Murdi يراقب تدفقك كل شهر تلقائياً"},
-                  {icon:"📊",t:"أرقام بلا قرارات",d:"حتى لو وُجد محاسب، لا يحول الأرقام لخطوات واضحة",fix:"Murdi يحوّل كل رقم لإجراء محدد"},
-                ].map((x,i)=>(
-                  <div key={i} className="why-card">
-                    <div style={{fontSize:32,marginBottom:16}}>{x.icon}</div>
-                    <div style={{fontWeight:800,fontSize:18,marginBottom:10,color:C.navy}}>{x.t}</div>
-                    <div style={{fontSize:14,color:C.slate,lineHeight:1.8,marginBottom:16}}>{x.d}</div>
-                    <div style={{background:C.greenPale,border:`1px solid ${C.green}20`,borderRadius:8,padding:"10px 14px",fontSize:13,color:C.green,fontWeight:700}}>✓ {x.fix}</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
+                {SERVICES.map((s,i)=>(
+                  <div key={i} style={{background:C.cream,borderRadius:14,padding:24,border:`1px solid ${C.border}`,borderTop:`3px solid ${C.gold}`}}>
+                    <div style={{fontSize:32,marginBottom:12}}>{s.icon}</div>
+                    <div style={{fontWeight:800,fontSize:16,marginBottom:8,color:C.navy}}>{s.title}</div>
+                    <div style={{fontSize:14,color:C.slate,lineHeight:1.7}}>{s.desc}</div>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* FOUNDER */}
-          <section id="founder" style={{padding:"88px 24px",background:C.white}}>
-            <div style={{maxWidth:900,margin:"0 auto"}}>
-              <div style={{textAlign:"center",marginBottom:52}}>
-                <div className="feature-badge" style={{marginBottom:16,background:"rgba(11,29,58,0.07)",color:C.navy,border:"1px solid rgba(11,29,58,0.12)"}}>الخبرة خلف المنهجية</div>
-                <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 12px",fontFamily:"'Cairo',sans-serif"}}>من بنى Murdi؟</h2>
-                <p style={{fontSize:16,color:C.slate,maxWidth:500,margin:"0 auto"}}>Murdi ليس مجرد برنامج — هو تجسيد رقمي لمنهجية علمية في إدارة الصحة المالية للمقاولات</p>
-              </div>
-              <div className="founder-inner" style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,borderRadius:24,padding:"48px 44px",display:"flex",gap:44,alignItems:"center",border:`1px solid rgba(200,168,75,0.2)`,boxShadow:"0 24px 64px rgba(11,29,58,0.12)"}}>
-                <div style={{flexShrink:0,textAlign:"center"}}>
-                  <div style={{width:150,height:150,borderRadius:"50%",border:`3px solid ${C.gold}`,margin:"0 auto 16px",boxShadow:`0 8px 32px rgba(200,168,75,0.2)`,overflow:"hidden"}}>
-                    <img src="/founder.jpg" alt="د. عبدالحكيم المرضي" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top"}} />
+          {/* لماذا Murdi */}
+          <section style={{padding:"72px 24px",background:C.bg}}>
+            <div style={{maxWidth:960,margin:"0 auto"}}>
+              <h2 style={{fontSize:36,fontWeight:900,textAlign:"center",margin:"0 0 52px"}}>لماذا تتعثر شركات المقاولات؟</h2>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
+                {[
+                  {t:"غياب الإنذار المبكر",d:"تكتشف المشكلة بعد أن تصبح أزمة — لا قبلها بأشهر"},
+                  {t:"لا أحد يراقب التدفق",d:"90٪ من شركات المقاولات بلا مدير مالي متخصص"},
+                  {t:"أرقام بلا قرارات",d:"حتى لو وُجد محاسب، لا يحوّل الأرقام لخطوات واضحة"},
+                ].map((x,i)=>(
+                  <div key={i} style={{background:C.white,borderRadius:14,padding:28,border:`1px solid ${C.border}`}}>
+                    <div style={{fontWeight:800,fontSize:18,marginBottom:10,color:C.navy}}>{x.t}</div>
+                    <div style={{fontSize:15,color:C.slate,lineHeight:1.7}}>{x.d}</div>
                   </div>
-                  <div style={{color:C.gold,fontWeight:800,fontSize:15}}>د. عبدالحكيم المرضي</div>
-                  <div style={{color:"#7A90AB",fontSize:13,marginTop:4}}>مؤسس المنهجية</div>
-                </div>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:22}}>
-                    {["دكتوراه إدارة أعمال","مستشار أعمال معتمد","عضو البورد الأمريكي","15+ سنة في المقاولات"].map((badge,i)=>(
-                      <div key={i} style={{background:"rgba(200,168,75,0.12)",color:C.gold,padding:"5px 14px",borderRadius:20,fontSize:12,fontWeight:700,border:"1px solid rgba(200,168,75,0.25)"}}>✦ {badge}</div>
-                    ))}
-                  </div>
-                  <p style={{fontSize:15,color:"#A8BAD4",lineHeight:1.9,margin:"0 0 16px"}}>بعد أكثر من 15 عاماً من العمل مع شركات المقاولات في المملكة، لاحظ د. عبدالحكيم نمطاً متكرراً: شركات تنهار ليس بسبب نقص العمل، بل بسبب غياب الوضوح المالي في الوقت الصحيح.</p>
-                  <p style={{fontSize:15,color:"#A8BAD4",lineHeight:1.9,margin:"0 0 28px"}}>من هذه التجربة ولدت منهجية Murdi — نظام يحوّل الأرقام لقرارات يفهمها المقاول، لا المحاسب فقط.</p>
-                  <a href={WA} target="_blank" className="btn-gold" style={{display:"inline-block",padding:"12px 28px",fontSize:14,borderRadius:10,textDecoration:"none"}}>تواصل مع د. عبدالحكيم مباشرة</a>
-                </div>
+                ))}
               </div>
             </div>
           </section>
 
-          {/* PRICING */}
-          <section id="pricing" style={{padding:"88px 24px",background:C.bg}}>
-            <div style={{maxWidth:820,margin:"0 auto"}}>
-              <div style={{textAlign:"center",marginBottom:52}}>
-                <div className="feature-badge" style={{marginBottom:16,background:"rgba(11,29,58,0.07)",color:C.navy,border:"1px solid rgba(11,29,58,0.12)"}}>العضوية التأسيسية</div>
-                <h2 style={{fontSize:36,fontWeight:900,margin:"0 0 12px",fontFamily:"'Cairo',sans-serif"}}>برنامج Murdi Founding Members™️</h2>
-                <p style={{fontSize:16,color:C.slate}}>أول 20 شركة فقط — امتياز لا خصم</p>
-              </div>
-              <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,borderRadius:24,padding:"52px 44px",textAlign:"center",border:`1px solid rgba(200,168,75,0.25)`,boxShadow:"0 24px 64px rgba(11,29,58,0.15)",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",top:-60,right:-60,width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}15,transparent 70%)`,pointerEvents:"none"}}/>
-                <div style={{display:"inline-block",background:"rgba(200,168,75,0.12)",color:C.gold,padding:"6px 20px",borderRadius:16,fontSize:13,fontWeight:700,marginBottom:28,border:"1px solid rgba(200,168,75,0.25)"}}>
-                  <span className="pulse">🔴</span> مقاعد محدودة — 20 شركة فقط
-                </div>
-                <div style={{fontSize:15,color:"#A8BAD4",marginBottom:6}}>السعر الحصري للمؤسسين</div>
-                <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:8,marginBottom:6}}>
-                  <span style={{fontSize:62,fontWeight:900,color:C.gold,fontFamily:"'Cairo',sans-serif",lineHeight:1}}>1,990</span>
-                  <span style={{fontSize:18,color:"#A8BAD4"}}>ريال</span>
-                </div>
-                <div style={{fontSize:14,color:"#6A80A0",marginBottom:40}}>شهرياً — مجمّد مدى الحياة</div>
-                <div className="pricing-features" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,maxWidth:500,margin:"0 auto 40px",textAlign:"right"}}>
-                  {["جميع المحركات الذكية (+12 محرك)","سعر مجمّد مدى الحياة","اسمك في صفحة مؤسسي Murdi","وصول مباشر لد. عبدالحكيم","تأثير على تطوير المنهجية","أول تقرير مجاناً بدون التزام"].map((x,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,color:C.white,fontSize:13,background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 14px",border:"1px solid rgba(255,255,255,0.06)"}}>
-                      <span style={{color:C.gold,flexShrink:0}}>✦</span>{x}
+          {/* الباقات */}
+          <section style={{padding:"72px 24px",background:C.white}}>
+            <div style={{maxWidth:860,margin:"0 auto"}}>
+              <h2 style={{fontSize:36,fontWeight:900,textAlign:"center",margin:"0 0 14px"}}>برنامج Murdi Founding Members™️</h2>
+              <p style={{fontSize:17,color:C.slate,textAlign:"center",margin:"0 0 48px"}}>أول 20 شركة فقط — امتياز لا خصم</p>
+              <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,borderRadius:20,padding:"48px 40px",textAlign:"center",border:`2px solid ${C.gold}40`}}>
+                <div style={{display:"inline-block",background:`${C.gold}20`,color:C.gold,padding:"6px 20px",borderRadius:16,fontSize:13,fontWeight:700,marginBottom:24,border:`1px solid ${C.gold}40`}}>مقاعد محدودة — 20 شركة فقط</div>
+                <div style={{fontSize:16,color:"#A8BAD4",marginBottom:8}}>السعر الحصري للمؤسسين</div>
+                <div style={{fontSize:56,fontWeight:900,color:C.gold,marginBottom:4}}>1,990</div>
+                <div style={{fontSize:18,color:"#A8BAD4",marginBottom:32}}>ريال / شهر — مجمّد مدى الحياة</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,maxWidth:480,margin:"0 auto 36px",textAlign:"right"}}>
+                  {["جميع المحركات الذكية الثمانية","سعر مجمّد مدى الحياة","اسمك في صفحة مؤسسي Murdi","وصول مباشر لد. عبدالحكيم","تأثير على تطوير المنهجية","أول تقرير مجاناً بدون التزام"].map((x,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,color:C.white,fontSize:14}}>
+                      <span style={{color:C.gold,fontSize:16}}>✦</span>{x}
                     </div>
                   ))}
                 </div>
-                <a href={WA} target="_blank" className="btn-gold" style={{display:"inline-block",padding:"16px 48px",fontSize:17,borderRadius:14,textDecoration:"none",boxShadow:`0 8px 32px rgba(200,168,75,0.4)`}}>
+                <a href={WA} target="_blank" style={{display:"inline-block",background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,borderRadius:12,padding:"16px 48px",fontSize:18,fontWeight:900,textDecoration:"none",boxShadow:`0 8px 28px ${C.gold}50`}}>
                   انضم الآن عبر WhatsApp
                 </a>
-                <div style={{marginTop:14,fontSize:13,color:"#6A80A0"}}>الاشتراك السنوي يمنح شهرين مجاناً</div>
+                <div style={{marginTop:16,fontSize:13,color:"#7A90AB"}}>الاشتراك السنوي يمنح شهرين مجاناً</div>
               </div>
             </div>
           </section>
 
-          {/* FINAL CTA */}
-          <section style={{background:`linear-gradient(135deg,${C.navy},${C.navyLight})`,padding:"80px 24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-            <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:600,height:400,borderRadius:"50%",background:`radial-gradient(circle,${C.gold}10,transparent 70%)`,pointerEvents:"none"}}/>
-            <div style={{position:"relative"}}>
-              <h2 style={{fontSize:38,fontWeight:900,color:C.white,margin:"0 0 16px",fontFamily:"'Cairo',sans-serif"}}>جرّب Murdi الآن — مجاناً</h2>
-              <p style={{fontSize:17,color:"#A8BAD4",margin:"0 0 36px"}}>تقريرك الأول جاهز خلال ثوانٍ — بدون أي التزام</p>
-              <button onClick={()=>window.location.href="/auth/signup"} className="btn-gold" style={{padding:"17px 50px",fontSize:18,borderRadius:14,boxShadow:`0 8px 32px rgba(200,168,75,0.4)`}}>
-                ابدأ التقييم المجاني
-              </button>
-            </div>
+          {/* CTA نهائي */}
+          <section style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"72px 24px",textAlign:"center"}}>
+            <h2 style={{fontSize:38,fontWeight:900,color:C.white,margin:"0 0 16px"}}>جرّب Murdi الآن — مجاناً</h2>
+            <p style={{fontSize:18,color:"#A8BAD4",margin:"0 0 36px"}}>تقريرك الأول جاهز خلال ثوانٍ — بدون أي التزام</p>
+            <button onClick={()=>window.location.href="/auth/signup"} style={{background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,border:"none",borderRadius:12,padding:"18px 48px",fontSize:19,fontWeight:800,cursor:"pointer",fontFamily:F,boxShadow:`0 8px 28px ${C.gold}50`}}>
+              ابدأ التقييم المجاني
+            </button>
           </section>
 
-          {/* FOOTER */}
-          <footer style={{padding:"32px 40px",background:C.navy,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-            <div style={{maxWidth:960,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
-              <div>
-                <div style={{fontWeight:900,fontSize:17,color:C.white,marginBottom:4}}>Murdi™️ | مُرضي</div>
-                <div style={{fontSize:12,color:"#6A80A0"}}>Construction Intelligence Operating System</div>
-              </div>
-              <div style={{color:"#6A80A0",fontSize:13}}>د. عبدالحكيم المرضي ©️ 2026</div>
-              <a href={WA} style={{color:C.gold,textDecoration:"none",fontSize:14,fontWeight:700}}>📞 0570749196</a>
-            </div>
+          <footer style={{padding:"28px 24px",textAlign:"center",color:C.muted,fontSize:13,background:C.navy}}>
+            <span style={{color:C.gold,fontWeight:700}}>Murdi™️</span> — Construction Intelligence Operating System | د. عبدالحكيم المرضي ©️ 2026
+            <br/><span style={{marginTop:6,display:"inline-block"}}>📞 <a href={WA} style={{color:C.gold,textDecoration:"none"}}>0570749196</a></span>
           </footer>
         </div>
       )}
@@ -374,25 +275,27 @@ export default function Home(){
       {step==="input"&&(
         <div style={{maxWidth:580,margin:"0 auto",padding:"44px 20px"}}>
           <div style={{textAlign:"center",marginBottom:36}}>
-            <div className="feature-badge" style={{marginBottom:16,background:"rgba(11,29,58,0.07)",color:C.navy,border:"1px solid rgba(11,29,58,0.12)"}}>تقرير Murdi المجاني</div>
-            <h1 style={{fontSize:30,fontWeight:900,margin:"0 0 10px",fontFamily:"'Cairo',sans-serif"}}>احصل على تقريرك الآن</h1>
+            <div style={{display:"inline-block",background:`${C.gold}18`,color:C.gold,padding:"6px 18px",borderRadius:16,fontSize:13,fontWeight:700,marginBottom:16}}>تقرير Murdi المجاني</div>
+            <h1 style={{fontSize:30,fontWeight:900,margin:"0 0 10px"}}>احصل على تقريرك الآن</h1>
             <p style={{fontSize:16,color:C.slate}}>5 أرقام فقط — تحليل مالي كامل فوراً</p>
           </div>
           <div style={{background:C.white,borderRadius:16,padding:28,border:`1px solid ${C.border}`,marginBottom:16}}>
-            <label style={{fontSize:14,fontWeight:700,color:C.slate,display:"block",marginBottom:10}}>🏢 اسم الشركة</label>
-            <input value={company} onChange={e=>setCompany(e.target.value)} placeholder="مثال: شركة النور للمقاولات" className="input-field"/>
+            <label style={{fontSize:14,fontWeight:700,color:C.slate,display:"block",marginBottom:10}}>اسم الشركة</label>
+            <input value={company} onChange={e=>setCompany(e.target.value)} placeholder="مثال: شركة النور للمقاولات"
+              style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:10,border:`1.5px solid ${C.border}`,fontSize:16,fontFamily:F,outline:"none",background:C.bg}}/>
           </div>
           <div style={{background:C.white,borderRadius:16,padding:28,border:`1px solid ${C.border}`,marginBottom:20}}>
             <div style={{fontSize:15,fontWeight:800,color:C.navy,marginBottom:22,paddingBottom:14,borderBottom:`1px solid ${C.border}`}}>البيانات المالية — بالريال السعودي</div>
             {fields.map((f,i)=>(
               <div key={f.key} style={{marginBottom:i<fields.length-1?20:0}}>
-                <label style={{fontSize:14,fontWeight:600,color:C.slate,display:"block",marginBottom:8}}>{f.icon} {f.label}</label>
-                <input value={(form as Record<string,string>)[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})} placeholder={f.ph} className="input-field"/>
+                <label style={{fontSize:14,fontWeight:600,color:C.slate,display:"block",marginBottom:8}}>{f.label}</label>
+                <input value={(form as Record<string,string>)[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})} placeholder={f.ph}
+                  style={{width:"100%",boxSizing:"border-box",padding:"14px 16px",borderRadius:10,border:`1.5px solid ${C.border}`,fontSize:16,fontFamily:F,outline:"none",background:C.bg}}/>
               </div>
             ))}
           </div>
           <div style={{textAlign:"center",fontSize:13,color:C.muted,marginBottom:20}}>🔒 بياناتك سرية — لا تُشارك مع أي طرف</div>
-          <button onClick={()=>window.location.href="/auth/signup"} disabled={!filled} className="btn-gold" style={{width:"100%",padding:18,fontSize:18,borderRadius:12,opacity:filled?1:0.5,cursor:filled?"pointer":"not-allowed"}}>
+          <button onClick={()=>window.location.href="/auth/signup"} disabled={!filled} style={{width:"100%",background:filled?`linear-gradient(135deg,${C.gold},${C.goldLight})`:C.border,color:filled?C.navy:C.muted,border:"none",borderRadius:12,padding:18,fontSize:18,fontWeight:800,cursor:filled?"pointer":"not-allowed",fontFamily:F,boxShadow:filled?`0 8px 24px ${C.gold}40`:"none"}}>
             احسب Murdi Score الآن
           </button>
         </div>
@@ -401,31 +304,40 @@ export default function Home(){
       {/* REPORT */}
       {step==="report"&&result&&(
         <div style={{maxWidth:640,margin:"0 auto",padding:"32px 20px"}}>
+
           <div style={{background:C.navy,borderRadius:20,padding:32,textAlign:"center",marginBottom:16,boxShadow:"0 8px 32px rgba(11,29,58,0.3)"}}>
             <div style={{fontSize:13,color:"#7A90AB",marginBottom:4}}>Murdi Financial Report</div>
-            <div style={{fontSize:24,fontWeight:900,color:C.white,marginBottom:24,fontFamily:"'Cairo',sans-serif"}}>{company}</div>
+            <div style={{fontSize:24,fontWeight:900,color:C.white,marginBottom:24}}>{company}</div>
             <Gauge score={result.score}/>
+            <div style={{marginTop:20,display:"inline-block",background:`${C.gold}22`,color:C.gold,borderRadius:8,padding:"8px 20px",fontSize:13,fontWeight:700,border:`1px solid ${C.gold}40`}}>
+              Analysis Depth: 55٪ — أضف بيانات المشاريع لرفعه إلى 75٪
+            </div>
           </div>
+
+          {/* المؤشرات — أرقام فقط بدون شرح */}
           <div style={{background:C.white,borderRadius:16,padding:24,border:`1px solid ${C.border}`,marginBottom:16}}>
             <div style={{fontSize:15,fontWeight:800,color:C.navy,marginBottom:18,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>المؤشرات الرئيسية</div>
             {[
               {l:"تغطية السيولة",v:`${Math.round(result.coverageDays)} يوماً`,ok:result.coverageDays>=90,warn:result.coverageDays>=30},
               {l:"التدفق النقدي الشهري",v:`${result.cashFlow>=0?"+":""}${num(result.cashFlow)} ريال`,ok:result.cashFlow>=0,warn:result.cashFlow>=0},
-              {l:"دورة التحصيل",v:`${Math.round(result.collectionDays)} يوما`,ok:result.collectionDays<60,warn:result.collectionDays<90},
+              {l:"دورة التحصيل",v:`${Math.round(result.collectionDays)} يوماً`,ok:result.collectionDays<60,warn:result.collectionDays<90},
               {l:"نسبة المديونية",v:`${(result.debtRatio*100).toFixed(1)}٪`,ok:result.debtRatio<0.5,warn:result.debtRatio<1},
             ].map((m,i)=>{
               const col=m.ok?C.green:m.warn?C.yellow:C.red;
+              const txt=m.ok?"جيد":m.warn?"تنبيه":"خطر";
               return(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderBottom:i<3?`1px solid ${C.border}`:"none"}}>
                   <span style={{fontSize:15,color:C.slate}}>{m.l}</span>
                   <span style={{display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontWeight:700,fontSize:15,color:C.navy}}>{m.v}</span>
-                    <span style={{background:`${col}18`,color:col,borderRadius:6,padding:"3px 12px",fontSize:12,fontWeight:700,border:`1px solid ${col}30`}}>{m.ok?"جيد":m.warn?"تنبيه":"خطر"}</span>
+                    <span style={{background:`${col}18`,color:col,borderRadius:6,padding:"3px 12px",fontSize:12,fontWeight:700,border:`1px solid ${col}30`}}>{txt}</span>
                   </span>
                 </div>
               );
             })}
           </div>
+
+          {/* المخاطر */}
           {result.risks.length>0&&(
             <div style={{background:C.white,borderRadius:16,padding:24,border:`1px solid ${C.border}`,marginBottom:16}}>
               <div style={{fontSize:15,fontWeight:800,color:C.red,marginBottom:18,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>Top Risks — المخاطر والإجراءات</div>
@@ -433,11 +345,11 @@ export default function Home(){
                 <div key={i} style={{background:r.bg,border:`1.5px solid ${r.color}30`,borderRadius:14,padding:20,marginBottom:14}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                     <span style={{fontWeight:800,fontSize:16,color:C.navy,flex:1}}>{r.title}</span>
-                    <span style={{background:`${r.color}20`,color:r.color,borderRadius:6,padding:"3px 12px",fontSize:12,fontWeight:800}}>{r.level}</span>
+                    <span style={{background:`${r.color}20`,color:r.color,borderRadius:6,padding:"3px 12px",fontSize:12,fontWeight:800,border:`1px solid ${r.color}40`}}>{r.level}</span>
                   </div>
                   <div style={{fontSize:14,color:C.slate,marginBottom:14,lineHeight:1.7}}>{r.detail}</div>
                   <div style={{background:C.white,borderRadius:10,padding:"12px 16px",marginBottom:12,border:`1px solid ${C.border}`}}>
-                    <div style={{fontSize:11,color:C.gold,fontWeight:800,marginBottom:5}}>ACTION ENGINE</div>
+                    <div style={{fontSize:11,color:C.gold,fontWeight:800,marginBottom:5}}>ACTION ENGINE — الإجراء المطلوب</div>
                     <div style={{fontSize:14,lineHeight:1.6,color:C.navy}}>{r.action}</div>
                   </div>
                   <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
@@ -445,7 +357,7 @@ export default function Home(){
                       <div style={{fontSize:11,color:C.navy,fontWeight:800,marginBottom:4}}>IMPACT ENGINE</div>
                       <div style={{fontSize:13,lineHeight:1.5,color:C.slate}}>{r.impact}</div>
                     </div>
-                    <div style={{background:`linear-gradient(135deg,rgba(200,168,75,0.15),${C.goldPale})`,borderRadius:10,padding:"10px 16px",textAlign:"center",border:`1px solid rgba(200,168,75,0.3)`,minWidth:90}}>
+                    <div style={{background:`linear-gradient(135deg,${C.gold}18,${C.goldPale})`,borderRadius:10,padding:"10px 16px",textAlign:"center",display:"flex",flexDirection:"column",justifyContent:"center",border:`1px solid ${C.gold}40`,minWidth:90}}>
                       <div style={{fontSize:11,color:C.yellow,fontWeight:800,marginBottom:4}}>على الدرجة</div>
                       <div style={{fontSize:18,fontWeight:900,color:C.gold}}>{r.scoreLift}</div>
                     </div>
@@ -454,6 +366,8 @@ export default function Home(){
               ))}
             </div>
           )}
+
+          {/* نقاط القوة */}
           {result.strengths.length>0&&(
             <div style={{background:C.white,borderRadius:16,padding:24,border:`1px solid ${C.border}`,marginBottom:16}}>
               <div style={{fontSize:15,fontWeight:800,color:C.green,marginBottom:18,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>نقاط القوة</div>
@@ -465,9 +379,11 @@ export default function Home(){
               ))}
             </div>
           )}
+
+          {/* الفرص */}
           {result.opportunities.length>0&&(
             <div style={{background:C.white,borderRadius:16,padding:24,border:`1px solid ${C.border}`,marginBottom:16}}>
-              <div style={{fontSize:15,fontWeight:800,color:C.navy,marginBottom:18,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>Opportunity Engine</div>
+              <div style={{fontSize:15,fontWeight:800,color:C.navy,marginBottom:18,paddingBottom:12,borderBottom:`1px solid ${C.border}`}}>Opportunity Engine — الفرص المتاحة</div>
               {result.opportunities.map((o,i)=>(
                 <div key={i} style={{borderRight:`3px solid ${C.gold}`,background:C.goldPale,borderRadius:"0 10px 10px 0",padding:"12px 16px",marginBottom:10}}>
                   <div style={{fontWeight:700,fontSize:15,marginBottom:4,color:C.navy}}>{o.title}</div>
@@ -476,16 +392,26 @@ export default function Home(){
               ))}
             </div>
           )}
+
+          {/* CTA */}
           <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,borderRadius:16,padding:32,textAlign:"center",marginBottom:16}}>
-            <div style={{fontSize:20,fontWeight:900,color:C.white,marginBottom:8,fontFamily:"'Cairo',sans-serif"}}>هل هذا التقرير مفيد لك؟</div>
+            <div style={{fontSize:21,fontWeight:900,color:C.white,marginBottom:8}}>هل هذا التقرير مفيد لك؟</div>
             <div style={{fontSize:14,color:"#A8BAD4",marginBottom:24}}>انضم لبرنامج Murdi Founding Members™️ — 20 مقعداً فقط</div>
-            <a href={WA} target="_blank" className="btn-gold" style={{display:"inline-block",padding:"14px 32px",fontSize:16,borderRadius:10,textDecoration:"none"}}>انضم الآن — 1,990 ريال/شهر</a>
+            <a href={WA} target="_blank" style={{display:"inline-block",background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,borderRadius:10,padding:"14px 32px",fontSize:16,fontWeight:800,textDecoration:"none"}}>
+              انضم الآن — 1,990 ريال/شهر
+            </a>
           </div>
-          <button onClick={()=>{setStep("landing");window.scrollTo(0,0);}} style={{width:"100%",background:"transparent",color:C.slate,border:`1px solid ${C.border}`,borderRadius:12,padding:14,fontSize:15,cursor:"pointer",fontFamily:F,marginBottom:8}}>
-            ← العودة للرئيسية
+
+          <button onClick={()=>window.location.href="/auth/signup"} style={{width:"100%",background:"transparent",color:C.slate,border:`1px solid ${C.border}`,borderRadius:12,padding:14,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:F,marginBottom:8}}>
+            تقرير جديد
           </button>
+
+          <div style={{textAlign:"center",fontSize:12,color:C.muted,padding:"16px 0"}}>
+            <span style={{color:C.gold,fontWeight:700}}>Murdi™️</span> — Construction Intelligence Operating System | د. عبدالحكيم المرضي ©️ 2026
+          </div>
         </div>
       )}
     </div>
   );
-}
+}153
+ 
