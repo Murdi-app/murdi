@@ -11,7 +11,7 @@ interface GoalOption {
   title: string
   subtitle: string
   desc: string
-  icon: JSX.Element
+  icon: React.ReactNode
 }
 
 const GOALS: GoalOption[] = [
