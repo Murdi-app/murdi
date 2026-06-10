@@ -19,6 +19,11 @@ export default function RegisterPage() {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [receiptUploaded, setReceiptUploaded] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
   const [form, setForm] = useState({
     company_name: '', cr_number: '', tax_number: '',
     owner_name: '', phone: '', city: '', sector: '',
@@ -53,6 +58,34 @@ export default function RegisterPage() {
     }
     setSaving(false)
     setStep(2)
+  }
+
+  async function uploadReceipt() {
+    if (!receiptFile) return
+    setUploading(true)
+    setUploadError('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setUploading(false); return }
+
+    const ext = receiptFile.name.split('.').pop() || 'jpg'
+    const path = user.id + '/receipt-' + Date.now() + '.' + ext
+
+    const { error: upError } = await supabase.storage
+      .from('receipts')
+      .upload(path, receiptFile, { upsert: true })
+
+    if (upError) {
+      setUploadError('فشل رفع الإيصال — حاول مرة أخرى')
+      setUploading(false)
+      return
+    }
+
+    await supabase.from('companies')
+      .update({ receipt_path: path })
+      .eq('user_id', user.id)
+
+    setReceiptUploaded(true)
+    setUploading(false)
   }
 
   async function confirmTransfer() {
@@ -112,6 +145,13 @@ export default function RegisterPage() {
         .rg-copy { background:#2E9E7B; color:#fff; border:none; padding:6px 16px; border-radius:20px; font-family:'Cairo',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-right:8px; }
         .rg-note { background:#FBF5E8; border-radius:12px; padding:14px 16px; color:#9A7B2E; font-size:13px; line-height:1.7; margin:18px 0; }
         .rg-back { background:transparent; color:#A3BAB2; border:none; font-family:'Cairo',sans-serif; font-size:13px; cursor:pointer; margin-top:14px; width:100%; }
+        .rg-upload-box { border:2px dashed #2E9E7B; border-radius:16px; padding:20px; text-align:center; margin:18px 0; background:#FBFCFB; }
+        .rg-upload-label { display:inline-block; background:#E8F5EF; color:#2E9E7B; padding:10px 24px; border-radius:30px; font-size:14px; font-weight:700; cursor:pointer; }
+        .rg-upload-name { color:#1A3D34; font-size:13px; font-weight:600; margin-top:10px; word-break:break-all; }
+        .rg-upload-btn { background:#2E9E7B; color:#fff; border:none; padding:10px 28px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:14px; font-weight:700; cursor:pointer; margin-top:12px; }
+        .rg-upload-btn:disabled { opacity:0.45; cursor:not-allowed; }
+        .rg-upload-done { color:#2E9E7B; font-size:14px; font-weight:700; margin-top:10px; }
+        .rg-upload-err { color:#C0564B; font-size:13px; font-weight:700; margin-top:10px; }
       `}</style>
       <div className="rg-wrapper">
         <div className="rg-logo">Murdi</div>
@@ -137,7 +177,7 @@ export default function RegisterPage() {
         {step === 2 && (
           <>
             <div className="rg-title">رسوم فتح الملف</div>
-            <div className="rg-sub">حوّل المبلغ على الحساب التالي، ثم أكّد التحويل</div>
+            <div className="rg-sub">حوّل المبلغ على الحساب التالي، ثم ارفع إيصال التحويل</div>
             <div className="rg-card">
               <div className="rg-fee-box">
                 <div className="rg-fee-label">رسوم فتح الملف (مرة واحدة)</div>
@@ -158,10 +198,30 @@ export default function RegisterPage() {
                   <button className="rg-copy" onClick={copyIban}>{copied ? 'تم ✓' : 'نسخ'}</button>
                 </span>
               </div>
-              <div className="rg-note">
-                بعد التحويل، احتفظ بإيصال التحويل. سيطلبه فريق Murdi عند مراجعة طلبك. اضغط "أكّدت التحويل" لإرسال طلبك للمراجعة.
+
+              <div className="rg-upload-box">
+                <div style={{ color:'#1A3D34', fontSize:14, fontWeight:700, marginBottom:10 }}>إيصال التحويل (صورة أو PDF)</div>
+                <label className="rg-upload-label">
+                  اختر الملف
+                  <input type="file" accept="image/*,.pdf" style={{ display:'none' }}
+                    onChange={e => { setReceiptFile(e.target.files?.[0] || null); setReceiptUploaded(false); setUploadError('') }} />
+                </label>
+                {receiptFile && <div className="rg-upload-name">📎 {receiptFile.name}</div>}
+                {receiptFile && !receiptUploaded && (
+                  <div>
+                    <button className="rg-upload-btn" disabled={uploading} onClick={uploadReceipt}>
+                      {uploading ? 'جارٍ الرفع...' : 'رفع الإيصال'}
+                    </button>
+                  </div>
+                )}
+                {receiptUploaded && <div className="rg-upload-done">✓ تم رفع الإيصال بنجاح</div>}
+                {uploadError && <div className="rg-upload-err">{uploadError}</div>}
               </div>
-              <button className="rg-btn" disabled={saving} onClick={confirmTransfer}>
+
+              <div className="rg-note">
+                بعد رفع الإيصال اضغط "أكّدت التحويل" لإرسال طلبك للمراجعة. سيراجع فريق Murdi الإيصال ويفعّل حسابك.
+              </div>
+              <button className="rg-btn" disabled={saving || !receiptUploaded} onClick={confirmTransfer}>
                 {saving ? 'جارٍ الإرسال...' : 'أكّدت التحويل'}
               </button>
               <button className="rg-back" onClick={() => setStep(1)}>رجوع لتعديل البيانات</button>

@@ -17,6 +17,8 @@ interface Company {
   goal: string | null
   account_status: string
   payment_status: string | null
+  receipt_path: string | null
+  payment_confirmed_at: string | null
   is_locked: boolean
   created_at: string
 }
@@ -58,6 +60,27 @@ export default function ApprovalsPage() {
       .select('*')
       .order('created_at', { ascending: false })
     if (data) setCompanies(data as Company[])
+  }
+
+  async function viewReceipt(c: Company) {
+    if (!c.receipt_path) return
+    const { data, error } = await supabase.storage
+      .from('receipts')
+      .createSignedUrl(c.receipt_path, 300)
+    if (error || !data?.signedUrl) { alert('تعذر فتح الإيصال'); return }
+    window.open(data.signedUrl, '_blank')
+  }
+
+  async function confirmPayment(c: Company) {
+    setBusy(c.id)
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('companies').update({
+      payment_status: 'paid',
+      payment_confirmed_at: new Date().toISOString(),
+      payment_confirmed_by: user?.email || 'admin',
+    }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
   }
 
   async function approve(c: Company) {
@@ -121,6 +144,8 @@ export default function ApprovalsPage() {
         .ap-btn { border:none; padding:10px 22px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; }
         .ap-btn-approve { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; }
         .ap-btn-reject { background:#FBEDED; color:#D96A6A; }
+        .ap-btn-receipt { background:#E8F5EF; color:#2E9E7B; }
+        .ap-btn-pay { background:#FBF5E8; color:#9A7B2E; }
         .ap-btn:disabled { opacity:0.5; cursor:not-allowed; }
         .ap-lock { font-size:12px; color:#2E9E7B; }
         .ap-empty { color:#A3BAB2; font-size:14px; text-align:center; padding:30px; }
@@ -148,10 +173,22 @@ export default function ApprovalsPage() {
                 <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{c.phone || '—'}</div></div>
                 <div className="ap-field"><div className="ap-field-label">المدينة</div><div className="ap-field-val">{c.city || '—'}</div></div>
                 <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{c.sector || '—'}</div></div>
-                <div className="ap-field"><div className="ap-field-label">الدفع</div><div className="ap-field-val">{c.payment_status === 'paid' ? 'مدفوع ✓' : 'غير مدفوع'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">الدفع</div><div className="ap-field-val">{c.payment_status === 'paid' ? 'مؤكد ✓' : 'لم يُؤكد بعد'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">الإيصال</div><div className="ap-field-val">{c.receipt_path ? 'مرفوع 📎' : 'غير مرفوع'}</div></div>
               </div>
               <div className="ap-actions">
-                <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => approve(c)}>
+                {c.receipt_path && (
+                  <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>
+                    📎 عرض الإيصال
+                  </button>
+                )}
+                {c.payment_status !== 'paid' && (
+                  <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => confirmPayment(c)}>
+                    {busy === c.id ? 'جار...' : '💰 تأكيد استلام الدفع'}
+                  </button>
+                )}
+                <button className="ap-btn ap-btn-approve" disabled={busy === c.id || c.payment_status !== 'paid'} onClick={() => approve(c)}
+                  title={c.payment_status !== 'paid' ? 'أكّد استلام الدفع أولاً' : ''}>
                   {busy === c.id ? 'جارٍ...' : '✓ موافقة وتفعيل'}
                 </button>
                 <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => setStatus(c, 'rejected')}>
@@ -170,6 +207,9 @@ export default function ApprovalsPage() {
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
               </div>
               <div className="ap-actions">
+                {c.receipt_path && (
+                  <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>📎 عرض الإيصال</button>
+                )}
                 {c.account_status === 'active' && (
                   <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => setStatus(c, 'suspended')}>إيقاف</button>
                 )}
