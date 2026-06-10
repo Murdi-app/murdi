@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
-const ADMIN_EMAIL = 'hololalmurdi.fa@gmail.com'
+const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 
 interface Company {
   id: string
