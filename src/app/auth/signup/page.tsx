@@ -37,7 +37,7 @@ export default function SignUp() {
     const user = data.user
     if (user) {
       await supabase.from('profiles').insert({ id: user.id, email, company_name: company })
-      router.push('/dashboard')
+      router.push('/register')
     }
     setLoading(false)
   }
