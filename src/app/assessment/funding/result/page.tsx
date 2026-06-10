@@ -55,6 +55,8 @@ export default function FundingResultPage() {
   const [companyName, setCompanyName] = useState('')
   const [requesting, setRequesting] = useState(false)
   const [requested, setRequested] = useState(false)
+  const [matchCount, setMatchCount] = useState<number | null>(null)
+  const [fundingTypes, setFundingTypes] = useState<string[]>([])
 
   useEffect(() => { load() }, [])
 
@@ -78,6 +80,10 @@ export default function FundingResultPage() {
       .maybeSingle()
 
     if (res) setResult(res as Result)
+    try {
+      const m = await fetch('/api/match', { method: 'POST' })
+      if (m.ok) { const d = await m.json(); setMatchCount(d.match_count); setFundingTypes(d.funding_types || []) }
+    } catch (e) {}
     setLoading(false)
   }
 
@@ -184,6 +190,17 @@ export default function FundingResultPage() {
                   <span>{d}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {matchCount !== null && matchCount > 0 && (
+            <div className="rs-section">
+              <div className="rs-section-title">🎯 فرص التمويل المتاحة لك</div>
+              <p style={{ color:'#6B8A80', fontSize:14, lineHeight:1.8, marginBottom:14 }}>شركتك مؤهلة مبدئياً لـ <strong style={{ color:'#2E9E7B' }}>{matchCount}</strong> من منتجات التمويل:</p>
+              {fundingTypes.map((t, i) => (
+                <div key={i} className="rs-doc"><span className="rs-doc-icon">✓</span><span>{t}</span></div>
+              ))}
+              <p style={{ color:'#A3BAB2', fontSize:12, marginTop:14, lineHeight:1.7 }}>اطلب مراجعة الملف ليتواصل معك فريق Murdi حول الجهات المناسبة.</p>
             </div>
           )}
 
