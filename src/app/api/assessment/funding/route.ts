@@ -1,181 +1,109 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 
-interface FinancialInput {
-  annual_revenue: number
-  net_profit: number
-  available_cash: number
-  monthly_expenses: number
-  total_debt: number
-  monthly_installments: number
-  receivables: number
-  overdue_receivables: number
-  avg_collection_days: number
-  years_operating: number
-  employee_count: number
-  revenue_growth: number
-  client_concentration: number
-  has_financials: boolean
-  has_external_auditor: boolean
-  has_finance_manager: boolean
-  has_accountant: boolean
-  has_monthly_budget: boolean
-  separate_accounts: boolean
-}
+export async function POST(req: Request) {
+  const body = await req.json();
+  const cookieStore = await cookies();
 
-interface Obstacle { title: string; severity: 'high' | 'medium' | 'low'; detail: string }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+  );
 
-function calculateReadiness(d: FinancialInput) {
-  let score = 0
-  const obstacles: Obstacle[] = []
-  const requiredDocs: string[] = ['السجل التجاري', 'كشف حساب بنكي (6 أشهر)']
-  const improvementPlan: { phase: string; action: string }[] = []
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const profitMargin = d.annual_revenue > 0 ? (d.net_profit / d.annual_revenue) * 100 : 0
-  if (profitMargin >= 15) score += 20
-  else if (profitMargin >= 8) score += 14
-  else if (profitMargin >= 3) score += 8
-  else {
-    score += 2
-    obstacles.push({ title: 'هامش ربح منخفض', severity: 'high',
-      detail: `هامش ربحك ${profitMargin.toFixed(1)}% — الجهات الممولة تفضل 8% فأعلى.` })
-    improvementPlan.push({ phase: '30 يوم', action: 'مراجعة التسعير والمصروفات لرفع هامش الربح' })
+  const { data: company } = await supabase
+    .from('companies')
+    .select('id, account_status')
+    .eq('user_id', user.id)
+    .single();
+
+  if (company === null) return NextResponse.json({ error: 'لا توجد شركة مسجلة' }, { status: 404 });
+  if (company.account_status !== 'active') return NextResponse.json({ error: 'الحساب غير مفعّل' }, { status: 403 });
+
+  // ===== محرك جاهزية التمويل =====
+  let score = 0;
+  const obstacles: string[] = [];
+  const plan: string[] = [];
+  const docs: string[] = ['السجل التجاري', 'كشف حساب بنكي 6 أشهر'];
+
+  // 1) المتطلبات النظامية (40 نقطة)
+  if (body.cr_valid) score += 10; else { obstacles.push('السجل التجاري غير ساري'); plan.push('تجديد السجل التجاري فوراً — شرط أساسي لأي تمويل'); }
+  if (body.tax_compliant) score += 10; else { obstacles.push('عدم الالتزام بالإقرارات الضريبية'); plan.push('تسوية الوضع الضريبي مع هيئة الزكاة والضريبة والجمارك'); }
+  if (body.zakat_compliant) { score += 10; docs.push('شهادة الزكاة'); } else { obstacles.push('شهادة الزكاة غير سارية'); plan.push('إصدار/تجديد شهادة الزكاة'); }
+  if (body.has_financial_statements) { score += 10; docs.push('القوائم المالية'); } else { obstacles.push('لا توجد قوائم مالية'); plan.push('إعداد قوائم مالية عبر محاسب قانوني — ترفع فرص القبول بشكل كبير'); }
+
+  // 2) الديون وحالة السداد (30 نقطة)
+  if (body.has_debt === false) {
+    score += 30;
+  } else if (body.debt_status === 'committed') {
+    score += 22;
+    docs.push('جدول سداد التمويل القائم');
+    const ratio = body.annual_revenue > 0 ? body.debt_remaining / body.annual_revenue : 1;
+    if (ratio > 0.5) { obstacles.push('حجم الدين القائم مرتفع نسبة للإيرادات'); plan.push('خفض الدين القائم أو زيادة الإيرادات قبل طلب تمويل إضافي'); }
+  } else {
+    const months = Number(body.months_late) || 0;
+    if (months <= 3) {
+      score += 10;
+      obstacles.push('تأخر في سداد التمويل القائم (' + months + ' شهر)');
+      plan.push('تسوية المتأخرات فوراً — التأخر يظهر في سمة ويغلق أبواب التمويل');
+    } else {
+      obstacles.push('تعثر في السداد لأكثر من 3 أشهر');
+      plan.push('جدولة الدين المتعثر مع الجهة الممولة أولاً — لا جدوى من طلب تمويل جديد قبل التسوية');
+    }
   }
 
-  const debtRatio = d.annual_revenue > 0 ? (d.total_debt / d.annual_revenue) * 100 : 100
-  if (debtRatio <= 30) score += 20
-  else if (debtRatio <= 50) score += 14
-  else if (debtRatio <= 70) score += 7
-  else {
-    score += 0
-    obstacles.push({ title: 'نسبة ديون مرتفعة', severity: 'high',
-      detail: `ديونك تمثل ${debtRatio.toFixed(0)}% من إيراداتك — يفضل أقل من 50%.` })
-    improvementPlan.push({ phase: '90 يوم', action: 'خفض الديون القائمة أو إعادة جدولتها' })
-  }
+  // 3) عمر النشاط (15 نقطة)
+  const years = Number(body.years_operating) || 0;
+  if (years >= 3) score += 15;
+  else if (years >= 1) { score += 10; obstacles.push('عمر النشاط أقل من 3 سنوات'); plan.push('بعض الجهات تشترط 3 سنوات — التركيز على الجهات التي تقبل سنة واحدة'); }
+  else { score += 4; obstacles.push('عمر النشاط أقل من سنة'); plan.push('أغلب جهات التمويل تشترط سنة على الأقل — بناء سجل بنكي نظيف خلال هذه الفترة'); }
 
-  const monthsCovered = d.monthly_expenses > 0 ? d.available_cash / d.monthly_expenses : 0
-  if (monthsCovered >= 6) score += 15
-  else if (monthsCovered >= 3) score += 10
-  else if (monthsCovered >= 1) score += 5
-  else {
-    obstacles.push({ title: 'سيولة ضعيفة', severity: 'medium',
-      detail: `نقدك يغطي ${monthsCovered.toFixed(1)} شهر فقط من المصروفات.` })
-    improvementPlan.push({ phase: '60 يوم', action: 'بناء احتياطي نقدي يغطي 3 أشهر على الأقل' })
-  }
+  // 4) الإيرادات السنوية (15 نقطة)
+  const rev = Number(body.annual_revenue) || 0;
+  if (rev >= 5000000) score += 15;
+  else if (rev >= 1000000) score += 12;
+  else if (rev >= 375000) score += 8;
+  else { score += 3; obstacles.push('الإيرادات السنوية أقل من حد القبول لدى أغلب الجهات'); plan.push('رفع الإيرادات الموثقة بنكياً فوق 375 ألف ريال سنوياً'); }
 
-  if (d.avg_collection_days <= 45) score += 10
-  else if (d.avg_collection_days <= 90) score += 6
-  else {
-    score += 2
-    obstacles.push({ title: 'بطء التحصيل', severity: 'medium',
-      detail: `متوسط تحصيلك ${d.avg_collection_days} يوم — يفضل أقل من 90 يوم.` })
-    improvementPlan.push({ phase: '30 يوم', action: 'تشديد سياسة التحصيل ومتابعة الذمم المتأخرة' })
-  }
+  let verdict = '';
+  if (score >= 80) verdict = 'جاهز للتمويل';
+  else if (score >= 60) verdict = 'شبه جاهز — عوائق بسيطة';
+  else if (score >= 40) verdict = 'يحتاج تحسين قبل التقديم';
+  else verdict = 'غير جاهز حالياً';
 
-  if (d.years_operating >= 3) score += 10
-  else if (d.years_operating >= 2) score += 7
-  else if (d.years_operating >= 1) score += 4
-  else {
-    score += 1
-    obstacles.push({ title: 'حداثة النشاط', severity: 'medium',
-      detail: `عمر شركتك ${d.years_operating} سنة — بعض المنتجات تتطلب سنتين فأكثر.` })
-  }
+  // حفظ البيانات
+  const { error: fdError } = await supabase.from('financial_data').insert({
+    company_id: company.id,
+    funding_type: body.funding_type,
+    funding_type_other: body.funding_type_other,
+    annual_revenue: rev,
+    years_operating: years,
+    has_debt: body.has_debt,
+    debt_remaining: body.debt_remaining,
+    debt_status: body.debt_status,
+    months_late: body.months_late,
+    debt_type: body.debt_type,
+    debt_type_other: body.debt_type_other,
+    cr_valid: body.cr_valid,
+    tax_compliant: body.tax_compliant,
+    zakat_compliant: body.zakat_compliant,
+    has_financial_statements: body.has_financial_statements,
+  });
+  if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
-  if (d.client_concentration <= 30) score += 10
-  else if (d.client_concentration <= 50) score += 6
-  else {
-    score += 2
-    obstacles.push({ title: 'تركز عملاء مرتفع', severity: 'medium',
-      detail: `اعتمادك على عميل واحد ${d.client_concentration}% — يرفع المخاطر لدى الممول.` })
-    improvementPlan.push({ phase: '90 يوم', action: 'تنويع قاعدة العملاء لتقليل التركز' })
-  }
-
-  let gov = 0
-  if (d.has_financials) { gov += 5 } else { requiredDocs.push('قوائم مالية'); obstacles.push({ title: 'غياب القوائم المالية', severity: 'high', detail: 'القوائم المالية شرط أساسي لمعظم منتجات التمويل.' }) }
-  if (d.has_external_auditor) { gov += 4 } else { requiredDocs.push('تقرير مراجع خارجي') }
-  if (d.has_finance_manager || d.has_accountant) gov += 3
-  if (d.has_monthly_budget) gov += 2
-  if (d.separate_accounts) gov += 1
-  score += gov
-  if (gov < 8) improvementPlan.push({ phase: '90 يوم', action: 'تحسين الحوكمة: إعداد قوائم مالية وتعيين مراجع خارجي' })
-
-  score = Math.min(100, Math.round(score))
-
-  let verdict: string
-  if (score >= 75) verdict = 'جاهز'
-  else if (score >= 50) verdict = 'يحتاج تحسين'
-  else verdict = 'غير مناسب حالياً'
-
-  const sevRank = { high: 3, medium: 2, low: 1 }
-  const top3 = obstacles
-    .sort((a, b) => sevRank[b.severity] - sevRank[a.severity])
-    .slice(0, 3)
-
-  return {
+  const { error: rrError } = await supabase.from('readiness_results').insert({
+    company_id: company.id,
     readiness_score: score,
     verdict,
-    top_obstacles: top3,
-    required_documents: [...new Set(requiredDocs)],
-    improvement_plan: improvementPlan,
-  }
-}
+    top_obstacles: obstacles,
+    required_documents: docs,
+    improvement_plan: plan,
+  });
+  if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 
-export async function POST(req: NextRequest) {
-  try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get: (name: string) => cookieStore.get(name)?.value,
-          set: () => {},
-          remove: () => {},
-        },
-      }
-    )
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 })
-
-    const body = await req.json() as FinancialInput
-
-    const { data: company } = await supabase
-      .from('companies')
-      .select('id, account_status, goal')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (!company || company.account_status !== 'active') {
-      return NextResponse.json({ error: 'الحساب غير مفعل' }, { status: 403 })
-    }
-
-    await supabase.from('financial_data').insert({
-      company_id: company.id,
-      ...body,
-    })
-
-    const result = calculateReadiness(body)
-
-    const { data: saved, error: saveErr } = await supabase
-      .from('readiness_results')
-      .insert({
-        company_id: company.id,
-        goal: 'funding',
-        readiness_score: result.readiness_score,
-        verdict: result.verdict,
-        top_obstacles: result.top_obstacles,
-        required_documents: result.required_documents,
-        improvement_plan: result.improvement_plan,
-      })
-      .select()
-      .single()
-
-    if (saveErr) return NextResponse.json({ error: 'فشل حفظ النتيجة' }, { status: 500 })
-
-    return NextResponse.json({ success: true, result: saved })
-  } catch (e) {
-    return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 })
-  }
+  return NextResponse.json({ ok: true, readiness_score: score, verdict });
 }
