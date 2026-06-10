@@ -29,7 +29,11 @@ export default function Login() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
-    router.push('/dashboard')
+    const { data: { user: u } } = await supabase.auth.getUser()
+    const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
+    if (!co) { router.push('/register'); return }
+    if (co.account_status === 'active') { router.push('/goal'); return }
+    router.push('/pending')
     setLoading(false)
   }
 
