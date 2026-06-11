@@ -80,6 +80,7 @@ export async function POST(req: Request) {
     company_id: company.id,
     funding_type: body.funding_type,
     funding_type_other: body.funding_type_other,
+    company_bank: body.company_bank,
     monthly_installment: body.monthly_installment,
     lender_type: body.lender_type,
     lender_name: body.lender_name,

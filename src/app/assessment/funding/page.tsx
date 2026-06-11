@@ -36,6 +36,7 @@ export default function FundingAssessment() {
   const [fundingType, setFundingType] = useState('');
   const [fundingTypeOther, setFundingTypeOther] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
+  const [companyBank, setCompanyBank] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
   const [debtRemaining, setDebtRemaining] = useState('');
@@ -54,7 +55,7 @@ export default function FundingAssessment() {
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
-    if (step === 1) return annualRevenue !== '' && yearsOperating !== '';
+    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '';
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
@@ -78,6 +79,7 @@ export default function FundingAssessment() {
           funding_type: fundingType,
           funding_type_other: fundingType === 'other' ? fundingTypeOther.trim() : null,
           annual_revenue: Number(annualRevenue),
+          company_bank: companyBank.trim(),
           years_operating: Number(yearsOperating),
           has_debt: hasDebt,
           debt_remaining: hasDebt ? Number(debtRemaining) : null,
@@ -158,6 +160,11 @@ export default function FundingAssessment() {
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
                 <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
               </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">البنك الذي فيه حساب الشركة</label>
+                <input value={companyBank} onChange={(e) => setCompanyBank(e.target.value)} placeholder="اكتب اسم البنك" className={inputCls + ' text-right'} />
+              </div>
+
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
                 <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
