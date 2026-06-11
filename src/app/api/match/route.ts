@@ -68,6 +68,7 @@ export async function POST() {
   type WebOffer = { provider: string; product: string; requirements: string; fit: string; source: string };
   let webOffers: WebOffer[] = [];
   let webSearchOk = false;
+  let webSearchError = '';
 
   try {
     const LICENSED = 'البنوك المرخصة: البنك الأهلي السعودي، مصرف الراجحي، بنك الرياض، البنك السعودي الأول (ساب)، البنك السعودي الفرنسي، البنك العربي الوطني، بنك البلاد، بنك الجزيرة، مصرف الإنماء، البنك السعودي للاستثمار، بنك الخليج الدولي السعودية. شركات التمويل المرخصة من البنك المركزي السعودي (ساما): شركة الأمثل للتمويل، شركة أملاك العالمية، شركة دار التمليك، شركة بداية لتمويل المنازل، الشركة السعودية لتمويل المساكن (سهل)، شركة عبداللطيف جميل المتحدة للتمويل، شركة اليسر للإجارة والتمويل، شركة الراجحي للتمويل، شركة نايفات للتمويل، شركة أمكان للتمويل، شركة تمويل الأولى، شركة المتاجرة المالية، شركة أصيل للتمويل، شركة التيسير العربية، شركة ميفك كابيتال، شركة تسهيل للتمويل، شركة فيول للتمويل، شركة منافع للتمويل، شركة عِمكان للتمويل، شركة سلفة للتمويل، شركة تمام للتمويل (stc)، شركة ماني فيلوز، شركة فورس للتمويل، شركة ميسر للتمويل، شركة لندو (Lendo)، شركة فنتك ردف، منصة فرقد المالية، شركة مرابحة مرنة، شركة تروي (Tarabut)، منصة ليندو، شركة قرض للتمويل الجماعي';
@@ -79,7 +80,7 @@ export async function POST() {
       + '- القطاع: ' + (company.sector || 'غير محدد') + '\n'
       + '- ' + debtDesc + '\n'
       + '- سجل تجاري ' + (fd.cr_valid ? 'ساري' : 'غير ساري') + '، التزام ضريبي: ' + (fd.tax_compliant ? 'نعم' : 'لا') + '، زكاة: ' + (fd.zakat_compliant ? 'نعم' : 'لا') + '، قوائم مالية: ' + (fd.has_financial_statements ? 'متوفرة' : 'غير متوفرة') + '\n\n'
-      + 'ابحث عن منتجات ' + typeLabel + ' للشركات، وقارن شروطها المعلنة مع ملف الشركة. أرجع فقط المنتجات التي تنطبق شروطها المعلنة على هذه الشركة أو قريبة منها.\n\n'
+      + 'ابحث عن منتجات ' + typeLabel + ' للشركات لدى هذه الجهات. مهم جداً: أرجع دائماً أفضل 4-6 منتجات وجدتها حتى لو لم تتطابق كل الشروط — واذكر في حقل fit ما يتطابق وما ينقص الشركة. لا ترجع قائمة فارغة إلا إذا لم تجد أي منتج إطلاقاً.\n\n'
       + 'أرجع JSON فقط بدون أي نص آخر وبدون markdown، بهذا الشكل:\n'
       + '{"offers":[{"provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط المعلنة باختصار","fit":"لماذا يناسب هذه الشركة","source":"رابط المصدر"}]}\n'
       + 'أقصى عدد 6 عروض، رتبها من الأنسب للأقل.';
@@ -99,6 +100,7 @@ export async function POST() {
       }),
     });
 
+    if (!aiRes.ok) { webSearchError = 'HTTP ' + aiRes.status + ': ' + (await aiRes.text()).slice(0, 300); }
     if (aiRes.ok) {
       const aiData = await aiRes.json();
       const text = (aiData.content || [])
@@ -116,8 +118,8 @@ export async function POST() {
         }
       }
     }
-  } catch {
-    // فشل البحث لا يكسر المسار — نكمل بمطابقة القاعدة
+  } catch (err) {
+    webSearchError = err instanceof Error ? err.message : String(err);
   }
 
   // ====== الطبقة 2: مطابقة قاعدة جهاتك الخاصة ======
@@ -198,7 +200,7 @@ export async function POST() {
         + '<h3>🔍 عروض السوق (بحث Claude — ' + webOffers.length + ')</h3>'
         + (webOffers.length > 0
           ? '<table style="border-collapse:collapse"><tr style="background:#E8F5EF"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الشروط المعلنة</th><th style="padding:8px;border:1px solid #ddd">سبب الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>'
-          : '<p>' + (webSearchOk ? 'لم يجد البحث منتجات معلنة مطابقة' : '⚠️ تعذر البحث — تحقق من ANTHROPIC_API_KEY') + '</p>')
+          : '<p>' + (webSearchOk ? 'لم يجد البحث منتجات معلنة مطابقة' : '⚠️ تعذر البحث: ' + (webSearchError || 'استجابة غير صالحة من API — تحقق من ANTHROPIC_API_KEY في Vercel')) + '</p>')
         + '<h3>🤝 شبكة مُرضي (' + dbMatches.length + ')</h3>'
         + (dbMatches.length > 0
           ? '<table style="border-collapse:collapse"><tr style="background:#E8F5EF"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>'
