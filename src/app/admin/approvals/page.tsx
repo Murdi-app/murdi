@@ -42,6 +42,7 @@ export default function ApprovalsPage() {
   const [authorized, setAuthorized] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
   const [busy, setBusy] = useState<string | null>(null)
+  const [consultations, setConsultations] = useState<any[]>([])
 
   useEffect(() => { init() }, [])
 
@@ -51,7 +52,23 @@ export default function ApprovalsPage() {
     if (user.email !== ADMIN_EMAIL) { setAuthorized(false); setLoading(false); return }
     setAuthorized(true)
     await loadCompanies()
+    await loadConsultations()
     setLoading(false)
+  }
+
+  async function loadConsultations() {
+    try {
+      const res = await fetch('/api/consultation')
+      const data = await res.json()
+      setConsultations(data.consultations || [])
+    } catch {}
+  }
+
+  async function releaseConsultation(id: string) {
+    setBusy(id)
+    await fetch('/api/consultation', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await loadConsultations()
+    setBusy(null)
   }
 
   async function loadCompanies() {
@@ -219,6 +236,33 @@ export default function ApprovalsPage() {
               </div>
             </div>
           ))}
+          <div className="ap-section-title">الاستشارات الخاصة <span className="ap-count" style={{ background:'#C9A84C' }}>{consultations.filter(c => c.status === 'ready').length}</span></div>
+
+          {consultations.length === 0 && <div className="ap-empty">لا توجد استشارات بعد</div>}
+
+          {consultations.map(c => (
+            <div className="ap-card" key={c.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">🎓 {c.companies?.company_name || 'شركة'}</span>
+                <span className="ap-badge" style={{ background: c.status === 'released' ? '#E8F5EF' : c.status === 'ready' ? '#FBF5E8' : '#F0F0F0', color: c.status === 'released' ? '#2E9E7B' : c.status === 'ready' ? '#9A7B2E' : '#888' }}>
+                  {c.status === 'released' ? 'صادرة ✓' : c.status === 'ready' ? 'جاهزة — بانتظار إصدارك' : c.status === 'analyzing' ? 'قيد التوليد' : 'فشل التوليد'}
+                </span>
+              </div>
+              {c.content && (
+                <div style={{ maxHeight: 180, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
+                  {c.content.slice(0, 1500)}{c.content.length > 1500 ? '...' : ''}
+                </div>
+              )}
+              <div className="ap-actions">
+                {c.status === 'ready' && (
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => releaseConsultation(c.id)}>
+                    {busy === c.id ? 'جارٍ...' : '📤 إصدار للعميل'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
         </div>
       </div>
     </>

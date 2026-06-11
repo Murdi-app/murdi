@@ -24,6 +24,8 @@ export default function FundingResult() {
   const [matchCount, setMatchCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
+  const [consultStatus, setConsultStatus] = useState('');
+  const [consultContent, setConsultContent] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -60,6 +62,17 @@ export default function FundingResult() {
         if (res.ok) { setMatches(data.matches); setMatchCount(data.match_count); }
       } catch {}
       setMatchLoading(false);
+
+      // الاستشارة الخاصة: توليد تلقائي ثم قراءة الحالة
+      try {
+        await fetch('/api/consultation', { method: 'POST' });
+        const cRes = await fetch('/api/consultation');
+        const cData = await cRes.json();
+        if (cData.consultation) {
+          setConsultStatus(cData.consultation.status || '');
+          setConsultContent(cData.consultation.content || '');
+        }
+      } catch {}
     };
     load();
   }, []);
@@ -183,6 +196,31 @@ export default function FundingResult() {
                 <li key={i} className="text-[#6B8A80] font-bold text-sm">✓ {d}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+
+        {consultStatus !== '' && (
+          <div className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#C9A84C]">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-3xl">🎓</span>
+              <div>
+                <h2 className="font-black text-[#1A3D34]">استشارة د. عبدالحكيم المرضي الخاصة</h2>
+                <p className="text-[#6B8A80] text-xs font-bold">تحليل خاص + خطة نجاح + توعية مالية — لشركتك تحديداً</p>
+              </div>
+            </div>
+            {consultStatus !== 'released' && (
+              <div className="bg-[#FBF5E8] rounded-2xl p-5 text-center">
+                <div className="inline-block w-6 h-6 rounded-full border-2 border-[#C9A84C]/30 border-t-[#C9A84C] animate-spin mb-2" />
+                <p className="text-[#9A7B2E] font-black text-sm">جارٍ التحليل من قبل د. عبدالحكيم المرضي...</p>
+                <p className="text-[#A3BAB2] text-xs font-bold mt-1">ستصدر استشارتك الخاصة هنا فور اكتمال المراجعة</p>
+              </div>
+            )}
+            {consultStatus === 'released' && consultContent !== '' && (
+              <div className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                {consultContent.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
+              </div>
+            )}
           </div>
         )}
 
