@@ -39,6 +39,7 @@ export default function FundingAssessment() {
   const [companyBank, setCompanyBank] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
+  const [originalLoan, setOriginalLoan] = useState('');
   const [debtRemaining, setDebtRemaining] = useState('');
   const [monthlyInstallment, setMonthlyInstallment] = useState('');
   const [lenderType, setLenderType] = useState('');
@@ -59,7 +60,7 @@ export default function FundingAssessment() {
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
-      if (debtRemaining === '' || monthlyInstallment === '' || lenderType === '' || lenderName.trim() === '' || debtStatus === '' || debtType === '') return false;
+      if (originalLoan === '' || debtRemaining === '' || monthlyInstallment === '' || lenderType === '' || lenderName.trim() === '' || debtStatus === '' || debtType === '') return false;
       if (debtStatus === 'late' && monthsLate === '') return false;
       if (debtType === 'other' && debtTypeOther.trim() === '') return false;
       return true;
@@ -82,6 +83,7 @@ export default function FundingAssessment() {
           company_bank: companyBank.trim(),
           years_operating: Number(yearsOperating),
           has_debt: hasDebt,
+          original_loan_amount: hasDebt ? Number(originalLoan) : null,
           debt_remaining: hasDebt ? Number(debtRemaining) : null,
           monthly_installment: hasDebt ? Number(monthlyInstallment) : null,
           lender_type: hasDebt ? lenderType : null,
@@ -180,6 +182,10 @@ export default function FundingAssessment() {
               </div>
               {hasDebt === true && (
                 <>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">قيمة التمويل الأصلية (ريال)</label>
+                    <input type="number" inputMode="numeric" value={originalLoan} onChange={(e) => setOriginalLoan(e.target.value)} placeholder="مثال: 2000000" className={inputCls} />
+                  </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي (ريال)</label>
                     <input type="number" inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />

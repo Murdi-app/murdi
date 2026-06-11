@@ -110,20 +110,20 @@ export default function FundingResult() {
         <div className="bg-gradient-to-l from-[#2E9E7B] to-[#7DD3B0] rounded-3xl p-7 text-white shadow-lg">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl">🔍</span>
-            <h2 className="font-black text-lg">محرك مُرضي بحث لك في السوق</h2>
+            <h2 className="font-black text-lg">مُرضي حلّل ملفك وفق منهجية د. عبدالحكيم المرضي</h2>
           </div>
 
           {matchLoading && (
             <div className="flex items-center gap-3 mt-4">
               <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              <p className="font-bold text-sm">جارٍ مطابقة ملفك مع جهات التمويل...</p>
+              <p className="font-bold text-sm">جارٍ تحليل ملفك ومطابقته مع جهات التمويل وفق منهجية د. عبدالحكيم...</p>
             </div>
           )}
 
           {matchLoading === false && matchCount > 0 && (
             <>
               <p className="font-black text-3xl mt-2">{matchCount} {matchCount === 1 ? 'فرصة تمويلية' : 'فرص تمويلية'}</p>
-              <p className="font-bold text-sm opacity-90 mt-1">تتطابق مع ملف شركتك الحالي</p>
+              <p className="font-bold text-sm opacity-90 mt-1">رُشّحت لملفك بعد تحليل احترافي وبسرية تامة — لا نعرض كلام سوق، نعرض ما يناسبك فعلاً</p>
               <div className="space-y-3 mt-5">
                 {(matches || []).map((m, i) => (
                   <div key={i} className="bg-white/15 backdrop-blur rounded-2xl p-4">
@@ -143,7 +143,7 @@ export default function FundingResult() {
           )}
 
           {matchLoading === false && matchCount === 0 && (
-            <p className="font-bold text-sm mt-2 opacity-95">بناءً على وضعك الحالي لا توجد مطابقة فورية — اتبع خطة التحسين أدناه وفريقنا سيراجع ملفك يدوياً.</p>
+            <p className="font-bold text-sm mt-2 opacity-95">حلّلنا ملفك وفق منهجية د. عبدالحكيم — وضعك الحالي يحتاج خطوات قبل التقديم. اتبع خطة التحسين أدناه، وفريقنا سيراجع ملفك يدوياً بسرية تامة.</p>
           )}
 
           <div className="bg-white/20 rounded-2xl p-4 mt-5 text-center">
