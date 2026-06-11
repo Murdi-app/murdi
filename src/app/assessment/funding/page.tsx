@@ -1,213 +1,243 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
-interface FormState {
-  annual_revenue: string
-  net_profit: string
-  available_cash: string
-  monthly_expenses: string
-  total_debt: string
-  monthly_installments: string
-  receivables: string
-  overdue_receivables: string
-  avg_collection_days: string
-  years_operating: string
-  employee_count: string
-  revenue_growth: string
-  client_concentration: string
-  has_financials: boolean
-  has_external_auditor: boolean
-  has_finance_manager: boolean
-  has_accountant: boolean
-  has_monthly_budget: boolean
-  separate_accounts: boolean
-}
+const FUNDING_TYPES = [
+  { id: 'working_capital', label: 'رأس مال عامل' },
+  { id: 'pos', label: 'تمويل نقاط البيع' },
+  { id: 'invoices', label: 'تمويل الفواتير والمستخلصات' },
+  { id: 'assets', label: 'تمويل أصول ومعدات' },
+  { id: 'real_estate', label: 'عقاري تجاري' },
+  { id: 'other', label: 'أخرى' },
+];
 
-const initial: FormState = {
-  annual_revenue: '', net_profit: '', available_cash: '', monthly_expenses: '',
-  total_debt: '', monthly_installments: '', receivables: '', overdue_receivables: '',
-  avg_collection_days: '', years_operating: '', employee_count: '', revenue_growth: '',
-  client_concentration: '', has_financials: false, has_external_auditor: false,
-  has_finance_manager: false, has_accountant: false, has_monthly_budget: false,
-  separate_accounts: false,
-}
+const DEBT_TYPES = [
+  { id: 'cash', label: 'نقدي' },
+  { id: 'vehicles', label: 'سيارات' },
+  { id: 'real_estate', label: 'عقاري' },
+  { id: 'operational', label: 'تشغيلي' },
+  { id: 'other', label: 'أخرى' },
+];
 
-const STEPS = ['الوضع المالي', 'السيولة والتحصيل', 'التشغيل', 'الحوكمة']
+const STEPS = ['نوع التمويل', 'الإيرادات وعمر النشاط', 'الديون والتمويل القائم', 'المتطلبات النظامية'];
 
-export default function FundingAssessmentPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [step, setStep] = useState(0)
-  const [form, setForm] = useState<FormState>(initial)
+export default function FundingAssessment() {
+  const router = useRouter();
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => { checkAccess() }, [])
+  const [fundingType, setFundingType] = useState('');
+  const [fundingTypeOther, setFundingTypeOther] = useState('');
+  const [annualRevenue, setAnnualRevenue] = useState('');
+  const [yearsOperating, setYearsOperating] = useState('');
+  const [hasDebt, setHasDebt] = useState<boolean | null>(null);
+  const [debtRemaining, setDebtRemaining] = useState('');
+  const [debtStatus, setDebtStatus] = useState('');
+  const [monthsLate, setMonthsLate] = useState('');
+  const [debtType, setDebtType] = useState('');
+  const [debtTypeOther, setDebtTypeOther] = useState('');
+  const [crValid, setCrValid] = useState<boolean | null>(null);
+  const [taxCompliant, setTaxCompliant] = useState<boolean | null>(null);
+  const [zakatCompliant, setZakatCompliant] = useState<boolean | null>(null);
+  const [hasStatements, setHasStatements] = useState<boolean | null>(null);
 
-  async function checkAccess() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-    const { data: company } = await supabase
-      .from('companies').select('account_status').eq('user_id', user.id).maybeSingle()
-    if (!company || company.account_status !== 'active') { router.push('/pending'); return }
-    setLoading(false)
-  }
+  const stepValid = () => {
+    if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
+    if (step === 1) return annualRevenue !== '' && yearsOperating !== '';
+    if (step === 2) {
+      if (hasDebt === null) return false;
+      if (hasDebt === false) return true;
+      if (debtRemaining === '' || debtStatus === '' || debtType === '') return false;
+      if (debtStatus === 'late' && monthsLate === '') return false;
+      if (debtType === 'other' && debtTypeOther.trim() === '') return false;
+      return true;
+    }
+    if (step === 3) return crValid !== null && taxCompliant !== null && zakatCompliant !== null && hasStatements !== null;
+    return false;
+  };
 
-  function setNum(key: keyof FormState, val: string) {
-    if (val === '' || /^\d*\.?\d*$/.test(val)) setForm({ ...form, [key]: val })
-  }
-  function setBool(key: keyof FormState, val: boolean) { setForm({ ...form, [key]: val }) }
+  const submit = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/assessment/funding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          funding_type: fundingType,
+          funding_type_other: fundingType === 'other' ? fundingTypeOther.trim() : null,
+          annual_revenue: Number(annualRevenue),
+          years_operating: Number(yearsOperating),
+          has_debt: hasDebt,
+          debt_remaining: hasDebt ? Number(debtRemaining) : null,
+          debt_status: hasDebt ? debtStatus : null,
+          months_late: hasDebt && debtStatus === 'late' ? Number(monthsLate) : null,
+          debt_type: hasDebt ? debtType : null,
+          debt_type_other: hasDebt && debtType === 'other' ? debtTypeOther.trim() : null,
+          cr_valid: crValid,
+          tax_compliant: taxCompliant,
+          zakat_compliant: zakatCompliant,
+          has_financial_statements: hasStatements,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok === false) throw new Error(data.error || 'حدث خطأ');
+      router.push('/assessment/funding/result');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
+      setLoading(false);
+    }
+  };
 
-  async function submit() {
-    setSubmitting(true)
-    const payload: Record<string, number | boolean> = {}
-    Object.entries(form).forEach(([k, v]) => {
-      payload[k] = typeof v === 'boolean' ? v : (parseFloat(v) || 0)
-    })
-    const res = await fetch('/api/assessment/funding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    setSubmitting(false)
-    if (!res.ok) { alert('حدث خطأ أثناء التقييم، حاول مرة أخرى'); return }
-    router.push('/assessment/funding/result')
-  }
-
-  if (loading) return (
-    <div style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ color:'#2E9E7B', fontFamily:'Cairo,sans-serif', fontSize:18 }}>جاري التحميل...</div>
+  const YesNo = ({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) => (
+    <div className="flex gap-3">
+      <button type="button" onClick={() => onChange(true)}
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === true ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>نعم</button>
+      <button type="button" onClick={() => onChange(false)}
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === false ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>لا</button>
     </div>
-  )
+  );
 
-  const numFields: { key: keyof FormState; label: string; hint?: string }[][] = [
-    [
-      { key:'annual_revenue', label:'الإيرادات السنوية (ر.س)' },
-      { key:'net_profit', label:'صافي الربح السنوي (ر.س)' },
-      { key:'total_debt', label:'إجمالي الديون (ر.س)' },
-      { key:'monthly_installments', label:'الأقساط الشهرية (ر.س)' },
-    ],
-    [
-      { key:'available_cash', label:'النقد المتاح (ر.س)' },
-      { key:'monthly_expenses', label:'المصروف الشهري (ر.س)' },
-      { key:'receivables', label:'الذمم المdينة (ر.س)' },
-      { key:'overdue_receivables', label:'الذمم المتأخرة (ر.س)' },
-      { key:'avg_collection_days', label:'متوسط أيام التحصيل' },
-    ],
-    [
-      { key:'years_operating', label:'عمر الشركة (سنوات)' },
-      { key:'employee_count', label:'عدد الموظفين' },
-      { key:'revenue_growth', label:'نمو الإيرادات السنوي (%)' },
-      { key:'client_concentration', label:'نسبة أكبر عميل من الإيرادات (%)' },
-    ],
-  ]
-
-  const boolFields: { key: keyof FormState; label: string }[] = [
-    { key:'has_financials', label:'لديك قوائم مالية' },
-    { key:'has_external_auditor', label:'لديك مراجع خارجي' },
-    { key:'has_finance_manager', label:'لديك مدير مالي' },
-    { key:'has_accountant', label:'لديك محاسب' },
-    { key:'has_monthly_budget', label:'لديك ميزانية شهرية' },
-    { key:'separate_accounts', label:'حسابات الشركة منفصلة عن الشخصية' },
-  ]
-
-  const isLastStep = step === STEPS.length - 1
+  const inputCls = 'w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-left';
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; }
-        .fa-wrapper { min-height:100vh; background:#FBFCFB; display:flex; flex-direction:column; align-items:center; padding:48px 16px; font-family:'Cairo',sans-serif; direction:rtl; }
-        .fa-title { font-family:'Amiri',serif; font-size:28px; color:#1A3D34; font-weight:700; margin-bottom:6px; }
-        .fa-subtitle { color:#6B8A80; font-size:14px; margin-bottom:32px; }
-        .fa-steps { display:flex; gap:8px; margin-bottom:34px; flex-wrap:wrap; justify-content:center; }
-        .fa-step-pill { display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:30px; font-size:13px; font-weight:600; transition:all .25s; }
-        .fa-step-pill.active { background:#2E9E7B; color:#fff; box-shadow:0 6px 16px rgba(46,158,123,0.3); }
-        .fa-step-pill.done { background:#E8F5EF; color:#2E9E7B; }
-        .fa-step-pill.todo { background:#fff; color:#A3BAB2; border:1px solid #EAF1EE; }
-        .fa-step-num { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; background:rgba(255,255,255,0.25); }
-        .fa-card { background:#fff; border:1.5px solid #EAF1EE; border-radius:20px; padding:36px 34px; max-width:640px; width:100%; box-shadow:0 4px 20px rgba(26,61,52,0.05); }
-        .fa-card-head { font-family:'Amiri',serif; font-size:21px; color:#1A3D34; font-weight:700; margin-bottom:24px; padding-bottom:14px; border-bottom:1px solid #EAF1EE; }
-        .fa-field { margin-bottom:20px; }
-        .fa-label { display:block; color:#1A3D34; font-size:14px; font-weight:600; margin-bottom:8px; }
-        .fa-input { width:100%; background:#FBFCFB; border:1.5px solid #EAF1EE; border-radius:12px; padding:13px 16px; font-family:'Cairo',sans-serif; font-size:15px; color:#1A3D34; outline:none; transition:border-color .2s; direction:rtl; text-align:right; }
-        .fa-input:focus { border-color:#2E9E7B; background:#fff; }
-        .fa-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:#FBFCFB; border:1.5px solid #EAF1EE; border-radius:12px; margin-bottom:12px; cursor:pointer; transition:all .2s; }
-        .fa-toggle-row:hover { border-color:#7DD3B0; }
-        .fa-toggle-row.on { background:#E8F5EF; border-color:#2E9E7B; }
-        .fa-toggle-label { color:#1A3D34; font-size:14.5px; font-weight:500; }
-        .fa-switch { width:46px; height:26px; border-radius:20px; background:#D5E3DD; position:relative; transition:background .2s; flex-shrink:0; }
-        .fa-switch.on { background:#2E9E7B; }
-        .fa-switch-dot { position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:transform .2s; box-shadow:0 2px 5px rgba(0,0,0,0.15); }
-        .fa-switch.on .fa-switch-dot { transform:translateX(-20px); }
-        .fa-actions { display:flex; gap:12px; margin-top:30px; }
-        .fa-btn-next { flex:1; background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; border:none; padding:15px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:15.5px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px rgba(46,158,123,0.28); transition:all .2s; }
-        .fa-btn-next:disabled { opacity:0.5; cursor:not-allowed; }
-        .fa-btn-back { background:#fff; color:#6B8A80; border:1.5px solid #EAF1EE; padding:15px 32px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:15px; font-weight:600; cursor:pointer; }
-      `}</style>
-      <div className="fa-wrapper">
-        <h1 className="fa-title">تقييم الجاهزية التمويلية</h1>
-        <p className="fa-subtitle">أدخل بيانات شركتك بدقة للحصول على تقييم صحيح</p>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div className="max-w-xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-black text-[#1A3D34]">تقييم جاهزية التمويل</h1>
+          <p className="text-[#6B8A80] mt-2">أجب بدقة — كل إجابة تؤثر على نتيجة جاهزيتك</p>
+        </div>
 
-        <div className="fa-steps">
+        <div className="flex items-center gap-2 mb-8">
           {STEPS.map((s, i) => (
-            <div key={i} className={`fa-step-pill ${i === step ? 'active' : i < step ? 'done' : 'todo'}`}>
-              <span className="fa-step-num">{i < step ? '✓' : i + 1}</span>
-              {s}
+            <div key={s} className="flex-1">
+              <div className={'h-2 rounded-full ' + (i <= step ? 'bg-[#2E9E7B]' : 'bg-[#E8F5EF]')} />
+              <p className={'text-[10px] mt-1 text-center font-bold ' + (i <= step ? 'text-[#2E9E7B]' : 'text-[#6B8A80]')}>{s}</p>
             </div>
           ))}
         </div>
 
-        <div className="fa-card">
-          <div className="fa-card-head">{STEPS[step]}</div>
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">
 
-          {step < 3 && numFields[step].map(f => (
-            <div className="fa-field" key={f.key}>
-              <label className="fa-label">{f.label}</label>
-              <input
-                className="fa-input"
-                inputMode="decimal"
-                value={form[f.key] as string}
-                onChange={e => setNum(f.key, e.target.value)}
-                placeholder="0"
-              />
+          {step === 0 && (
+            <div className="space-y-3">
+              <h2 className="font-black text-[#1A3D34] mb-4">ما نوع التمويل الذي تحتاجه شركتك؟</h2>
+              {FUNDING_TYPES.map((t) => (
+                <button key={t.id} type="button" onClick={() => setFundingType(t.id)}
+                  className={'w-full p-4 rounded-xl border-2 text-right font-bold transition ' + (fundingType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                  {t.label}
+                </button>
+              ))}
+              {fundingType === 'other' && (
+                <input value={fundingTypeOther} onChange={(e) => setFundingTypeOther(e.target.value)}
+                  placeholder="اكتب نوع التمويل المطلوب" className={inputCls + ' text-right'} />
+              )}
             </div>
-          ))}
+          )}
 
-          {step === 3 && boolFields.map(f => (
-            <div
-              key={f.key}
-              className={`fa-toggle-row ${form[f.key] ? 'on' : ''}`}
-              onClick={() => setBool(f.key, !form[f.key])}
-            >
-              <span className="fa-toggle-label">{f.label}</span>
-              <div className={`fa-switch ${form[f.key] ? 'on' : ''}`}>
-                <div className="fa-switch-dot" />
+          {step === 1 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
+                <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
+                <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
-          ))}
+          )}
 
-          <div className="fa-actions">
+          {step === 2 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">هل يوجد على الشركة ديون أو تمويل قائم؟</label>
+                <YesNo value={hasDebt} onChange={setHasDebt} />
+              </div>
+              {hasDebt === true && (
+                <>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي (ريال)</label>
+                    <input type="number" inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">حالة السداد</label>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setDebtStatus('committed')}
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'committed' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>ملتزم بالسداد</button>
+                      <button type="button" onClick={() => setDebtStatus('late')}
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'late' ? 'border-[#C9A84C] bg-[#FdF8EC] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>متأخر</button>
+                    </div>
+                  </div>
+                  {debtStatus === 'late' && (
+                    <div>
+                      <label className="block font-black text-[#1A3D34] mb-2">كم شهر التأخر؟</label>
+                      <input type="number" inputMode="numeric" value={monthsLate} onChange={(e) => setMonthsLate(e.target.value)} placeholder="مثال: 2" className={inputCls} />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">نوع الدين</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {DEBT_TYPES.map((t) => (
+                        <button key={t.id} type="button" onClick={() => setDebtType(t.id)}
+                          className={'p-3 rounded-xl border-2 font-bold transition ' + (debtType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    {debtType === 'other' && (
+                      <input value={debtTypeOther} onChange={(e) => setDebtTypeOther(e.target.value)}
+                        placeholder="اكتب نوع الدين" className={inputCls + ' text-right mt-3'} />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">السجل التجاري ساري؟</label>
+                <YesNo value={crValid} onChange={setCrValid} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">ملتزمون بالإقرارات الضريبية؟</label>
+                <YesNo value={taxCompliant} onChange={setTaxCompliant} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">ملتزمون بالزكاة (شهادة زكاة سارية)؟</label>
+                <YesNo value={zakatCompliant} onChange={setZakatCompliant} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">توجد قوائم مالية للشركة؟</label>
+                <YesNo value={hasStatements} onChange={setHasStatements} />
+              </div>
+            </div>
+          )}
+
+          {error !== '' && <p className="text-red-600 font-bold mt-4 text-sm">{error}</p>}
+
+          <div className="flex gap-3 mt-8">
             {step > 0 && (
-              <button className="fa-btn-back" onClick={() => setStep(step - 1)}>السابق</button>
+              <button type="button" onClick={() => setStep(step - 1)}
+                className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
             )}
-            {!isLastStep ? (
-              <button className="fa-btn-next" onClick={() => setStep(step + 1)}>التالي</button>
-            ) : (
-              <button className="fa-btn-next" disabled={submitting} onClick={submit}>
-                {submitting ? 'جاري التحليل...' : 'احسب جاهزيتي'}
+            {step < 3 && (
+              <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
+                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
+            )}
+            {step === 3 && (
+              <button type="button" disabled={stepValid() === false || loading} onClick={submit}
+                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">
+                {loading ? 'جارٍ التحليل...' : 'احسب جاهزيتي'}
               </button>
             )}
           </div>
         </div>
       </div>
-    </>
-  )
+    </div>
+  );
 }
