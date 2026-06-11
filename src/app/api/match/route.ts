@@ -93,7 +93,7 @@ export async function POST() {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 3000,
         messages: [{ role: 'user', content: prompt }],
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
@@ -107,6 +107,7 @@ export async function POST() {
         .filter((b: { type: string }) => b.type === 'text')
         .map((b: { text: string }) => b.text)
         .join('');
+      if (!text || text.length < 10) { webSearchError = 'رد فاضي من API. أول 300 حرف من الاستجابة: ' + JSON.stringify(aiData).slice(0, 300); }
       const cleaned = text.replace(/```json|```/g, '').trim();
       const jsonStart = cleaned.indexOf('{');
       const jsonEnd = cleaned.lastIndexOf('}');
