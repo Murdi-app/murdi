@@ -61,25 +61,26 @@ export async function POST() {
   );
 
   // لا نولّد نسخة جديدة إذا توجد واحدة قيد التحليل أو صادرة
-  const { data: existing } = await adminClient
+  const { data: existing, error: exErr } = await adminClient
     .from('consultations')
     .select('id, status')
     .eq('company_id', company.id)
-    .in('status', ['analyzing', 'ready', 'released'])
+    .order('created_at', { ascending: false })
     .limit(1);
 
-  if (existing && existing.length > 0) {
+  if (exErr) return NextResponse.json({ error: 'فحص الاستشارات: ' + exErr.message }, { status: 500 });
+  if (existing && existing.length > 0 && existing[0].status !== 'failed') {
     return NextResponse.json({ ok: true, status: existing[0].status });
   }
 
   // إنشاء سجل بحالة "جارٍ التحليل" فوراً (العميل يرى البطاقة)
-  const { data: created } = await adminClient
+  const { data: created, error: crErr } = await adminClient
     .from('consultations')
     .insert({ company_id: company.id, status: 'analyzing' })
     .select('id')
     .single();
 
-  if (created === null) return NextResponse.json({ error: 'فشل الإنشاء' }, { status: 500 });
+  if (crErr || created === null) return NextResponse.json({ error: 'فشل الإنشاء: ' + (crErr?.message || 'غير معروف') }, { status: 500 });
 
   // جلب بيانات العميل كاملة للتحليل
   const { data: fd } = await adminClient
