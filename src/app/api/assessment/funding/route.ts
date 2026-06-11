@@ -81,6 +81,7 @@ export async function POST(req: Request) {
     funding_type: body.funding_type,
     funding_type_other: body.funding_type_other,
     company_bank: body.company_bank,
+    original_loan_amount: body.original_loan_amount,
     monthly_installment: body.monthly_installment,
     lender_type: body.lender_type,
     lender_name: body.lender_name,

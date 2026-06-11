@@ -61,7 +61,7 @@ export async function POST() {
   const years = Number(fd.years_operating) || 0;
   const typeLabel = fd.funding_type === 'other' ? (fd.funding_type_other || 'أخرى') : (TYPE_LABELS[fd.funding_type] || fd.funding_type);
   const debtDesc = fd.has_debt
-    ? 'يوجد تمويل قائم متبقي ' + Number(fd.debt_remaining || 0).toLocaleString() + ' ريال لدى ' + (fd.lender_name || 'جهة تمويل') + '، الحالة: ' + (fd.debt_status === 'late' ? 'متأخر ' + (fd.months_late || 0) + ' شهر' : 'ملتزم بالسداد')
+    ? 'يوجد تمويل قائم بقيمة أصلية ' + Number(fd.original_loan_amount || 0).toLocaleString() + ' ريال، المتبقي ' + Number(fd.debt_remaining || 0).toLocaleString() + ' ريال لدى ' + (fd.lender_name || 'جهة تمويل') + '، الحالة: ' + (fd.debt_status === 'late' ? 'متأخر ' + (fd.months_late || 0) + ' شهر' : 'ملتزم بالسداد')
     : 'لا توجد ديون قائمة';
 
   // ====== الطبقة 1: Claude يبحث في السوق ======
