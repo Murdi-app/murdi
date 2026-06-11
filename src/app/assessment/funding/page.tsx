@@ -4,11 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const FUNDING_TYPES = [
+  { id: 'cash', label: 'تمويل نقدي (كاش)' },
   { id: 'working_capital', label: 'رأس مال عامل' },
+  { id: 'revenue', label: 'تمويل الإيرادات' },
   { id: 'pos', label: 'تمويل نقاط البيع' },
   { id: 'invoices', label: 'تمويل الفواتير والمستخلصات' },
   { id: 'assets', label: 'تمويل أصول ومعدات' },
+  { id: 'vehicles', label: 'تمويل مركبات وأساطيل' },
   { id: 'real_estate', label: 'عقاري تجاري' },
+  { id: 'lc', label: 'اعتمادات وخطابات ضمان' },
+  { id: 'project', label: 'تمويل مشاريع وعقود' },
   { id: 'other', label: 'أخرى' },
 ];
 
@@ -31,9 +36,12 @@ export default function FundingAssessment() {
   const [fundingType, setFundingType] = useState('');
   const [fundingTypeOther, setFundingTypeOther] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
+  const [companyBank, setCompanyBank] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
   const [debtRemaining, setDebtRemaining] = useState('');
+  const [lenderType, setLenderType] = useState('');
+  const [lenderName, setLenderName] = useState('');
   const [debtStatus, setDebtStatus] = useState('');
   const [monthsLate, setMonthsLate] = useState('');
   const [debtType, setDebtType] = useState('');
@@ -42,19 +50,20 @@ export default function FundingAssessment() {
   const [taxCompliant, setTaxCompliant] = useState<boolean | null>(null);
   const [zakatCompliant, setZakatCompliant] = useState<boolean | null>(null);
   const [hasStatements, setHasStatements] = useState<boolean | null>(null);
+  const [hasBankStatement, setHasBankStatement] = useState<boolean | null>(null);
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
-    if (step === 1) return annualRevenue !== '' && yearsOperating !== '';
+    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '';
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
-      if (debtRemaining === '' || debtStatus === '' || debtType === '') return false;
+      if (debtRemaining === '' || lenderType === '' || lenderName.trim() === '' || debtStatus === '' || debtType === '') return false;
       if (debtStatus === 'late' && monthsLate === '') return false;
       if (debtType === 'other' && debtTypeOther.trim() === '') return false;
       return true;
     }
-    if (step === 3) return crValid !== null && taxCompliant !== null && zakatCompliant !== null && hasStatements !== null;
+    if (step === 3) return crValid !== null && taxCompliant !== null && zakatCompliant !== null && hasStatements !== null && hasBankStatement !== null;
     return false;
   };
 
@@ -69,9 +78,12 @@ export default function FundingAssessment() {
           funding_type: fundingType,
           funding_type_other: fundingType === 'other' ? fundingTypeOther.trim() : null,
           annual_revenue: Number(annualRevenue),
+          company_bank: companyBank.trim(),
           years_operating: Number(yearsOperating),
           has_debt: hasDebt,
           debt_remaining: hasDebt ? Number(debtRemaining) : null,
+          lender_type: hasDebt ? lenderType : null,
+          lender_name: hasDebt ? lenderName.trim() : null,
           debt_status: hasDebt ? debtStatus : null,
           months_late: hasDebt && debtStatus === 'late' ? Number(monthsLate) : null,
           debt_type: hasDebt ? debtType : null,
@@ -80,6 +92,7 @@ export default function FundingAssessment() {
           tax_compliant: taxCompliant,
           zakat_compliant: zakatCompliant,
           has_financial_statements: hasStatements,
+          has_bank_statement: hasBankStatement,
         }),
       });
       const data = await res.json();
@@ -124,12 +137,14 @@ export default function FundingAssessment() {
           {step === 0 && (
             <div className="space-y-3">
               <h2 className="font-black text-[#1A3D34] mb-4">ما نوع التمويل الذي تحتاجه شركتك؟</h2>
-              {FUNDING_TYPES.map((t) => (
-                <button key={t.id} type="button" onClick={() => setFundingType(t.id)}
-                  className={'w-full p-4 rounded-xl border-2 text-right font-bold transition ' + (fundingType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
-                  {t.label}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-3">
+                {FUNDING_TYPES.map((t) => (
+                  <button key={t.id} type="button" onClick={() => setFundingType(t.id)}
+                    className={'p-4 rounded-xl border-2 text-right font-bold text-sm transition ' + (fundingType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               {fundingType === 'other' && (
                 <input value={fundingTypeOther} onChange={(e) => setFundingTypeOther(e.target.value)}
                   placeholder="اكتب نوع التمويل المطلوب" className={inputCls + ' text-right'} />
@@ -142,6 +157,10 @@ export default function FundingAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
                 <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل / البنك الذي فيه حساب الشركة الرئيسي</label>
+                <input value={companyBank} onChange={(e) => setCompanyBank(e.target.value)} placeholder="اكتب اسم البنك أو الجهة" className={inputCls + ' text-right'} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
@@ -163,12 +182,25 @@ export default function FundingAssessment() {
                     <input type="number" inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
                   </div>
                   <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل</label>
+                    <div className="flex gap-3 mb-3">
+                      <button type="button" onClick={() => setLenderType('bank')}
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'bank' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>بنك</button>
+                      <button type="button" onClick={() => setLenderType('finance_company')}
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'finance_company' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>شركة تمويل</button>
+                    </div>
+                    {lenderType !== '' && (
+                      <input value={lenderName} onChange={(e) => setLenderName(e.target.value)}
+                        placeholder={lenderType === 'bank' ? 'اكتب اسم البنك' : 'اكتب اسم شركة التمويل'} className={inputCls + ' text-right'} />
+                    )}
+                  </div>
+                  <div>
                     <label className="block font-black text-[#1A3D34] mb-2">حالة السداد</label>
                     <div className="flex gap-3">
                       <button type="button" onClick={() => setDebtStatus('committed')}
                         className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'committed' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>ملتزم بالسداد</button>
                       <button type="button" onClick={() => setDebtStatus('late')}
-                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'late' ? 'border-[#C9A84C] bg-[#FdF8EC] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>متأخر</button>
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'late' ? 'border-[#C9A84C] bg-[#FDF8EC] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>متأخر</button>
                     </div>
                   </div>
                   {debtStatus === 'late' && (
@@ -214,6 +246,10 @@ export default function FundingAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">توجد قوائم مالية للشركة؟</label>
                 <YesNo value={hasStatements} onChange={setHasStatements} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">يتوفر كشف حساب بنكي حديث (آخر 6 أشهر)؟</label>
+                <YesNo value={hasBankStatement} onChange={setHasBankStatement} />
               </div>
             </div>
           )}
