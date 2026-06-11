@@ -45,6 +45,7 @@ export default function FundingResult() {
         .from('readiness_results')
         .select('readiness_score, verdict, top_obstacles, required_documents, improvement_plan')
         .eq('company_id', company.id)
+        .eq('result_type', 'funding')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();

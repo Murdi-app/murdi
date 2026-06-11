@@ -36,10 +36,10 @@ export default function FundingAssessment() {
   const [fundingType, setFundingType] = useState('');
   const [fundingTypeOther, setFundingTypeOther] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
-  const [companyBank, setCompanyBank] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
   const [debtRemaining, setDebtRemaining] = useState('');
+  const [monthlyInstallment, setMonthlyInstallment] = useState('');
   const [lenderType, setLenderType] = useState('');
   const [lenderName, setLenderName] = useState('');
   const [debtStatus, setDebtStatus] = useState('');
@@ -54,11 +54,11 @@ export default function FundingAssessment() {
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
-    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '';
+    if (step === 1) return annualRevenue !== '' && yearsOperating !== '';
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
-      if (debtRemaining === '' || lenderType === '' || lenderName.trim() === '' || debtStatus === '' || debtType === '') return false;
+      if (debtRemaining === '' || monthlyInstallment === '' || lenderType === '' || lenderName.trim() === '' || debtStatus === '' || debtType === '') return false;
       if (debtStatus === 'late' && monthsLate === '') return false;
       if (debtType === 'other' && debtTypeOther.trim() === '') return false;
       return true;
@@ -78,10 +78,10 @@ export default function FundingAssessment() {
           funding_type: fundingType,
           funding_type_other: fundingType === 'other' ? fundingTypeOther.trim() : null,
           annual_revenue: Number(annualRevenue),
-          company_bank: companyBank.trim(),
           years_operating: Number(yearsOperating),
           has_debt: hasDebt,
           debt_remaining: hasDebt ? Number(debtRemaining) : null,
+          monthly_installment: hasDebt ? Number(monthlyInstallment) : null,
           lender_type: hasDebt ? lenderType : null,
           lender_name: hasDebt ? lenderName.trim() : null,
           debt_status: hasDebt ? debtStatus : null,
@@ -159,10 +159,6 @@ export default function FundingAssessment() {
                 <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
               </div>
               <div>
-                <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل / البنك الذي فيه حساب الشركة الرئيسي</label>
-                <input value={companyBank} onChange={(e) => setCompanyBank(e.target.value)} placeholder="اكتب اسم البنك أو الجهة" className={inputCls + ' text-right'} />
-              </div>
-              <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
                 <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
               </div>
@@ -180,6 +176,10 @@ export default function FundingAssessment() {
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي (ريال)</label>
                     <input type="number" inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">القسط الشهري (ريال)</label>
+                    <input type="number" inputMode="numeric" value={monthlyInstallment} onChange={(e) => setMonthlyInstallment(e.target.value)} placeholder="مثال: 15000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل</label>
