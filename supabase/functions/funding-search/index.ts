@@ -88,12 +88,8 @@ Deno.serve(async (req) => {
     if (sIdx !== -1 && eIdx > sIdx) {
       try { parsed = JSON.parse(finalText.slice(sIdx, eIdx + 1)); } catch {}
     }
-      }
-    } catch (parseErr) {
-      console.log('PARSE ERROR:', parseErr)
-    }
 
-    if (!parsed.qualifiedCount && !parsed.opportunities) {
+    if (!parsed || (!parsed.qualifiedCount && !parsed.opportunities)) {
       parsed = {
         qualifiedCount: 0,
         nearQualifiedCount: 0,
