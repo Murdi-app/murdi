@@ -41,6 +41,18 @@ async function searchInvestors(sector: string, revenue: number, stage: string): 
   return '';
 }
 
+function normalizeAr(t: string): string {
+  return (t || '').trim().replace(/^ال/, '').replace(/ة$/, 'ه').replace(/[أإآ]/g, 'ا').toLowerCase();
+}
+function sectorMatch(list: string[], val: string): boolean {
+  if (!list || list.length === 0) return true;
+  const v = normalizeAr(val);
+  return list.some(x => {
+    const n = normalizeAr(x);
+    return n === v || n.includes(v) || v.includes(n);
+  });
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -111,7 +123,7 @@ export async function POST() {
     if (e.requires_governance === true && fd.has_governance !== true) continue;
 
     const sectors: string[] = e.sectors || [];
-    if (sectors.length === 0 || sectors.includes(fd.sector)) {
+    if (sectorMatch(sectors, fd.sector)) {
       fit += 30; reasons.push('قطاع شركتك ضمن اهتمامات هذه الجهة');
     } else {
       continue;
