@@ -2,6 +2,42 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
+
+async function generateDeepAnalysis(fd: Record<string, unknown>, score: number): Promise<{ obstacles: string[]; plan: string[] } | null> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'أنت محلل مالي يكتب وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد. أسلوبه: أرقام محسوبة من بيانات الشركة نفسها، سياق السوق السعودي (ساما، منشآت، كفالة)، صراحة بلا مجاملات، وممنوع نهائياً ذكر أي ذكاء اصطناعي أو تقنية.\n\n'
+    + 'بيانات الشركة: ' + JSON.stringify(fd) + '\n'
+    + 'سكور الجاهزية: ' + score + '/100\n\n'
+    + 'المطلوب JSON فقط بلا أي نص خارجه:\n'
+    + '{"obstacles": ["..."], "plan": ["..."]}\n\n'
+    + 'obstacles: أبرز 2-4 عوائق حقيقية أمام التمويل، كل عائق جملة-جملتان فيها رقم أو نسبة محسوبة من بياناتهم الفعلية وأثرها على نظرة الممول. إن لم توجد عوائق جوهرية اذكر نقاط الانتباه الأهم.\n'
+    + 'plan: 3-5 خطوات تحسين مرتبة بالأولوية، كل خطوة عملية ومحددة (ماذا يفعل، عند أي جهة، وما أثرها المتوقع على فرص القبول). اربطها بوضعهم لا بنصائح عامة.';
+
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({ model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const text = (data.content || [])
+        .filter((b: { type: string }) => b.type === 'text')
+        .map((b: { text: string }) => b.text)
+        .join('').trim()
+        .replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed.obstacles) && Array.isArray(parsed.plan)) return parsed;
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const cookieStore = await cookies();
@@ -57,8 +93,8 @@ export async function POST(req: Request) {
 
   // ===== محرك جاهزية التمويل =====
   let score = 0;
-  const obstacles: string[] = [];
-  const plan: string[] = [];
+  let obstacles: string[] = [];
+  let plan: string[] = [];
   const docs: string[] = ['السجل التجاري', 'كشف حساب بنكي 6 أشهر'];
 
   // 1) المتطلبات النظامية (40 نقطة)
@@ -132,7 +168,18 @@ export async function POST(req: Request) {
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
-  const { error: rrError } = await supabase.from('readiness_results').insert({
+  
+  // ===== التحليل العميق: Claude يكتب العوائق والخطة من الأرقام الفعلية =====
+  try {
+    const deep = await generateDeepAnalysis({ ...body, annual_revenue: rev, years_operating: years } as Record<string, unknown>, score);
+    if (deep !== null) {
+      if (deep.obstacles.length > 0) obstacles = deep.obstacles;
+      if (deep.plan.length > 0) plan = deep.plan;
+    }
+  } catch {}
+  // القوالب الأصلية تبقى احتياطاً إن فشل التوليد
+
+const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
     result_type: 'funding',
     readiness_score: score,
