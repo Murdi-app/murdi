@@ -160,9 +160,23 @@ export default function ConsultationPage() {
                     <p style={{ fontFamily: 'Amiri, serif', fontSize: 20, color: '#1A3D34', marginBottom: 4 }}>د. عبدالحكيم المرضي</p>
                     <p style={{ fontSize: 11, color: '#6B8A80', fontWeight: 700, borderTop: '1px solid #1A3D34', paddingTop: 6 }}>المستشار المعتمد — التوقيع</p>
                   </div>
-                  <div style={{ width: 130, height: 130, borderRadius: '50%', border: '3px double #C9A84C', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 12, transform: 'rotate(-8deg)' }}>
-                    <p style={{ fontSize: 10, fontWeight: 900, color: '#9A7B2E', lineHeight: 1.6 }}>شركة حلول المرضي<br/>للاستشارات المالية</p>
-                    <p style={{ fontSize: 8, color: '#C9A84C', fontWeight: 700, marginTop: 4 }}>★ MURDI ★</p>
+                  <div style={{ width: 150, height: 150, position: 'relative', transform: 'rotate(-6deg)' }}>
+                    <svg viewBox="0 0 150 150" style={{ position: 'absolute', inset: 0 }}>
+                      <circle cx="75" cy="75" r="72" fill="none" stroke="#C9A84C" strokeWidth="2.5"/>
+                      <circle cx="75" cy="75" r="66" fill="none" stroke="#C9A84C" strokeWidth="1"/>
+                      <circle cx="75" cy="75" r="46" fill="none" stroke="#C9A84C" strokeWidth="1" strokeDasharray="3 3"/>
+                      <path id="stampTop" d="M 75 75 m -56 0 a 56 56 0 1 1 112 0" fill="none"/>
+                      <path id="stampBottom" d="M 75 75 m -56 0 a 56 56 0 1 0 112 0" fill="none"/>
+                      <text style={{ fontSize: 10.5, fontWeight: 900, fill: '#9A7B2E', letterSpacing: 1 }}>
+                        <textPath href="#stampTop" startOffset="50%" textAnchor="middle">شركة حلول المرضي للاستشارات المالية</textPath>
+                      </text>
+                      <text style={{ fontSize: 9, fontWeight: 700, fill: '#C9A84C', letterSpacing: 4 }}>
+                        <textPath href="#stampBottom" startOffset="50%" textAnchor="middle">MURDI ★ SAUDI ARABIA</textPath>
+                      </text>
+                      <text x="75" y="68" textAnchor="middle" style={{ fontSize: 13, fontWeight: 900, fill: '#1A3D34' }}>مُرضي</text>
+                      <text x="75" y="84" textAnchor="middle" style={{ fontSize: 8, fontWeight: 700, fill: '#9A7B2E' }}>استشارة معتمدة</text>
+                      <text x="75" y="96" textAnchor="middle" style={{ fontSize: 7, fill: '#A3BAB2' }}>{new Date().toLocaleDateString('ar-SA')}</text>
+                    </svg>
                   </div>
                 </div>
               </div>
