@@ -15,6 +15,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'مُرضي | منصة جاهزية رأس المال',
   description: 'اعرف جاهزية شركتك للتمويل والاستثمار والطرح — وفق منهجية د. عبدالحكيم المرضي',
+  openGraph: {
+    title: 'مُرضي | منصة جاهزية رأس المال',
+    description: 'اعرف جاهزية شركتك للتمويل والاستثمار والطرح — وفق منهجية د. عبدالحكيم المرضي',
+    url: 'https://murdi.sa',
+    siteName: 'مُرضي',
+    images: [{ url: 'https://murdi.sa/og-image.png', width: 1200, height: 630 }],
+    locale: 'ar_SA',
+    type: 'website',
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
