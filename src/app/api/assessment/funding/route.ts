@@ -24,6 +24,37 @@ export async function POST(req: Request) {
   if (company === null) return NextResponse.json({ error: 'لا توجد شركة مسجلة' }, { status: 404 });
   if (company.account_status !== 'active') return NextResponse.json({ error: 'الحساب غير مفعّل' }, { status: 403 });
 
+
+  // ===== حد التقييم: واحد شهرياً، إلا بطلب تعديل معتمد =====
+  const { createClient } = await import('@supabase/supabase-js');
+  const adminGuard = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+  );
+
+  const { count: monthCount } = await adminGuard
+    .from('financial_data')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', company.id)
+    .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+
+  let usingEditRequest = false;
+  if ((monthCount || 0) >= 1) {
+    const { data: er } = await adminGuard
+      .from('edit_requests')
+      .select('id')
+      .eq('company_id', company.id)
+      .eq('status', 'approved')
+      .limit(1);
+    if (!er || er.length === 0) {
+      return NextResponse.json({ error: 'استنفدت تقييم هذا الشهر. إذا أخطأت في البيانات، أرسل طلب تعديل من صفحة الاستشارة وسيراجعه فريق د. عبدالحكيم.' }, { status: 429 });
+    }
+    usingEditRequest = true;
+    // وسم الطلب كمستخدم + حذف الاستشارة القديمة نهائياً (ستتولد جديدة تلقائياً)
+    await adminGuard.from('edit_requests').update({ status: 'used', used_at: new Date().toISOString() }).eq('id', er[0].id);
+    await adminGuard.from('consultations').delete().eq('company_id', company.id);
+  }
+
   // ===== محرك جاهزية التمويل =====
   let score = 0;
   const obstacles: string[] = [];
