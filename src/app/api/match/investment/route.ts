@@ -4,6 +4,43 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
+
+async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'أنت باحث استثماري محترف يعمل لصالح د. عبدالحكيم المرضي (شركة حلول المرضي للاستشارات المالية، السعودية). ابحث في الويب عن جهات استثمار سعودية نشطة مناسبة لشركة بهذا الملف:\n'
+    + 'القطاع: ' + sector + ' | الإيرادات السنوية: ' + revenue + ' ريال | المرحلة: ' + stage + '\n\n'
+    + 'ابحث عن ثلاث فئات: (1) صناديق استثمار جريء وملكية خاصة سعودية نشطة حالياً، (2) محافظ عائلية سعودية (Family Offices) معلنة الاهتمام بهذا القطاع، (3) مستثمرون أفراد أقوياء معلنون — رواد أعمال خرجوا من شركاتهم ببيع ناجح، مستثمرون ملائكيون معروفون إعلامياً ونشطون في هذا القطاع.\n\n'
+    + 'لكل جهة أو شخص اجمع: الاسم، الفئة، تركيزهم الاستثماري، حجم الاستثمار المعتاد إن وجد، آخر استثماراتهم المعلنة، وأي بيانات تواصل معلنة (موقع رسمي، إيميل عام، لينكدإن، حساب X). اعتمد حصرياً على معلومات معلنة من مصادر موثوقة واذكر المصدر لكل جهة.\n'
+    + 'أرجع أفضل 4-8 نتائج مرتبة بالملاءمة، مع سطر لكل جهة يشرح لماذا تناسب هذا الملف تحديداً. أجب بالعربية بتنسيق واضح.';
+
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: prompt }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+        }),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const text = (data.content || [])
+        .filter((b: { type: string }) => b.type === 'text')
+        .map((b: { text: string }) => b.text)
+        .join('\n').trim();
+      if (text.length > 100) return text;
+    } catch { continue; }
+  }
+  return '';
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -120,6 +157,11 @@ export async function POST() {
   });
 
   try {
+    let investorSearch = '';
+    try {
+      investorSearch = await searchInvestors(company?.sector || 'غير محدد', Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
+    } catch {}
+
     const resend = new Resend(process.env.RESEND_API_KEY);
     const rows = matches.slice(0, 5).map((m) =>
       '<tr><td style="padding:8px;border:1px solid #ddd">' + (m.entity.entity_name || m.entity.name || '—') +
