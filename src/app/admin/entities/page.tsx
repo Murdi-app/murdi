@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 
-const FUNDING_TYPES = ['cash','working_capital','revenue','pos','invoices','assets','vehicles','real_estate','lc','project'];
-const FT_LABELS: Record<string,string> = { cash:'نقدي', working_capital:'رأس مال عامل', revenue:'إيرادات', pos:'نقاط بيع', invoices:'فواتير', assets:'أصول', vehicles:'مركبات', real_estate:'عقاري', lc:'اعتمادات', project:'مشاريع' };
+const FUNDING_TYPES = ['cash','working_capital','revenue','pos','invoices','assets','vehicles','real_estate','lc','project','tax','payroll','equipment','franchise','other'];
+const FT_LABELS: Record<string,string> = { cash:'نقدي', working_capital:'رأس مال عامل', revenue:'إيرادات', pos:'نقاط بيع', invoices:'فواتير', assets:'أصول', vehicles:'مركبات', real_estate:'عقاري', lc:'اعتمادات', project:'مشاريع', tax:'ضرائب', payroll:'رواتب', equipment:'معدات', franchise:'امتياز تجاري', other:'أخرى' };
+const ISSUES = ['late_debt','no_statements','simah_record','new_company','high_debt_ratio','seasonal_revenue'];
+const ISSUE_LABELS: Record<string,string> = { late_debt:'تعثر سابق', no_statements:'بلا قوائم مالية', simah_record:'ملاحظات سمة', new_company:'شركة حديثة (أقل من سنتين)', high_debt_ratio:'نسبة دين مرتفعة', seasonal_revenue:'إيرادات موسمية' };
 const STAGES = ['seed','growth','expansion','pre_ipo'];
 const ST_LABELS: Record<string,string> = { seed:'تأسيس', growth:'نمو', expansion:'توسع', pre_ipo:'ما قبل الطرح' };
 
@@ -15,7 +17,7 @@ export default function EntitiesAdmin() {
   const [msg, setMsg] = useState('');
 
   // نموذج منتج تمويلي
-  const [fp, setFp] = useState({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[] as string[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true });
+  const [fp, setFp] = useState({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[] as string[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true, funding_type_other:'', accepted_issues:[] as string[] });
   // نموذج جهة استثمار
   const [ie, setIe] = useState({ entity_name:'', entity_type:'صندوق', sectors:'', min_revenue:'', min_murdi_score:'70', stages:[] as string[], requires_audited:false, requires_governance:false });
 
@@ -36,6 +38,7 @@ export default function EntitiesAdmin() {
       provider_name: fp.provider_name, product_name: fp.product_name, product_type: fp.product_type,
       funding_types: fp.funding_types, status: 'active',
       accepts_late_debt: fp.accepts_late_debt, requires_statements: fp.requires_statements, requires_zakat: fp.requires_zakat,
+      accepted_issues: fp.accepted_issues, funding_type_other: fp.funding_types.includes('other') ? fp.funding_type_other : null,
     };
     if (fp.min_revenue !== '') row.min_revenue = Number(fp.min_revenue);
     if (fp.min_years_operating !== '') row.min_years_operating = Number(fp.min_years_operating);
@@ -43,7 +46,7 @@ export default function EntitiesAdmin() {
     const res = await fetch('/api/admin/entities', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ table:'financing_products', row }) });
     const d = await res.json();
     flash(d.ok ? '✓ أُضيف المنتج' : 'خطأ: ' + d.error);
-    if (d.ok) { setFp({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true }); load(); }
+    if (d.ok) { setFp({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true, funding_type_other:'', accepted_issues:[] }); load(); }
     setBusy(false);
   };
 
@@ -108,6 +111,15 @@ export default function EntitiesAdmin() {
                   <span key={t} className={chip(fp.funding_types.includes(t))} onClick={() => setFp({...fp, funding_types: fp.funding_types.includes(t) ? fp.funding_types.filter(x => x!==t) : [...fp.funding_types, t]})}>{FT_LABELS[t]}</span>
                 ))}
               </div>
+              {fp.funding_types.includes('other') && (
+                <input className={inp} placeholder="اكتب نوع التمويل الآخر (مثال: تمويل ضرائب مؤجلة)" value={fp.funding_type_other} onChange={e => setFp({...fp, funding_type_other: e.target.value})} />
+              )}
+              <p className="text-xs font-black text-[#6B8A80]">المشاكل الدارجة التي يقبلها هذا المنتج:</p>
+              <div className="flex flex-wrap gap-2">
+                {ISSUES.map(i => (
+                  <span key={i} className={chip(fp.accepted_issues.includes(i))} onClick={() => setFp({...fp, accepted_issues: fp.accepted_issues.includes(i) ? fp.accepted_issues.filter(x => x!==i) : [...fp.accepted_issues, i]})}>{ISSUE_LABELS[i]}</span>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <span className={chip(fp.accepts_late_debt)} onClick={() => setFp({...fp, accepts_late_debt: !fp.accepts_late_debt})}>يقبل تعثراً سابقاً</span>
                 {fp.accepts_late_debt && <input className={inp + ' max-w-[200px]'} type="number" placeholder="أقصى أشهر تأخر" value={fp.max_months_late} onChange={e => setFp({...fp, max_months_late: e.target.value})} />}
@@ -139,13 +151,16 @@ export default function EntitiesAdmin() {
               <div className="grid grid-cols-2 gap-3">
                 <input className={inp} placeholder="اسم الجهة" value={ie.entity_name} onChange={e => setIe({...ie, entity_name: e.target.value})} />
                 <select className={inp} value={ie.entity_type} onChange={e => setIe({...ie, entity_type: e.target.value})}>
-                  <option value="صندوق">صندوق استثمار</option><option value="مستثمر ملائكي">مستثمر ملائكي</option><option value="شركة استثمار">شركة استثمار</option><option value="جهة حكومية">جهة حكومية</option>
+                  <option value="صندوق">صندوق استثمار</option><option value="محفظة عائلية">محفظة عائلية (Family Office)</option><option value="محفظة استثمارية">محفظة استثمارية</option><option value="مستثمر فرد">مستثمر فرد</option><option value="مستثمر ملائكي">مستثمر ملائكي</option><option value="شركة استثمار">شركة استثمار</option><option value="جهة حكومية">جهة حكومية</option>
                 </select>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <input className={inp} placeholder="القطاعات (افصل بفاصلة)" value={ie.sectors} onChange={e => setIe({...ie, sectors: e.target.value})} />
-                <input className={inp} type="number" placeholder="حد أدنى للإيرادات" value={ie.min_revenue} onChange={e => setIe({...ie, min_revenue: e.target.value})} />
-                <input className={inp} type="number" placeholder="حد أدنى Murdi Score" value={ie.min_murdi_score} onChange={e => setIe({...ie, min_murdi_score: e.target.value})} />
+                <div><p className="text-xs font-black text-[#6B8A80] mb-1">القطاعات (افصل بفاصلة)</p>
+                <input className={inp} placeholder="تقنية، عقار، تجزئة..." value={ie.sectors} onChange={e => setIe({...ie, sectors: e.target.value})} /></div>
+                <div><p className="text-xs font-black text-[#6B8A80] mb-1">حد أدنى للإيرادات (ريال)</p>
+                <input className={inp} type="number" value={ie.min_revenue} onChange={e => setIe({...ie, min_revenue: e.target.value})} /></div>
+                <div><p className="text-xs font-black text-[#6B8A80] mb-1">حد أدنى Murdi Score</p>
+                <input className={inp} type="number" value={ie.min_murdi_score} onChange={e => setIe({...ie, min_murdi_score: e.target.value})} /></div>
               </div>
               <p className="text-xs font-black text-[#6B8A80]">المراحل المستهدفة:</p>
               <div className="flex flex-wrap gap-2">
