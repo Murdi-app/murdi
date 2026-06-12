@@ -16,9 +16,11 @@ const SECTORS = [
 ];
 
 const STAGES = [
+  { id: 'seed', label: 'تأسيس — بداية النشاط' },
   { id: 'growth', label: 'نمو — إيرادات متصاعدة وأبحث عن توسع' },
   { id: 'established', label: 'مستقرة — إيرادات ثابتة وربحية' },
   { id: 'expansion', label: 'توسع — فروع/أسواق جديدة' },
+  { id: 'pre_ipo', label: 'ما قبل الطرح — نستعد لطرح عام' },
   { id: 'restructuring', label: 'إعادة هيكلة — أحتاج شريكاً استراتيجياً' },
 ];
 
