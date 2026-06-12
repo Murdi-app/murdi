@@ -54,81 +54,40 @@ Deno.serve(async (req) => {
 }`
 
     // Multi-turn loop للتعامل مع web search
-    let messages: any[] = [{ role: 'user', content: userPrompt }]
-    let finalText = ''
-    let attempts = 0
-    const maxAttempts = 5
-
-    while (attempts < maxAttempts) {
-      attempts++
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY!,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'interleaved-thinking-2025-05-14'
-        },
-        body: JSON.stringify({
-          model: 'claude-opus-4-5',
-          max_tokens: 4000,
-          system: systemPrompt,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages
-        })
-      })
-
-      const data = await response.json()
-      console.log(`Attempt ${attempts}, stop_reason: ${data.stop_reason}`)
-
-      if (data.error) {
-        console.log('API Error:', JSON.stringify(data.error))
-        break
-      }
-
-      // استخراج النص من هذا الـ response
-      const textBlocks = (data.content || []).filter((b: any) => b.type === 'text')
-      if (textBlocks.length > 0) {
-        finalText = textBlocks.map((b: any) => b.text).join('')
-      }
-
-      // إذا انتهى → اخرج من الـ loop
-      if (data.stop_reason === 'end_turn') {
-        break
-      }
-
-      // إذا استخدم tool_use → أضف الـ assistant response وأرسل tool_result
-      if (data.stop_reason === 'tool_use') {
-        messages.push({ role: 'assistant', content: data.content })
-
-        const toolResults = (data.content || [])
-          .filter((b: any) => b.type === 'tool_use')
-          .map((b: any) => ({
-            type: 'tool_result',
-            tool_use_id: b.id,
-            content: 'تم البحث، أكمل التحليل وأرجع JSON.'
-          }))
-
-        if (toolResults.length > 0) {
-          messages.push({ role: 'user', content: toolResults })
-        } else {
-          break
-        }
-      } else {
-        // stop_reason آخر → اخرج
-        break
-      }
+    const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+    let finalText = '';
+    for (const model of MODELS) {
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4000,
+            messages: [{ role: 'user', content: userPrompt }],
+            tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+          }),
+        });
+        if (!res.ok) continue;
+        const data = await res.json();
+        finalText = (data.content || [])
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text)
+          .join('\n').trim();
+        if (finalText.length > 50) break;
+      } catch { continue; }
     }
 
-    console.log('FINAL TEXT:', finalText.slice(0, 300))
-
-    let parsed: any = {}
-    try {
-      const s = finalText.indexOf('{')
-      const e = finalText.lastIndexOf('}')
-      if (s !== -1 && e !== -1) {
-        parsed = JSON.parse(finalText.slice(s, e + 1))
+    let parsed: any = null;
+    const sIdx = finalText.indexOf('{');
+    const eIdx = finalText.lastIndexOf('}');
+    if (sIdx !== -1 && eIdx > sIdx) {
+      try { parsed = JSON.parse(finalText.slice(sIdx, eIdx + 1)); } catch {}
+    }
       }
     } catch (parseErr) {
       console.log('PARSE ERROR:', parseErr)
