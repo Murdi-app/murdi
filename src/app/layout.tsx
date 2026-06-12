@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Murdi | مستشارك المالي الذكي للمقاولين",
-  description: "منصة الذكاء المالي للمقاولين السعوديين",
+  title: 'مُرضي | منصة جاهزية رأس المال',
+  description: 'اعرف جاهزية شركتك للتمويل والاستثمار والطرح — وفق منهجية د. عبدالحكيم المرضي',
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
