@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     if (parsed.secretDetails && !parsed.error) {
       try {
         await resend.emails.send({
-          from: 'Murdi <onboarding@resend.dev>',
+          from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
           to: ADMIN_EMAIL,
           subject: `🏦 فرصة تمويلية — ${companyName}`,
           html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
