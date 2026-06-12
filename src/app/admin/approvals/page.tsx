@@ -276,7 +276,7 @@ export default function ApprovalsPage() {
               </div>
               {c.content && (
                 <div style={{ maxHeight: 180, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
-                  {c.content.slice(0, 1500)}{c.content.length > 1500 ? '...' : ''}
+                  {c.content}{c.content.length > 1500 ? '...' : ''}
                 </div>
               )}
               <div className="ap-actions">
@@ -303,7 +303,7 @@ export default function ApprovalsPage() {
               </div>
               <p style={{ fontSize: 14, color:'#1A3D34', fontWeight: 700, marginBottom: 10 }}>س: {q.question}</p>
               {q.answer && (
-                <div style={{ maxHeight: 150, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
+                <div style={{ maxHeight: 450, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
                   {q.answer}
                 </div>
               )}
