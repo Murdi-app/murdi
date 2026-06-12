@@ -43,6 +43,8 @@ export default function ApprovalsPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [consultations, setConsultations] = useState<any[]>([])
+  const [questions, setQuestions] = useState<any[]>([])
+  const [edits, setEdits] = useState<any[]>([])
 
   useEffect(() => { init() }, [])
 
@@ -53,7 +55,31 @@ export default function ApprovalsPage() {
     setAuthorized(true)
     await loadCompanies()
     await loadConsultations()
+    await loadQA()
     setLoading(false)
+  }
+
+  async function loadQA() {
+    try {
+      const res = await fetch('/api/questions')
+      const data = await res.json()
+      setQuestions(data.questions || [])
+      setEdits(data.edits || [])
+    } catch {}
+  }
+
+  async function generateAnswer(id: string) {
+    setBusy(id)
+    await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await loadQA()
+    setBusy(null)
+  }
+
+  async function qaAction(id: string, type: string) {
+    setBusy(id)
+    await fetch('/api/questions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, type }) })
+    await loadQA()
+    setBusy(null)
   }
 
   async function loadConsultations() {
@@ -260,6 +286,70 @@ export default function ApprovalsPage() {
                   </button>
                 )}
               </div>
+            </div>
+          ))}
+
+          <div className="ap-section-title">أسئلة العملاء <span className="ap-count" style={{ background:'#2E9E7B' }}>{questions.filter(q => q.status !== 'released').length}</span></div>
+
+          {questions.length === 0 && <div className="ap-empty">لا توجد أسئلة بعد</div>}
+
+          {questions.map(q => (
+            <div className="ap-card" key={q.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">💬 {q.companies?.company_name || 'شركة'}</span>
+                <span className="ap-badge" style={{ background: q.status === 'released' ? '#E8F5EF' : '#FBF5E8', color: q.status === 'released' ? '#2E9E7B' : '#9A7B2E' }}>
+                  {q.status === 'released' ? 'صادر ✓' : q.status === 'answered' ? 'جواب جاهز — بانتظار إصدارك' : 'بانتظار الجواب'}
+                </span>
+              </div>
+              <p style={{ fontSize: 14, color:'#1A3D34', fontWeight: 700, marginBottom: 10 }}>س: {q.question}</p>
+              {q.answer && (
+                <div style={{ maxHeight: 150, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
+                  {q.answer}
+                </div>
+              )}
+              <div className="ap-actions">
+                {q.status === 'pending' && (
+                  <button className="ap-btn ap-btn-approve" disabled={busy === q.id} onClick={() => generateAnswer(q.id)}>
+                    {busy === q.id ? 'جارٍ التوليد...' : '🧠 توليد جواب ذكي'}
+                  </button>
+                )}
+                {q.status === 'answered' && (
+                  <>
+                    <button className="ap-btn ap-btn-approve" disabled={busy === q.id} onClick={() => qaAction(q.id, 'release_answer')}>
+                      {busy === q.id ? 'جارٍ...' : '📤 إصدار الجواب'}
+                    </button>
+                    <button className="ap-btn ap-btn-receipt" disabled={busy === q.id} onClick={() => generateAnswer(q.id)}>
+                      🔄 إعادة التوليد
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div className="ap-section-title">طلبات تعديل البيانات <span className="ap-count" style={{ background:'#C9A84C' }}>{edits.filter(e => e.status === 'pending').length}</span></div>
+
+          {edits.length === 0 && <div className="ap-empty">لا توجد طلبات تعديل</div>}
+
+          {edits.map(e => (
+            <div className="ap-card" key={e.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">🛠️ {e.companies?.company_name || 'شركة'}</span>
+                <span className="ap-badge" style={{ background:'#FBF5E8', color:'#9A7B2E' }}>
+                  {e.status === 'pending' ? 'بانتظار قرارك' : e.status === 'approved' ? 'معتمد — بانتظار إدخال العميل' : e.status === 'used' ? 'استُخدم ✓' : 'مرفوض'}
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color:'#6B8A80', fontWeight: 700, marginBottom: 12 }}>السبب: {e.reason || '—'}</p>
+              {e.status === 'pending' && (
+                <div className="ap-actions">
+                  <button className="ap-btn ap-btn-approve" disabled={busy === e.id} onClick={() => qaAction(e.id, 'approve_edit')}>
+                    ✓ اعتماد وفتح الإدخال
+                  </button>
+                  <button className="ap-btn ap-btn-reject" disabled={busy === e.id} onClick={() => qaAction(e.id, 'reject_edit')}>
+                    رفض
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 
