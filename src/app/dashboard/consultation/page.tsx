@@ -93,10 +93,32 @@ export default function ConsultationPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-10" style={{ fontFamily: 'Cairo, sans-serif' }}>
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <style>{`
+        .print-only { display: none; }
+        @media print {
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          body * { visibility: hidden; }
+          #print-area, #print-area * { visibility: visible; }
+          #print-area { position: absolute; top: 0; right: 0; left: 0; padding: 24px; }
+          .consult-body { max-height: none !important; overflow: visible !important; border: none !important; background: white !important; }
+        }
+      `}</style>
+      <nav className="bg-white border-b border-[#F0F5F3] px-6 py-4 no-print">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <a href="/goal" className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-[#2E9E7B] flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span className="font-black text-[#1A3D34]">مُرضي</span>
+          </a>
+          <a href="/goal" className="px-5 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">← الرئيسية</a>
+        </div>
+      </nav>
+      <div className="max-w-2xl mx-auto space-y-6 px-4 py-10">
 
-        <div className="text-center mb-2">
+        <div className="text-center mb-2 no-print">
           <h1 className="text-2xl font-black text-[#1A3D34]">🎓 استشارة د. عبدالحكيم المرضي</h1>
           <p className="text-[#6B8A80] text-sm font-bold mt-1">استشارتك الخاصة، أسئلتك، والدعم — في مكان واحد</p>
         </div>
@@ -121,9 +143,30 @@ export default function ConsultationPage() {
           )}
 
           {consultStatus === 'released' && consultContent !== '' && (
-            <div className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              {consultContent.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
-            </div>
+            <>
+              <button onClick={() => window.print()} className="no-print mb-4 px-6 py-2 rounded-full bg-[#1A3D34] text-white font-black text-sm">
+                🖨️ طباعة الاستشارة
+              </button>
+              <div id="print-area">
+                <div className="print-only" style={{ textAlign: 'center', marginBottom: 24, borderBottom: '3px solid #C9A84C', paddingBottom: 16 }}>
+                  <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1A3D34' }}>استشارة د. عبدالحكيم المرضي الخاصة</h1>
+                  <p style={{ fontSize: 12, color: '#9A7B2E', fontWeight: 700 }}>شركة حلول المرضي للاستشارات المالية — منصة مُرضي | murdi.sa</p>
+                </div>
+                <div className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose consult-body" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  {consultContent.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
+                </div>
+                <div className="print-only" style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontFamily: 'Amiri, serif', fontSize: 20, color: '#1A3D34', marginBottom: 4 }}>د. عبدالحكيم المرضي</p>
+                    <p style={{ fontSize: 11, color: '#6B8A80', fontWeight: 700, borderTop: '1px solid #1A3D34', paddingTop: 6 }}>المستشار المعتمد — التوقيع</p>
+                  </div>
+                  <div style={{ width: 130, height: 130, borderRadius: '50%', border: '3px double #C9A84C', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 12, transform: 'rotate(-8deg)' }}>
+                    <p style={{ fontSize: 10, fontWeight: 900, color: '#9A7B2E', lineHeight: 1.6 }}>شركة حلول المرضي<br/>للاستشارات المالية</p>
+                    <p style={{ fontSize: 8, color: '#C9A84C', fontWeight: 700, marginTop: 4 }}>★ MURDI ★</p>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
 

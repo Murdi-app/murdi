@@ -25,8 +25,13 @@ export default function GoalPage() {
       <nav className="bg-white border-b border-[#F0F5F3] px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-[#2E9E7B] flex items-center justify-center text-white font-black">م</div>
-            <span className="font-black text-[#1A3D34] text-lg">مُرضي</span>
+            <div className="w-10 h-10 rounded-xl bg-[#2E9E7B] flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <span className="font-black text-[#1A3D34] text-lg block leading-tight">مُرضي</span>
+              <span className="text-[10px] tracking-widest text-[#A3BAB2] font-black">MURDI</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <a href="/dashboard/consultation" className="px-5 py-2 rounded-full bg-[#C9A84C] text-white font-black text-sm">🎓 استشارتي</a>
@@ -86,7 +91,7 @@ export default function GoalPage() {
           <p className="text-[#C9A84C] font-black text-sm tracking-widest mb-3">المنهجية</p>
           <h2 className="text-2xl font-black text-white mb-4" style={{ fontFamily: 'Amiri, serif' }}>مُرضي مبنية على منهجية د. عبدالحكيم المرضي</h2>
           <p className="text-[#A3BAB2] font-bold leading-loose max-w-2xl mx-auto mb-6">
-            مستشار مالي سعودي معتمد — دكتوراه في إدارة الأعمال، بورد أمريكي، وخبرة 15 سنة في الاستشارات المالية وربط المنشآت بجهات التمويل.
+            مستشار سعودي معتمد — دكتوراه في إدارة الأعمال، عضو في البورد الأمريكي لإدارة الأعمال، وخبرة 15 سنة في التمويل وفي مجال المال والأعمال.
             كل تحليل وتقييم واستشارة في المنصة تمر عبر هذه المنهجية: أرقامك الفعلية، معايير السوق السعودي، وكلام مباشر بلا مجاملات.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
