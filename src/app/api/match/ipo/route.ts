@@ -57,7 +57,7 @@ export async function POST() {
     ).join('');
 
     await resend.emails.send({
-      from: 'onboarding@resend.dev',
+      from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: 'تقييم طرح جديد — ' + company.company_name + ' (درجة ' + score + ')',
       html:

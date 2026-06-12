@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const alertText = aiData.content?.find((b:any)=>b.type==='text')?.text || 'لديك تحديثات مهمة في أرقام شركتك — ادخل لمراجعتها.'
 
     await resend.emails.send({
-      from: 'Murdi <onboarding@resend.dev>',
+      from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: email,
       subject: `🔔 ${companyName} — تنبيه Murdi الذكي`,
       html: `<div dir="rtl" style="font-family:Tahoma,Arial;padding:0;background:#0B1D3A;color:white;max-width:600px;margin:0 auto;border-radius:16px;overflow:hidden;">

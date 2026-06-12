@@ -127,7 +127,7 @@ export async function POST() {
     ).join('');
 
     await resend.emails.send({
-      from: 'onboarding@resend.dev',
+      from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: 'مطابقة استثمار جديدة — ' + company.company_name,
       html:

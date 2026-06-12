@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from: 'Murdi <onboarding@resend.dev>',
+            from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
             to: ADMIN_EMAIL,
             subject: `🏦 فرصة تمويلية — ${companyName}`,
             html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
