@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'مُرضي | منصة جاهزية رأس المال',
   description: 'اعرف جاهزية شركتك للتمويل والاستثمار والطرح — وفق منهجية د. عبدالحكيم المرضي',
+  icons: { icon: '/murdi-icon.png', apple: '/murdi-icon.png' },
   openGraph: {
     title: 'مُرضي | منصة جاهزية رأس المال',
     description: 'اعرف جاهزية شركتك للتمويل والاستثمار والطرح — وفق منهجية د. عبدالحكيم المرضي',
