@@ -141,6 +141,7 @@ export async function POST(req: Request) {
   const { error: fdError } = await supabase.from('financial_data').insert({
     company_id: company.id,
     assessment_type: 'investment',
+    sector: body.sector,
     annual_revenue: rev,
     years_operating: years,
     net_profit: profit,
