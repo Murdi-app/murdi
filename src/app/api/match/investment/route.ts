@@ -184,7 +184,7 @@ export async function POST() {
   try {
     let investorSearch = '';
     try {
-      investorSearch = await searchInvestors(company?.sector || 'غير محدد', Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
+      investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
     } catch {}
 
     const resend = new Resend(process.env.RESEND_API_KEY);
