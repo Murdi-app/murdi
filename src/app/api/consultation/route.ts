@@ -34,7 +34,9 @@ async function generateWithFallback(prompt: string): Promise<{ text: string; mod
 }
 
 // توليد الاستشارة (يستدعى تلقائياً بعد التقييم)
-export async function POST() {
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const aType: string = ['funding', 'investment', 'ipo'].includes(body?.type) ? body.type : 'funding';
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -65,6 +67,7 @@ export async function POST() {
     .from('consultations')
     .select('id, status')
     .eq('company_id', company.id)
+    .eq('assessment_type', aType)
     .order('created_at', { ascending: false })
     .limit(1);
 
@@ -76,17 +79,19 @@ export async function POST() {
   // إنشاء سجل بحالة "جارٍ التحليل" فوراً (العميل يرى البطاقة)
   const { data: created, error: crErr } = await adminClient
     .from('consultations')
-    .insert({ company_id: company.id, status: 'analyzing' })
+    .insert({ company_id: company.id, status: 'analyzing', assessment_type: aType })
     .select('id')
     .single();
 
   if (crErr || created === null) return NextResponse.json({ error: 'فشل الإنشاء: ' + (crErr?.message || 'غير معروف') }, { status: 500 });
 
   // جلب بيانات العميل كاملة للتحليل
-  const { data: fd } = await adminClient
+  let fdQuery = adminClient
     .from('financial_data')
     .select('*')
-    .eq('company_id', company.id)
+    .eq('company_id', company.id);
+  if (aType !== 'funding') fdQuery = fdQuery.eq('assessment_type', aType);
+  const { data: fd } = await fdQuery
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -99,7 +104,16 @@ export async function POST() {
     .limit(1)
     .single();
 
+
+  const FOCUS: Record<string, string> = {
+    funding: 'ركّز على جاهزية التمويل: كلفة التمويل الحقيقية، نسبة الدين للإيرادات، التدفق النقدي، سمة، وشروط الجهات التمويلية. الطابع: عملي يحل مشكلة سيولة أو دين.',
+    investment: 'ركّز على جاذبية الشركة لمستثمر: هامش الربح، النمو، الحوكمة، فصل الملكية عن الإدارة، التقييم العادل، وما يطمئن المستثمر المؤسسي. الطابع: بناء قيمة وإقناع مستثمر.',
+    ipo: 'ركّز على جاهزية الطرح العام: الإفصاح، المراجعة الخارجية، الحوكمة المؤسسية، اللجان، السجل التشغيلي، ومتطلبات هيئة السوق المالية. الطابع: انضباط مؤسسي وشفافية نظامية.',
+  };
+  const ATYPE_AR: Record<string, string> = { funding: 'التمويل', investment: 'الاستثمار', ipo: 'الطرح العام' };
+
   const prompt = 'أنت تكتب نيابة عن د. عبدالحكيم المرضي — مستشار مالي سعودي، دكتوراه إدارة أعمال، عضوية البورد الأمريكي، 15 سنة خبرة في القطاع المالي وعلاقات مباشرة مع جهات التمويل السعودية. أسلوبه: مباشر، عملي، صريح بلا مجاملات فارغة، يحلل بعمق ويعطي خطوات قابلة للتنفيذ فوراً.\n\n'
+    + 'هذه استشارة في مسار ' + ATYPE_AR[aType] + '. ' + FOCUS[aType] + '\n\n'
     + 'اكتب "استشارة خاصة" من صفحتين (1000-1300 كلمة) لهذه الشركة:\n'
     + '- الاسم: ' + company.company_name + '\n'
     + '- القطاع: ' + (company.sector || 'غير محدد') + ' | المدينة: ' + (company.city || 'غير محددة') + '\n'
@@ -157,21 +171,26 @@ export async function GET() {
 
   const { data: company } = await supabase
     .from('companies').select('id').eq('user_id', user.id).single();
-  if (company === null) return NextResponse.json({ consultation: null });
+  if (company === null) return NextResponse.json({ consultations: {} });
 
-  const { data } = await adminClient
+  const { data: rows } = await adminClient
     .from('consultations')
-    .select('status, content, released_at')
+    .select('status, content, released_at, assessment_type, created_at')
     .eq('company_id', company.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .order('created_at', { ascending: false });
 
-  // العميل لا يرى المحتوى إلا بعد الإصدار
-  if (data && data.status !== 'released') {
-    return NextResponse.json({ consultation: { status: data.status, content: null } });
+  // أحدث استشارة لكل مسار، والمحتوى لا يظهر إلا بعد الإصدار
+  const byType: Record<string, { status: string; content: string | null; released_at: string | null }> = {};
+  for (const r of rows || []) {
+    const t = (r.assessment_type as string) || 'funding';
+    if (byType[t]) continue;
+    byType[t] = {
+      status: r.status as string,
+      content: r.status === 'released' ? (r.content as string) : null,
+      released_at: r.released_at as string | null,
+    };
   }
-  return NextResponse.json({ consultation: data });
+  return NextResponse.json({ consultations: byType });
 }
 
 // إصدار الاستشارة (أدمن فقط — زرّك)
