@@ -269,7 +269,17 @@ export default function ApprovalsPage() {
           {consultations.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
-                <span className="ap-name">🎓 {c.companies?.company_name || 'شركة'}</span>
+                <span className="ap-name">🎓 {c.companies?.company_name || 'شركة'}
+                  {(() => {
+                    const T: Record<string, { ar: string; bg: string; fg: string }> = {
+                      funding: { ar: 'تمويل', bg: '#E8F5EF', fg: '#2E9E7B' },
+                      investment: { ar: 'استثمار', bg: '#EAF0FB', fg: '#3B5BA5' },
+                      ipo: { ar: 'طرح عام', bg: '#FBF0F0', fg: '#A53B3B' },
+                    };
+                    const t = T[c.assessment_type as string] || T.funding;
+                    return <span style={{ marginRight: 8, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 900, background: t.bg, color: t.fg }}>{t.ar}</span>;
+                  })()}
+                </span>
                 <span className="ap-badge" style={{ background: c.status === 'released' ? '#E8F5EF' : c.status === 'ready' ? '#FBF5E8' : '#F0F0F0', color: c.status === 'released' ? '#2E9E7B' : c.status === 'ready' ? '#9A7B2E' : '#888' }}>
                   {c.status === 'released' ? 'صادرة ✓' : c.status === 'ready' ? 'جاهزة — بانتظار إصدارك' : c.status === 'analyzing' ? 'قيد التوليد' : 'فشل التوليد'}
                 </span>
