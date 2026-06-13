@@ -64,7 +64,7 @@ export async function POST() {
         '<div dir="rtl" style="font-family:Arial">' +
         '<h2>ملف طرح جديد</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
-        '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (company.sector || '—') + '</p>' +
+        '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
         '<p><b>IPO Readiness Score:</b> ' + score + '</p>' +
         '<p><b>الحكم:</b> ' + (rr?.verdict ?? '—') + '</p>' +
         '<p><b>السوق المقترح:</b> ' + marketLabel + '</p>' +
