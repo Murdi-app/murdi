@@ -2,6 +2,45 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
+
+async function generateDeepAnalysis(data: Record<string, unknown>, score: number): Promise<{ obstacles: string[]; plan: string[] } | null> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'انت محلل مالي استثماري وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد. '
+    + 'اسلوبك: ارقام محسوبة من بيانات الشركة نفسها، صراحة بلا مجاملات، وممنوع نهائيا ذكر اي ذكاء اصطناعي او تقنية او اي اشارة لكونك نموذجا. '
+    + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
+    + 'سكور جاهزية الاستثمار: ' + score + ' من 100. '
+    + 'المطلوب JSON فقط بلا اي نص خارجه بهذا الشكل بالضبط: {"obstacles": ["..."], "plan": ["..."]}. '
+    + 'obstacles: ابرز 2-4 عوائق حقيقية امام دخول مستثمر، كل عائق جملة او جملتان فيها رقم او نسبة محسوبة من بياناتهم الفعلية واثرها على نظرة المستثمر للشركة. '
+    + 'plan: 3-5 خطوات تحسين مرتبة بالاولوية، كل خطوة عملية ومحددة (ماذا يفعل تحديدا، وما اثرها المتوقع على جاذبية الشركة لمستثمر). اربطها بوضعهم لا بنصائح عامة.';
+
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({ model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const d = await res.json();
+      const raw = (d.content || [])
+        .filter((b: { type: string }) => b.type === 'text')
+        .map((b: { text: string }) => b.text)
+        .join('').trim();
+      const a = raw.indexOf('{');
+      const z = raw.lastIndexOf('}');
+      if (a !== -1 && z > a) {
+        const parsed = JSON.parse(raw.slice(a, z + 1));
+        if (Array.isArray(parsed.obstacles) && Array.isArray(parsed.plan)) return parsed;
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const cookieStore = await cookies();
@@ -25,8 +64,8 @@ export async function POST(req: Request) {
   if (company.account_status !== 'active') return NextResponse.json({ error: 'الحساب غير مفعّل' }, { status: 403 });
 
   let score = 0;
-  const obstacles: string[] = [];
-  const plan: string[] = [];
+  let obstacles: string[] = [];
+  let plan: string[] = [];
   const docs: string[] = ['السجل التجاري', 'القوائم المالية', 'ملف تعريفي للشركة'];
 
   const rev = Number(body.annual_revenue) || 0;
@@ -85,6 +124,14 @@ export async function POST(req: Request) {
     audited_statements: body.audited_statements,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
+
+  try {
+    const deep = await generateDeepAnalysis({ ...body, score }, score);
+    if (deep !== null) {
+      if (deep.obstacles.length > 0) obstacles = deep.obstacles;
+      if (deep.plan.length > 0) plan = deep.plan;
+    }
+  } catch {}
 
   const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
