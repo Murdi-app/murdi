@@ -7,38 +7,51 @@ import { Resend } from 'resend';
 
 async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
   const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
-  const prompt = 'أنت باحث استثماري محترف يعمل لصالح د. عبدالحكيم المرضي (شركة حلول المرضي للاستشارات المالية، السعودية). ابحث في الويب عن جهات استثمار سعودية نشطة مناسبة لشركة بهذا الملف:\n'
-    + 'القطاع: ' + sector + ' | الإيرادات السنوية: ' + revenue + ' ريال | المرحلة: ' + stage + '\n\n'
-    + 'ابحث عن ثلاث فئات: (1) صناديق استثمار جريء وملكية خاصة سعودية نشطة حالياً، (2) محافظ عائلية سعودية (Family Offices) معلنة الاهتمام بهذا القطاع، (3) مستثمرون أفراد أقوياء معلنون — رواد أعمال خرجوا من شركاتهم ببيع ناجح، مستثمرون ملائكيون معروفون إعلامياً ونشطون في هذا القطاع.\n\n'
-    + 'لكل جهة أو شخص اجمع: الاسم، الفئة، تركيزهم الاستثماري، حجم الاستثمار المعتاد إن وجد، آخر استثماراتهم المعلنة، وأي بيانات تواصل معلنة (موقع رسمي، إيميل عام، لينكدإن، حساب X). اعتمد حصرياً على معلومات معلنة من مصادر موثوقة واذكر المصدر لكل جهة.\n'
-    + 'أرجع أفضل 4-8 نتائج مرتبة بالملاءمة، مع سطر لكل جهة يشرح لماذا تناسب هذا الملف تحديداً. أجب بالعربية بتنسيق واضح.';
+  const prompt = 'انت باحث استثماري محترف يعمل لصالح د. عبدالحكيم المرضي (شركة حلول المرضي للاستشارات المالية، السعودية). ابحث في الويب عن جهات استثمار سعودية نشطة مناسبة لشركة بهذا الملف: '
+    + 'القطاع: ' + sector + ' | الايرادات السنوية: ' + revenue + ' ريال | المرحلة: ' + stage + '. '
+    + 'ابحث عن ثلاث فئات: (1) صناديق استثمار جريء وملكية خاصة سعودية نشطة حاليا، (2) محافظ عائلية سعودية (Family Offices) معلنة الاهتمام بهذا القطاع، (3) مستثمرون افراد اقوياء معلنون نشطون في هذا القطاع. '
+    + 'لكل جهة: الاسم، الفئة، تركيزهم الاستثماري، حجم الاستثمار المعتاد ان وجد، وبيانات تواصل معلنة من مصدر موثوق مع ذكر المصدر. '
+    + 'ارجع افضل 4 الى 8 نتائج مرتبة بالملاءمة، كل نتيجة بسطر يشرح لماذا تناسب هذا الملف. اجب بالعربية بتنسيق واضح.';
 
+  let diag = '';
   for (const model of MODELS) {
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: prompt }],
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
-        }),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const text = (data.content || [])
-        .filter((b: { type: string }) => b.type === 'text')
-        .map((b: { text: string }) => b.text)
-        .join('\n').trim();
-      if (text.length > 100) return text;
-    } catch { continue; }
+      const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
+      let textOut = '';
+      for (let turn = 0; turn < 5; turn++) {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 4000,
+            messages,
+            tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+          }),
+        });
+        if (!res.ok) { diag = model + ' HTTP ' + res.status + ': ' + (await res.text()).slice(0, 300); break; }
+        const data = await res.json();
+        const content = (data.content || []) as { type: string; text?: string }[];
+        textOut += content.filter((b) => b.type === 'text').map((b) => b.text || '').join(' ');
+        if (data.stop_reason === 'pause_turn') {
+          messages.push({ role: 'assistant', content: data.content });
+          continue;
+        }
+        break;
+      }
+      textOut = textOut.trim();
+      if (textOut.length > 80) return textOut;
+      if (diag === '') diag = model + ': رد فارغ بلا توقف';
+    } catch (e) {
+      diag = model + ' خطأ: ' + (e instanceof Error ? e.message : String(e));
+      continue;
+    }
   }
-  return '';
+  return diag !== '' ? ('تشخيص البحث (يظهر لك انت فقط مؤقتا): ' + diag) : '';
 }
 
 function normalizeAr(t: string): string {
