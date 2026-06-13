@@ -70,6 +70,11 @@ export default function IpoResult() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div className="max-w-2xl mx-auto mb-4">
+        <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+          <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
+        </a>
+      </div>
       <div className="max-w-xl mx-auto space-y-6">
 
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#E8F5EF] text-center">
