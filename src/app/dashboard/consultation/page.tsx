@@ -227,8 +227,12 @@ export default function ConsultationPage() {
           )}
           {editStatus === 'approved' && (
             <div className="bg-[#E8F5EF] rounded-xl p-4">
-              <p className="text-[#2E9E7B] text-sm font-black mb-2">✓ تمت الموافقة — يمكنك الآن إعادة إدخال بياناتك</p>
-              <a href="/assessment/funding" className="inline-block px-6 py-2 rounded-full bg-[#2E9E7B] text-white font-black text-sm">إدخال البيانات الجديدة</a>
+              <p className="text-[#2E9E7B] text-sm font-black mb-3">✓ تمت الموافقة — اختر المسار الذي تريد تصحيح بياناته:</p>
+              <div className="flex flex-wrap gap-2">
+                <a href="/assessment/funding" className="inline-block px-5 py-2 rounded-full bg-[#2E9E7B] text-white font-black text-sm">تصحيح التمويل</a>
+                <a href="/assessment/investment" className="inline-block px-5 py-2 rounded-full bg-[#2E9E7B] text-white font-black text-sm">تصحيح الاستثمار</a>
+                <a href="/assessment/ipo" className="inline-block px-5 py-2 rounded-full bg-[#2E9E7B] text-white font-black text-sm">تصحيح الطرح</a>
+              </div>
             </div>
           )}
           {(editStatus === '' || editStatus === 'used' || editStatus === 'rejected') && (
