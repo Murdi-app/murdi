@@ -14,6 +14,8 @@ type Result = {
 export default function IpoResult() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
+  const [eligibility, setEligibility] = useState('');
+  const [eligLoading, setEligLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -45,6 +47,12 @@ export default function IpoResult() {
       // إشعار الأدمن بالتفاصيل الكاملة (خفي عن العميل)
       try { await fetch('/api/match/ipo', { method: 'POST' }); } catch {}
       fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).catch(() => {});
+
+      // تحليل الأهلية للطرح (بحث في مصادر الهيئة — يظهر للعميل)
+      fetch('/api/ipo-eligibility', { method: 'POST' })
+        .then((r) => r.json())
+        .then((d) => { setEligibility(d.eligibility || ''); setEligLoading(false); })
+        .catch(() => setEligLoading(false));
     };
     load();
   }, []);
@@ -118,6 +126,26 @@ export default function IpoResult() {
             </ul>
           </div>
         )}
+
+        {/* تحليل الأهلية للطرح — بحث في مصادر الهيئة */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#1A3D34]">
+          <h2 className="font-black text-[#1A3D34] mb-1">🏛️ تحليل أهليتك للطرح</h2>
+          <p className="text-[#6B8A80] text-xs font-bold mb-4">وفق آخر متطلبات هيئة السوق المالية وتداول — مطابقة بأرقام شركتك</p>
+          {eligLoading && (
+            <div className="flex items-center gap-3 bg-[#FBFCFB] rounded-xl p-4">
+              <div className="w-5 h-5 rounded-full border-2 border-[#1A3D34]/30 border-t-[#1A3D34] animate-spin" />
+              <p className="text-[#6B8A80] font-bold text-sm">جارٍ تحليل أهليتك وفق متطلبات الهيئة... (قد يأخذ دقيقة)</p>
+            </div>
+          )}
+          {eligLoading === false && eligibility !== '' && (
+            <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose">
+              {eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
+            </div>
+          )}
+          {eligLoading === false && eligibility === '' && (
+            <p className="text-[#6B8A80] font-bold text-sm">تعذّر جلب المتطلبات حالياً — حاول لاحقاً أو تواصل مع فريق مُرضي.</p>
+          )}
+        </div>
 
         <div className="bg-[#E8F5EF] rounded-2xl p-6 text-center">
           <p className="text-[#1A3D34] font-black text-sm">فريق مُرضي استلم نتيجتك وسيتواصل معك لمناقشة خطة الطرح والخطوات التالية.</p>
