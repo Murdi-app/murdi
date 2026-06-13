@@ -102,6 +102,11 @@ export default function IpoAssessment() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div className="max-w-xl mx-auto mb-4">
+        <button onClick={() => router.push('/goal')} className="flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+          <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
+        </button>
+      </div>
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-black text-[#1A3D34]">تقييم جاهزية الطرح</h1>
