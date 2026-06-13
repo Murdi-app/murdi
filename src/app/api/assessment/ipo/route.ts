@@ -2,6 +2,45 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
+
+async function generateIPOAnalysis(data: Record<string, unknown>, score: number, market: string): Promise<{ obstacles: string[]; plan: string[] } | null> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'انت محلل جاهزية طرح عام (IPO) وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد خبير بمتطلبات هيئة السوق المالية وتداول. '
+    + 'اسلوبك: ارقام محسوبة من بيانات الشركة نفسها، صراحة بلا مجاملات، وممنوع نهائيا ذكر اي ذكاء اصطناعي او تقنية او اي اشارة لكونك نموذجا. '
+    + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
+    + 'السوق المستهدف: ' + market + '. سكور جاهزية الطرح: ' + score + ' من 100. '
+    + 'المطلوب JSON فقط بلا اي نص خارجه بهذا الشكل بالضبط: {"obstacles": ["..."], "plan": ["..."]}. '
+    + 'obstacles: ابرز 2-4 عوائق حقيقية امام الطرح، كل عائق جملة او جملتان فيها رقم او نسبة محسوبة من بياناتهم الفعلية واثرها على قبول ملف الطرح لدى الهيئة او على تسعير السهم وثقة المكتتبين. '
+    + 'plan: خطة طريق للطرح من 4-5 مراحل مرتبة زمنيا، ابدأ كل مرحلة بالاطار الزمني بين قوسين مثل (0-12 شهر) ثم الخطوة العملية المحددة واثرها على جاهزية الطرح. اربطها بوضعهم وارقامهم لا بنصائح عامة، وغطِ: القوائم المعتمدة، المراجع الخارجي، الحوكمة ولجنة المراجعة، قصة النمو، وتجهيز ملف الهيئة.';
+
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({ model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const d = await res.json();
+      const raw = (d.content || [])
+        .filter((b: { type: string }) => b.type === 'text')
+        .map((b: { text: string }) => b.text)
+        .join('').trim();
+      const a = raw.indexOf('{');
+      const z = raw.lastIndexOf('}');
+      if (a !== -1 && z > a) {
+        const parsed = JSON.parse(raw.slice(a, z + 1));
+        if (Array.isArray(parsed.obstacles) && Array.isArray(parsed.plan)) return parsed;
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   const cookieStore = await cookies();
@@ -54,8 +93,8 @@ export async function POST(req: Request) {
 
   // ===== محرك جاهزية الطرح =====
   let score = 0;
-  const obstacles: string[] = [];
-  const plan: string[] = [];
+  let obstacles: string[] = [];
+  let plan: string[] = [];
   const docs: string[] = ['السجل التجاري', 'القوائم المالية المراجعة', 'الهيكل التنظيمي'];
   let monthsToReady = 0; // مؤشر المدة المتوقعة
 
@@ -147,6 +186,15 @@ export async function POST(req: Request) {
     top_client_pct: topClient,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
+
+  // تحليل Claude العميق: يستبدل القوالب بعوائق وخطة طريق مخصّصة لأرقام الشركة
+  try {
+    const deep = await generateIPOAnalysis({ ...body, score, suggestedMarket }, score, suggestedMarket);
+    if (deep !== null) {
+      if (deep.obstacles.length > 0) obstacles = deep.obstacles;
+      if (deep.plan.length > 0) plan = deep.plan;
+    }
+  } catch {}
 
   const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
