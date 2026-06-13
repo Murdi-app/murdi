@@ -44,6 +44,7 @@ export default function IpoResult() {
 
       // إشعار الأدمن بالتفاصيل الكاملة (خفي عن العميل)
       try { await fetch('/api/match/ipo', { method: 'POST' }); } catch {}
+      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).catch(() => {});
     };
     load();
   }, []);
