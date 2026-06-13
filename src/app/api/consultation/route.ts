@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     + '- بيانات التقييم: ' + JSON.stringify(fd || {}) + '\n'
     + '- نتيجة الجاهزية: ' + JSON.stringify(rr || {}) + '\n\n'
     + 'هيكل الاستشارة (Markdown):\n'
-    + '# استشارة د. عبدالحكيم المرضي الخاصة لشركة ' + company.company_name + '\n'
+    + '# استشارة د. عبدالحكيم المرضي الخاصة لشركة ' + company.company_name + ' — مسار ' + ATYPE_AR[aType] + '\n'
     + '## أولاً: قراءتي لوضعكم الحالي — تحليل عميق ومخصص لأرقامهم الفعلية (نسب، مقارنات بالسوق السعودي، مخاطر حقيقية). ممنوع الكلام العام.\n'
     + '## ثانياً: خطة النجاح — خطة عملية مرتبة زمنياً (30/90/180 يوم) كل بند مرتبط بأرقامهم.\n'
     + '## ثالثاً: توعية مالية يحتاجها صاحب هذه الشركة تحديداً — 4-5 مفاهيم مرتبطة بوضعهم (مثلاً إن كان عندهم دين: كيف تقرأ كلفة التمويل الحقيقية).\n'
@@ -164,7 +164,7 @@ export async function GET() {
   if (isAdmin) {
     const { data } = await adminClient
       .from('consultations')
-      .select('id, company_id, status, content, generated_at, released_at, companies(company_name)')
+      .select('id, company_id, status, content, generated_at, released_at, assessment_type, companies(company_name)')
       .order('created_at', { ascending: false });
     return NextResponse.json({ consultations: data || [] });
   }
