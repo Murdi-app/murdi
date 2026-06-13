@@ -7,8 +7,7 @@ type Question = { id: string; question: string; answer: string | null; status: s
 
 export default function ConsultationPage() {
   const [loading, setLoading] = useState(true);
-  const [consultStatus, setConsultStatus] = useState('');
-  const [consultContent, setConsultContent] = useState('');
+  const [consults, setConsults] = useState<Record<string, { status: string; content: string | null }>>({});
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState('');
   const [sendingQ, setSendingQ] = useState(false);
@@ -35,10 +34,7 @@ export default function ConsultationPage() {
       try {
         const cRes = await fetch('/api/consultation');
         const cData = await cRes.json();
-        if (cData.consultation) {
-          setConsultStatus(cData.consultation.status || '');
-          setConsultContent(cData.consultation.content || '');
-        }
+        if (cData.consultations) setConsults(cData.consultations);
       } catch {}
 
       const { data: qs } = await supabase
@@ -123,66 +119,44 @@ export default function ConsultationPage() {
           <p className="text-[#6B8A80] text-sm font-bold mt-1">استشارتك الخاصة، أسئلتك، والدعم — في مكان واحد</p>
         </div>
 
-        {/* الاستشارة الخاصة */}
-        <div className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#C9A84C]">
-          <h2 className="font-black text-[#1A3D34] mb-1">استشارتك الخاصة لهذا الشهر</h2>
-          <p className="text-[#6B8A80] text-xs font-bold mb-4">تحليل خاص + خطة نجاح + توعية مالية — لشركتك تحديداً</p>
+        {/* الاستشارات الخاصة — مسار لكل خدمة */}
+        {(['funding', 'investment', 'ipo'] as const).map((tk) => {
+          const TRACK_AR: Record<string, string> = { funding: 'التمويل', investment: 'الاستثمار', ipo: 'الطرح العام' };
+          const c = consults[tk];
+          const st = c?.status || '';
+          const content = c?.content || '';
+          return (
+          <div key={tk} className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#C9A84C]">
+            <h2 className="font-black text-[#1A3D34] mb-1">استشارتك الخاصة — {TRACK_AR[tk]}</h2>
+            <p className="text-[#6B8A80] text-xs font-bold mb-4">تحليل خاص + خطة نجاح + توعية مالية — لمسار {TRACK_AR[tk]} تحديدا</p>
 
-          {consultStatus === '' && (
-            <div className="bg-[#FBFCFB] rounded-2xl p-5 text-center border border-[#F0F5F3]">
-              <p className="text-[#6B8A80] font-bold text-sm">أكمل تقييم شركتك أولاً لتبدأ استشارتك الخاصة</p>
-            </div>
-          )}
-
-          {consultStatus !== '' && consultStatus !== 'released' && (
-            <div className="bg-[#FBF5E8] rounded-2xl p-5 text-center">
-              <div className="inline-block w-6 h-6 rounded-full border-2 border-[#C9A84C]/30 border-t-[#C9A84C] animate-spin mb-2" />
-              <p className="text-[#9A7B2E] font-black text-sm">جارٍ التحليل من قبل د. عبدالحكيم المرضي...</p>
-              <p className="text-[#A3BAB2] text-xs font-bold mt-1">ستصدر استشارتك هنا فور اكتمال المراجعة</p>
-            </div>
-          )}
-
-          {consultStatus === 'released' && consultContent !== '' && (
-            <>
-              <button onClick={() => window.print()} className="no-print mb-4 px-6 py-2 rounded-full bg-[#1A3D34] text-white font-black text-sm">
-                🖨️ طباعة الاستشارة
-              </button>
-              <div id="print-area">
-                <div className="print-only" style={{ textAlign: 'center', marginBottom: 24, borderBottom: '3px solid #C9A84C', paddingBottom: 16 }}>
-                  <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1A3D34' }}>استشارة د. عبدالحكيم المرضي الخاصة</h1>
-                  <p style={{ fontSize: 12, color: '#9A7B2E', fontWeight: 700 }}>شركة حلول المرضي للاستشارات المالية — منصة مُرضي | murdi.sa</p>
-                </div>
-                <div className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose consult-body" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                  {consultContent.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
-                </div>
-                <div className="print-only" style={{ marginTop: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontFamily: 'Amiri, serif', fontSize: 20, color: '#1A3D34', marginBottom: 4 }}>د. عبدالحكيم المرضي</p>
-                    <p style={{ fontSize: 11, color: '#6B8A80', fontWeight: 700, borderTop: '1px solid #1A3D34', paddingTop: 6 }}>المستشار المعتمد — التوقيع</p>
-                  </div>
-                  <div style={{ width: 150, height: 150, position: 'relative', transform: 'rotate(-6deg)' }}>
-                    <svg viewBox="0 0 150 150" style={{ position: 'absolute', inset: 0 }}>
-                      <circle cx="75" cy="75" r="72" fill="none" stroke="#C9A84C" strokeWidth="2.5"/>
-                      <circle cx="75" cy="75" r="66" fill="none" stroke="#C9A84C" strokeWidth="1"/>
-                      <circle cx="75" cy="75" r="46" fill="none" stroke="#C9A84C" strokeWidth="1" strokeDasharray="3 3"/>
-                      <path id="stampTop" d="M 75 75 m -56 0 a 56 56 0 1 1 112 0" fill="none"/>
-                      <path id="stampBottom" d="M 75 75 m -56 0 a 56 56 0 1 0 112 0" fill="none"/>
-                      <text style={{ fontSize: 10.5, fontWeight: 900, fill: '#9A7B2E', letterSpacing: 1 }}>
-                        <textPath href="#stampTop" startOffset="50%" textAnchor="middle">شركة حلول المرضي للاستشارات المالية</textPath>
-                      </text>
-                      <text style={{ fontSize: 9, fontWeight: 700, fill: '#C9A84C', letterSpacing: 4 }}>
-                        <textPath href="#stampBottom" startOffset="50%" textAnchor="middle">MURDI ★ SAUDI ARABIA</textPath>
-                      </text>
-                      <text x="75" y="68" textAnchor="middle" style={{ fontSize: 13, fontWeight: 900, fill: '#1A3D34' }}>مُرضي</text>
-                      <text x="75" y="84" textAnchor="middle" style={{ fontSize: 8, fontWeight: 700, fill: '#9A7B2E' }}>استشارة معتمدة</text>
-                      <text x="75" y="96" textAnchor="middle" style={{ fontSize: 7, fill: '#A3BAB2' }}>{new Date().toLocaleDateString('ar-SA')}</text>
-                    </svg>
-                  </div>
-                </div>
+            {st === '' && (
+              <div className="bg-[#FBFCFB] rounded-2xl p-5 text-center border border-[#F0F5F3]">
+                <p className="text-[#6B8A80] font-bold text-sm">أكمل تقييم {TRACK_AR[tk]} لتبدأ استشارتك الخاصة في هذا المسار</p>
               </div>
-            </>
-          )}
-        </div>
+            )}
+
+            {st !== '' && st !== 'released' && (
+              <div className="bg-[#FBF5E8] rounded-2xl p-5 text-center">
+                <div className="inline-block w-6 h-6 rounded-full border-2 border-[#C9A84C]/30 border-t-[#C9A84C] animate-spin mb-2" />
+                <p className="text-[#9A7B2E] font-black text-sm">استشارتك الخاصة بـ{TRACK_AR[tk]} قيد الإعداد من د. عبدالحكيم المرضي</p>
+                <p className="text-[#A3BAB2] text-xs font-bold mt-1">ستتوفر هنا فور جهوزها واعتمادها</p>
+              </div>
+            )}
+
+            {st === 'released' && content !== '' && (
+              <>
+                <button onClick={() => { const el = document.getElementById('print-' + tk); if (el) { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>استشارة ' + TRACK_AR[tk] + '</title></head><body style=\"font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap\">' + el.innerText + '</body></html>'); w.document.close(); w.print(); } } }} className="mb-4 px-6 py-2 rounded-full bg-[#1A3D34] text-white font-black text-sm">
+                  🖨️ طباعة الاستشارة
+                </button>
+                <div id={'print-' + tk} className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  {content.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
+                </div>
+              </>
+            )}
+          </div>
+          );
+        })}
 
         {/* بطاقة الأسئلة */}
         <div className="bg-white rounded-3xl p-7 shadow-sm border border-[#E8F5EF]">
