@@ -207,7 +207,7 @@ export async function POST() {
         '<p><b>قوائم مراجعة:</b> ' + (fd.audited_statements ? 'نعم' : 'لا') + ' | <b>حوكمة:</b> ' + (fd.has_governance ? 'نعم' : 'لا') + '</p>' +
         '<table style="border-collapse:collapse;margin-top:12px"><tr style="background:#E8F5EF">' +
         '<th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' +
-        rows + '</table></div>',
+        rows + '</table>' + (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:20px"><h3 style="color:#9A7B2E;margin:0 0 8px">🔍 بحث المستثمرين الذكي (سري — لك فقط)</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') + '</div>',
     });
   } catch {}
 
