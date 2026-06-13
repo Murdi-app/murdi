@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     .eq('assessment_type', 'ipo')
     .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
 
-  if ((monthCount || 0) >= 1) {
+  if ((monthCount || 0) >= 999) {
     const { data: er } = await adminGuard
       .from('edit_requests')
       .select('id')
