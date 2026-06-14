@@ -63,6 +63,16 @@ export default function Home() {
         .lp-why-item { background:#E8F5EF; border-radius:18px; padding:26px 24px; }
         .lp-why-t { font-size:16px; font-weight:900; margin-bottom:8px; color:#1A3D34; }
         .lp-why-d { color:#41695D; font-size:14px; line-height:1.85; }
+        .lp-consult { background:linear-gradient(135deg,#1A3D34,#2E5D4E); border-radius:28px; padding:48px 38px; max-width:920px; margin:0 auto; text-align:center; box-shadow:0 18px 50px rgba(26,61,52,0.22); }
+        .lp-consult-badge { display:inline-block; background:rgba(201,168,76,0.18); color:#C9A84C; font-size:13px; font-weight:700; padding:7px 20px; border-radius:30px; margin-bottom:20px; }
+        .lp-consult-t { font-family:'Amiri',serif; font-size:clamp(24px,4vw,34px); font-weight:700; color:#fff; line-height:1.5; margin-bottom:16px; }
+        .lp-consult-d { color:#D8E8E0; font-size:clamp(14px,2.2vw,16.5px); line-height:2; margin-bottom:28px; }
+        .lp-consult-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:30px; text-align:right; }
+        .lp-consult-item { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:20px; }
+        .lp-consult-item-t { color:#C9A84C; font-size:15px; font-weight:900; margin-bottom:6px; }
+        .lp-consult-item-d { color:#B8CEC5; font-size:13.5px; line-height:1.8; }
+        .lp-consult-cta { background:#C9A84C; color:#1A3D34; border:none; padding:16px 48px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:900; cursor:pointer; transition:transform .15s; }
+        .lp-consult-cta:hover { transform:translateY(-2px); }
         .lp-price-card { background:#fff; border:2px solid #2E9E7B; border-radius:26px; padding:46px 34px; max-width:520px; margin:0 auto; text-align:center; box-shadow:0 14px 40px rgba(46,158,123,0.13); }
         .lp-price-label { color:#6B8A80; font-size:14px; font-weight:700; margin-bottom:8px; }
         .lp-price { font-family:'Amiri',serif; font-size:54px; font-weight:700; color:#2E9E7B; line-height:1; }
