@@ -16,6 +16,7 @@ export default function IpoResult() {
   const [loading, setLoading] = useState(true);
   const [eligibility, setEligibility] = useState('');
   const [eligLoading, setEligLoading] = useState(true);
+  const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -32,6 +33,16 @@ export default function IpoResult() {
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
+
+      const { data: fd } = await supabase
+        .from('financial_data')
+        .select('annual_revenue, net_profit, revenue_growth')
+        .eq('company_id', company.id)
+        .eq('assessment_type', 'ipo')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (fd) setFinData({ rev: Number(fd.annual_revenue) || 0, profit: Number(fd.net_profit) || 0, growth: fd.revenue_growth || '' });
 
       const { data: rr } = await supabase
         .from('readiness_results')
@@ -73,6 +84,25 @@ export default function IpoResult() {
     );
   }
 
+  const estimateValuation = () => {
+    if (finData === null) return null;
+    const { rev, profit, growth } = finData;
+    let lo = 0, hi = 0, basis = '';
+    if (profit > 0) {
+      let ml = 6, mh = 8;
+      if (growth === 'high') { ml = 9; mh = 12; }
+      else if (growth === 'medium') { ml = 7; mh = 9; }
+      lo = profit * ml; hi = profit * mh; basis = 'multiple';
+    } else if (rev > 0) {
+      lo = rev * 1; hi = rev * 1.5; basis = 'revenue';
+    } else {
+      return null;
+    }
+    return { lo, hi, basis };
+  };
+  const valuation = estimateValuation();
+  const fmtM = (n: number) => (n >= 1000000 ? (n / 1000000).toFixed(1) + ' مليون' : Math.round(n / 1000).toLocaleString() + ' ألف');
+
   const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
   const roadmap = result.improvement_plan?.filter((p) => p.startsWith('السوق المقترح') === false) || [];
   const market = result.improvement_plan?.find((p) => p.startsWith('السوق المقترح'));
@@ -102,6 +132,30 @@ export default function IpoResult() {
                 <li key={i} className="text-[#6B8A80] font-bold text-sm">• {o}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {valuation !== null && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#C9A84C]">
+            <h2 className="font-black text-[#1A3D34] mb-1">💰 القيمة السوقية التقديرية للطرح</h2>
+            <p className="text-[#6B8A80] text-xs font-bold mb-4">تقدير استرشادي مبدئي وفق ربحية شركتك ونموها على أساس مضاعفات السوق</p>
+            <div className="bg-[#FBF5E8] rounded-xl p-5 text-center">
+              <p className="text-[#9A7B2E] font-black text-2xl">{fmtM(valuation.lo)} — {fmtM(valuation.hi)} ريال</p>
+              {valuation.basis === 'revenue' && (
+                <p className="text-[#6B5B2E] text-xs font-bold mt-2">قُدّرت على أساس الإيرادات (الشركة دون ربحية صافية حالياً)</p>
+              )}
+            </div>
+            <div className="relative mt-4">
+              <div className="bg-[#F0F5F3] rounded-xl p-5 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
+                <p className="text-[#1A3D34] font-black text-sm mb-2">عند استيفاء متطلبات الحوكمة والإفصاح، يرتفع مضاعف التقييم إلى:</p>
+                <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.5)} ريال</p>
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                <span className="text-3xl mb-1">🔒</span>
+                <p className="font-black text-[#1A3D34] text-sm">سيناريوهات رفع التقييم محجوبة</p>
+              </div>
+            </div>
+            <p className="text-[#6B8A80] text-xs font-bold mt-4 leading-relaxed">القيمة الفعلية عند الطرح تحتاج تقييماً معمّقاً يعدّه فريق د. عبدالحكيم المرضي بالتنسيق مع المستشار المالي المرخّص.</p>
           </div>
         )}
 
