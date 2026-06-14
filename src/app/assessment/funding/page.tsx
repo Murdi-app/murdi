@@ -56,7 +56,7 @@ export default function FundingAssessment() {
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
-    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '';
+    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
@@ -169,7 +169,7 @@ export default function FundingAssessment() {
 
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
+                <input type="number" inputMode="decimal" min="0" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
           )}

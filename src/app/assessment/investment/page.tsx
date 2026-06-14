@@ -89,7 +89,7 @@ export default function InvestmentAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
-    if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '';
+    if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
     if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
@@ -197,7 +197,7 @@ export default function InvestmentAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
+                <input type="number" inputMode="decimal" min="0" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
           )}

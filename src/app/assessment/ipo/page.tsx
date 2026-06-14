@@ -56,7 +56,7 @@ export default function IpoAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
-    if (step === 0) return annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && target !== '';
+    if (step === 0) return annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
     if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
@@ -163,7 +163,7 @@ export default function IpoAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 7" className={inputCls} />
+                <input type="number" inputMode="decimal" min="0" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 7" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">السوق المستهدف</label>
