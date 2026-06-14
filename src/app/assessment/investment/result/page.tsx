@@ -22,6 +22,7 @@ export default function InvestmentResult() {
   const [result, setResult] = useState<Result | null>(null);
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
+  const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
 
@@ -40,6 +41,16 @@ export default function InvestmentResult() {
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
+
+      const { data: fd } = await supabase
+        .from('financial_data')
+        .select('annual_revenue, net_profit, revenue_growth')
+        .eq('company_id', company.id)
+        .eq('assessment_type', 'investment')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (fd) setFinData({ rev: Number(fd.annual_revenue) || 0, profit: Number(fd.net_profit) || 0, growth: fd.revenue_growth || '' });
 
       const { data: rr } = await supabase
         .from('readiness_results')
@@ -82,6 +93,25 @@ export default function InvestmentResult() {
     );
   }
 
+  const estimateValuation = () => {
+    if (finData === null) return null;
+    const { rev, profit, growth } = finData;
+    let lo = 0, hi = 0, basis = '';
+    if (profit > 0) {
+      let ml = 4, mh = 5;
+      if (growth === 'high') { ml = 6; mh = 8; }
+      else if (growth === 'medium') { ml = 5; mh = 6; }
+      lo = profit * ml; hi = profit * mh; basis = 'multiple';
+    } else if (rev > 0) {
+      lo = rev * 0.8; hi = rev * 1.2; basis = 'revenue';
+    } else {
+      return null;
+    }
+    return { lo, hi, basis, profit, growth };
+  };
+  const valuation = estimateValuation();
+  const fmtM = (n: number) => (n >= 1000000 ? (n / 1000000).toFixed(1) + ' مليون' : Math.round(n / 1000).toLocaleString() + ' ألف');
+
   const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
 
   return (
@@ -108,6 +138,31 @@ export default function InvestmentResult() {
                 <li key={i} className="text-[#6B8A80] font-bold text-sm">• {o}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {valuation !== null && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#C9A84C]">
+            <h2 className="font-black text-[#1A3D34] mb-1">💰 القيمة التقديرية لشركتك</h2>
+            <p className="text-[#6B8A80] text-xs font-bold mb-4">تقدير استرشادي مبدئي وفق ربحية شركتك ونموها</p>
+            <div className="bg-[#FBF5E8] rounded-xl p-5 text-center">
+              <p className="text-[#9A7B2E] font-black text-2xl">{fmtM(valuation.lo)} — {fmtM(valuation.hi)} ريال</p>
+              {valuation.basis === 'revenue' && (
+                <p className="text-[#6B5B2E] text-xs font-bold mt-2">قُدّرت على أساس الإيرادات (الشركة دون ربحية صافية حالياً)</p>
+              )}
+            </div>
+            <div className="relative mt-4">
+              <div className="bg-[#F0F5F3] rounded-xl p-5 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
+                <p className="text-[#1A3D34] font-black text-sm mb-2">لو رفعت ربحيتك 15%، ترتفع قيمتك إلى:</p>
+                <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.4)} ريال</p>
+                <p className="text-[#6B8A80] text-xs font-bold mt-2">+ سيناريوهات الحوكمة والتنويع ترفع المضاعف أكثر</p>
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                <span className="text-3xl mb-1">🔒</span>
+                <p className="font-black text-[#1A3D34] text-sm">سيناريوهات رفع القيمة محجوبة</p>
+              </div>
+            </div>
+            <p className="text-[#6B8A80] text-xs font-bold mt-4 leading-relaxed">القيمة الفعلية تحتاج تقييماً معمّقاً يقدّمه فريق د. عبدالحكيم المرضي وفق منهجية تقييم متكاملة.</p>
           </div>
         )}
 
