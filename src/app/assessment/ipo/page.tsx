@@ -16,6 +16,12 @@ const TARGET = [
   { id: 'unsure', label: 'لست متأكداً — وجّهوني' },
 ];
 
+const REPAYMENT = [
+  { id: 'regular', label: 'منتظم في السداد' },
+  { id: 'slight', label: 'متأخر بأقساط بسيطة' },
+  { id: 'default', label: 'متعثر' },
+];
+
 const DEBT_SOURCES = [
   { id: 'one', label: 'جهة تمويل واحدة' },
   { id: 'multi', label: 'أكثر من جهة' },
@@ -46,12 +52,14 @@ export default function IpoAssessment() {
   const [totalFinancing, setTotalFinancing] = useState('');
   const [remainingDebt, setRemainingDebt] = useState('');
   const [financingSources, setFinancingSources] = useState('');
+  const [repaymentStatus, setRepaymentStatus] = useState('');
+  const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
     if (step === 0) return annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
-    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== ''));
+    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
     return false;
   };
 
@@ -67,6 +75,8 @@ export default function IpoAssessment() {
           total_financing: hasDebt ? Number(totalFinancing) : 0,
           remaining_debt: hasDebt ? Number(remainingDebt) : 0,
           financing_sources: hasDebt ? financingSources : '',
+          repayment_status: hasDebt ? repaymentStatus : '',
+          debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
           annual_revenue: Number(annualRevenue),
           net_profit: Number(netProfit),
           revenue_growth: growth,
@@ -223,6 +233,18 @@ export default function IpoAssessment() {
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
                     <Choice items={DEBT_SOURCES} value={financingSources} onChange={setFinancingSources} />
+                  </div>
+                  {financingSources === 'multi' && (
+                    <div>
+                      <label className="block font-black text-[#1A3D34] mb-2">فصّل جهات التمويل (المبلغ من كل جهة، اسمها، والقسط الشهري)</label>
+                      <textarea value={debtDetails} onChange={(e) => setDebtDetails(e.target.value)} rows={4}
+                        placeholder={'مثال:\nبنك الراجحي — 2,000,000 ريال — قسط 60,000 شهرياً\nشركة تمويل — 1,000,000 ريال — قسط 30,000 شهرياً'}
+                        className={inputCls + ' leading-relaxed'} />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-3">ما وضع سداد الديون حالياً؟</label>
+                    <Choice items={REPAYMENT} value={repaymentStatus} onChange={setRepaymentStatus} />
                   </div>
                 </>
               )}
