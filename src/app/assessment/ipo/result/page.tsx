@@ -167,11 +167,39 @@ export default function IpoResult() {
               <p className="text-[#6B8A80] font-bold text-sm">جارٍ تحليل أهليتك وفق متطلبات الهيئة... (قد يأخذ دقيقة)</p>
             </div>
           )}
-          {eligLoading === false && eligibility !== '' && (
-            <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose">
-              {eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
-            </div>
-          )}
+          {eligLoading === false && eligibility !== '' && (() => {
+            const clean = eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '');
+            const cut = Math.min(450, Math.floor(clean.length / 3));
+            const sample = clean.slice(0, cut);
+            const rest = clean.slice(cut);
+            return (
+              <div>
+                <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose">{sample}…</div>
+                {rest.length > 0 && (
+                  <div className="relative mt-3">
+                    <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose select-none" style={{ filter: 'blur(6px)', maxHeight: '180px', overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">{rest}</div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                      <span className="text-3xl mb-1">🔒</span>
+                      <p className="font-black text-[#1A3D34] text-sm">تحليل الأهلية الكامل + خطوات العمل الفورية محجوبة</p>
+                    </div>
+                  </div>
+                )}
+                {result.readiness_score >= 65 ? (
+                  <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+                    <p className="text-3xl mb-2">🏛️</p>
+                    <p className="font-black text-white mb-1">شركتك على أعتاب الطرح</p>
+                    <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي تحليل الأهلية الكامل وخطوات العمل الفورية، ويرافقك في تجهيز ملف الشركة لهيئة السوق المالية مرحلةً بمرحلة.</p>
+                    <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أنهيت تقييم الطرح في مُرضي وأرغب في تحليل الأهلية الكامل وخطة الطرح')} target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-6 py-3 rounded-xl">تواصل مع فريق مُرضي عبر واتساب</a>
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-2xl p-5 text-center bg-[#FBF5E8] border border-[#E8D9B5]">
+                    <p className="font-black text-[#1A3D34] mb-1">الطريق إلى الطرح يبدأ من هنا</p>
+                    <p className="text-[#6B5B2E] text-sm font-bold leading-relaxed">ارفع جاهزيتك بمعالجة العوائق أعلاه، وفريق مُرضي مستعد لمرافقتك خطوة بخطوة حتى تستوفي متطلبات الهيئة.</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {eligLoading === false && eligibility === '' && (
             <p className="text-[#6B8A80] font-bold text-sm">تعذّر جلب المتطلبات حالياً — حاول لاحقاً أو تواصل مع فريق مُرضي.</p>
           )}
