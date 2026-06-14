@@ -166,22 +166,38 @@ export default function InvestmentResult() {
             {matchLoading && <p className="text-[#6B8A80] font-bold text-sm">جارٍ البحث عن الجهات المتطابقة...</p>}
 
             {matchLoading === false && matches !== null && matches.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-[#2E9E7B] font-black text-sm">شركتك مؤهلة لـ {matchCount} جهة استثمارية</p>
-                {matches.map((m, i) => (
-                  <div key={i} className="border border-[#E8F5EF] rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="font-black text-[#1A3D34] text-sm">{m.funding_type}</p>
-                      <span className="bg-[#E8F5EF] text-[#2E9E7B] font-black text-xs px-3 py-1 rounded-full">ملاءمة {m.fit_percent}%</span>
-                    </div>
-                    <ul className="space-y-1 mb-2">
-                      {m.reasons.map((r, j) => (
-                        <li key={j} className="text-[#6B8A80] text-xs font-bold">✓ {r}</li>
-                      ))}
-                    </ul>
-                    <p className="text-[#2E9E7B] text-xs font-black">{m.next_step}</p>
+              <div>
+                <div className="bg-[#E8F5EF] rounded-xl p-4 text-center mb-3">
+                  <p className="text-3xl mb-1">🎯</p>
+                  <p className="text-[#1A3D34] font-black">وجدنا لك {matchCount} جهة استثمارية مناسبة</p>
+                  <p className="text-[#6B8A80] text-xs font-bold mt-1">طابقناها مع ملف شركتك — التفاصيل محفوظة لك مع فريق مُرضي</p>
+                </div>
+                <div className="relative">
+                  <div className="space-y-3 select-none" style={{ filter: 'blur(6px)', pointerEvents: 'none' }} aria-hidden="true">
+                    {matches.map((m, i) => (
+                      <div key={i} className="border border-[#E8F5EF] rounded-xl p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="font-black text-[#1A3D34] text-sm">{m.funding_type}</p>
+                          <span className="bg-[#E8F5EF] text-[#2E9E7B] font-black text-xs px-3 py-1 rounded-full">ملاءمة {m.fit_percent}%</span>
+                        </div>
+                        <ul className="space-y-1">
+                          {m.reasons.map((r, j) => (
+                            <li key={j} className="text-[#6B8A80] text-xs font-bold">✓ {r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                    <span className="text-3xl mb-1">🔒</span>
+                    <p className="font-black text-[#1A3D34] text-sm">أسماء الجهات وتفاصيل المطابقة محجوبة</p>
+                  </div>
+                </div>
+                <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+                  <p className="font-black text-white mb-1">جهاتك الاستثمارية جاهزة</p>
+                  <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يشاركك فريق د. عبدالحكيم المرضي قائمة الجهات المطابقة وطريقة الوصول إليها، ويرافقك في عرض شركتك عليها بأفضل صورة.</p>
+                  <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أنهيت تقييم الاستثمار في مُرضي وأرغب في معرفة الجهات الاستثمارية المطابقة لشركتي')} target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-6 py-3 rounded-xl">تواصل مع فريق مُرضي عبر واتساب</a>
+                </div>
               </div>
             )}
 
