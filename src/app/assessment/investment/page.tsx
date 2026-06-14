@@ -31,7 +31,24 @@ const GROWTH = [
   { id: 'declining', label: 'متراجعة' },
 ];
 
-const STEPS = ['القطاع والمرحلة', 'الأداء المالي', 'الحوكمة والقوائم'];
+const CONCENTRATION = [
+  { id: 'low', label: 'أقل من 20% — قاعدة عملاء موزّعة' },
+  { id: 'mid', label: '20% — 40%' },
+  { id: 'high', label: 'أكثر من 40% — معتمد على عميل رئيسي' },
+];
+
+const RECURRING = [
+  { id: 'recurring', label: 'متكرر غالباً — اشتراكات أو عقود مستمرة' },
+  { id: 'mixed', label: 'مزيج بين متكرر ومرة واحدة' },
+  { id: 'oneoff', label: 'مرة واحدة غالباً — مشاريع أو صفقات منفصلة' },
+];
+
+const PRIOR_INV = [
+  { id: 'yes', label: 'نعم — دخل مستثمر أو جولة تمويل سابقة' },
+  { id: 'no', label: 'لا — تمويل ذاتي حتى الآن' },
+];
+
+const STEPS = ['القطاع والمرحلة', 'الأداء المالي', 'الحوكمة والقوائم', 'جاذبية الاستثمار'];
 
 export default function InvestmentAssessment() {
   const router = useRouter();
@@ -49,11 +66,15 @@ export default function InvestmentAssessment() {
   const [hasBoard, setHasBoard] = useState<boolean | null>(null);
   const [hasStatements, setHasStatements] = useState<boolean | null>(null);
   const [audited, setAudited] = useState<boolean | null>(null);
+  const [concentration, setConcentration] = useState('');
+  const [recurring, setRecurring] = useState('');
+  const [priorInvestment, setPriorInvestment] = useState('');
 
   const stepValid = () => {
     if (step === 0) return sector !== '' && stage !== '' && yearsOperating !== '';
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '';
     return false;
   };
 
@@ -75,6 +96,9 @@ export default function InvestmentAssessment() {
           has_board: hasBoard,
           has_financial_statements: hasStatements,
           audited_statements: hasStatements === true ? audited : false,
+          client_concentration: concentration,
+          revenue_recurring: recurring,
+          had_investment: priorInvestment,
         }),
       });
       const data = await res.json();
@@ -189,6 +213,23 @@ export default function InvestmentAssessment() {
             </div>
           )}
 
+          {step === 3 && (
+            <div className="space-y-6">
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-3">كم نسبة أكبر عميل من إجمالي إيراداتك؟</label>
+                <Choice items={CONCENTRATION} value={concentration} onChange={setConcentration} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-3">ما طبيعة إيراداتك؟</label>
+                <Choice items={RECURRING} value={recurring} onChange={setRecurring} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
+                <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
+              </div>
+            </div>
+          )}
+
           {error !== '' && <p className="text-red-600 font-bold mt-4 text-sm">{error}</p>}
 
           <div className="flex gap-3 mt-8">
@@ -196,11 +237,11 @@ export default function InvestmentAssessment() {
               <button type="button" onClick={() => setStep(step - 1)}
                 className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
             )}
-            {step < 2 && (
+            {step < 3 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
                 className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
             )}
-            {step === 2 && (
+            {step === 3 && (
               <button type="button" disabled={stepValid() === false || loading} onClick={submit}
                 className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">
                 {loading ? 'جارٍ التحليل...' : 'احسب جاهزيتي'}
