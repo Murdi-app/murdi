@@ -145,6 +145,10 @@ export async function POST(req: Request) {
     client_concentration: body.client_concentration,
     revenue_recurring: body.revenue_recurring,
     had_investment: body.had_investment,
+    has_debt: body.has_debt,
+    total_financing: body.total_financing,
+    remaining_debt: body.remaining_debt,
+    financing_sources: body.financing_sources,
     annual_revenue: rev,
     years_operating: years,
     net_profit: profit,
@@ -158,7 +162,8 @@ export async function POST(req: Request) {
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
   try {
-    const deep = await generateDeepAnalysis({ ...body, score }, score);
+    const debtRatio = (Number(body.remaining_debt) > 0 && rev > 0) ? Math.round((Number(body.remaining_debt) / rev) * 100) : 0;
+    const deep = await generateDeepAnalysis({ ...body, score, debt_to_revenue_pct: debtRatio }, score);
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
