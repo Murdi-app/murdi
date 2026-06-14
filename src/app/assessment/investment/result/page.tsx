@@ -97,6 +97,7 @@ export default function InvestmentResult() {
           <p className="text-[#6B8A80] font-bold mb-2">درجة جاهزية الاستثمار</p>
           <p className="text-6xl font-black" style={{ color: scoreColor }}>{result.readiness_score}</p>
           <p className="text-xl font-black text-[#1A3D34] mt-3">{result.verdict}</p>
+          <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
         </div>
 
         {result.top_obstacles?.length > 0 && (
