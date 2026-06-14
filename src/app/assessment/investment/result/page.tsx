@@ -113,12 +113,37 @@ export default function InvestmentResult() {
 
         {result.improvement_plan?.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">
-            <h2 className="font-black text-[#1A3D34] mb-4">خطة التحسين</h2>
+            <h2 className="font-black text-[#1A3D34] mb-4">خطة جذب المستثمر</h2>
             <ul className="space-y-3">
-              {result.improvement_plan.map((p, i) => (
-                <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 1}. {p}</li>
-              ))}
+              <li className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">1. {result.improvement_plan[0]}</li>
             </ul>
+            {result.improvement_plan.length > 1 && (
+              <div className="relative mt-3">
+                <ul className="space-y-3 select-none" style={{ filter: 'blur(6px)', pointerEvents: 'none' }} aria-hidden="true">
+                  {result.improvement_plan.slice(1).map((p, i) => (
+                    <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
+                  ))}
+                </ul>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                  <span className="text-3xl mb-1">🔒</span>
+                  <p className="font-black text-[#1A3D34] text-sm">بقية خطة الجذب ({result.improvement_plan.length - 1} خطوات) محجوبة</p>
+                </div>
+              </div>
+            )}
+            {result.readiness_score >= 65 ? (
+              <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+                <p className="text-3xl mb-2">🏆</p>
+                <p className="font-black text-white mb-1">شركتك جاذبة للمستثمر</p>
+                <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يعدّ لك فريق د. عبدالحكيم المرضي خطة جذب المستثمر الكاملة خطوةً بخطوة، مع تجهيز ملف الشركة للعرض على المستثمرين المناسبين.</p>
+                <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%86%D9%87%D9%8A%D8%AA%20%D8%AA%D9%82%D9%8A%D9%8A%D9%85%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%AB%D9%85%D8%A7%D8%B1%20%D9%81%D9%8A%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A%20%D9%88%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%AE%D8%B7%D8%A9%20%D8%AC%D8%B0%D8%A8%20%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%AB%D9%85%D8%B1%20%D8%A7%D9%84%D9%83%D8%A7%D9%85%D9%84%D8%A9" target="_blank" rel="noopener noreferrer"
+                  className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-6 py-3 rounded-xl">احجز استشارتك الآن عبر واتساب</a>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-2xl p-5 text-center bg-[#FBF5E8] border border-[#E8D9B5]">
+                <p className="font-black text-[#1A3D34] mb-1">أنت في الطريق الصحيح</p>
+                <p className="text-[#6B5B2E] text-sm font-bold leading-relaxed">ارفع جاهزيتك أولاً عبر معالجة العوائق أعلاه، وفريق مُرضي مستعد لمرافقتك خطوة بخطوة حتى تصبح شركتك جاهزة لجذب المستثمرين.</p>
+              </div>
+            )}
           </div>
         )}
 
