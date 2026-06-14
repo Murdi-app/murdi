@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 
 type Result = {
   readiness_score: number;
+  months_to_ready?: number;
   verdict: string;
   top_obstacles: string[];
   required_documents: string[];
@@ -46,7 +47,7 @@ export default function IpoResult() {
 
       const { data: rr } = await supabase
         .from('readiness_results')
-        .select('readiness_score, verdict, top_obstacles, required_documents, improvement_plan')
+        .select('readiness_score, verdict, top_obstacles, required_documents, improvement_plan, months_to_ready')
         .eq('company_id', company.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -123,6 +124,15 @@ export default function IpoResult() {
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
           {market && <p className="text-[#2E9E7B] font-black text-sm mt-2">{market}</p>}
         </div>
+
+        {(result.months_to_ready ?? 0) > 0 && (
+          <div className="bg-gradient-to-br from-[#1A3D34] to-[#2E5D4E] rounded-2xl p-6 text-center shadow-sm">
+            <p className="text-[#D8E8E0] font-bold text-sm mb-1">المدة التقديرية حتى جاهزية الطرح</p>
+            <p className="text-white font-black text-5xl mb-1">{result.months_to_ready}</p>
+            <p className="text-[#C9A84C] font-black text-lg mb-3">شهراً</p>
+            <p className="text-[#D8E8E0] text-xs font-bold leading-relaxed">تقدير مبني على الفجوات الحالية في ملفك — يقصُر كلما عالجت العوائق. فريق مُرضي يضع لك خطة زمنية تختصر هذه المدة.</p>
+          </div>
+        )}
 
         {result.top_obstacles?.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">

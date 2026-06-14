@@ -230,6 +230,7 @@ export async function POST(req: Request) {
   const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
     readiness_score: score,
+    months_to_ready: monthsToReady,
     verdict,
     top_obstacles: obstacles,
     required_documents: docs,
