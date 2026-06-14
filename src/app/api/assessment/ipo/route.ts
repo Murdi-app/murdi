@@ -160,6 +160,29 @@ export async function POST(req: Request) {
   else if (topClient <= 50) { score += 4; obstacles.push('تركّز إيرادات على عميل واحد (' + topClient + '%)'); plan.push('تنويع قاعدة العملاء — التركّز فوق 25% يقلق المستثمرين'); monthsToReady = Math.max(monthsToReady, 12); }
   else { obstacles.push('اعتماد مفرط على عميل واحد (' + topClient + '%)'); plan.push('خفض الاعتماد على العميل الأكبر تحت 50% كحد أدنى'); monthsToReady = Math.max(monthsToReady, 18); }
 
+  // عقوبة الدين وحالة السداد — الإدراج يتطلب مركزاً مالياً سليماً والمتعثر مرفوض نظاماً
+  if (body.has_debt === 'yes') {
+    const remaining = Number(body.remaining_debt) || 0;
+    const debtRatio = rev > 0 ? remaining / rev : 0;
+    if (body.repayment_status === 'default') {
+      score = Math.min(score, 20);
+      obstacles.unshift('الشركة متعثرة في سداد ديونها — الإدراج في السوق المالي مرفوض نظاماً لمن لا ينتظم في التزاماته، والتعافي يبعد الطرح سنوات');
+      monthsToReady = Math.max(monthsToReady, 36);
+    } else if (body.repayment_status === 'slight') {
+      score -= 12;
+      obstacles.push('تأخر في سداد بعض الأقساط — الهيئة والمستثمرون يدققون في انتظام الالتزامات قبل الإدراج');
+      monthsToReady = Math.max(monthsToReady, 18);
+    }
+    if (debtRatio > 0.7) {
+      score -= 10;
+      obstacles.push('عبء الدين مرتفع — الديون المتبقية تعادل ' + Math.round(debtRatio * 100) + '% من الإيرادات، ما يضعف هيكل رأس المال أمام الطرح');
+      monthsToReady = Math.max(monthsToReady, 18);
+    } else if (debtRatio > 0.4) {
+      score -= 5;
+    }
+  }
+  if (score < 0) score = 0;
+
   let verdict = '';
   if (score >= 80) { verdict = 'جاهز لبدء إجراءات الطرح — ' + (isMain ? 'السوق الرئيسية' : 'السوق الموازي (نمو)'); monthsToReady = Math.max(monthsToReady, 6); }
   else if (score >= 60) verdict = 'قريب من الجاهزية — ' + (isMain ? 'السوق الرئيسية' : 'نمو') + ' خلال ' + monthsToReady + ' شهراً تقريباً';
