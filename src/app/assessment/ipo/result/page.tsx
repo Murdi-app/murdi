@@ -109,10 +109,39 @@ export default function IpoResult() {
             <h2 className="font-black text-[#1A3D34] mb-1">خارطة الطريق للجاهزية</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">خطوات مرتبة للوصول لمتطلبات الإدراج</p>
             <ul className="space-y-3">
-              {roadmap.map((p, i) => (
-                <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 1}. {p}</li>
-              ))}
+              {/* المرحلة الأولى — عيّنة مكشوفة */}
+              <li className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">1. {roadmap[0]}</li>
             </ul>
+
+            {roadmap.length > 1 && (
+              <div className="relative mt-3">
+                {/* الباقي مقفل بضبابية */}
+                <ul className="space-y-3 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
+                  {roadmap.slice(1).map((p, i) => (
+                    <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
+                  ))}
+                </ul>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                  <span style={{ fontSize: 26 }}>🔒</span>
+                  <p className="text-[#1A3D34] font-black text-sm mt-1">خارطة الطريق الكاملة محجوبة</p>
+                  <p className="text-[#6B8A80] font-bold text-xs mt-1">{roadmap.length - 1} مراحل إضافية بالمدد والتفاصيل</p>
+                </div>
+              </div>
+            )}
+
+            {/* الدعوة حسب الأهلية */}
+            {result.readiness_score >= 65 ? (
+              <div className="mt-5 bg-gradient-to-l from-[#FBF5E8] to-white rounded-xl p-5 border-2 border-[#C9A84C]">
+                <h3 className="font-black text-[#1A3D34] mb-1">🎯 شركتك مؤهلة — افتح خطة الطرح الكاملة</h3>
+                <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي خطة طرح تنفيذية كاملة: كل مرحلة بمدتها وتكلفتها، تجهيز ملف الهيئة، واختيار السوق الأنسب — بمرافقة حتى الإدراج.</p>
+                <a href="https://wa.me/966570314005?text=السلام%20عليكم،%20شركتي%20مؤهلة%20للطرح%20وأريد%20خطة%20الطرح%20الكاملة%20من%20فريق%20مُرضي" target="_blank" rel="noopener noreferrer" className="inline-block px-7 py-3 rounded-full bg-[#C9A84C] text-white font-black text-sm">اطلب خطة الطرح الكاملة ←</a>
+              </div>
+            ) : (
+              <div className="mt-5 bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3]">
+                <h3 className="font-black text-[#1A3D34] mb-1">شركتك تحتاج تجهيزاً قبل الطرح</h3>
+                <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">ركّز على رفع جاهزيتك عبر معالجة العوائق أعلاه. عند وصولك لمستوى الجاهزية، يفتح فريق مُرضي لك خطة الطرح الكاملة ويرافقك في الطريق.</p>
+              </div>
+            )}
           </div>
         )}
 
