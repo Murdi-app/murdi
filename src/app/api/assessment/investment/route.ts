@@ -133,6 +133,26 @@ export async function POST(req: Request) {
   else if (rev >= 1000000) score += 4;
   else { score += 1; obstacles.push('حجم الإيرادات أقل من اهتمام أغلب الصناديق'); plan.push('أغلب الصناديق السعودية تبدأ من إيرادات مليون فأكثر'); }
 
+  // عقوبة الدين وحالة السداد — المستثمر لا يدخل شركة متعثرة مهما كانت أرقامها
+  if (body.has_debt === 'yes') {
+    const remaining = Number(body.remaining_debt) || 0;
+    const debtRatio = rev > 0 ? remaining / rev : 0;
+    if (body.repayment_status === 'default') {
+      score = Math.min(score, 28);
+      obstacles.unshift('الشركة متعثرة في سداد ديونها — المستثمر لا يدخل شركة متعثرة لأن أمواله ستذهب للدائنين لا للنمو');
+    } else if (body.repayment_status === 'slight') {
+      score -= 15;
+      obstacles.push('تأخر في سداد بعض الأقساط — يثير قلق المستثمر حول انضباط التدفق النقدي');
+    }
+    if (debtRatio > 0.7) {
+      score -= 12;
+      obstacles.push('عبء الدين مرتفع — الديون المتبقية تعادل ' + Math.round(debtRatio * 100) + '% من الإيرادات السنوية');
+    } else if (debtRatio > 0.4) {
+      score -= 6;
+    }
+  }
+  if (score < 0) score = 0;
+
   let verdict = '';
   if (score >= 80) verdict = 'جاهز لدخول مستثمر';
   else if (score >= 70) verdict = 'جاهز بدرجة جيدة — تحسينات ترفع التقييم';
