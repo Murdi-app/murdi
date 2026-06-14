@@ -59,9 +59,12 @@ export async function POST() {
     await resend.emails.send({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
-      subject: 'تقييم طرح جديد — ' + company.company_name + ' (درجة ' + score + ')',
+      subject: (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ') + company.company_name + ' (درجة ' + score + ')',
       html:
         '<div dir="rtl" style="font-family:Arial">' +
+        (score >= 65
+          ? '<div style="background:#FBF5E8;border:2px solid #C9A84C;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#9A7B2E;font-size:16px">🎯 مؤهل للطرح — فرصة خدمة مدفوعة</b><br/>الإجراء: تواصل مع العميل لعرض خطة الطرح الكاملة (المراحل + التكلفة + تجهيز ملف الهيئة).</div>'
+          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح</b><br/>الإجراء: متابعة لاحقة — العميل بعيد عن الجاهزية حالياً.</div>') +
         '<h2>ملف طرح جديد</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
         '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
