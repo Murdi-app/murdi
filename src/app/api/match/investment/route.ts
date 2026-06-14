@@ -69,6 +69,29 @@ function sectorMatch(list: string[], val: string): boolean {
   });
 }
 
+async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي. الشركة متعثرة في سداد ديونها، فالمستثمر لا يدخلها الان. '
+    + 'بياناتها: ' + JSON.stringify(data) + '. '
+    + 'اكتب مسار تعافي واقعيا ومتدرجا يقدر عليه صاحب شركة متعثر فعلا، بلا مبالغة ولا حلول خيالية ولا راس مال كبير. '
+    + 'ركز على: اعادة جدولة الديون والتفاوض مع الدائنين، وقف النزيف النقدي وضبط المصروفات، تحسين دورة التحصيل، استعادة الانتظام في السداد. '
+    + 'اربط كل خطوة بارقام الشركة الفعلية. اخرج النتيجة HTML عربي بسيط: عنوان <h3>مسار التعافي المقترح</h3> ثم <ol> خطوات مرقمة كل خطوة <li> فيها رقم محسوب من بياناتهم. بلا اي اشارة لذكاء اصطناعي او تقنية. ابدا مباشرة بالـHTML بلا اي نص قبله او بعده.';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const txt = (j.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
+      if (txt) return txt;
+    } catch {}
+  }
+  return '<h3>مسار التعافي المقترح</h3><p>الشركة بحاجة لإعادة هيكلة ديونها وتحسين تدفقها النقدي قبل التفكير في جذب مستثمر.</p>';
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -186,8 +209,13 @@ export async function POST() {
 
   try {
     let investorSearch = '';
+    const isDefaulted = fd?.repayment_status === 'default';
     try {
-      investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
+      if (isDefaulted) {
+        investorSearch = await generateRecoveryPath({ ...fd });
+      } else {
+        investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
+      }
     } catch {}
 
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -199,7 +227,7 @@ export async function POST() {
     await resend.emails.send({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
-      subject: 'مطابقة استثمار جديدة — ' + company.company_name,
+      subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
       html:
         '<div dir="rtl" style="font-family:Arial">' +
         '<h2>مطابقة استثمار جديدة</h2>' +
@@ -210,7 +238,7 @@ export async function POST() {
         '<p><b>قوائم مراجعة:</b> ' + (fd.audited_statements ? 'نعم' : 'لا') + ' | <b>حوكمة:</b> ' + (fd.has_governance ? 'نعم' : 'لا') + '</p>' +
         '<table style="border-collapse:collapse;margin-top:12px"><tr style="background:#E8F5EF">' +
         '<th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' +
-        rows + '</table>' + (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:20px"><h3 style="color:#9A7B2E;margin:0 0 8px">🔍 بحث المستثمرين الذكي (سري — لك فقط)</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') + '</div>',
+        rows + '</table>' + (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:20px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (isDefaulted ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') + '</div>',
     });
   } catch {}
 
