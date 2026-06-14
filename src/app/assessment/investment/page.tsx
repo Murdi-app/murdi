@@ -43,6 +43,12 @@ const RECURRING = [
   { id: 'oneoff', label: 'مرة واحدة غالباً — مشاريع أو صفقات منفصلة' },
 ];
 
+const REPAYMENT = [
+  { id: 'regular', label: 'منتظم في السداد' },
+  { id: 'slight', label: 'متأخر بأقساط بسيطة' },
+  { id: 'default', label: 'متعثر' },
+];
+
 const DEBT_SOURCES = [
   { id: 'one', label: 'جهة تمويل واحدة' },
   { id: 'multi', label: 'أكثر من جهة' },
@@ -50,7 +56,7 @@ const DEBT_SOURCES = [
 
 const PRIOR_INV = [
   { id: 'yes', label: 'نعم — دخل مستثمر أو جولة تمويل سابقة' },
-  { id: 'no', label: 'لا — تمويل ذاتي حتى الآن' },
+  { id: 'no', label: 'لا' },
 ];
 
 const STEPS = ['القطاع والمرحلة', 'الأداء المالي', 'الحوكمة والقوائم', 'جاذبية الاستثمار'];
@@ -79,12 +85,14 @@ export default function InvestmentAssessment() {
   const [totalFinancing, setTotalFinancing] = useState('');
   const [remainingDebt, setRemainingDebt] = useState('');
   const [financingSources, setFinancingSources] = useState('');
+  const [repaymentStatus, setRepaymentStatus] = useState('');
+  const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '';
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== ''));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
     return false;
   };
 
@@ -113,6 +121,8 @@ export default function InvestmentAssessment() {
           total_financing: hasDebt ? Number(totalFinancing) : 0,
           remaining_debt: hasDebt ? Number(remainingDebt) : 0,
           financing_sources: hasDebt ? financingSources : '',
+          repayment_status: hasDebt ? repaymentStatus : '',
+          debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
         }),
       });
       const data = await res.json();
@@ -267,6 +277,18 @@ export default function InvestmentAssessment() {
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
                     <Choice items={DEBT_SOURCES} value={financingSources} onChange={setFinancingSources} />
+                  </div>
+                  {financingSources === 'multi' && (
+                    <div>
+                      <label className="block font-black text-[#1A3D34] mb-2">فصّل جهات التمويل (المبلغ من كل جهة، اسمها، والقسط الشهري)</label>
+                      <textarea value={debtDetails} onChange={(e) => setDebtDetails(e.target.value)} rows={4}
+                        placeholder={'مثال:\nبنك الراجحي — 800,000 ريال — قسط 25,000 شهرياً\nشركة تمويل — 400,000 ريال — قسط 12,000 شهرياً'}
+                        className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right leading-relaxed" />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-3">ما وضع سداد الديون حالياً؟</label>
+                    <Choice items={REPAYMENT} value={repaymentStatus} onChange={setRepaymentStatus} />
                   </div>
                 </>
               )}
