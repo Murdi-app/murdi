@@ -16,6 +16,11 @@ const TARGET = [
   { id: 'unsure', label: 'لست متأكداً — وجّهوني' },
 ];
 
+const DEBT_SOURCES = [
+  { id: 'one', label: 'جهة تمويل واحدة' },
+  { id: 'multi', label: 'أكثر من جهة' },
+];
+
 const STEPS = ['الأداء المالي', 'القوائم والمراجعة', 'الحوكمة', 'الالتزام والاستدامة'];
 
 export default function IpoAssessment() {
@@ -37,12 +42,16 @@ export default function IpoAssessment() {
   const [taxCompliant, setTaxCompliant] = useState<boolean | null>(null);
   const [zakatCompliant, setZakatCompliant] = useState<boolean | null>(null);
   const [topClientPct, setTopClientPct] = useState('');
+  const [hasDebt, setHasDebt] = useState<boolean | null>(null);
+  const [totalFinancing, setTotalFinancing] = useState('');
+  const [remainingDebt, setRemainingDebt] = useState('');
+  const [financingSources, setFinancingSources] = useState('');
 
   const stepValid = () => {
     if (step === 0) return annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
-    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '';
+    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== ''));
     return false;
   };
 
@@ -54,6 +63,10 @@ export default function IpoAssessment() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          has_debt: hasDebt ? 'yes' : 'no',
+          total_financing: hasDebt ? Number(totalFinancing) : 0,
+          remaining_debt: hasDebt ? Number(remainingDebt) : 0,
+          financing_sources: hasDebt ? financingSources : '',
           annual_revenue: Number(annualRevenue),
           net_profit: Number(netProfit),
           revenue_growth: growth,
@@ -193,6 +206,26 @@ export default function IpoAssessment() {
                 <label className="block font-black text-[#1A3D34] mb-2">كم نسبة أكبر عميل من إيراداتكم؟ (%)</label>
                 <input type="number" inputMode="numeric" value={topClientPct} onChange={(e) => setTopClientPct(e.target.value)} placeholder="مثال: 25" className={inputCls} />
               </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">هل على الشركة تمويل أو ديون قائمة؟</label>
+                <YesNo value={hasDebt} onChange={setHasDebt} />
+              </div>
+              {hasDebt === true && (
+                <>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">إجمالي مبلغ التمويل الأصلي (ريال)</label>
+                    <input type="number" inputMode="numeric" value={totalFinancing} onChange={(e) => setTotalFinancing(e.target.value)} placeholder="مثال: 5000000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي على الشركة الآن (ريال)</label>
+                    <input type="number" inputMode="numeric" value={remainingDebt} onChange={(e) => setRemainingDebt(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
+                    <Choice items={DEBT_SOURCES} value={financingSources} onChange={setFinancingSources} />
+                  </div>
+                </>
+              )}
             </div>
           )}
 

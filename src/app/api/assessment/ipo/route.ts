@@ -184,12 +184,17 @@ export async function POST(req: Request) {
     tax_compliant: body.tax_compliant,
     zakat_compliant: body.zakat_compliant,
     top_client_pct: topClient,
+    has_debt: body.has_debt,
+    total_financing: body.total_financing,
+    remaining_debt: body.remaining_debt,
+    financing_sources: body.financing_sources,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
   // تحليل Claude العميق: يستبدل القوالب بعوائق وخطة طريق مخصّصة لأرقام الشركة
   try {
-    const deep = await generateIPOAnalysis({ ...body, score, suggestedMarket }, score, suggestedMarket);
+    const debtRatio = (Number(body.remaining_debt) > 0 && rev > 0) ? Math.round((Number(body.remaining_debt) / rev) * 100) : 0;
+    const deep = await generateIPOAnalysis({ ...body, score, suggestedMarket, debt_to_revenue_pct: debtRatio }, score, suggestedMarket);
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
