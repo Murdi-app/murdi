@@ -62,6 +62,7 @@ export default function InvestmentAssessment() {
   const [error, setError] = useState('');
 
   const [sector, setSector] = useState('');
+  const [customSector, setCustomSector] = useState('');
   const [stage, setStage] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
@@ -80,7 +81,7 @@ export default function InvestmentAssessment() {
   const [financingSources, setFinancingSources] = useState('');
 
   const stepValid = () => {
-    if (step === 0) return sector !== '' && stage !== '' && yearsOperating !== '';
+    if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '';
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
     if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== ''));
@@ -95,7 +96,7 @@ export default function InvestmentAssessment() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sector,
+          sector: sector === 'other' ? customSector.trim() : sector,
           company_stage: stage,
           years_operating: Number(yearsOperating),
           annual_revenue: Number(annualRevenue),
@@ -174,6 +175,11 @@ export default function InvestmentAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">قطاع الشركة</label>
                 <Choice items={SECTORS} value={sector} onChange={setSector} cols={2} />
+                {sector === 'other' && (
+                  <input type="text" value={customSector} onChange={(e) => setCustomSector(e.target.value)}
+                    placeholder="اكتب قطاع شركتك بالتحديد..."
+                    className="w-full mt-3 p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right" />
+                )}
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">مرحلة الشركة الحالية</label>
@@ -247,7 +253,7 @@ export default function InvestmentAssessment() {
               {hasDebt === true && (
                 <>
                   <div>
-                    <label className="block font-black text-[#1A3D34] mb-2">إجمالي مبلغ التمويل الأصلي (ريal)</label>
+                    <label className="block font-black text-[#1A3D34] mb-2">إجمالي مبلغ التمويل الأصلي (ريال)</label>
                     <input type="number" value={totalFinancing} onChange={(e) => setTotalFinancing(e.target.value)}
                       placeholder="مثال: 2000000"
                       className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right" />
