@@ -3,6 +3,29 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { Resend } from 'resend';
 
+async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي. الشركة متعثرة في سداد ديونها، والادراج في السوق المالي مرفوض نظاما لمن لا ينتظم في التزاماته، فالطرح هدف بعيد يسبقه تعافي واستقرار. '
+    + 'بياناتها: ' + JSON.stringify(data) + '. '
+    + 'اكتب مسار تعافي واقعيا ومتدرجا يقدر عليه صاحب شركة متعثر فعلا، بلا مبالغة ولا حلول خيالية ولا راس مال كبير. '
+    + 'ركز على: اعادة جدولة الديون والتفاوض مع الدائنين، وقف النزيف النقدي وضبط المصروفات، تحسين التدفق النقدي والربحية، استعادة الانتظام في السداد، ثم بعد سنوات من الاستقرار يعاد تقييم جاهزية الطرح. '
+    + 'اربط كل خطوة بارقام الشركة الفعلية. اخرج HTML عربي بسيط: <h3>مسار التعافي قبل التفكير في الطرح</h3> ثم <ol> خطوات مرقمة كل خطوة <li> فيها رقم محسوب من بياناتهم. بلا اي اشارة لذكاء اصطناعي او تقنية. ابدا مباشرة بالـHTML.';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const txt = (j.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
+      if (txt) return txt;
+    } catch {}
+  }
+  return '<h3>مسار التعافي قبل التفكير في الطرح</h3><p>الشركة بحاجة لإعادة هيكلة ديونها واستعادة انتظام السداد قبل أي تفكير في الإدراج.</p>';
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -51,6 +74,9 @@ export async function POST() {
   const marketLabel = fd.target_market === 'main' ? 'السوق الرئيسية' : 'السوق الموازي (نمو)';
 
   try {
+    const isDefaulted = fd?.repayment_status === 'default';
+    let recoveryHtml = '';
+    if (isDefaulted) { try { recoveryHtml = await generateRecoveryPath({ ...fd }); } catch {} }
     const resend = new Resend(process.env.RESEND_API_KEY);
     const obstacleRows = (rr?.top_obstacles || []).map((o: string) =>
       '<li style="margin-bottom:4px">' + o + '</li>'
@@ -59,12 +85,14 @@ export async function POST() {
     await resend.emails.send({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
-      subject: (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ') + company.company_name + ' (درجة ' + score + ')',
+      subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ')) + company.company_name + ' (درجة ' + score + ')',
       html:
         '<div dir="rtl" style="font-family:Arial">' +
-        (score >= 65
+        (isDefaulted
+          ? '<div style="background:#FBECEC;border:2px solid #C0564B;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#A33;font-size:16px">⚠️ غير مؤهل للطرح حالياً — شركة متعثرة</b><br/>الإجراء: الشركة متعثرة في السداد والإدراج مرفوض نظاماً. الفرصة هنا خدمة <b>إعادة هيكلة وتعافٍ</b> تقدّمها حلول المرضي، تمهّد لاحقاً للطرح.</div>'
+          : (score >= 65
           ? '<div style="background:#FBF5E8;border:2px solid #C9A84C;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#9A7B2E;font-size:16px">🎯 مؤهل للطرح — فرصة خدمة مدفوعة</b><br/>الإجراء: تواصل مع العميل لعرض خطة الطرح الكاملة (المراحل + التكلفة + تجهيز ملف الهيئة).</div>'
-          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح</b><br/>الإجراء: متابعة لاحقة — العميل بعيد عن الجاهزية حالياً.</div>') +
+          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح</b><br/>الإجراء: متابعة لاحقة — العميل بعيد عن الجاهزية حالياً.</div>')) +
         '<h2>ملف طرح جديد</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
         '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
@@ -79,6 +107,7 @@ export async function POST() {
         '<p><b>تركّز أكبر عميل:</b> ' + (fd.top_client_pct ?? '—') + '%</p>' +
         '<hr/>' +
         '<p><b>أبرز العوائق:</b></p><ul>' + obstacleRows + '</ul>' +
+        (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px">' + recoveryHtml + '</div>' : '') +
         '</div>',
     });
   } catch {}
