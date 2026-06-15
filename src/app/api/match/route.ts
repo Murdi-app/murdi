@@ -31,7 +31,7 @@ export async function POST() {
 
   const { data: company } = await supabase
     .from('companies')
-    .select('id, company_name, cr_number, city, sector, account_status')
+    .select('id, company_name, cr_number, city, sector, account_status, phone')
     .eq('user_id', user.id)
     .single();
 
@@ -194,18 +194,12 @@ export async function POST() {
         '<div dir="rtl" style="font-family:Arial">'
         + '<h2>مطابقة تمويل جديدة</h2>'
         + '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>'
-        + '<p><b>درجة الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
-        + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>الإيرادات:</b> ' + rev.toLocaleString() + ' ر.س | <b>العمر:</b> ' + years + ' سنة | <b>بنك الشركة:</b> ' + (fd.company_bank || '—') + '</p>'
-        + '<p><b>الديون:</b> ' + debtDesc + (fd.has_debt ? ' | القسط الشهري: ' + Number(fd.monthly_installment || 0).toLocaleString() + ' ر.س' : '') + '</p>'
+        + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>درجة الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
+        + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
+        + (webOffers.length === 0 && !webSearchOk ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY في Vercel') + '</p>' : '')
         + '<hr/>'
-        + '<h3>🔍 عروض السوق (بحث Claude — ' + webOffers.length + ')</h3>'
-        + (webOffers.length > 0
-          ? '<table style="border-collapse:collapse"><tr style="background:#E8F5EF"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الشروط المعلنة</th><th style="padding:8px;border:1px solid #ddd">سبب الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>'
-          : '<p>' + (webSearchOk ? 'لم يجد البحث منتجات معلنة مطابقة' : '⚠️ تعذر البحث: ' + (webSearchError || 'استجابة غير صالحة من API — تحقق من ANTHROPIC_API_KEY في Vercel')) + '</p>')
-        + '<h3>🤝 شبكة مُرضي (' + dbMatches.length + ')</h3>'
-        + (dbMatches.length > 0
-          ? '<table style="border-collapse:collapse"><tr style="background:#E8F5EF"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>'
-          : '<p>لا مطابقة من القاعدة الداخلية</p>')
+        + '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
+        + '<p style="color:#6B8A80;font-size:12px;margin-top:8px">عروض السوق وشبكة مُرضي بتفاصيلها الكاملة في لوحة الأدمن.</p>'
         + '</div>',
     });
   } catch {}

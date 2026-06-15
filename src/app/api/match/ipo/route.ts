@@ -119,22 +119,12 @@ export async function POST() {
         '<h2>ملف طرح جديد</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
         '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
-        '<p><b>IPO Readiness Score:</b> ' + score + '</p>' +
-        '<p><b>الحكم:</b> ' + (rr?.verdict ?? '—') + '</p>' +
-        '<p><b>السوق المقترح:</b> ' + marketLabel + '</p>' +
-        '<hr/>' +
-        '<p><b>الإيرادات:</b> ' + rev.toLocaleString() + ' ر.س | <b>صافي الربح:</b> ' + profit.toLocaleString() + ' ر.س</p>' +
-        '<p><b>سنوات القوائم المعتمدة:</b> ' + (fd.num_statements_years ?? 0) + ' | <b>مراجع خارجي:</b> ' + yes(fd.external_auditor) + '</p>' +
-        '<p><b>حوكمة:</b> ' + yes(fd.has_governance) + ' | <b>مجلس إدارة:</b> ' + yes(fd.has_board) + ' | <b>لجان:</b> ' + yes(fd.has_committees) + '</p>' +
-        '<p><b>التزام ضريبي:</b> ' + yes(fd.tax_compliant) + ' | <b>زكاة:</b> ' + yes(fd.zakat_compliant) + '</p>' +
-        '<p><b>تركّز أكبر عميل:</b> ' + (fd.top_client_pct ?? '—') + '%</p>' +
-        '<hr/>' +
-        '<p><b>أبرز العوائق:</b></p><ul>' + obstacleRows + '</ul>' +
-        '<hr/>' +
-        '<p><b>⏱️ المدة التقديرية للجاهزية:</b> ' + monthsTxt + '</p>' +
-        valuationHtml +
-        (planHtml ? '<p><b>🗺️ خارطة الطريق:</b></p><ul>' + planHtml + '</ul>' : '') +
+        '<p><b>IPO Readiness Score:</b> ' + score + ' — ' + (rr?.verdict ?? '—') + '</p>' +
+        '<p><b>السوق المقترح:</b> ' + marketLabel + ' | <b>⏱️ المدة التقديرية:</b> ' + monthsTxt + '</p>' +
         (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px">' + recoveryHtml + '</div>' : '') +
+        '<hr/>' +
+        '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
+        '<p style="color:#6B8A80;font-size:12px;margin-top:8px">التفاصيل الكاملة (الأرقام، العوائق، خارطة الطريق، التقييم) في لوحة الأدمن.</p>' +
         '</div>',
     });
   } catch {}
