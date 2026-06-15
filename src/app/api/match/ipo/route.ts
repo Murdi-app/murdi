@@ -59,7 +59,7 @@ export async function POST() {
 
   const { data: rr } = await supabase
     .from('readiness_results')
-    .select('readiness_score, verdict, top_obstacles')
+    .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready')
     .eq('company_id', company.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -72,6 +72,22 @@ export async function POST() {
   const score = rr?.readiness_score ?? 0;
   const yes = (v: unknown) => (v === true ? 'نعم' : 'لا');
   const marketLabel = fd.target_market === 'main' ? 'السوق الرئيسية' : 'السوق الموازي (نمو)';
+  const growth = fd.revenue_growth || '';
+  let valLo = 0, valHi = 0, valBasis = 'none';
+  if (profit > 0) {
+    let ml = 6, mh = 8;
+    if (growth === 'high') { ml = 8; mh = 10; }
+    else if (growth === 'medium') { ml = 7; mh = 9; }
+    valLo = profit * ml; valHi = profit * mh; valBasis = 'profit';
+  } else if (rev > 0) {
+    valBasis = 'loss';
+  }
+  const fmtSar = (n: number) => Math.round(n).toLocaleString('en-US');
+  const valuationHtml = valBasis === 'profit'
+    ? '<p><b>القيمة السوقية التقديرية:</b> ' + fmtSar(valLo) + ' — ' + fmtSar(valHi) + ' ر.س (على أساس ربح ' + fmtSar(profit) + ' × مضاعف ' + (growth === 'high' ? '8-10' : growth === 'medium' ? '7-9' : '6-8') + ')</p>'
+    : '<p><b>القيمة السوقية التقديرية:</b> تحتاج ربحية صافية موجبة للتقدير (الشركة غير ربحية حالياً)</p>';
+  const planHtml = (rr?.improvement_plan || []).map((x: string, i: number) => '<li style="margin-bottom:4px">' + (i + 1) + '. ' + x + '</li>').join('');
+  const monthsTxt = rr?.months_to_ready ? rr.months_to_ready + ' شهراً' : '—';
 
   try {
     const isDefaulted = fd?.repayment_status === 'default';
@@ -107,6 +123,10 @@ export async function POST() {
         '<p><b>تركّز أكبر عميل:</b> ' + (fd.top_client_pct ?? '—') + '%</p>' +
         '<hr/>' +
         '<p><b>أبرز العوائق:</b></p><ul>' + obstacleRows + '</ul>' +
+        '<hr/>' +
+        '<p><b>⏱️ المدة التقديرية للجاهزية:</b> ' + monthsTxt + '</p>' +
+        valuationHtml +
+        (planHtml ? '<p><b>🗺️ خارطة الطريق:</b></p><ul>' + planHtml + '</ul>' : '') +
         (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px">' + recoveryHtml + '</div>' : '') +
         '</div>',
     });
