@@ -193,8 +193,8 @@ export default function ConsultationPage() {
 
         {/* بطاقة الدعم الفني والتواصل */}
         <div className="bg-white rounded-3xl p-7 shadow-sm border border-[#E8F5EF]">
-          <h2 className="font-black text-[#1A3D34] mb-1">📞 الدعم الفني والتواصل</h2>
-          <p className="text-[#6B8A80] text-xs font-bold mb-4">واجهت مشكلة تقنية أو لديك استفسار؟ فريق مُرضي معك مباشرة عبر واتساب</p>
+          <h2 className="font-black text-[#1A3D34] mb-1">📞 الدعم الفني</h2>
+          <p className="text-[#6B8A80] text-xs font-bold mb-4">واجهت مشكلة تقنية في المنصة (تسجيل دخول، صفحة لا تفتح، خطأ في النظام)؟ تواصل مع فريق مُرضي مباشرة عبر واتساب</p>
           <a href="https://wa.me/966570314005?text=السلام%20عليكم،%20أحتاج%20مساعدة%20بخصوص%20منصة%20مُرضي" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-[#25D366] text-white font-black text-sm">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15l-1.4 5 5.1-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.2-.7-2.7-1.1-4.4-3.9-4.5-4.1-.1-.2-1.1-1.4-1.1-2.7s.7-1.9.9-2.2c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.5c-.1.2-.3.3-.1.6.1.3.6 1 1.3 1.6.9.8 1.6 1 1.9 1.2.2.1.4.1.6-.1l.7-.8c.2-.2.4-.2.6-.1l1.9.9c.2.1.4.2.4.3.1.1.1.6-.1 1.2z"/></svg>
@@ -205,8 +205,8 @@ export default function ConsultationPage() {
 
         {/* بطاقة الدعم الخاص */}
         <div className="bg-white rounded-3xl p-7 shadow-sm border border-[#E8F5EF]">
-          <h2 className="font-black text-[#1A3D34] mb-1">🛠️ الدعم الخاص</h2>
-          <p className="text-[#6B8A80] text-xs font-bold mb-4">أخطأت في إدخال بياناتك؟ أرسل طلب تعديل وسيراجعه الفريق ويفتح لك الإدخال من جديد</p>
+          <h2 className="font-black text-[#1A3D34] mb-1">✏️ تصحيح بيانات التقييم</h2>
+          <p className="text-[#6B8A80] text-xs font-bold mb-4">أدخلت رقماً خاطئاً في أحد التقييمات؟ أرسل طلب تعديل، وبعد مراجعة الفريق يفتح لك إدخال المسار من جديد لتصحيحه</p>
 
           {editStatus === 'pending' && (
             <p className="text-[#9A7B2E] text-sm font-black bg-[#FBF5E8] rounded-xl p-4">⏳ طلب التعديل قيد المراجعة من الإدارة</p>
