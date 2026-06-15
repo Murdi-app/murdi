@@ -3,6 +3,33 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
 
+async function estimateValuationAI(rev: number, profit: number, growth: string, sector: string): Promise<{ lo: number; hi: number; note: string } | null> {
+  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const prompt = 'انت خبير تقييم شركات وفق منهجية د. عبدالحكيم المرضي. قدّر القيمة التقديرية لشركة سعودية خاصة (غير مدرجة) لغرض جذب مستثمر. '
+    + 'بياناتها: ايرادات سنوية ' + rev + ' ريال، صافي ربح ' + profit + ' ريال، نمو ' + (growth || 'غير محدد') + '، قطاع ' + (sector || 'غير محدد') + '. '
+    + 'قواعد صارمة وملزمة (لا تتجاوزها حفاظا على المصداقية): '
+    + 'الشركة الخاصة غير المدرجة تُقيّم اقل من المدرجة بسبب ضعف السيولة وارتفاع المخاطر، فاستخدم مضاعفات ربح محافظة جدا حسب القطاع: تقنية/برمجيات 5-7، صحة/تعليم 4-6، تجزئة/خدمات 3-5، صناعة/مقاولات/تجارة 3-4، اغذية/زراعة 4-5. الحد الادنى اذا النمو ضعيف والاعلى اذا عالٍ. '
+    + 'اذا كانت خاسرة او ربحها صفر، ارجع lo=0 و hi=0 و note يوضح ان التقييم يحتاج ربحية. '
+    + 'كن محافظا: التقدير الادنى افضل من المبالغة. '
+    + 'ارجع JSON فقط: {"lo": رقم, "hi": رقم, "note": "جملة قصيرة تشرح المضاعف والقطاع بلا ذكر ذكاء اصطناعي او تقنية"}. ';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 600, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const txt = (j.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
+      const clean = txt.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      if (typeof parsed.lo === 'number' && typeof parsed.hi === 'number') return { lo: parsed.lo, hi: parsed.hi, note: parsed.note || '' };
+    } catch {}
+  }
+  return null;
+}
+
 async function generateDeepAnalysis(data: Record<string, unknown>, score: number): Promise<{ obstacles: string[]; plan: string[] } | null> {
   const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
   const prompt = 'انت محلل مالي استثماري وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد. '
@@ -184,9 +211,11 @@ export async function POST(req: Request) {
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
+  let valuationStr = '';
   try {
     const debtRatio = (Number(body.remaining_debt) > 0 && rev > 0) ? Math.round((Number(body.remaining_debt) / rev) * 100) : 0;
     const deep = await generateDeepAnalysis({ ...body, score, debt_to_revenue_pct: debtRatio }, score);
+    valuationStr = await (async () => { const v = await estimateValuationAI(rev, profit, body.revenue_growth || '', body.sector || ''); return v ? JSON.stringify(v) : ''; })();
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
