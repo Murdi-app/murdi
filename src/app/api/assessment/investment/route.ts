@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 
 
 async function estimateValuationAI(rev: number, profit: number, growth: string, sector: string): Promise<{ lo: number; hi: number; note: string } | null> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت خبير تقييم شركات وفق منهجية د. عبدالحكيم المرضي. قدّر القيمة التقديرية لشركة سعودية خاصة (غير مدرجة) لغرض جذب مستثمر. '
     + 'بياناتها: ايرادات سنوية ' + rev + ' ريال، صافي ربح ' + profit + ' ريال، نمو ' + (growth || 'غير محدد') + '، قطاع ' + (sector || 'غير محدد') + '. '
     + 'قواعد صارمة وملزمة (لا تتجاوزها حفاظا على المصداقية): '
@@ -31,7 +31,7 @@ async function estimateValuationAI(rev: number, profit: number, growth: string, 
 }
 
 async function generateDeepAnalysis(data: Record<string, unknown>, score: number): Promise<{ obstacles: string[]; plan: string[] } | null> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت محلل مالي استثماري وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد. '
     + 'اسلوبك: ارقام محسوبة من بيانات الشركة نفسها، صراحة بلا مجاملات، وممنوع نهائيا ذكر اي ذكاء اصطناعي او تقنية او اي اشارة لكونك نموذجا. '
     + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
