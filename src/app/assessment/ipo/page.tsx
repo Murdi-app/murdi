@@ -3,6 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const SECTOR = [
+  { id: 'tech', label: 'تقنية / برمجيات' },
+  { id: 'health_edu', label: 'صحة / تعليم' },
+  { id: 'retail_services', label: 'تجزئة / خدمات' },
+  { id: 'industry_trade', label: 'صناعة / تجارة' },
+  { id: 'food_agri', label: 'أغذية / زراعة' },
+];
+
 const GROWTH = [
   { id: 'high', label: 'أكثر من 30%' },
   { id: 'medium', label: '10% — 30%' },
@@ -35,6 +43,7 @@ export default function IpoAssessment() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [sector, setSector] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
   const [netProfit, setNetProfit] = useState('');
   const [growth, setGrowth] = useState('');
@@ -56,7 +65,7 @@ export default function IpoAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
-    if (step === 0) return annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
+    if (step === 0) return sector !== '' && annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
     if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
@@ -77,6 +86,7 @@ export default function IpoAssessment() {
           financing_sources: hasDebt ? financingSources : '',
           repayment_status: hasDebt ? repaymentStatus : '',
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
+          sector,
           annual_revenue: Number(annualRevenue),
           net_profit: Number(netProfit),
           revenue_growth: growth,
@@ -149,6 +159,10 @@ export default function IpoAssessment() {
 
           {step === 0 && (
             <div className="space-y-6">
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-3">قطاع نشاط الشركة</label>
+                <Choice items={SECTOR} value={sector} onChange={setSector} cols={2} />
+              </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال)</label>
                 <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 50000000" className={inputCls} />

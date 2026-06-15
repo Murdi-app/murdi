@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
-const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
 
 async function searchEligibility(rev: number, profit: number, years: number, market: string): Promise<string> {
   const prompt = 'انت كبير مستشاري جاهزية الطرح في فريق د. عبدالحكيم المرضي بمنصة مُرضي، خبير بمتطلبات هيئة السوق المالية وتداول والسوق الموازي نمو. '
