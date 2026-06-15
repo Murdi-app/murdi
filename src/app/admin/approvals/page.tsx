@@ -298,21 +298,22 @@ export default function ApprovalsPage() {
                       {pr.has_debt === 'yes' && <div className="ap-field"><div className="ap-field-label">دين متبقٍ</div><div className="ap-field-val">{fmt(pr.remaining_debt)} ر.س</div></div>}
                     </div>
                     {pr.obstacles?.length > 0 && (
-                      <div style={{ marginTop:12 }}>
-                        <div className="ap-field-label" style={{ marginBottom:6 }}>أبرز العوائق</div>
-                        <ul style={{ paddingRight:18, color:'#41695D', fontSize:13, lineHeight:1.9 }}>
-                          {pr.obstacles.map((o: string, i: number) => <li key={i}>{o}</li>)}
+                      <div style={{ marginTop:18, background:'#FBF5E8', borderRight:'4px solid #C9A84C', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#9A7B2E', fontSize:14, fontWeight:800, marginBottom:12 }}>⚠️ أبرز العوائق</div>
+                        <ul style={{ paddingRight:20, margin:0, color:'#5C4A1F', fontSize:13.5, lineHeight:2.1 }}>
+                          {pr.obstacles.map((o: string, i: number) => <li key={i} style={{ marginBottom:10 }}>{o}</li>)}
                         </ul>
                       </div>
                     )}
                     {pr.plan?.length > 0 && (
-                      <div style={{ marginTop:12 }}>
-                        <div className="ap-field-label" style={{ marginBottom:6 }}>🗺️ خطة التحسين / خارطة الطريق</div>
-                        <ul style={{ paddingRight:18, color:'#1A3D34', fontSize:13, lineHeight:1.9, fontWeight:600 }}>
-                          {pr.plan.map((x: string, i: number) => <li key={i}>{x}</li>)}
-                        </ul>
+                      <div style={{ marginTop:14, background:'#F0F7F4', borderRight:'4px solid #2E9E7B', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#1A6B4F', fontSize:14, fontWeight:800, marginBottom:12 }}>🗺️ خطة التحسين / خارطة الطريق</div>
+                        <ol style={{ paddingRight:20, margin:0, color:'#1A3D34', fontSize:13.5, lineHeight:2.1, fontWeight:600 }}>
+                          {pr.plan.map((x: string, i: number) => <li key={i} style={{ marginBottom:12 }}>{x}</li>)}
+                        </ol>
                       </div>
                     )}
+                    <div style={{ height:6 }} />
                   </div>
                 )}
               </div>
