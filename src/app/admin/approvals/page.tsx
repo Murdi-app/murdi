@@ -297,6 +297,9 @@ export default function ApprovalsPage() {
                       <div className="ap-field"><div className="ap-field-label">القيمة التقديرية</div><div className="ap-field-val">{pr.val_basis === 'profit' ? fmt(pr.val_lo) + ' — ' + fmt(pr.val_hi) + ' ر.س' : 'تحتاج ربحية'}</div></div>
                       {pr.has_debt === 'yes' && <div className="ap-field"><div className="ap-field-label">دين متبقٍ</div><div className="ap-field-val">{fmt(pr.remaining_debt)} ر.س</div></div>}
                     </div>
+                    {pr.val_note && (
+                      <div style={{ marginTop:8, background:'#FBF8EE', borderRadius:'8px', padding:'10px 14px', color:'#7A6420', fontSize:12.5, fontWeight:600, lineHeight:1.8 }}>💰 أساس التقييم: {pr.val_note}</div>
+                    )}
                     {pr.obstacles?.length > 0 && (
                       <div style={{ marginTop:18, background:'#FBF5E8', borderRight:'4px solid #C9A84C', borderRadius:'10px', padding:'16px 18px' }}>
                         <div style={{ color:'#9A7B2E', fontSize:14, fontWeight:800, marginBottom:12 }}>⚠️ أبرز العوائق</div>

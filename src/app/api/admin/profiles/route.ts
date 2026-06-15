@@ -33,7 +33,7 @@ export async function GET() {
   for (const c of companies) {
     const { data: rr } = await admin
       .from('readiness_results')
-      .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, eligibility_analysis, created_at')
+      .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, eligibility_analysis, valuation_estimate, created_at')
       .eq('company_id', c.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -63,6 +63,16 @@ export async function GET() {
     } else if (rev > 0) {
       valBasis = 'loss';
     }
+    // تفضيل تقييم Claude المحفوظ إن وُجد
+    let valNote = '';
+    if (rr?.valuation_estimate) {
+      try {
+        const v = JSON.parse(rr.valuation_estimate);
+        if (typeof v.lo === 'number' && typeof v.hi === 'number' && v.hi > 0) {
+          valLo = v.lo; valHi = v.hi; valBasis = 'profit'; valNote = v.note || '';
+        }
+      } catch {}
+    }
 
     profiles.push({
       company: c,
@@ -77,7 +87,7 @@ export async function GET() {
       has_debt: fd?.has_debt ?? null,
       remaining_debt: Number(fd?.remaining_debt) || 0,
       repayment_status: fd?.repayment_status ?? null,
-      val_lo: valLo, val_hi: valHi, val_basis: valBasis,
+      val_lo: valLo, val_hi: valHi, val_basis: valBasis, val_note: valNote,
       assessed_at: rr?.created_at ?? null,
     });
   }
