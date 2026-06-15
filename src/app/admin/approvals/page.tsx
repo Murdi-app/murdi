@@ -45,6 +45,8 @@ export default function ApprovalsPage() {
   const [consultations, setConsultations] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
   const [edits, setEdits] = useState<any[]>([])
+  const [profiles, setProfiles] = useState<any[]>([])
+  const [openProfile, setOpenProfile] = useState<string | null>(null)
 
   useEffect(() => { init() }, [])
 
@@ -84,6 +86,10 @@ export default function ApprovalsPage() {
 
   async function loadConsultations() {
     try {
+      try {
+        const pRes = await fetch('/api/admin/profiles')
+        if (pRes.ok) { const pData = await pRes.json(); setProfiles(pData.profiles || []) }
+      } catch {}
       const res = await fetch('/api/consultation')
       const data = await res.json()
       setConsultations(data.consultations || [])
@@ -262,6 +268,57 @@ export default function ApprovalsPage() {
               </div>
             </div>
           ))}
+          <div className="ap-section-title">📂 ملفات العملاء (التقييمات) <span className="ap-count" style={{ background:'#1A3D34' }}>{profiles.length}</span></div>
+          {profiles.length === 0 && <div className="ap-empty">لا توجد ملفات تقييم بعد</div>}
+          {profiles.map((pr, idx) => {
+            const TA: Record<string,string> = { funding: 'تمويل', investment: 'استثمار', ipo: 'طرح' };
+            const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+            const isOpen = openProfile === pr.company?.id + '-' + idx;
+            const defaulted = pr.repayment_status === 'default';
+            return (
+              <div className="ap-card" key={pr.company?.id + '-' + idx}>
+                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => setOpenProfile(isOpen ? null : pr.company?.id + '-' + idx)}>
+                  <span className="ap-name">📊 {pr.company?.company_name || 'شركة'} 
+                    <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
+                    {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
+                  </span>
+                  <span className="ap-badge" style={{ background: pr.score >= 65 ? '#E8F5EF' : '#FBF5E8', color: pr.score >= 65 ? '#2E9E7B' : '#9A7B2E' }}>درجة {pr.score ?? '—'} {isOpen ? '▲' : '▼'}</span>
+                </div>
+                {isOpen && (
+                  <div>
+                    <div className="ap-grid">
+                      <div className="ap-field"><div className="ap-field-label">السجل</div><div className="ap-field-val">{pr.company?.cr_number || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{pr.company?.phone || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{pr.company?.sector || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الإيرادات</div><div className="ap-field-val">{fmt(pr.rev)} ر.س</div></div>
+                      <div className="ap-field"><div className="ap-field-label">صافي الربح</div><div className="ap-field-val">{fmt(pr.profit)} ر.س</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الحكم</div><div className="ap-field-val">{pr.verdict || '—'}</div></div>
+                      {pr.months_to_ready != null && <div className="ap-field"><div className="ap-field-label">المدة للجاهزية</div><div className="ap-field-val">{pr.months_to_ready} شهراً</div></div>}
+                      <div className="ap-field"><div className="ap-field-label">القيمة التقديرية</div><div className="ap-field-val">{pr.val_basis === 'profit' ? fmt(pr.val_lo) + ' — ' + fmt(pr.val_hi) + ' ر.س' : 'تحتاج ربحية'}</div></div>
+                      {pr.has_debt === 'yes' && <div className="ap-field"><div className="ap-field-label">دين متبقٍ</div><div className="ap-field-val">{fmt(pr.remaining_debt)} ر.س</div></div>}
+                    </div>
+                    {pr.obstacles?.length > 0 && (
+                      <div style={{ marginTop:12 }}>
+                        <div className="ap-field-label" style={{ marginBottom:6 }}>أبرز العوائق</div>
+                        <ul style={{ paddingRight:18, color:'#41695D', fontSize:13, lineHeight:1.9 }}>
+                          {pr.obstacles.map((o: string, i: number) => <li key={i}>{o}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {pr.plan?.length > 0 && (
+                      <div style={{ marginTop:12 }}>
+                        <div className="ap-field-label" style={{ marginBottom:6 }}>🗺️ خطة التحسين / خارطة الطريق</div>
+                        <ul style={{ paddingRight:18, color:'#1A3D34', fontSize:13, lineHeight:1.9, fontWeight:600 }}>
+                          {pr.plan.map((x: string, i: number) => <li key={i}>{x}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
           <div className="ap-section-title">الاستشارات الخاصة <span className="ap-count" style={{ background:'#C9A84C' }}>{consultations.filter(c => c.status === 'ready').length}</span></div>
 
           {consultations.length === 0 && <div className="ap-empty">لا توجد استشارات بعد</div>}
