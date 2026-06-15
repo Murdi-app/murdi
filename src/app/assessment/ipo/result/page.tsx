@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 type Result = {
   readiness_score: number;
   months_to_ready?: number;
+  valuation_estimate?: string;
   verdict: string;
   top_obstacles: string[];
   required_documents: string[];
@@ -47,7 +48,7 @@ export default function IpoResult() {
 
       const { data: rr } = await supabase
         .from('readiness_results')
-        .select('readiness_score, verdict, top_obstacles, required_documents, improvement_plan, months_to_ready')
+        .select('readiness_score, verdict, top_obstacles, required_documents, improvement_plan, months_to_ready, valuation_estimate')
         .eq('company_id', company.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -85,6 +86,14 @@ export default function IpoResult() {
     );
   }
 
+  const parseValuation = () => {
+    if (!result?.valuation_estimate) return null;
+    try {
+      const v = JSON.parse(result.valuation_estimate);
+      if (typeof v.lo === 'number' && typeof v.hi === 'number' && v.hi > 0) return v;
+    } catch {}
+    return null;
+  };
   const estimateValuation = () => {
     if (finData === null) return null;
     const { rev, profit, growth } = finData;
@@ -101,7 +110,8 @@ export default function IpoResult() {
     }
     return { lo, hi, basis };
   };
-  const valuation = estimateValuation();
+  const aiVal = parseValuation();
+  const valuation = aiVal ? { lo: aiVal.lo, hi: aiVal.hi, basis: 'multiple', note: aiVal.note || '' } : estimateValuation();
   const fmtM = (n: number) => (n >= 1000000 ? (n / 1000000).toFixed(1) + ' مليون' : Math.round(n / 1000).toLocaleString() + ' ألف');
 
   const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
@@ -151,6 +161,9 @@ export default function IpoResult() {
             <p className="text-[#6B8A80] text-xs font-bold mb-4">تقدير استرشادي مبدئي وفق ربحية شركتك ونموها على أساس مضاعفات السوق</p>
             <div className="bg-[#FBF5E8] rounded-xl p-5 text-center">
               <p className="text-[#9A7B2E] font-black text-2xl">{fmtM(valuation.lo)} — {fmtM(valuation.hi)} ريال</p>
+              {(valuation as { note?: string }).note && (
+                <p className="text-[#6B5B2E] text-xs font-bold mt-3 leading-relaxed">{(valuation as { note?: string }).note}</p>
+              )}
               {valuation.basis === 'revenue' && (
                 <p className="text-[#6B5B2E] text-xs font-bold mt-2">قُدّرت على أساس الإيرادات (الشركة دون ربحية صافية حالياً)</p>
               )}
