@@ -106,7 +106,7 @@ export async function POST() {
 
   const { data: company } = await supabase
     .from('companies')
-    .select('id, company_name, cr_number, city, sector, account_status')
+    .select('id, company_name, cr_number, city, sector, account_status, phone')
     .eq('user_id', user.id)
     .single();
 
@@ -232,13 +232,13 @@ export async function POST() {
         '<div dir="rtl" style="font-family:Arial">' +
         '<h2>مطابقة استثمار جديدة</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
-        '<p><b>القطاع:</b> ' + (fd.sector || company.sector || '—') + ' | <b>المرحلة:</b> ' + (fd.company_stage || '—') + '</p>' +
+        '<p><b>القطاع:</b> ' + (fd.sector || company.sector || '—') + ' | <b>الجوال:</b> ' + (company.phone || '—') + '</p>' +
         '<p><b>درجة الجاهزية:</b> ' + score + ' — ' + (rr?.verdict ?? '') + '</p>' +
-        '<p><b>الإيرادات:</b> ' + rev.toLocaleString() + ' ر.س | <b>صافي الربح:</b> ' + Number(fd.net_profit || 0).toLocaleString() + ' ر.س</p>' +
-        '<p><b>قوائم مراجعة:</b> ' + (fd.audited_statements ? 'نعم' : 'لا') + ' | <b>حوكمة:</b> ' + (fd.has_governance ? 'نعم' : 'لا') + '</p>' +
-        '<table style="border-collapse:collapse;margin-top:12px"><tr style="background:#E8F5EF">' +
-        '<th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' +
-        rows + '</table>' + (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:20px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (isDefaulted ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') + '</div>',
+        (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:16px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (isDefaulted ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') +
+        '<hr/>' +
+        '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
+        '<p style="color:#6B8A80;font-size:12px;margin-top:8px">تفاصيل الأرقام والجهات المطابقة الكاملة في لوحة الأدمن.</p>' +
+        '</div>',
     });
   } catch {}
 
