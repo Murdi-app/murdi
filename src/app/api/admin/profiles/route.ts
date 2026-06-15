@@ -33,7 +33,7 @@ export async function GET() {
   for (const c of companies) {
     const { data: rr } = await admin
       .from('readiness_results')
-      .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, created_at')
+      .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, eligibility_analysis, created_at')
       .eq('company_id', c.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -72,6 +72,7 @@ export async function GET() {
       obstacles: rr?.top_obstacles ?? [],
       plan: rr?.improvement_plan ?? [],
       months_to_ready: rr?.months_to_ready ?? null,
+      eligibility: rr?.eligibility_analysis ?? null,
       rev, profit, growth,
       has_debt: fd?.has_debt ?? null,
       remaining_debt: Number(fd?.remaining_debt) || 0,

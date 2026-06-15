@@ -82,5 +82,20 @@ export async function POST() {
   const market = (fd?.target_market as string) || 'nomu';
 
   const eligibility = await searchEligibility(rev, profit, years, market);
+
+  // حفظ الأهلية في آخر تقييم طرح ليظهر في ملف الأدمن
+  if (eligibility) {
+    const { data: lastRR } = await admin
+      .from('readiness_results')
+      .select('id')
+      .eq('company_id', company.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (lastRR?.id) {
+      await admin.from('readiness_results').update({ eligibility_analysis: eligibility }).eq('id', lastRR.id);
+    }
+  }
+
   return NextResponse.json({ eligibility });
 }

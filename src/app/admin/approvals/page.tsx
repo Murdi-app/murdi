@@ -313,7 +313,13 @@ export default function ApprovalsPage() {
                         </ol>
                       </div>
                     )}
-                    <div style={{ height:6 }} />
+                    {pr.eligibility && (
+                      <div style={{ marginTop:14, background:'#EEF3F1', borderRight:'4px solid #1A3D34', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#1A3D34', fontSize:14, fontWeight:800, marginBottom:12 }}>🏛️ تحليل الأهلية (نمو / الرئيسي)</div>
+                        <div style={{ color:'#3A4D47', fontSize:13.5, lineHeight:2.1, whiteSpace:'pre-wrap' }}>{pr.eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}</div>
+                      </div>
+                    )}
+                    <div style={{ height:20 }} />
                   </div>
                 )}
               </div>
