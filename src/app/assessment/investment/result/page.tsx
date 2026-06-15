@@ -273,8 +273,36 @@ export default function InvestmentResult() {
         )}
 
         {result.readiness_score < 70 && (
-          <div className="bg-[#E8F5EF] rounded-2xl p-6 text-center">
-            <p className="text-[#1A3D34] font-black text-sm">عند وصول درجتك إلى 70 فأكثر، يبدأ فريق مُرضي بمطابقة شركتك مع الجهات الاستثمارية المناسبة.</p>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#2E9E7B]">
+            <h2 className="font-black text-[#1A3D34] mb-1">فرص استثمارية في قطاعك</h2>
+            <p className="text-[#6B8A80] text-xs font-bold mb-4">رصد فريق مُرضي جهات استثمارية نشطة في قطاع شركتك — تُفتح لك عند رفع جاهزيتك</p>
+            <div className="bg-[#E8F5EF] rounded-xl p-4 text-center mb-3">
+              <p className="text-3xl mb-1">🎯</p>
+              <p className="text-[#1A3D34] font-black">3 جهات استثمارية محتملة في قطاعك</p>
+              <p className="text-[#6B8A80] text-xs font-bold mt-1">تظهر تفاصيلها فور وصول جاهزيتك إلى المستوى المطلوب</p>
+            </div>
+            <div className="relative">
+              <div className="space-y-3 select-none" style={{ filter: 'blur(6px)', pointerEvents: 'none' }} aria-hidden="true">
+                {['صندوق استثماري متخصص', 'مستثمر استراتيجي', 'استثمار جريء (Venture)'].map((t, i) => (
+                  <div key={i} className="border border-[#E8F5EF] rounded-xl p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="font-black text-[#1A3D34] text-sm">{t}</p>
+                      <span className="bg-[#E8F5EF] text-[#2E9E7B] font-black text-xs px-3 py-1 rounded-full">ملاءمة مبدئية</span>
+                    </div>
+                    <p className="text-[#6B8A80] text-xs font-bold">تفاصيل الجهة وشروط دخولها محجوبة</p>
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                <span className="text-3xl mb-1">🔒</span>
+                <p className="font-black text-[#1A3D34] text-sm">الجهات الاستثمارية محجوبة حتى ترفع جاهزيتك</p>
+              </div>
+            </div>
+            <div className="mt-5 rounded-2xl p-5 text-center bg-[#FBF5E8] border border-[#E8D9B5]">
+              <p className="font-black text-[#1A3D34] mb-1">قرّبك خطوة من هذه الفرص</p>
+              <p className="text-[#6B5B2E] text-sm font-bold leading-relaxed mb-4">عالج العوائق أعلاه لرفع جاهزيتك، ويرافقك فريق د. عبدالحكيم المرضي حتى تصبح شركتك جاهزة لعرضها على هذه الجهات.</p>
+              <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أنهيت تقييم الاستثمار في مُرضي وأرغب في رفع جاهزية شركتي للوصول للجهات الاستثمارية')} target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-6 py-3 rounded-xl">تواصل مع فريق مُرضي عبر واتساب</a>
+            </div>
           </div>
         )}
 
