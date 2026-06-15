@@ -30,6 +30,13 @@ const REPAYMENT = [
   { id: 'default', label: 'متعثر' },
 ];
 
+const FINANCING_TYPE = [
+  { id: 'cash', label: 'نقدي / رأس مال عامل' },
+  { id: 'assets', label: 'سيارات / معدات' },
+  { id: 'real_estate', label: 'عقاري' },
+  { id: 'other', label: 'أخرى' },
+];
+
 const DEBT_SOURCES = [
   { id: 'one', label: 'جهة تمويل واحدة' },
   { id: 'multi', label: 'أكثر من جهة' },
@@ -57,6 +64,8 @@ export default function IpoAssessment() {
   const [taxCompliant, setTaxCompliant] = useState<boolean | null>(null);
   const [zakatCompliant, setZakatCompliant] = useState<boolean | null>(null);
   const [topClientPct, setTopClientPct] = useState('');
+  const [financingType, setFinancingType] = useState('');
+  const [customFinancingType, setCustomFinancingType] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
   const [totalFinancing, setTotalFinancing] = useState('');
   const [remainingDebt, setRemainingDebt] = useState('');
@@ -68,7 +77,7 @@ export default function IpoAssessment() {
     if (step === 0) return sector !== '' && annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
-    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '')));
+    if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
     return false;
   };
 
@@ -84,6 +93,7 @@ export default function IpoAssessment() {
           total_financing: hasDebt ? Number(totalFinancing) : 0,
           remaining_debt: hasDebt ? Number(remainingDebt) : 0,
           financing_sources: hasDebt ? financingSources : '',
+          financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
           repayment_status: hasDebt ? repaymentStatus : '',
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
           sector,
@@ -247,6 +257,14 @@ export default function IpoAssessment() {
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
                     <Choice items={DEBT_SOURCES} value={financingSources} onChange={setFinancingSources} />
+                  </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-3">نوع التمويل</label>
+                    <Choice items={FINANCING_TYPE} value={financingType} onChange={setFinancingType} cols={2} />
+                    {financingType === 'other' && (
+                      <input type="text" value={customFinancingType} onChange={(e) => setCustomFinancingType(e.target.value)}
+                        placeholder="اكتب نوع التمويل بالتحديد..." className={inputCls + ' mt-3'} />
+                    )}
                   </div>
                   {financingSources === 'multi' && (
                     <div>
