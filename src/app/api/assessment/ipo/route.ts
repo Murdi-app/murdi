@@ -30,14 +30,15 @@ async function estimateValuationAI(rev: number, profit: number, growth: string, 
   return null;
 }
 
-async function generateIPOAnalysis(data: Record<string, unknown>, score: number, market: string): Promise<{ obstacles: string[]; plan: string[] } | null> {
+async function generateIPOAnalysis(data: Record<string, unknown>, score: number, market: string): Promise<{ obstacles: string[]; plan: string[]; months: number } | null> {
   const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت محلل جاهزية طرح عام (IPO) وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد خبير بمتطلبات هيئة السوق المالية وتداول. '
     + 'اسلوبك: ارقام محسوبة من بيانات الشركة نفسها، صراحة بلا مجاملات، وممنوع نهائيا ذكر اي ذكاء اصطناعي او تقنية او اي اشارة لكونك نموذجا. '
     + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
     + 'السوق المستهدف: ' + market + '. سكور جاهزية الطرح: ' + score + ' من 100. '
     + 'قاعدة قاطعة: اذا كانت حالة السداد (repayment_status) = default اي متعثر، يمنع منعا باتا الايحاء بان الشركة قريبة من الطرح او مؤهلة له، فالادراج في السوق المالي يتطلب مركزا ماليا سليما وانتظاما في الالتزامات، والشركة المتعثرة مرفوضة نظاما. في هذه الحالة اجعل obstacles توضح بصدق محترم ان التعثر يبعد الشركة سنوات عن الطرح، واجعل plan خطة تعافي واقعية ومتدرجة بلا مبالغة ولا حلول خيالية: اعادة جدولة الديون والتفاوض مع الدائنين، وقف النزيف النقدي، تحسين التدفق النقدي والربحية، استعادة الانتظام في السداد، ثم بعد سنوات من الاستقرار يعاد تقييم جاهزية الطرح. الرسالة الجوهرية: التعافي والاستقرار اولا، والطرح هدف بعيد لاحق. '
-    + 'المطلوب JSON فقط بلا اي نص خارجه بهذا الشكل بالضبط: {"obstacles": ["..."], "plan": ["..."]}. '
+    + 'المطلوب JSON فقط بلا اي نص خارجه بهذا الشكل بالضبط: {"obstacles": ["..."], "plan": ["..."], "months": رقم}. '
+    + 'months: المدة التقديرية بالاشهر حتى تصبح الشركة جاهزة فعليا للطرح، محسوبة بدقة من فجوات هذه الشركة مقابل شروط هيئة السوق المالية. التزم بهذه الحقائق النظامية الصارمة كحد ادنى: استكمال كل سنة قوائم مدققة ناقصة = 12 شهرا لكل سنة (الرئيسي 3 سنوات، نمو سنتين)؛ تعيين مراجع خارجي من الصفر = 6 اشهر؛ بناء حوكمة ومجلس ولجنة مراجعة = 9 اشهر؛ تحقيق ربحية مستدامة لسنة كاملة ان كانت خاسرة = 24 شهرا؛ التعثر في السداد = 36 شهرا على الاقل. اجمع المدد المتداخلة بذكاء (المتوازي لا يجمع، والمتتابع يجمع) واعطِ رقما واحدا واقعيا ومحافظا. المبالغة في التفاؤل تضر المصداقية. '
     + 'obstacles: ابرز 2-4 عوائق حقيقية امام الطرح، كل عائق جملة او جملتان فيها رقم او نسبة محسوبة من بياناتهم الفعلية واثرها على قبول ملف الطرح لدى الهيئة او على تسعير السهم وثقة المكتتبين. '
     + 'plan: خطة طريق للطرح من 4-5 مراحل مرتبة زمنيا، ابدأ كل مرحلة بالاطار الزمني بين قوسين مثل (0-12 شهر) ثم الخطوة العملية المحددة واثرها على جاهزية الطرح. اربطها بوضعهم وارقامهم لا بنصائح عامة، وغطِ: القوائم المعتمدة، المراجع الخارجي، الحوكمة ولجنة المراجعة، قصة النمو، وتجهيز ملف الهيئة.';
 
@@ -62,7 +63,7 @@ async function generateIPOAnalysis(data: Record<string, unknown>, score: number,
       const z = raw.lastIndexOf('}');
       if (a !== -1 && z > a) {
         const parsed = JSON.parse(raw.slice(a, z + 1));
-        if (Array.isArray(parsed.obstacles) && Array.isArray(parsed.plan)) return parsed;
+        if (Array.isArray(parsed.obstacles) && Array.isArray(parsed.plan)) return { obstacles: parsed.obstacles, plan: parsed.plan, months: typeof parsed.months === 'number' ? parsed.months : 0 };
       }
     } catch { continue; }
   }
@@ -212,9 +213,9 @@ export async function POST(req: Request) {
 
   let verdict = '';
   if (score >= 80) { verdict = 'جاهز لبدء إجراءات الطرح — ' + (isMain ? 'السوق الرئيسية' : 'السوق الموازي (نمو)'); monthsToReady = Math.max(monthsToReady, 6); }
-  else if (score >= 60) verdict = 'قريب من الجاهزية — ' + (isMain ? 'السوق الرئيسية' : 'نمو') + ' خلال ' + monthsToReady + ' شهراً تقريباً';
-  else if (score >= 40) verdict = 'يحتاج تجهيزاً جوهرياً — المدة المتوقعة ' + monthsToReady + ' شهراً';
-  else verdict = 'غير جاهز — ابدأ بخارطة الطريق، المدة المتوقعة ' + monthsToReady + ' شهراً على الأقل';
+  else if (score >= 60) verdict = 'قريب من الجاهزية — ' + (isMain ? 'السوق الرئيسية' : 'نمو');
+  else if (score >= 40) verdict = 'يحتاج تجهيزاً جوهرياً قبل الطرح';
+  else verdict = 'غير جاهز — ابدأ بخارطة الطريق';
 
   plan.push('السوق المقترح بناءً على وضعك: ' + (isMain ? 'السوق الرئيسية' : 'السوق الموازي (نمو)'));
 
@@ -254,6 +255,8 @@ export async function POST(req: Request) {
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
+      // المدة النهائية = الأطول بين الحساب النظامي الجامد وتقدير التحليل العميق (الأكثر تحفظاً)
+      if (deep.months > 0) monthsToReady = Math.max(monthsToReady, deep.months);
     }
   } catch {}
 
