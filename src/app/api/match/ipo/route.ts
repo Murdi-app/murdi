@@ -59,7 +59,7 @@ export async function POST() {
 
   const { data: rr } = await supabase
     .from('readiness_results')
-    .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready')
+    .select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, valuation_estimate')
     .eq('company_id', company.id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -83,8 +83,15 @@ export async function POST() {
     valBasis = 'loss';
   }
   const fmtSar = (n: number) => Math.round(n).toLocaleString('en-US');
+  let valNote = '';
+  if (rr?.valuation_estimate) {
+    try {
+      const v = JSON.parse(rr.valuation_estimate);
+      if (typeof v.lo === 'number' && typeof v.hi === 'number' && v.hi > 0) { valLo = v.lo; valHi = v.hi; valBasis = 'profit'; valNote = v.note || ''; }
+    } catch {}
+  }
   const valuationHtml = valBasis === 'profit'
-    ? '<p><b>القيمة السوقية التقديرية:</b> ' + fmtSar(valLo) + ' — ' + fmtSar(valHi) + ' ر.س (على أساس ربح ' + fmtSar(profit) + ' × مضاعف ' + (growth === 'high' ? '8-10' : growth === 'medium' ? '7-9' : '6-8') + ')</p>'
+    ? '<p><b>القيمة السوقية التقديرية:</b> ' + fmtSar(valLo) + ' — ' + fmtSar(valHi) + ' ر.س' + (valNote ? '<br/><span style="color:#6B8A80;font-size:13px">' + valNote + '</span>' : '') + '</p>'
     : '<p><b>القيمة السوقية التقديرية:</b> تحتاج ربحية صافية موجبة للتقدير (الشركة غير ربحية حالياً)</p>';
   const planHtml = (rr?.improvement_plan || []).map((x: string, i: number) => '<li style="margin-bottom:4px">' + (i + 1) + '. ' + x + '</li>').join('');
   const monthsTxt = rr?.months_to_ready ? rr.months_to_ready + ' شهراً' : '—';
