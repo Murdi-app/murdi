@@ -240,6 +240,7 @@ export async function POST(req: Request) {
     total_financing: body.total_financing,
     remaining_debt: body.remaining_debt,
     financing_sources: body.financing_sources,
+    financing_type: body.financing_type,
     repayment_status: body.repayment_status,
     debt_details: body.debt_details,
   });
