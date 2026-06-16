@@ -121,7 +121,7 @@ export async function POST() {
         '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
         '<p><b>IPO Readiness Score:</b> ' + score + ' — ' + (rr?.verdict ?? '—') + '</p>' +
         '<p><b>السوق المقترح:</b> ' + marketLabel + ' | <b>⏱️ المدة التقديرية:</b> ' + monthsTxt + '</p>' +
-        (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px">' + recoveryHtml + '</div>' : '') +
+        (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;line-height:1.8">' + recoveryHtml + '</div>' : '') +
         '<hr/>' +
         '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">التفاصيل الكاملة (الأرقام، العوائق، خارطة الطريق، التقييم) في لوحة الأدمن.</p>' +
