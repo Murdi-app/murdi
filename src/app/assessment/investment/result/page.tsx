@@ -64,11 +64,13 @@ export default function InvestmentResult() {
       setResult(rr);
       setLoading(false);
 
+      // الاستشارة تستدعى دائماً (مستقلة عن السكور والمطابقة)
+      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'investment' }) }).catch(() => {});
+
       if (rr !== null && rr.readiness_score >= 70) {
         setMatchLoading(true);
         try {
           const res = await fetch('/api/match/investment', { method: 'POST' });
-          fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'investment' }) }).catch(() => {});
           const data = await res.json();
           if (res.ok) { setMatches(data.matches); setMatchCount(data.match_count); }
         } catch {}
