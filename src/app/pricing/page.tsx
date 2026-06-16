@@ -54,7 +54,7 @@ export default function PricingPage() {
           <button onClick={()=>router.push('/auth/signup')} style={{padding:'14px 40px',borderRadius:12,border:'none',background:`linear-gradient(135deg,${C.gold},${C.goldLight})`,color:C.navy,fontSize:16,fontWeight:800,cursor:'pointer'}}>ابدأ مجاناً الآن</button>
         </div>
       </div>
-      <div style={{borderTop:`1px solid ${C.border}`,padding:'20px',textAlign:'center',color:C.gray,fontSize:12}}>Murdi™️ — منصة الذكاء المالي للمقاولين السعوديين • د. عبدالحكيم المرضي ©️ 2026</div>
+      <div style={{borderTop:`1px solid ${C.border}`,padding:'20px',textAlign:'center',color:C.gray,fontSize:12}}>Murdi™️ — منصة الذكاء المالي للشركات السعودية • د. عبدالحكيم المرضي ©️ 2026</div>
     </div>
   )
 }
