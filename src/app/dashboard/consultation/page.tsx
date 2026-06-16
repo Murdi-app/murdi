@@ -151,6 +151,19 @@ export default function ConsultationPage() {
                 </button>
                 <div id={'print-' + tk} className="bg-[#FBFCFB] rounded-2xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose" style={{ maxHeight: '600px', overflowY: 'auto' }}>
                   {content.replace(/^#+ /gm, '').replace(/\*\*/g, '')}
+                  <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #E8D9B5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ width: 88, height: 88, borderRadius: '50%', border: '2px solid #C9A84C', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: '#1A3D34', flexShrink: 0, lineHeight: 1.3 }}>
+                      <span style={{ fontSize: 11, fontWeight: 900, color: '#C9A84C' }}>مُرضي</span>
+                      <span style={{ fontSize: 9, fontWeight: 700 }}>اعتماد وإشراف</span>
+                      <span style={{ fontSize: 9, fontWeight: 700 }}>د. عبدالحكيم المرضي</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 180, textAlign: 'left', direction: 'rtl' }}>
+                      <p style={{ fontWeight: 900, color: '#1A3D34', fontSize: 14, margin: 0 }}>د. عبدالحكيم المرضي</p>
+                      <p style={{ fontWeight: 700, color: '#6B8A80', fontSize: 11, margin: '2px 0 0' }}>دكتوراه إدارة الأعمال · عضوية البورد الأمريكي للمستشارين</p>
+                      <p style={{ fontWeight: 700, color: '#6B8A80', fontSize: 11, margin: '2px 0 0' }}>خبرة 15 عاماً في الاستشارات المالية</p>
+                      <p style={{ fontWeight: 900, color: '#C9A84C', fontSize: 12, margin: '8px 0 0' }}>✦ استشارة معتمدة من منصة مُرضي</p>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
