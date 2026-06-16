@@ -58,7 +58,7 @@ export default function IpoResult() {
       setLoading(false);
 
       // استدعاء الاستشارة فوراً (الأهم) — بلا انتظار أي شيء قبله
-      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).then(r => r.json()).then(d => { if (d.error) alert('خطأ الاستشارة: ' + d.error); else console.log('استشارة:', d); }).catch(e => alert('فشل الاتصال بالاستشارة: ' + e.message));
+      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).catch(() => {});
       // إشعار الأدمن (خلفي، بلا انتظار)
       fetch('/api/match/ipo', { method: 'POST' }).catch(() => {});
 

@@ -55,6 +55,9 @@ export default function FundingResult() {
       setResult(rr);
       setLoading(false);
 
+      // الاستشارة فوراً (غير حاجبة) — قبل المطابقة البطيئة
+      fetch('/api/consultation', { method: 'POST' }).catch(() => {});
+
       setMatchLoading(true);
       try {
         const res = await fetch('/api/match', { method: 'POST' });
@@ -63,9 +66,8 @@ export default function FundingResult() {
       } catch {}
       setMatchLoading(false);
 
-      // الاستشارة الخاصة: توليد تلقائي ثم قراءة الحالة
+      // قراءة حالة الاستشارة (التوليد انطلق أعلاه)
       try {
-        await fetch('/api/consultation', { method: 'POST' });
         const cRes = await fetch('/api/consultation');
         const cData = await cRes.json();
         if (cData.consultation) {
