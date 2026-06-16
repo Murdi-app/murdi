@@ -71,7 +71,7 @@ export default function GoalPage() {
 
         {/* بطاقات الخدمات الشهرية */}
         <h2 className="text-xl font-black text-[#1A3D34] mb-5 text-center">خدماتك الشهرية في مُرضي</h2>
-        <div className="grid md:grid-cols-2 gap-5 mb-16">
+        <div className="grid md:grid-cols-3 gap-5 mb-16">
           <a href="/dashboard/consultation" className="block bg-white rounded-3xl p-7 border-2 border-[#C9A84C] hover:shadow-md transition">
             <div className="text-3xl mb-3">🎓</div>
             <h3 className="font-black text-[#1A3D34] text-lg mb-2">استشارتك الخاصة + أسئلتك</h3>
@@ -83,6 +83,12 @@ export default function GoalPage() {
             <h3 className="font-black text-[#1A3D34] text-lg mb-2">تصحيح بيانات التقييم</h3>
             <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">أخطأت في إدخال بياناتك؟ أرسل طلب تعديل وسيراجعه فريق د. عبدالحكيم ويفتح لك الإدخال من جديد، وتُحدَّث استشارتك بناءً على بياناتك الصحيحة.</p>
             <span className="text-[#2E9E7B] font-black text-sm">تصحيح البيانات ←</span>
+          </a>
+          <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%88%D8%A7%D8%AC%D9%87%20%D9%85%D8%B4%D9%83%D9%84%D8%A9%20%D8%AA%D9%82%D9%86%D9%8A%D8%A9%20%D9%81%D9%8A%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A" target="_blank" rel="noopener noreferrer" className="block bg-white rounded-3xl p-7 border-2 border-[#E8F5EF] hover:shadow-md transition">
+            <div className="text-3xl mb-3">📞</div>
+            <h3 className="font-black text-[#1A3D34] text-lg mb-2">الدعم الفني</h3>
+            <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">واجهت مشكلة تقنية في المنصة (تسجيل دخول، صفحة لا تفتح، خطأ في النظام)؟ تواصل مع فريق مُرضي مباشرة عبر واتساب.</p>
+            <span className="text-[#2E9E7B] font-black text-sm">تواصل عبر واتساب ←</span>
           </a>
         </div>
 
