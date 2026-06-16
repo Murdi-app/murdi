@@ -70,9 +70,10 @@ export default function FundingResult() {
       try {
         const cRes = await fetch('/api/consultation');
         const cData = await cRes.json();
-        if (cData.consultation) {
-          setConsultStatus(cData.consultation.status || '');
-          setConsultContent(cData.consultation.content || '');
+        const cv = cData.consultations?.funding;
+        if (cv) {
+          setConsultStatus(cv.status || '');
+          setConsultContent(cv.content || '');
         }
       } catch {}
     };

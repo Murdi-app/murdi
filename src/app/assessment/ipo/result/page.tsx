@@ -224,6 +224,14 @@ export default function IpoResult() {
           </div>
         )}
 
+        {/* رسالة: الاستشارة المجانية قيد الإعداد */}
+        <div className="rounded-2xl p-6 border-2 border-[#C9A84C] bg-[#FDFBF6] text-center">
+          <div className="inline-block w-7 h-7 rounded-full border-2 border-[#C9A84C]/30 border-t-[#C9A84C] animate-spin mb-3" />
+          <h2 className="font-black text-[#1A3D34] mb-1">استشارتك المجانية قيد الإعداد الآن</h2>
+          <p className="text-[#6B8A80] text-xs font-bold mb-4 leading-relaxed">فريق د. عبدالحكيم المرضي يُعدّ لك استشارة خاصة بمسار الطرح — تصلك فور جهوزها واعتمادها</p>
+          <a href="/dashboard/consultation" className="inline-block px-6 py-2.5 rounded-full bg-[#C9A84C] text-white font-black text-sm">الذهاب لقسم الاستشارات ←</a>
+        </div>
+
         {/* قسم: تنفيذ التوصيات كخدمات — فريق مُرضي */}
         <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
           <h2 className="font-black text-white mb-1">✦ كيف تنفّذ خطتك مع فريق مُرضي</h2>
