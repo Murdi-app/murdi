@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
-const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
 
 async function getAdmin() {
   const cookieStore = await cookies();

@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { Resend } from 'resend';
 
 async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي. الشركة متعثرة في سداد ديونها، والادراج في السوق المالي مرفوض نظاما لمن لا ينتظم في التزاماته، فالطرح هدف بعيد يسبقه تعافي واستقرار. '
     + 'بياناتها: ' + JSON.stringify(data) + '. '
     + 'اكتب مسار تعافي واقعيا ومتدرجا يقدر عليه صاحب شركة متعثر فعلا، بلا مبالغة ولا حلول خيالية ولا راس مال كبير. '
