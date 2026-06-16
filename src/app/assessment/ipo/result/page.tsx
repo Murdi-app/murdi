@@ -223,6 +223,29 @@ export default function IpoResult() {
           </div>
         )}
 
+        {/* قسم: تنفيذ التوصيات كخدمات — فريق مُرضي */}
+        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+          <h2 className="font-black text-white mb-1">✦ كيف تنفّذ خطتك مع فريق مُرضي</h2>
+          <p className="text-[#D8E8E0] text-xs font-bold mb-4 leading-relaxed">التوصيات أعلاه ليست مجرد ملاحظات — فريق د. عبدالحكيم المرضي يحوّلها إلى خطوات تنفيذية بمرافقة كاملة:</p>
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { t: 'بناء الحوكمة والمجلس', d: 'لوائح ولجان متوافقة مع الهيئة' },
+              { t: 'إعداد القوائم المعتمدة', d: 'بالتنسيق مع مراجع خارجي' },
+              { t: 'تجهيز ملف الطرح', d: 'ملف الهيئة خطوة بخطوة' },
+              { t: 'إعادة الهيكلة المالية', d: 'تحسين الربحية وهيكل رأس المال' },
+            ].map((sv, i) => (
+              <div key={i} className="bg-white/10 rounded-xl p-3">
+                <p className="text-white font-black text-sm mb-1">{sv.t}</p>
+                <p className="text-[#C9D8D0] text-xs font-bold leading-relaxed">{sv.d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%86%D9%87%D9%8A%D8%AA%20%D8%AA%D9%82%D9%8A%D9%8A%D9%85%20%D8%A7%D9%84%D8%B7%D8%B1%D8%AD%20%D9%88%D8%A3%D8%B1%D8%BA%D8%A8%20%D8%A3%D9%86%20%D9%8A%D9%86%D9%81%D8%B0%20%D9%84%D9%8A%20%D9%81%D8%B1%D9%8A%D9%82%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A%20%D8%AA%D9%88%D8%B5%D9%8A%D8%A7%D8%AA%20%D8%AE%D8%B7%D8%A9%20%D8%A7%D9%84%D8%AA%D8%AD%D8%B3%D9%8A%D9%86" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-7 py-3 rounded-full text-sm">احجز جلسة مع فريق مُرضي ←</a>
+            <p className="text-[#A3BAB2] text-xs font-bold mt-3">أول استشارة مجانية — نناقش خطتك ونحدّد الأولويات</p>
+          </div>
+        </div>
+
         {result.required_documents?.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">
             <h2 className="font-black text-[#1A3D34] mb-4">المستندات الأساسية</h2>
