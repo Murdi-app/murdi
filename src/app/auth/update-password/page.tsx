@@ -27,7 +27,7 @@ export default function UpdatePasswordPage() {
       setError('تعذر تحديث كلمة المرور. حاول مرة أخرى.')
     } else {
       setDone(true)
-      setTimeout(() => router.push('/dashboard'), 2000)
+      setTimeout(() => router.push('/goal'), 2000)
     }
     setLoading(false)
   }

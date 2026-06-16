@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
               <div style="color:#C8A84B;font-size:22px;font-weight:bold;">${murdiScore || '-'}/85</div>
             </div>
           </div>
-          <a href="https://murdi.vercel.app/dashboard" style="display:block;background:linear-gradient(135deg,#C8A84B,#F5C842);color:#0B1D3A;text-align:center;padding:14px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px;">ادخل لمراجعة التحليل الكامل ←</a>
+          <a href="https://murdi.sa/goal" style="display:block;background:linear-gradient(135deg,#C8A84B,#F5C842);color:#0B1D3A;text-align:center;padding:14px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px;">ادخل لمراجعة التحليل الكامل ←</a>
         </div>
         <div style="padding:16px;text-align:center;color:#557;font-size:11px;border-top:1px solid #1a2a44;">Murdi — بُني على منهجية د. عبدالحكيم المرضي</div>
       </div>`

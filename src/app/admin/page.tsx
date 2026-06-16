@@ -41,7 +41,7 @@ export default function AdminPage() {
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
       <div style={{background:C.navyLight,padding:'16px 32px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontSize:20,fontWeight:900,color:C.gold}}>MURDI ADMIN</div>
-        <button onClick={()=>router.push('/dashboard')} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>الداشبورد</button>
+        <button onClick={()=>router.push('/goal')} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>المركز الرئيسي</button>
       </div>
       <div style={{maxWidth:1000,margin:'0 auto',padding:'32px 24px'}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16,marginBottom:32}}>
