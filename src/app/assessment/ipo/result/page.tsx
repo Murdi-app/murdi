@@ -59,7 +59,7 @@ export default function IpoResult() {
 
       // إشعار الأدمن بالتفاصيل الكاملة (خفي عن العميل)
       try { await fetch('/api/match/ipo', { method: 'POST' }); } catch {}
-      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).catch(() => {});
+      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).then(r => r.json()).then(d => { if (d.error) alert('خطأ الاستشارة: ' + d.error); else console.log('استشارة:', d); }).catch(e => alert('فشل الاتصال بالاستشارة: ' + e.message));
 
       // تحليل الأهلية للطرح (بحث في مصادر الهيئة — يظهر للعميل)
       fetch('/api/ipo-eligibility', { method: 'POST' })
