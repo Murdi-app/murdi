@@ -92,5 +92,25 @@ export async function GET() {
     });
   }
 
-  return NextResponse.json({ profiles });
+  // جلب الاستشارات (ready بانتظار الإصدار + released) مع اسم الشركة
+  const companyName: Record<string, string> = {};
+  for (const c of companies) companyName[c.id] = c.company_name;
+
+  const { data: consultRows } = await admin
+    .from('consultations')
+    .select('id, company_id, assessment_type, status, content, created_at, released_at')
+    .in('status', ['ready', 'released'])
+    .order('created_at', { ascending: false });
+
+  const consultations = (consultRows || []).map((r) => ({
+    id: r.id,
+    company_name: companyName[r.company_id as string] || '—',
+    assessment_type: r.assessment_type,
+    status: r.status,
+    content: r.content,
+    created_at: r.created_at,
+    released_at: r.released_at,
+  }));
+
+  return NextResponse.json({ profiles, consultations });
 }
