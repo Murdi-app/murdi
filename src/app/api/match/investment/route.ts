@@ -6,7 +6,7 @@ import { Resend } from 'resend';
 
 
 async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت باحث استثماري محترف يعمل لصالح د. عبدالحكيم المرضي (شركة حلول المرضي للاستشارات المالية، السعودية). ابحث في الويب عن جهات استثمار سعودية نشطة مناسبة لشركة بهذا الملف: '
     + 'القطاع: ' + sector + ' | الايرادات السنوية: ' + revenue + ' ريال | المرحلة: ' + stage + '. '
     + 'ابحث عن ثلاث فئات: (1) صناديق استثمار جريء وملكية خاصة سعودية، (2) محافظ ومكاتب عائلية سعودية، (3) مستثمرون افراد اقوياء نشطون في هذا القطاع. '
@@ -70,7 +70,7 @@ function sectorMatch(list: string[], val: string): boolean {
 }
 
 async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي. الشركة متعثرة في سداد ديونها، فالمستثمر لا يدخلها الان. '
     + 'بياناتها: ' + JSON.stringify(data) + '. '
     + 'اكتب مسار تعافي واقعيا ومتدرجا يقدر عليه صاحب شركة متعثر فعلا، بلا مبالغة ولا حلول خيالية ولا راس مال كبير. '

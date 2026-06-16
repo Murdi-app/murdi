@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-opus-4-5',
+        model: 'claude-opus-4-8',
         max_tokens: 600,
         system: `أنت Murdi — المستشار المالي الرقمي لشركات المقاولات السعودية، تجسيد منهجية د. عبدالحكيم المرضي. تكتب تنبيهاً استباقياً قصيراً وذكياً يلفت انتباه المقاول لأهم خطر أو فرصة في أرقامه، بلغة سعودية دافئة ومباشرة. لا تخترع أرقاماً غير موجودة. جملتان إلى ثلاث فقط. ابدأ بلفت انتباه حقيقي مبني على رقم. اختم بدعوة لطيفة للدخول ومراجعة التفاصيل.`,
         messages: [{ role: 'user', content: `شركة ${companyName}: إيرادات ${revenue?.toLocaleString('ar-SA')}، مصروفات ${expenses?.toLocaleString('ar-SA')}، رصيد ${bank_balance?.toLocaleString('ar-SA')}، ديون ${debts?.toLocaleString('ar-SA')}، هامش ${margin}%، أيام بقاء ${survivalDays}، Murdi Score ${murdiScore}/85، مؤشر الضائقة ${distress}/100.${histText}\n\nاكتب التنبيه الذكي.` }]

@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 
 
 async function generateDeepAnalysis(fd: Record<string, unknown>, score: number): Promise<{ obstacles: string[]; plan: string[] } | null> {
-  const MODELS = ['claude-fable-5', 'claude-sonnet-4-5-20250929'];
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'أنت محلل مالي يكتب وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد. أسلوبه: أرقام محسوبة من بيانات الشركة نفسها، سياق السوق السعودي (ساما، منشآت، كفالة)، صراحة بلا مجاملات، وممنوع نهائياً ذكر أي ذكاء اصطناعي أو تقنية.\n\n'
     + 'بيانات الشركة: ' + JSON.stringify(fd) + '\n'
     + 'سكور الجاهزية: ' + score + '/100\n\n'
