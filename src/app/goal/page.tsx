@@ -79,10 +79,10 @@ export default function GoalPage() {
             <span className="text-[#C9A84C] font-black text-sm">افتح استشارتك ←</span>
           </a>
           <a href="/dashboard/consultation" className="block bg-white rounded-3xl p-7 border-2 border-[#E8F5EF] hover:shadow-md transition">
-            <div className="text-3xl mb-3">🛠️</div>
-            <h3 className="font-black text-[#1A3D34] text-lg mb-2">الدعم الخاص</h3>
+            <div className="text-3xl mb-3">✏️</div>
+            <h3 className="font-black text-[#1A3D34] text-lg mb-2">تصحيح بيانات التقييم</h3>
             <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">أخطأت في إدخال بياناتك؟ أرسل طلب تعديل وسيراجعه فريق د. عبدالحكيم ويفتح لك الإدخال من جديد، وتُحدَّث استشارتك بناءً على بياناتك الصحيحة.</p>
-            <span className="text-[#2E9E7B] font-black text-sm">اطلب الدعم ←</span>
+            <span className="text-[#2E9E7B] font-black text-sm">تصحيح البيانات ←</span>
           </a>
         </div>
 
