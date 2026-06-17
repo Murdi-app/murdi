@@ -169,6 +169,10 @@ export async function POST(req: Request) {
     tax_compliant: body.tax_compliant,
     zakat_compliant: body.zakat_compliant,
     has_financial_statements: body.has_financial_statements,
+    activity_type: body.activity_type,
+    has_pos: body.has_pos,
+    issues_invoices: body.issues_invoices,
+    has_fleet: body.has_fleet,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
