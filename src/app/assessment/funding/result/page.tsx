@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 type Result = {
@@ -24,6 +25,7 @@ export default function FundingResult() {
   const [matchCount, setMatchCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
+  const router = useRouter();
   const [consultStatus, setConsultStatus] = useState('');
   const [consultContent, setConsultContent] = useState('');
 
@@ -105,6 +107,10 @@ export default function FundingResult() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-10" style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div className="max-w-xl mx-auto space-y-6">
+
+        <button onClick={() => router.push('/goal')} className="flex items-center gap-2 text-[#6B8A80] font-bold text-sm hover:text-[#1A3D34] transition">
+          <span>→</span> العودة إلى المركز
+        </button>
 
         <div className="bg-white rounded-3xl p-8 shadow-sm border border-[#E8F5EF] text-center">
           <p className="text-[#6B8A80] font-bold mb-5">درجة جاهزيتك التمويلية</p>
