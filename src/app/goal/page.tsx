@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 
 const TRACKS = [
   { id: 'funding', icon: '💰', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -12,6 +13,39 @@ const TRACKS = [
 export default function GoalPage() {
   const router = useRouter();
   const [selected, setSelected] = useState('funding');
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [company, setCompany] = useState<{ name: string; sector: string } | null>(null);
+  const [showCard, setShowCard] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: comp } = await supabase
+        .from('companies').select('id, company_name, sector')
+        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
+      if (!comp) return;
+      setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
+      const out: Record<string, number> = {};
+      for (const t of TRACKS) {
+        const { data: rr } = await supabase
+          .from('readiness_results').select('readiness_score')
+          .eq('company_id', comp.id).eq('assessment_type', t.id)
+          .order('created_at', { ascending: false }).limit(1).single();
+        if (rr) out[t.id] = rr.readiness_score;
+      }
+      setScores(out);
+    };
+    load();
+  }, []);
+
+  const doneScores = Object.values(scores);
+  const overall = doneScores.length ? Math.round(doneScores.reduce((a, b) => a + b, 0) / doneScores.length) : 0;
+  const pct = overall >= 75 ? 90 : overall >= 70 ? 82 : overall >= 65 ? 74 : overall >= 55 ? 60 : overall >= 45 ? 45 : overall >= 35 ? 30 : 18;
 
   const go = () => {
     const t = TRACKS.find((x) => x.id === selected);
@@ -41,6 +75,59 @@ export default function GoalPage() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 py-12">
+
+        {/* ملف الجاهزية */}
+        {doneScores.length > 0 && (
+          <div className="mb-12">
+            <div className="rounded-3xl p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+              <p className="text-[#C9D8D0] text-sm font-bold mb-2">مؤشر جاهزية {company?.name || 'شركتك'}</p>
+              <div className="text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 85</span></div>
+              <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
+              <p className="text-[#8FA8A0] text-xs font-bold mt-1">يتحدّث مع كل تقييم</p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-5">
+              {TRACKS.map((t) => (
+                <div key={t.id} className="bg-white rounded-2xl p-5 border-2 border-[#F0F5F3] text-center">
+                  <div className="text-2xl mb-1">{t.icon}</div>
+                  <div className="font-black text-[#1A3D34] text-sm mb-2">{t.title.replace('أريد ', '').replace('تجهيز الشركة لل', '')}</div>
+                  {scores[t.id] !== undefined ? (
+                    <div className={'text-3xl font-black leading-none ' + (scores[t.id] >= 65 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{scores[t.id]}</div>
+                  ) : (
+                    <div className="text-xs font-bold text-[#A3BAB2] mt-2">لم يُقيَّم</div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="text-center">
+              <button onClick={() => setShowCard(true)} className="px-8 py-3 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">📄 بطاقة عرض شركتك</button>
+            </div>
+          </div>
+        )}
+
+        {showCard && company && (
+          <div onClick={() => setShowCard(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(11,28,30,0.55)' }}>
+            <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl p-8 max-w-md w-full">
+              <div className="border-b-2 border-[#C9A84C] pb-3 mb-4">
+                <div className="text-xl font-black text-[#1A3D34]" style={{ fontFamily: 'Amiri, serif' }}>{company.name}</div>
+                <div className="text-[#6B8A80] text-xs font-bold">{company.sector ? 'قطاع ' + company.sector + ' • ' : ''}ملف جاهزية رأس المال</div>
+              </div>
+              <div className="flex justify-between mb-4">
+                <div className="text-center">
+                  <div className="text-3xl font-black text-[#C9A84C] leading-none">{overall}</div>
+                  <div className="text-[10px] text-[#9DB3AB] font-bold mt-1">عام /85</div>
+                </div>
+                {TRACKS.filter((t) => scores[t.id] !== undefined).map((t) => (
+                  <div key={t.id} className="text-center">
+                    <div className="text-2xl font-black text-[#1A3D34] leading-none">{scores[t.id]}</div>
+                    <div className="text-[10px] text-[#9DB3AB] font-bold mt-1">{t.title.replace('أريد ', '').replace('تجهيز الشركة لل', '')}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[#9DB3AB] text-xs font-bold text-center mb-4">صادر عن منصة مُرضي — د. عبدالحكيم المرضي</p>
+              <button onClick={() => window.print()} className="w-full py-3 rounded-full bg-[#1A3D34] text-white font-black text-sm">طباعة / حفظ PDF</button>
+            </div>
+          </div>
+        )}
 
         {/* الترحيب والمسارات */}
         <div className="text-center mb-10">
