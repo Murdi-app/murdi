@@ -198,8 +198,9 @@ export async function POST() {
         + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
         + (webOffers.length === 0 && !webSearchOk ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY في Vercel') + '</p>' : '')
         + '<hr/>'
-        + '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
-        + '<p style="color:#6B8A80;font-size:12px;margin-top:8px">عروض السوق وشبكة مُرضي بتفاصيلها الكاملة في لوحة الأدمن.</p>'
+        + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
+        + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
+        + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
         + '</div>',
     });
   } catch {}
