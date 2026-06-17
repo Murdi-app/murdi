@@ -27,7 +27,7 @@ export default function GoalPage() {
       if (!user) return;
       const { data: comp } = await supabase
         .from('companies').select('id, company_name, sector')
-        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
+        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!comp) return;
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
       const out: Record<string, number> = {};
@@ -35,7 +35,7 @@ export default function GoalPage() {
         const { data: rr } = await supabase
           .from('readiness_results').select('readiness_score')
           .eq('company_id', comp.id).eq('assessment_type', t.id)
-          .order('created_at', { ascending: false }).limit(1).single();
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (rr) out[t.id] = rr.readiness_score;
       }
       setScores(out);
