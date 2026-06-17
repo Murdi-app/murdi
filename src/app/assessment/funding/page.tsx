@@ -25,7 +25,7 @@ const DEBT_TYPES = [
   { id: 'other', label: 'أخرى' },
 ];
 
-const STEPS = ['نوع التمويل', 'الإيرادات وعمر النشاط', 'الديون والتمويل القائم', 'المتطلبات النظامية'];
+const STEPS = ['نوع التمويل', 'الإيرادات وعمر النشاط', 'الديون والتمويل القائم', 'المتطلبات النظامية', 'طبيعة نشاطك'];
 
 export default function FundingAssessment() {
   const router = useRouter();
@@ -53,6 +53,10 @@ export default function FundingAssessment() {
   const [zakatCompliant, setZakatCompliant] = useState<boolean | null>(null);
   const [hasStatements, setHasStatements] = useState<boolean | null>(null);
   const [hasBankStatement, setHasBankStatement] = useState<boolean | null>(null);
+  const [activityType, setActivityType] = useState('');
+  const [hasPos, setHasPos] = useState<boolean | null>(null);
+  const [issuesInvoices, setIssuesInvoices] = useState<boolean | null>(null);
+  const [hasFleet, setHasFleet] = useState<boolean | null>(null);
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
@@ -66,6 +70,7 @@ export default function FundingAssessment() {
       return true;
     }
     if (step === 3) return crValid !== null && taxCompliant !== null && zakatCompliant !== null && hasStatements !== null && hasBankStatement !== null;
+    if (step === 4) return activityType !== '' && hasPos !== null && issuesInvoices !== null && hasFleet !== null;
     return false;
   };
 
@@ -97,6 +102,10 @@ export default function FundingAssessment() {
           zakat_compliant: zakatCompliant,
           has_financial_statements: hasStatements,
           has_bank_statement: hasBankStatement,
+          activity_type: activityType,
+          has_pos: hasPos,
+          issues_invoices: issuesInvoices,
+          has_fleet: hasFleet,
         }),
       });
       const data = await res.json();
@@ -267,6 +276,42 @@ export default function FundingAssessment() {
             </div>
           )}
 
+          {step === 4 && (
+            <div className="space-y-6">
+              <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">هذه الأسئلة تساعدنا نرشّح لك المنتجات التمويلية المناسبة لطبيعة نشاطك تحديداً — لا منتجات عامة.</p>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">ما طبيعة نشاط شركتك؟</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'retail', label: 'تجزئة / مطاعم' },
+                    { id: 'contracting', label: 'مقاولات / توريد' },
+                    { id: 'services', label: 'خدمات' },
+                    { id: 'manufacturing', label: 'تصنيع' },
+                    { id: 'wholesale', label: 'تجارة جملة' },
+                    { id: 'other_activity', label: 'أخرى' },
+                  ].map((a) => (
+                    <button key={a.id} type="button" onClick={() => setActivityType(a.id)}
+                      className={'p-3 rounded-xl border-2 text-right font-bold text-sm transition ' + (activityType === a.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">تستقبل مدفوعات عبر نقاط بيع (مدى / شبكة)؟</label>
+                <YesNo value={hasPos} onChange={setHasPos} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">تُصدر فواتير آجلة أو مستخلصات لعملاء/جهات؟</label>
+                <YesNo value={issuesInvoices} onChange={setIssuesInvoices} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">لديك أسطول مركبات أو معدات تشغيلية؟</label>
+                <YesNo value={hasFleet} onChange={setHasFleet} />
+              </div>
+            </div>
+          )}
+
           {error !== '' && <p className="text-red-600 font-bold mt-4 text-sm">{error}</p>}
 
           <div className="flex gap-3 mt-8">
@@ -274,11 +319,11 @@ export default function FundingAssessment() {
               <button type="button" onClick={() => setStep(step - 1)}
                 className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
             )}
-            {step < 3 && (
+            {step < 4 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
                 className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
             )}
-            {step === 3 && (
+            {step === 4 && (
               <button type="button" disabled={stepValid() === false || loading} onClick={submit}
                 className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">
                 {loading ? 'جارٍ التحليل...' : 'احسب جاهزيتي'}
