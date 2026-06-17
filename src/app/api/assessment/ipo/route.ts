@@ -30,12 +30,17 @@ async function estimateValuationAI(rev: number, profit: number, growth: string, 
   return null;
 }
 
-async function generateIPOAnalysis(data: Record<string, unknown>, score: number, market: string): Promise<{ obstacles: string[]; plan: string[]; months: number } | null> {
+async function generateIPOAnalysis(data: Record<string, unknown>, score: number, market: string, stYears: number, reqYears: number): Promise<{ obstacles: string[]; plan: string[]; months: number } | null> {
   const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت محلل جاهزية طرح عام (IPO) وفق منهجية د. عبدالحكيم المرضي — مستشار سعودي معتمد خبير بمتطلبات هيئة السوق المالية وتداول. '
     + 'اسلوبك: ارقام محسوبة من بيانات الشركة نفسها، صراحة بلا مجاملات، وممنوع نهائيا ذكر اي ذكاء اصطناعي او تقنية او اي اشارة لكونك نموذجا. '
-    + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
-    + 'السوق المستهدف: ' + market + '. سكور جاهزية الطرح: ' + score + ' من 100. '
+    + 'حقائق موضّحة (اعتمد عليها حرفيا في الارقام ولا تخلط بينها): '
+    + 'السوق المستهدف هو ' + market + '. '
+    + 'عدد سنوات القوائم المالية المدققة المتوفرة لدى الشركة = ' + stYears + ' سنة. '
+    + 'الحد الادنى المطلوب من القوائم المدققة لهذا السوق = ' + reqYears + ' سنوات. '
+    + (stYears >= reqYears ? 'إذن متطلب سنوات القوائم مستوفى بالكامل، لا تذكره كنقص. ' : 'إذن ينقص الشركة ' + (reqYears - stYears) + ' سنة قوائم مدققة فقط لا غير — لا تذكر اي رقم آخر للنقص. ')     + 'عمر نشاط الشركة (سنوات التشغيل) = ' + (data.years_operating || 'غير محدد') + ' سنة — هذا مختلف تماما عن سنوات القوائم، لا تخلط بينهما. '
+    + 'تفاصيل اضافية للسياق فقط (الارقام الرسمية هي اعلاه): ' + JSON.stringify(data) + '. '
+    + 'سكور جاهزية الطرح: ' + score + ' من 100. '
     + 'قاعدة قاطعة: اذا كانت حالة السداد (repayment_status) = default اي متعثر، يمنع منعا باتا الايحاء بان الشركة قريبة من الطرح او مؤهلة له، فالادراج في السوق المالي يتطلب مركزا ماليا سليما وانتظاما في الالتزامات، والشركة المتعثرة مرفوضة نظاما. في هذه الحالة اجعل obstacles توضح بصدق محترم ان التعثر يبعد الشركة سنوات عن الطرح، واجعل plan خطة تعافي واقعية ومتدرجة بلا مبالغة ولا حلول خيالية: اعادة جدولة الديون والتفاوض مع الدائنين، وقف النزيف النقدي، تحسين التدفق النقدي والربحية، استعادة الانتظام في السداد، ثم بعد سنوات من الاستقرار يعاد تقييم جاهزية الطرح. الرسالة الجوهرية: التعافي والاستقرار اولا، والطرح هدف بعيد لاحق. '
     + 'المطلوب JSON فقط بلا اي نص خارجه بهذا الشكل بالضبط: {"obstacles": ["..."], "plan": ["..."], "months": رقم}. '
     + 'months: المدة التقديرية بالاشهر حتى تصبح الشركة جاهزة فعليا للطرح، محسوبة بدقة من فجوات هذه الشركة مقابل شروط هيئة السوق المالية. التزم بهذه الحقائق النظامية الصارمة كحد ادنى: استكمال كل سنة قوائم مدققة ناقصة = 12 شهرا لكل سنة (الرئيسي 3 سنوات، نمو سنتين)؛ تعيين مراجع خارجي من الصفر = 6 اشهر؛ بناء حوكمة ومجلس ولجنة مراجعة = 9 اشهر؛ تحقيق ربحية مستدامة لسنة كاملة ان كانت خاسرة = 24 شهرا؛ التعثر في السداد = 36 شهرا على الاقل. اجمع المدد المتداخلة بذكاء (المتوازي لا يجمع، والمتتابع يجمع) واعطِ رقما واحدا واقعيا ومحافظا. المبالغة في التفاؤل تضر المصداقية. '
@@ -135,11 +140,16 @@ export async function POST(req: Request) {
   const margin = rev > 0 ? profit / rev : 0;
 
   // تحديد السوق الفعلي المقترح
+  // القيمة السوقية التقديرية = ربح × مضاعف متحفظ (6 للرئيسي). السوق الرئيسية تتطلب قيمة ~300 مليون+
+  const estMarketCap = profit > 0 ? profit * 6 : 0;
   let suggestedMarket = body.target_market;
   if (body.target_market === 'unsure' || body.target_market === 'main') {
-    suggestedMarket = (rev >= 40000000 && profit > 0 && stYears >= 3) ? 'main' : 'nomu';
+    // الرئيسية تتطلب: إيراد كافٍ + ربحية + 3 سنوات قوائم + قيمة سوقية تقديرية لا تقل عن 300 مليون
+    const qualifiesMain = rev >= 40000000 && profit > 0 && stYears >= 3 && estMarketCap >= 300000000;
+    suggestedMarket = qualifiesMain ? 'main' : 'nomu';
   }
   const isMain = suggestedMarket === 'main';
+  const marketAr = isMain ? 'السوق الرئيسية' : 'السوق الموازية (نمو)';
 
   // 1) الأداء المالي (30 نقطة)
   if (profit > 0 && margin >= 0.1) score += 15;
@@ -250,7 +260,7 @@ export async function POST(req: Request) {
   let valuationStr = '';
   try {
     const debtRatio = (Number(body.remaining_debt) > 0 && rev > 0) ? Math.round((Number(body.remaining_debt) / rev) * 100) : 0;
-    const deep = await generateIPOAnalysis({ ...body, score, suggestedMarket, debt_to_revenue_pct: debtRatio }, score, suggestedMarket);
+    const deep = await generateIPOAnalysis({ ...body, score, suggestedMarket, debt_to_revenue_pct: debtRatio }, score, marketAr, stYears, reqYears);
     const valuation = await estimateValuationAI(rev, profit, body.revenue_growth || '', body.sector || '', suggestedMarket);
     valuationStr = valuation ? JSON.stringify(valuation) : '';
     if (deep !== null) {
