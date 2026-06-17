@@ -210,7 +210,7 @@ export default function FundingResult() {
         )}
 
 
-        {consultStatus !== '' && (
+        {result.readiness_score >= 0 && (
           <div className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#C9A84C]">
             <div className="flex items-center gap-3 mb-3">
               <span className="text-3xl">🎓</span>
