@@ -97,15 +97,15 @@ export async function POST(req: Request) {
   let plan: string[] = [];
   const docs: string[] = ['السجل التجاري', 'كشف حساب بنكي 6 أشهر'];
 
-  // 1) المتطلبات النظامية (40 نقطة)
-  if (body.cr_valid) score += 10; else { obstacles.push('السجل التجاري غير ساري'); plan.push('تجديد السجل التجاري فوراً — شرط أساسي لأي تمويل'); }
-  if (body.tax_compliant) score += 10; else { obstacles.push('عدم الالتزام بالإقرارات الضريبية'); plan.push('تسوية الوضع الضريبي مع هيئة الزكاة والضريبة والجمارك'); }
-  if (body.zakat_compliant) { score += 10; docs.push('شهادة الزكاة'); } else { obstacles.push('شهادة الزكاة غير سارية'); plan.push('إصدار/تجديد شهادة الزكاة'); }
-  if (body.has_financial_statements) { score += 10; docs.push('القوائم المالية'); } else { obstacles.push('لا توجد قوائم مالية'); plan.push('إعداد قوائم مالية عبر محاسب قانوني — ترفع فرص القبول بشكل كبير'); }
+  // 1) المتطلبات النظامية (25 نقطة) — حدّ أدنى لا ميزة
+  if (body.cr_valid) score += 6; else { obstacles.push('السجل التجاري غير ساري'); plan.push('تجديد السجل التجاري فوراً — شرط أساسي لأي تمويل'); }
+  if (body.tax_compliant) score += 6; else { obstacles.push('عدم الالتزام بالإقرارات الضريبية'); plan.push('تسوية الوضع الضريبي مع هيئة الزكاة والضريبة والجمارك'); }
+  if (body.zakat_compliant) { score += 6; docs.push('شهادة الزكاة'); } else { obstacles.push('شهادة الزكاة غير سارية'); plan.push('إصدار/تجديد شهادة الزكاة'); }
+  if (body.has_financial_statements) { score += 7; docs.push('القوائم المالية'); } else { obstacles.push('لا توجد قوائم مالية'); plan.push('إعداد قوائم مالية عبر محاسب قانوني — ترفع فرص القبول بشكل كبير'); }
 
-  // 2) الديون وحالة السداد (30 نقطة)
+  // 2) الديون وحالة السداد (22 نقطة)
   if (body.has_debt === false) {
-    score += 30;
+    score += 16;
   } else if (body.debt_status === 'committed') {
     score += 22;
     docs.push('جدول سداد التمويل القائم');
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
   } else {
     const months = Number(body.months_late) || 0;
     if (months <= 3) {
-      score += 10;
+      score += 7;
       obstacles.push('تأخر في سداد التمويل القائم (' + months + ' شهر)');
       plan.push('تسوية المتأخرات فوراً — التأخر يظهر في سمة ويغلق أبواب التمويل');
     } else {
@@ -123,18 +123,22 @@ export async function POST(req: Request) {
     }
   }
 
-  // 3) عمر النشاط (15 نقطة)
+  // 3) عمر النشاط (18 نقطة)
   const years = Number(body.years_operating) || 0;
-  if (years >= 3) score += 15;
-  else if (years >= 1) { score += 10; obstacles.push('عمر النشاط أقل من 3 سنوات'); plan.push('بعض الجهات تشترط 3 سنوات — التركيز على الجهات التي تقبل سنة واحدة'); }
-  else { score += 4; obstacles.push('عمر النشاط أقل من سنة'); plan.push('أغلب جهات التمويل تشترط سنة على الأقل — بناء سجل بنكي نظيف خلال هذه الفترة'); }
+  if (years >= 3) score += 18;
+  else if (years >= 1) { score += 11; obstacles.push('عمر النشاط أقل من 3 سنوات'); plan.push('بعض الجهات تشترط 3 سنوات — التركيز على الجهات التي تقبل سنة واحدة'); }
+  else { score += 5; obstacles.push('عمر النشاط أقل من سنة'); plan.push('أغلب جهات التمويل تشترط سنة على الأقل — بناء سجل بنكي نظيف خلال هذه الفترة'); }
 
-  // 4) الإيرادات السنوية (15 نقطة)
+  // 4) الإيرادات السنوية (25 نقطة)
   const rev = Number(body.annual_revenue) || 0;
-  if (rev >= 5000000) score += 15;
-  else if (rev >= 1000000) score += 12;
-  else if (rev >= 375000) score += 8;
-  else { score += 3; obstacles.push('الإيرادات السنوية أقل من حد القبول لدى أغلب الجهات'); plan.push('رفع الإيرادات الموثقة بنكياً فوق 375 ألف ريال سنوياً'); }
+  if (rev >= 5000000) score += 25;
+  else if (rev >= 1000000) score += 19;
+  else if (rev >= 375000) score += 12;
+  else { score += 4; obstacles.push('الإيرادات السنوية أقل من حد القبول لدى أغلب الجهات'); plan.push('رفع الإيرادات الموثقة بنكياً فوق 375 ألف ريال سنوياً'); }
+
+  // 5) كشف الحساب البنكي (10 نقاط) — إشارة سيولة
+  if (body.has_bank_statement) score += 10;
+  else { obstacles.push('لا يوجد كشف حساب بنكي حديث'); plan.push('تجهيز كشف حساب بنكي لآخر 6 أشهر — تطلبه كل جهات التمويل لتقييم التدفق النقدي'); }
 
   let verdict = '';
   if (score >= 80) verdict = 'جاهز للتمويل';
