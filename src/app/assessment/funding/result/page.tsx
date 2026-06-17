@@ -58,7 +58,7 @@ export default function FundingResult() {
       setLoading(false);
 
       // الاستشارة فوراً (غير حاجبة) — قبل المطابقة البطيئة
-      fetch('/api/consultation', { method: 'POST' }).catch(() => {});
+      fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'funding' }) }).catch(() => {});
 
       setMatchLoading(true);
       try {
