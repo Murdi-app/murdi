@@ -213,7 +213,6 @@ export default function IpoResult() {
               <div className="mt-5 bg-gradient-to-l from-[#FBF5E8] to-white rounded-xl p-5 border-2 border-[#C9A84C]">
                 <h3 className="font-black text-[#1A3D34] mb-1">🎯 شركتك مؤهلة — افتح خطة الطرح الكاملة</h3>
                 <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي خطة طرح تنفيذية كاملة: كل مرحلة بمدتها وتكلفتها، تجهيز ملف الهيئة، واختيار السوق الأنسب — بمرافقة حتى الإدراج.</p>
-                <a href="https://wa.me/966570314005?text=السلام%20عليكم،%20شركتي%20مؤهلة%20للطرح%20وأريد%20خطة%20الطرح%20الكاملة%20من%20فريق%20مُرضي" target="_blank" rel="noopener noreferrer" className="inline-block px-7 py-3 rounded-full bg-[#C9A84C] text-white font-black text-sm">اطلب خطة الطرح الكاملة ←</a>
               </div>
             ) : (
               <div className="mt-5 bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3]">
@@ -298,7 +297,6 @@ export default function IpoResult() {
                     <p className="text-3xl mb-2">🏛️</p>
                     <p className="font-black text-white mb-1">شركتك على أعتاب الطرح</p>
                     <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي تحليل الأهلية الكامل وخطوات العمل الفورية، ويرافقك في تجهيز ملف الشركة لهيئة السوق المالية مرحلةً بمرحلة.</p>
-                    <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أنهيت تقييم الطرح في مُرضي وأرغب في تحليل الأهلية الكامل وخطة الطرح')} target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-6 py-3 rounded-xl">تواصل مع فريق مُرضي عبر واتساب</a>
                   </div>
                 ) : (
                   <div className="mt-5 rounded-2xl p-5 text-center bg-[#FBF5E8] border border-[#E8D9B5]">
