@@ -59,6 +59,7 @@ export default function IpoAssessment() {
 
   const [sector, setSector] = useState('');
   const [customSector, setCustomSector] = useState('');
+  const onlyDigits = (v: string) => v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^0-9]/g, '');
   const [annualRevenue, setAnnualRevenue] = useState('');
   const [netProfit, setNetProfit] = useState('');
   const [growth, setGrowth] = useState('');
@@ -192,11 +193,11 @@ export default function IpoAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال)</label>
-                <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 50000000" className={inputCls} />
+                <input type="text" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(onlyDigits(e.target.value))} placeholder="مثال: 50000000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">صافي الربح السنوي (ريال — اكتب 0 إذا خسارة)</label>
-                <input type="number" inputMode="numeric" value={netProfit} onChange={(e) => setNetProfit(e.target.value)} placeholder="مثال: 8000000" className={inputCls} />
+                <input type="text" inputMode="numeric" value={netProfit} onChange={(e) => setNetProfit(onlyDigits(e.target.value))} placeholder="مثال: 8000000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">نمو الإيرادات آخر سنة</label>
@@ -204,7 +205,7 @@ export default function IpoAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" inputMode="decimal" min="0" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 7" className={inputCls} />
+                <input type="text" inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^0-9.]/g, ''))} placeholder="مثال: 7" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">السوق المستهدف</label>
@@ -217,7 +218,7 @@ export default function IpoAssessment() {
             <div className="space-y-6">
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">كم سنة من القوائم المالية المعتمدة لديكم؟</label>
-                <input type="number" inputMode="numeric" value={statementsYears} onChange={(e) => setStatementsYears(e.target.value)} placeholder="مثال: 3" className={inputCls} />
+                <input type="text" inputMode="numeric" value={statementsYears} onChange={(e) => setStatementsYears(onlyDigits(e.target.value))} placeholder="مثال: 3" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">القوائم مراجعة من مراجع خارجي معتمد؟</label>
@@ -255,7 +256,7 @@ export default function IpoAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">كم نسبة أكبر عميل من إيراداتكم؟ (%)</label>
-                <input type="number" inputMode="numeric" value={topClientPct} onChange={(e) => setTopClientPct(e.target.value)} placeholder="مثال: 25" className={inputCls} />
+                <input type="text" inputMode="numeric" value={topClientPct} onChange={(e) => setTopClientPct(onlyDigits(e.target.value))} placeholder="مثال: 25" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">هل على الشركة تمويل أو ديون قائمة؟</label>
@@ -265,11 +266,11 @@ export default function IpoAssessment() {
                 <>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">إجمالي مبلغ التمويل الأصلي (ريال)</label>
-                    <input type="number" inputMode="numeric" value={totalFinancing} onChange={(e) => setTotalFinancing(e.target.value)} placeholder="مثال: 5000000" className={inputCls} />
+                    <input type="text" inputMode="numeric" value={totalFinancing} onChange={(e) => setTotalFinancing(onlyDigits(e.target.value))} placeholder="مثال: 5000000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي على الشركة الآن (ريال)</label>
-                    <input type="number" inputMode="numeric" value={remainingDebt} onChange={(e) => setRemainingDebt(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                    <input type="text" inputMode="numeric" value={remainingDebt} onChange={(e) => setRemainingDebt(onlyDigits(e.target.value))} placeholder="مثال: 3000000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
