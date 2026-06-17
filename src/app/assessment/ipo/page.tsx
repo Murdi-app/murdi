@@ -9,6 +9,13 @@ const SECTOR = [
   { id: 'retail_services', label: 'تجزئة / خدمات' },
   { id: 'industry_trade', label: 'صناعة / تجارة' },
   { id: 'food_agri', label: 'أغذية / زراعة' },
+  { id: 'realestate_construction', label: 'عقارات / مقاولات' },
+  { id: 'logistics_transport', label: 'لوجستيات / نقل' },
+  { id: 'energy_utilities', label: 'طاقة / مرافق' },
+  { id: 'finance_insurance', label: 'خدمات مالية / تأمين' },
+  { id: 'media_entertainment', label: 'إعلام / ترفيه' },
+  { id: 'tourism_hospitality', label: 'سياحة / ضيافة' },
+  { id: 'other', label: 'أخرى (حدد نشاطك)' },
 ];
 
 const GROWTH = [
@@ -51,6 +58,7 @@ export default function IpoAssessment() {
   const [error, setError] = useState('');
 
   const [sector, setSector] = useState('');
+  const [customSector, setCustomSector] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
   const [netProfit, setNetProfit] = useState('');
   const [growth, setGrowth] = useState('');
@@ -74,7 +82,7 @@ export default function IpoAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
 
   const stepValid = () => {
-    if (step === 0) return sector !== '' && annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
+    if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && annualRevenue !== '' && netProfit !== '' && growth !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0 && target !== '';
     if (step === 1) return statementsYears !== '' && auditor !== null;
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasCommittees !== null;
     if (step === 3) return taxCompliant !== null && zakatCompliant !== null && topClientPct !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
@@ -96,7 +104,7 @@ export default function IpoAssessment() {
           financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
           repayment_status: hasDebt ? repaymentStatus : '',
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
-          sector,
+          sector: sector === 'other' ? customSector.trim() : sector,
           annual_revenue: Number(annualRevenue),
           net_profit: Number(netProfit),
           revenue_growth: growth,
@@ -172,6 +180,15 @@ export default function IpoAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">قطاع نشاط الشركة</label>
                 <Choice items={SECTOR} value={sector} onChange={setSector} cols={2} />
+                {sector === 'other' && (
+                  <input
+                    type="text"
+                    value={customSector}
+                    onChange={(e) => setCustomSector(e.target.value)}
+                    placeholder="اكتب نشاط شركتك بدقة (مثال: تصنيع مواد بناء، خدمات استشارية هندسية...)"
+                    className="mt-3 w-full px-4 py-3 rounded-xl border-2 border-[#E8F5EF] focus:border-[#C9A84C] outline-none font-bold text-sm text-[#1A3D34]"
+                  />
+                )}
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال)</label>
