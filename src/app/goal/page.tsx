@@ -31,12 +31,16 @@ export default function GoalPage() {
       if (!comp) return;
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
       const out: Record<string, number> = {};
+      const { data: rows } = await supabase
+        .from('readiness_results')
+        .select('readiness_score, result_type, created_at')
+        .eq('company_id', comp.id)
+        .order('created_at', { ascending: false });
       for (const t of TRACKS) {
-        const { data: rr } = await supabase
-          .from('readiness_results').select('readiness_score')
-          .eq('company_id', comp.id).eq('assessment_type', t.id)
-          .order('created_at', { ascending: false }).limit(1).maybeSingle();
-        if (rr) out[t.id] = rr.readiness_score;
+        const match = (rows || []).find(
+          (r: { result_type?: string }) => (r.result_type || '').toLowerCase() === t.id
+        );
+        if (match) out[t.id] = match.readiness_score;
       }
       setScores(out);
     };
