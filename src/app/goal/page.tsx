@@ -85,7 +85,7 @@ export default function GoalPage() {
           <div className="mb-12">
             <div className="rounded-3xl p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
               <p className="text-[#C9D8D0] text-sm font-bold mb-2">مؤشر جاهزية {company?.name || 'شركتك'}</p>
-              <div className="text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 85</span></div>
+              <div className="text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 100</span></div>
               <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
               <p className="text-[#8FA8A0] text-xs font-bold mt-1">يتحدّث مع كل تقييم</p>
             </div>
@@ -95,7 +95,7 @@ export default function GoalPage() {
                   <div className="text-2xl mb-1">{t.icon}</div>
                   <div className="font-black text-[#1A3D34] text-sm mb-2">{t.title.replace('أريد ', '').replace('تجهيز الشركة لل', '')}</div>
                   {scores[t.id] !== undefined ? (
-                    <div className={'text-3xl font-black leading-none ' + (scores[t.id] >= 65 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{scores[t.id]}</div>
+                    <div className={'text-3xl font-black leading-none ' + (scores[t.id] >= 70 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{scores[t.id]}</div>
                   ) : (
                     <div className="text-xs font-bold text-[#A3BAB2] mt-2">لم يُقيَّم</div>
                   )}
@@ -118,7 +118,7 @@ export default function GoalPage() {
               <div className="flex justify-between mb-4">
                 <div className="text-center">
                   <div className="text-3xl font-black text-[#C9A84C] leading-none">{overall}</div>
-                  <div className="text-[10px] text-[#9DB3AB] font-bold mt-1">عام /85</div>
+                  <div className="text-[10px] text-[#9DB3AB] font-bold mt-1">عام /100</div>
                 </div>
                 {TRACKS.filter((t) => scores[t.id] !== undefined).map((t) => (
                   <div key={t.id} className="text-center">
