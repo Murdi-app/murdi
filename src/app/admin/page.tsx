@@ -43,6 +43,11 @@ export default function AdminPage() {
         <div style={{fontSize:20,fontWeight:900,color:C.gold}}>MURDI ADMIN</div>
         <button onClick={()=>router.push('/goal')} style={{padding:'8px 16px',borderRadius:8,border:`1px solid ${C.border}`,background:'transparent',color:C.gray,cursor:'pointer',fontSize:13}}>المركز الرئيسي</button>
       </div>
+      <div style={{background:C.navyLight,padding:'0 32px',display:'flex',gap:8,borderBottom:`1px solid ${C.border}`}}>
+        <div style={{padding:'14px 22px',color:C.gold,fontWeight:700,fontSize:14,borderBottom:`2px solid ${C.gold}`,cursor:'default'}}>لوحة التحكم</div>
+        <div onClick={()=>router.push('/admin/approvals')} style={{padding:'14px 22px',color:C.gray,fontWeight:700,fontSize:14,cursor:'pointer'}}>الاعتمادات</div>
+        <div onClick={()=>router.push('/admin/entities')} style={{padding:'14px 22px',color:C.gray,fontWeight:700,fontSize:14,cursor:'pointer'}}>الجهات</div>
+      </div>
       <div style={{maxWidth:1000,margin:'0 auto',padding:'32px 24px'}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16,marginBottom:32}}>
           {[

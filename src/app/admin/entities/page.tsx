@@ -78,10 +78,12 @@ export default function EntitiesAdmin() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-black text-[#1A3D34]">🏦 إدارة الجهات والمنتجات</h1>
-          <a href="/admin/approvals" className="px-5 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">← لوحة الموافقات</a>
+        <div className="flex gap-2 mb-6 border-b-2 border-[#EAF2EE]">
+          <a href="/admin" className="px-4 py-3 text-[#6B8A80] font-bold text-sm">لوحة التحكم</a>
+          <a href="/admin/approvals" className="px-4 py-3 text-[#6B8A80] font-bold text-sm">الاعتمادات</a>
+          <span className="px-4 py-3 text-[#2E9E7B] font-black text-sm border-b-2 border-[#2E9E7B]">الجهات</span>
         </div>
+        <h1 className="text-2xl font-black text-[#1A3D34] mb-6">🏦 إدارة الجهات والمنتجات</h1>
 
         {msg !== '' && <div className="mb-4 p-3 rounded-xl bg-[#E8F5EF] text-[#2E9E7B] font-black text-sm text-center">{msg}</div>}
 

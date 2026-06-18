@@ -201,6 +201,11 @@ export default function ApprovalsPage() {
       `}</style>
       <div className="ap-wrapper">
         <div className="ap-inner">
+          <div style={{ display:'flex', gap:8, marginBottom:22, borderBottom:'2px solid #EAF2EE', paddingBottom:0 }}>
+            <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
+            <div style={{ padding:'10px 18px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
+            <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
+          </div>
           <div className="ap-head">لوحة الموافقات</div>
           <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>
 
