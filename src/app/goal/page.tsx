@@ -16,6 +16,7 @@ export default function GoalPage() {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [company, setCompany] = useState<{ name: string; sector: string } | null>(null);
   const [showCard, setShowCard] = useState(false);
+  const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
 
   useEffect(() => {
     const load = async () => {
@@ -78,8 +79,25 @@ export default function GoalPage() {
         </div>
       </nav>
 
+      {/* شريط التبويبات */}
+      <div className="bg-white border-b border-[#F0F5F3] px-6">
+        <div className="max-w-5xl mx-auto flex gap-1">
+          {[
+            { id: 'overview', label: 'نظرة عامة' },
+            { id: 'consult', label: 'الاستشارة والأسئلة' },
+            { id: 'services', label: 'الخدمات' },
+          ].map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id as 'overview' | 'consult' | 'services')}
+              className={'px-5 py-4 font-black text-sm transition border-b-2 ' + (tab === t.id ? 'text-[#2E9E7B] border-[#2E9E7B]' : 'text-[#6B8A80] border-transparent')}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="max-w-5xl mx-auto px-4 py-12">
 
+        {tab === 'overview' && (<>
         {/* ملف الجاهزية */}
         {doneScores.length > 0 && (
           <div className="mb-12">
@@ -159,7 +177,9 @@ export default function GoalPage() {
             ابدأ التقييم
           </button>
         </div>
+        </>)}
 
+        {tab === 'consult' && (<>
         {/* بطاقات الخدمات الشهرية */}
         <h2 className="text-xl font-black text-[#1A3D34] mb-5 text-center">خدماتك الشهرية في مُرضي</h2>
         <div className="grid md:grid-cols-3 gap-5 mb-16">
@@ -182,8 +202,9 @@ export default function GoalPage() {
             <span className="text-[#2E9E7B] font-black text-sm">تواصل عبر واتساب ←</span>
           </a>
         </div>
+        </>)}
 
-        {/* خدمات التنفيذ مع فريق مُرضي */}
+        {tab === 'services' && (
         <div className="mb-16">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Amiri, serif' }}>من التوصية إلى التنفيذ</h2>
@@ -228,8 +249,9 @@ export default function GoalPage() {
             </div>
           ))}
         </div>
+        )}
 
-        {/* منهجية د. عبدالحكيم */}
+        {tab === 'overview' && (<>
         <div className="bg-[#1A3D34] rounded-3xl p-10 text-center mb-16">
           <p className="text-[#C9A84C] font-black text-sm tracking-widest mb-3">المنهجية</p>
           <h2 className="text-2xl font-black text-white mb-4" style={{ fontFamily: 'Amiri, serif' }}>مُرضي مبنية على منهجية د. عبدالحكيم المرضي</h2>
@@ -248,6 +270,7 @@ export default function GoalPage() {
         <p className="text-center text-[#A3BAB2] text-xs font-bold">
           نتائج مُرضي تمثل مؤشرات جاهزية مبدئية فقط، ولا تعني الموافقة النهائية من أي جهة تمويل أو استثمار.
         </p>
+        </>)}
 
       </div>
     </div>
