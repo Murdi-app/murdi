@@ -22,6 +22,8 @@ interface Company {
   payment_confirmed_at: string | null
   is_locked: boolean
   created_at: string
+  subscription_start?: string
+  subscription_end?: string
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -142,7 +144,19 @@ export default function ApprovalsPage() {
       locked_at: new Date().toISOString(),
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
+      subscription_start: new Date().toISOString(),
+      subscription_end: new Date(Date.now() + 120*24*60*60*1000).toISOString(),
     }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
+  }
+
+  async function renew(c: Company) {
+    setBusy(c.id)
+    const cur = c.subscription_end ? new Date(c.subscription_end) : new Date()
+    const base = cur > new Date() ? cur : new Date()
+    const newEnd = new Date(base.getTime() + 120*24*60*60*1000)
+    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active' }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
@@ -262,7 +276,10 @@ export default function ApprovalsPage() {
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
               </div>
-              <div style={{ color:'#9DB3AB', fontSize:12, fontWeight:600, marginBottom:12 }}>📅 سجّل: {fmtDate(c.created_at)}</div>
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:12 }}>
+                <span style={{ color:'#9DB3AB', fontSize:12, fontWeight:600 }}>📅 سجّل: {fmtDate(c.created_at)}</span>
+                {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#D96A6A' : days <= 14 ? '#D9A441' : '#2E9E7B'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>⏳ الاشتراك: {fmtDate(c.subscription_end)} ({days < 0 ? 'منتهٍ' : days + ' يوم'})</span> })()}
+              </div>
               <div className="ap-actions">
                 {c.receipt_path && (
                   <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>📎 عرض الإيصال</button>
@@ -272,6 +289,9 @@ export default function ApprovalsPage() {
                 )}
                 {c.account_status === 'suspended' && (
                   <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => setStatus(c, 'active')}>إعادة تفعيل</button>
+                )}
+                {c.account_status === 'active' && (
+                  <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => renew(c)}>{busy === c.id ? 'جارٍ...' : '🔄 تجديد ٤ أشهر'}</button>
                 )}
               </div>
             </div>
