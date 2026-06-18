@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 const C = { navy:'#0B1C3D', navyLight:'#112244', border:'#1E3A6E', gold:'#F5C842', white:'#fff', gray:'#8899BB' }
 const fmt = (n: number) => n?.toLocaleString('ar-SA') || '0'
+const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const MONTH_NAMES = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر']
 
@@ -20,16 +21,16 @@ export default function AdminPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || user.email !== ADMIN_EMAIL) { router.push('/'); return }
-      const { data: profiles } = await supabase.from('profiles').select('*')
-      const { data: monthly } = await supabase.from('monthly_data').select('*').order('created_at', { ascending: false })
-      const totalUsers = profiles?.length || 0
-      const totalReports = monthly?.length || 0
-      const avgScore = monthly?.length ? Math.round(monthly.reduce((a,m) => a + (m.murdi_score||0), 0) / monthly.length) : 0
+      const { data: companies } = await supabase.from('companies').select('*').order('created_at', { ascending: false })
+      const { data: results } = await supabase.from('readiness_results').select('*').order('created_at', { ascending: false })
+      const totalUsers = companies?.length || 0
+      const totalReports = results?.length || 0
+      const avgScore = results?.length ? Math.round(results.reduce((a,m) => a + (m.readiness_score||0), 0) / results.length) : 0
       const now = new Date()
-      const activeThisMonth = monthly?.filter(m => m.month === now.getMonth()+1 && m.year === now.getFullYear()).length || 0
+      const activeThisMonth = results?.filter(m => { const d = new Date(m.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() }).length || 0
       setStats({ totalUsers, totalReports, avgScore, activeThisMonth })
-      setUsers(profiles || [])
-      setReports(monthly || [])
+      setUsers(companies || [])
+      setReports(results || [])
       setLoading(false)
     }
     load()
@@ -65,18 +66,19 @@ export default function AdminPage() {
         <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.border}`,marginBottom:24}}>
           <div style={{color:C.gold,fontSize:16,fontWeight:700,marginBottom:16}}>الشركات المسجلة ({users.length})</div>
           {users.map((u,i) => {
-            const userReports = reports.filter(r => r.user_id === u.id)
+            const userReports = reports.filter(r => r.company_id === u.id)
             const last = userReports[0]
             return (
               <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 0',borderBottom:i<users.length-1?`1px solid ${C.border}`:'none',flexWrap:'wrap',gap:8}}>
                 <div>
                   <div style={{color:C.white,fontSize:14,fontWeight:700}}>{u.company_name||'بدون اسم'}</div>
                   <div style={{color:C.gray,fontSize:12}}>{u.email}</div>
+                  <div style={{color:C.gray,fontSize:11,marginTop:2}}>📅 سجّل: {fmtDate(u.created_at)}</div>
                 </div>
                 <div style={{display:'flex',gap:16,alignItems:'center'}}>
                   <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>التقارير</div><div style={{color:C.white,fontSize:14,fontWeight:700}}>{userReports.length}</div></div>
-                  {last && <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>آخر Score</div><div style={{color:last.murdi_score>=70?'#22c55e':last.murdi_score>=40?C.gold:'#ef4444',fontSize:14,fontWeight:700}}>{last.murdi_score}/85</div></div>}
-                  {last && <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>آخر تقرير</div><div style={{color:C.white,fontSize:12}}>{MONTH_NAMES[last.month-1]} {last.year}</div></div>}
+                  {last && <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>آخر Score</div><div style={{color:last.readiness_score>=70?'#22c55e':last.readiness_score>=40?C.gold:'#ef4444',fontSize:14,fontWeight:700}}>{last.readiness_score}/100</div></div>}
+                  {last && <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>آخر تقييم</div><div style={{color:C.white,fontSize:12}}>{fmtDate(last.created_at)}</div></div>}
                 </div>
               </div>
             )
@@ -85,17 +87,16 @@ export default function AdminPage() {
         <div style={{background:C.navyLight,borderRadius:16,padding:'24px',border:`1px solid ${C.border}`}}>
           <div style={{color:C.gold,fontSize:16,fontWeight:700,marginBottom:16}}>آخر التقارير</div>
           {reports.slice(0,10).map((r,i) => {
-            const u = users.find(x => x.id === r.user_id)
+            const u = users.find(x => x.id === r.company_id)
             return (
               <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:i<9?`1px solid ${C.border}`:'none',flexWrap:'wrap',gap:8}}>
                 <div>
                   <div style={{color:C.white,fontSize:13,fontWeight:600}}>{u?.company_name||'غير معروف'}</div>
-                  <div style={{color:C.gray,fontSize:11}}>{MONTH_NAMES[r.month-1]} {r.year}</div>
+                  <div style={{color:C.gray,fontSize:11}}>{fmtDate(r.created_at)}</div>
                 </div>
                 <div style={{display:'flex',gap:12,alignItems:'center'}}>
-                  <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>Score</div><div style={{color:r.murdi_score>=70?'#22c55e':r.murdi_score>=40?C.gold:'#ef4444',fontSize:14,fontWeight:700}}>{r.murdi_score}</div></div>
-                  <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>الإيرادات</div><div style={{color:C.white,fontSize:12}}>{fmt(r.revenue)} ر.س</div></div>
-                  <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>التمويل</div><div style={{color:C.white,fontSize:12}}>{r.funding_score||0}/100</div></div>
+                  <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>Score</div><div style={{color:r.readiness_score>=70?'#22c55e':r.readiness_score>=40?C.gold:'#ef4444',fontSize:14,fontWeight:700}}>{r.readiness_score}/100</div></div>
+                  <div style={{textAlign:'center'}}><div style={{color:C.gray,fontSize:10}}>المسار</div><div style={{color:C.white,fontSize:12}}>{r.result_type||'—'}</div></div>
                 </div>
               </div>
             )
