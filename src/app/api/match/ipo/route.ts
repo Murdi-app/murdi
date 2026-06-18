@@ -26,6 +26,31 @@ async function generateRecoveryPath(data: Record<string, unknown>): Promise<stri
   return '<h3>مسار التعافي قبل التفكير في الطرح</h3><p>الشركة بحاجة لإعادة هيكلة ديونها واستعادة انتظام السداد قبل أي تفكير في الإدراج.</p>';
 }
 
+async function generateIpoReadinessPlan(data: Record<string, unknown>): Promise<string> {
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
+  const score = Number((data as { score?: number }).score) || 0;
+  const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي، تكتب لصاحب شركة سعودية سكور جاهزيتها للطرح ' + score + ' من 100 — أي دون عتبة الجاهزية للإدراج. الشركة ليست متعثرة، لكنها تحتاج تجهيزا مؤسسيا قبل الطرح. '
+    + 'مهمتك: خطة دقيقة ذكية ترفع جاهزيتها لمتطلبات الإدراج في السوق السعودي (تداول — السوق الرئيسية أو نمو). '
+    + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
+    + 'حلل الفجوة بدقة وفق متطلبات هيئة السوق المالية: الحوكمة المؤسسية ولوائحها، تشكيل مجلس إدارة بأعضاء مستقلين، لجنة المراجعة، تعيين مراجع خارجي معتمد، توفر قوائم مالية مدققة لعدد السنوات المطلوب، الإفصاح والشفافية، تنويع قاعدة العملاء وتقليل التركّز، استقرار الربحية والنمو. '
+    + 'رتب الخطوات حسب الأثر الأكبر على الجاهزية أولا، ولكل خطوة: ماذا يفعل بالضبط، ولماذا تطلبه الهيئة أو يطمئن المستثمر، مربوطة بأرقام الشركة الفعلية. واقعية ومتدرجة. '
+    + 'اجعلها 4 الى 6 خطوات مركزة. اخرج HTML عربي بسيط مكتمل: <h3>خطة رفع الجاهزية للطرح</h3> ثم <ol> خطوات مرقمة كل <li> فيها رقم/تفصيل من بياناتهم. بلا اي اشارة لذكاء اصطناعي او تقنية. ابدا مباشرة بالـHTML.';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const txt = (j.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
+      if (txt) return txt;
+    } catch {}
+  }
+  return '<h3>خطة رفع الجاهزية للطرح</h3><p>تحتاج الشركة بناء الحوكمة المؤسسية، تعيين مراجع خارجي معتمد، تشكيل لجنة مراجعة، وتجهيز القوائم المالية المدققة قبل التقدم للإدراج.</p>';
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -97,9 +122,17 @@ export async function POST() {
   const monthsTxt = rr?.months_to_ready ? rr.months_to_ready + ' شهراً' : '—';
 
   try {
-    const isDefaulted = fd?.repayment_status === 'default';
+    const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
+    const lowScore = score < 65;
     let recoveryHtml = '';
-    if (isDefaulted) { try { recoveryHtml = await generateRecoveryPath({ ...fd }); } catch {} }
+    let planKind: 'recovery' | 'readiness' | 'qualified' | 'waiting' = score >= 65 ? 'qualified' : 'waiting';
+    if (isDefaulted) {
+      planKind = 'recovery';
+      try { recoveryHtml = await generateRecoveryPath({ ...fd }); } catch {}
+    } else if (lowScore) {
+      planKind = 'readiness';
+      try { recoveryHtml = await generateIpoReadinessPlan({ ...fd, score, sector: fd?.sector || company?.sector }); } catch {}
+    }
     const resend = new Resend(process.env.RESEND_API_KEY);
     const obstacleRows = (rr?.top_obstacles || []).map((o: string) =>
       '<li style="margin-bottom:4px">' + o + '</li>'
@@ -115,13 +148,13 @@ export async function POST() {
           ? '<div style="background:#FBECEC;border:2px solid #C0564B;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#A33;font-size:16px">⚠️ غير مؤهل للطرح حالياً — شركة متعثرة</b><br/>الإجراء: الشركة متعثرة في السداد والإدراج مرفوض نظاماً. الفرصة هنا خدمة <b>إعادة هيكلة وتعافٍ</b> تقدّمها حلول المرضي، تمهّد لاحقاً للطرح.</div>'
           : (score >= 65
           ? '<div style="background:#FBF5E8;border:2px solid #C9A84C;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#9A7B2E;font-size:16px">🎯 مؤهل للطرح — فرصة خدمة مدفوعة</b><br/>الإجراء: تواصل مع العميل لعرض خطة الطرح الكاملة (المراحل + التكلفة + تجهيز ملف الهيئة).</div>'
-          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح</b><br/>الإجراء: متابعة لاحقة — العميل بعيد عن الجاهزية حالياً.</div>')) +
+          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح — فرصة خدمة تجهيز</b><br/>الإجراء: عرض خطة رفع الجاهزية أدناه على العميل كخدمة تجهيز للطرح.</div>')) +
         '<h2>ملف طرح جديد</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
         '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
         '<p><b>IPO Readiness Score:</b> ' + score + ' — ' + (rr?.verdict ?? '—') + '</p>' +
         '<p><b>السوق المقترح:</b> ' + marketLabel + ' | <b>⏱️ المدة التقديرية:</b> ' + monthsTxt + '</p>' +
-        (isDefaulted && recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;line-height:1.8">' + recoveryHtml + '</div>' : '') +
+        (recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;line-height:1.8">' + recoveryHtml + '</div>' : '') +
         '<hr/>' +
         '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">التفاصيل الكاملة (الأرقام، العوائق، خارطة الطريق، التقييم) في لوحة الأدمن.</p>' +
