@@ -102,7 +102,7 @@ export default function Home() {
             والطريق لتصبح جاهزة. ثم نطابقك مع الجهات المناسبة وفريقنا يفتح لك الباب.
           </p>
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
-          <div className="lp-cta-sub">رسوم فتح الملف 1,900 ر.س — مرة واحدة، تشمل التقييم الكامل</div>
+          <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمتابعة</div>
         </section>
 
         <section className="lp-section">
@@ -148,12 +148,12 @@ export default function Home() {
         </section>
 
         <section className="lp-section">
-          <h2 className="lp-sec-title">استثمار واحد يفتح كل الأبواب</h2>
-          <p className="lp-sec-sub">بدون اشتراكات شهرية — رسوم فتح ملف واحدة ورسوم نجاح عند إتمام الصفقة فقط</p>
+          <h2 className="lp-sec-title">اشتراك واحد يفتح كل الأبواب</h2>
+          <p className="lp-sec-sub">اشتراك ربعي واحد يفتح المسارات الثلاثة — ورسوم تنفيذ الخدمات عند الطلب</p>
           <div className="lp-price-card">
             <div className="lp-price-label">رسوم فتح الملف</div>
-            <div className="lp-price">1,900 <span className="lp-price-unit">ر.س</span></div>
-            <div className="lp-price-once">مرة واحدة فقط</div>
+            <div className="lp-price">2,900 <span className="lp-price-unit">ر.س</span></div>
+            <div className="lp-price-once">لكل أربعة أشهر</div>
             <div className="lp-includes">
               <div className="lp-inc"><span className="lp-inc-check">✓</span> فتح ملف شركتك واختيار الهدف</div>
               <div className="lp-inc"><span className="lp-inc-check">✓</span> تقييم جاهزية كامل بمحرك متخصص لهدفك</div>
