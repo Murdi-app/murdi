@@ -109,7 +109,7 @@ export async function GET() {
 
   const { data: questions } = await adminClient
     .from('client_questions')
-    .select('id, question, answer, status, created_at, companies(company_name)')
+    .select('id, question, answer, status, created_at, answered_at, companies(company_name)')
     .order('created_at', { ascending: false });
 
   const { data: edits } = await adminClient
