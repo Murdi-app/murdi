@@ -104,9 +104,9 @@ export async function POST() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 3000,
+        max_tokens: 6000,
         messages: [{ role: 'user', content: prompt }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }],
       }),
     });
 
@@ -124,7 +124,7 @@ export async function POST() {
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
         if (Array.isArray(parsed.offers)) {
-          webOffers = parsed.offers.slice(0, 6);
+          webOffers = parsed.offers;
           webSearchOk = true;
         }
       }
