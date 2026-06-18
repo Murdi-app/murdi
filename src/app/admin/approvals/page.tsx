@@ -359,7 +359,7 @@ export default function ApprovalsPage() {
                   {c.status === 'released' ? 'صادرة ✓' : c.status === 'ready' ? 'جاهزة — بانتظار إصدارك' : c.status === 'analyzing' ? 'قيد التوليد' : 'فشل التوليد'}
                 </span>
               </div>
-              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:10 }}>📅 أُنشئت: {fmtDate(c.created_at)}{c.released_at ? '  •  📤 صدرت: ' + fmtDate(c.released_at) : ''}</div>
+              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:10 }}>📅 أُنشئت: {fmtDate(c.created_at || c.generated_at)}{c.released_at ? '  •  📤 صدرت: ' + fmtDate(c.released_at) : ''}</div>
               {c.content && (
                 <div style={{ maxHeight: 180, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
                   {c.content}{c.content.length > 1500 ? '...' : ''}

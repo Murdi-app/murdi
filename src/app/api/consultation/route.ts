@@ -164,7 +164,7 @@ export async function GET() {
   if (isAdmin) {
     const { data } = await adminClient
       .from('consultations')
-      .select('id, company_id, status, content, generated_at, released_at, assessment_type, companies(company_name)')
+      .select('id, company_id, status, content, created_at, generated_at, released_at, assessment_type, companies(company_name)')
       .order('created_at', { ascending: false });
     return NextResponse.json({ consultations: data || [] });
   }
