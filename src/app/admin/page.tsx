@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
+const isNew = (d: string) => d ? (Date.now() - new Date(d).getTime()) < 48*60*60*1000 : false
+const NewBadge = () => <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginLeft:6 }}>جديد</span>
 const scoreColor = (s: number) => s >= 70 ? '#2E9E7B' : s >= 40 ? '#C9A84C' : '#D96A6A'
 
 export default function AdminPage() {
@@ -98,7 +100,7 @@ export default function AdminPage() {
             return (
               <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom: i<users.length-1 ? '1px solid #F0F5F3' : 'none', flexWrap:'wrap', gap:8 }}>
                 <div>
-                  <div style={{ color:'#1A3D34', fontSize:15, fontWeight:900 }}>{u.company_name || 'بدون اسم'}</div>
+                  <div style={{ color:'#1A3D34', fontSize:15, fontWeight:900 }}>{u.company_name || 'بدون اسم'}{isNew(u.created_at) && <NewBadge />}</div>
                   <div style={{ color:'#6B8A80', fontSize:12.5, fontWeight:600 }}>{u.email}</div>
                   <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginTop:3 }}>📅 سجّل: {fmtDate(u.created_at)}</div>
                 </div>
