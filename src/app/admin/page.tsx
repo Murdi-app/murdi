@@ -64,6 +64,23 @@ export default function AdminPage() {
 
       <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 24px' }}>
 
+        {(() => {
+          const now = Date.now()
+          const expiring = users.filter(u => u.subscription_end && u.account_status === 'active').map(u => ({ ...u, days: Math.ceil((new Date(u.subscription_end).getTime() - now)/(24*60*60*1000)) })).filter(u => u.days <= 14).sort((a,b) => a.days - b.days)
+          if (expiring.length === 0) return null
+          return (
+            <div style={{ background:'#FBF5E8', border:'2px solid #EBD9A8', borderRadius:16, padding:'18px 22px', marginBottom:24 }}>
+              <div style={{ color:'#9A7B2E', fontSize:15, fontWeight:900, marginBottom:12 }}>تنبيه: اشتراكات قاربت على الانتهاء ({expiring.length})</div>
+              {expiring.map((u, i) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom: i < expiring.length-1 ? '1px solid #EFE4C6' : 'none', flexWrap:'wrap', gap:6 }}>
+                  <span style={{ color:'#1A3D34', fontSize:13.5, fontWeight:700 }}>{u.company_name || 'بدون اسم'}</span>
+                  <span style={{ color: u.days < 0 ? '#D96A6A' : '#9A7B2E', fontSize:12.5, fontWeight:700 }}>{u.days < 0 ? 'منته منذ ' + Math.abs(u.days) + ' يوم' : 'ينتهي خلال ' + u.days + ' يوم'} — {fmtDate(u.subscription_end)}</span>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:32 }}>
           {stat.map((s,i) => (
             <div key={i} style={{ background:'#fff', borderRadius:18, padding:'24px', border:'2px solid #EAF2EE', textAlign:'center' }}>
