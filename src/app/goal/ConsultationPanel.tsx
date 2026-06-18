@@ -5,7 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 
 type Question = { id: string; question: string; answer: string | null; status: string; created_at: string };
 
-export default function ConsultationPage() {
+export default function ConsultationPanel() {
   const [loading, setLoading] = useState(true);
   const [consults, setConsults] = useState<Record<string, { status: string; content: string | null }>>({});
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -89,7 +89,7 @@ export default function ConsultationPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl">
       <style>{`
         .print-only { display: none; }
         @media print {
@@ -101,17 +101,7 @@ export default function ConsultationPage() {
           .consult-body { max-height: none !important; overflow: visible !important; border: none !important; background: white !important; }
         }
       `}</style>
-      <nav className="bg-white border-b border-[#F0F5F3] px-6 py-4 no-print">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <a href="/goal" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-[#2E9E7B] flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <span className="font-black text-[#1A3D34]">مُرضي</span>
-          </a>
-          <a href="/goal" className="px-5 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">← الرئيسية</a>
-        </div>
-      </nav>
+      
       <div className="max-w-2xl mx-auto space-y-6 px-4 py-10">
 
         <div className="text-center mb-2 no-print">

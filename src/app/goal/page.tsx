@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -73,7 +74,7 @@ export default function GoalPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/dashboard/consultation" className="px-5 py-2 rounded-full bg-[#C9A84C] text-white font-black text-sm">🎓 استشارتي</a>
+            <button onClick={() => setTab('consult')} className="px-5 py-2 rounded-full bg-[#C9A84C] text-white font-black text-sm">🎓 استشارتي</button>
             <a href="/auth/login" className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</a>
           </div>
         </div>
@@ -180,21 +181,9 @@ export default function GoalPage() {
         </>)}
 
         {tab === 'consult' && (<>
-        {/* بطاقات الخدمات الشهرية */}
-        <h2 className="text-xl font-black text-[#1A3D34] mb-5 text-center">خدماتك الشهرية في مُرضي</h2>
-        <div className="grid md:grid-cols-3 gap-5 mb-16">
-          <a href="/dashboard/consultation" className="block bg-white rounded-3xl p-7 border-2 border-[#C9A84C] hover:shadow-md transition">
-            <div className="text-3xl mb-3">🎓</div>
-            <h3 className="font-black text-[#1A3D34] text-lg mb-2">استشارتك الخاصة + أسئلتك</h3>
-            <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">استشارة شهرية مخصصة لشركتك وفق منهجية د. عبدالحكيم المرضي: تحليل خاص، خطة نجاح، وتوعية مالية. وضع أسئلتك على مدار الشهر وسيرد عليها الفريق.</p>
-            <span className="text-[#C9A84C] font-black text-sm">افتح استشارتك ←</span>
-          </a>
-          <a href="/dashboard/consultation" className="block bg-white rounded-3xl p-7 border-2 border-[#E8F5EF] hover:shadow-md transition">
-            <div className="text-3xl mb-3">✏️</div>
-            <h3 className="font-black text-[#1A3D34] text-lg mb-2">تصحيح بيانات التقييم</h3>
-            <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">أخطأت في إدخال بياناتك؟ أرسل طلب تعديل وسيراجعه فريق د. عبدالحكيم ويفتح لك الإدخال من جديد، وتُحدَّث استشارتك بناءً على بياناتك الصحيحة.</p>
-            <span className="text-[#2E9E7B] font-black text-sm">تصحيح البيانات ←</span>
-          </a>
+        <ConsultationPanel />
+        {/* الدعم الفني */}
+        <div className="grid md:grid-cols-1 gap-5 mb-16">
           <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%88%D8%A7%D8%AC%D9%87%20%D9%85%D8%B4%D9%83%D9%84%D8%A9%20%D8%AA%D9%82%D9%86%D9%8A%D8%A9%20%D9%81%D9%8A%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A" target="_blank" rel="noopener noreferrer" className="block bg-white rounded-3xl p-7 border-2 border-[#E8F5EF] hover:shadow-md transition">
             <div className="text-3xl mb-3">📞</div>
             <h3 className="font-black text-[#1A3D34] text-lg mb-2">الدعم الفني</h3>
