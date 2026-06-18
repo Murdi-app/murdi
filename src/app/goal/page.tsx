@@ -74,7 +74,6 @@ export default function GoalPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setTab('consult')} className="px-5 py-2 rounded-full bg-[#C9A84C] text-white font-black text-sm">🎓 استشارتي</button>
             <a href="/auth/login" className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</a>
           </div>
         </div>
