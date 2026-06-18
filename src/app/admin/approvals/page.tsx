@@ -411,10 +411,11 @@ export default function ApprovalsPage() {
               <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:8 }}>📅 أرسل: {fmtDate(q.created_at)}</div>
               <p style={{ fontSize: 14, color:'#1A3D34', fontWeight: 700, marginBottom: 10 }}>س: {q.question}</p>
               {q.answer && (
-                <div style={{ maxHeight: 450, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
+                <div style={{ maxHeight: 450, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 6 }}>
                   {q.answer}
                 </div>
               )}
+              {q.answered_at && <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:12 }}>📅 رُدّ: {fmtDate(q.answered_at)}</div>}
               <div className="ap-actions">
                 {q.status === 'pending' && (
                   <button className="ap-btn ap-btn-approve" disabled={busy === q.id} onClick={() => generateAnswer(q.id)}>
