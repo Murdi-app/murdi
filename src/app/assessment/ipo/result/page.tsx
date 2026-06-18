@@ -169,14 +169,10 @@ export default function IpoResult() {
                 <p className="text-[#6B5B2E] text-xs font-bold mt-2">قُدّرت على أساس الإيرادات (الشركة دون ربحية صافية حالياً)</p>
               )}
             </div>
-            <div className="relative mt-4">
-              <div className="bg-[#F0F5F3] rounded-xl p-5 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
+            <div className="mt-4">
+              <div className="bg-[#F0F5F3] rounded-xl p-5">
                 <p className="text-[#1A3D34] font-black text-sm mb-2">عند استيفاء متطلبات الحوكمة والإفصاح، يرتفع مضاعف التقييم إلى:</p>
                 <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.5)} ريال</p>
-              </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                <span className="text-3xl mb-1">🔒</span>
-                <p className="font-black text-[#1A3D34] text-sm">سيناريوهات رفع التقييم محجوبة</p>
               </div>
             </div>
             <p className="text-[#6B8A80] text-xs font-bold mt-4 leading-relaxed">القيمة الفعلية عند الطرح تحتاج تقييماً معمّقاً يعدّه فريق د. عبدالحكيم المرضي بالتنسيق مع المستشار المالي المرخّص.</p>
@@ -193,19 +189,11 @@ export default function IpoResult() {
             </ul>
 
             {roadmap.length > 1 && (
-              <div className="relative mt-3">
-                {/* الباقي مقفل بضبابية */}
-                <ul className="space-y-3 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
-                  {roadmap.slice(1).map((p, i) => (
-                    <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
-                  ))}
-                </ul>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                  <span style={{ fontSize: 26 }}>🔒</span>
-                  <p className="text-[#1A3D34] font-black text-sm mt-1">خارطة الطريق الكاملة محجوبة</p>
-                  <p className="text-[#6B8A80] font-bold text-xs mt-1">{roadmap.length - 1} مراحل إضافية بالمدد والتفاصيل</p>
-                </div>
-              </div>
+              <ul className="space-y-3 mt-3">
+                {roadmap.slice(1).map((p, i) => (
+                  <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
+                ))}
+              </ul>
             )}
 
             {/* الدعوة حسب الأهلية */}
@@ -284,13 +272,7 @@ export default function IpoResult() {
               <div>
                 <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose">{sample}…</div>
                 {rest.length > 0 && (
-                  <div className="relative mt-3">
-                    <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose select-none" style={{ filter: 'blur(6px)', maxHeight: '180px', overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">{rest}</div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                      <span className="text-3xl mb-1">🔒</span>
-                      <p className="font-black text-[#1A3D34] text-sm">تحليل الأهلية الكامل + خطوات العمل الفورية محجوبة</p>
-                    </div>
-                  </div>
+                  <div className="bg-[#FBFCFB] rounded-xl p-5 border border-[#F0F5F3] whitespace-pre-wrap text-[#1A3D34] text-sm font-bold leading-loose mt-3">{rest}</div>
                 )}
                 {result.readiness_score >= 65 ? (
                   <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
