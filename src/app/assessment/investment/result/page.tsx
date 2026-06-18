@@ -163,15 +163,11 @@ export default function InvestmentResult() {
                 <p className="text-[#6B5B2E] text-xs font-bold mt-2">قُدّرت على أساس الإيرادات (الشركة دون ربحية صافية حالياً)</p>
               )}
             </div>
-            <div className="relative mt-4">
-              <div className="bg-[#F0F5F3] rounded-xl p-5 select-none" style={{ filter: 'blur(5px)', pointerEvents: 'none' }} aria-hidden="true">
+            <div className="mt-4">
+              <div className="bg-[#F0F5F3] rounded-xl p-5">
                 <p className="text-[#1A3D34] font-black text-sm mb-2">لو رفعت ربحيتك 15%، ترتفع قيمتك إلى:</p>
                 <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.4)} ريال</p>
                 <p className="text-[#6B8A80] text-xs font-bold mt-2">+ سيناريوهات الحوكمة والتنويع ترفع المضاعف أكثر</p>
-              </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                <span className="text-3xl mb-1">🔒</span>
-                <p className="font-black text-[#1A3D34] text-sm">سيناريوهات رفع القيمة محجوبة</p>
               </div>
             </div>
             <p className="text-[#6B8A80] text-xs font-bold mt-4 leading-relaxed">القيمة الفعلية تحتاج تقييماً معمّقاً يقدّمه فريق د. عبدالحكيم المرضي وفق منهجية تقييم متكاملة.</p>
@@ -185,17 +181,11 @@ export default function InvestmentResult() {
               <li className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">1. {result.improvement_plan[0]}</li>
             </ul>
             {result.improvement_plan.length > 1 && (
-              <div className="relative mt-3">
-                <ul className="space-y-3 select-none" style={{ filter: 'blur(6px)', pointerEvents: 'none' }} aria-hidden="true">
-                  {result.improvement_plan.slice(1).map((p, i) => (
-                    <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
-                  ))}
-                </ul>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                  <span className="text-3xl mb-1">🔒</span>
-                  <p className="font-black text-[#1A3D34] text-sm">بقية خطة الجذب ({result.improvement_plan.length - 1} خطوات) محجوبة</p>
-                </div>
-              </div>
+              <ul className="space-y-3 mt-3">
+                {result.improvement_plan.slice(1).map((p, i) => (
+                  <li key={i} className="text-[#1A3D34] text-sm font-bold bg-[#E8F5EF] rounded-xl p-3">{i + 2}. {p}</li>
+                ))}
+              </ul>
             )}
             {result.readiness_score >= 65 ? (
               <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
