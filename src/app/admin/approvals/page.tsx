@@ -312,6 +312,7 @@ export default function ApprovalsPage() {
                   </span>
                   <span className="ap-badge" style={{ background: pr.score >= 65 ? '#E8F5EF' : '#FBF5E8', color: pr.score >= 65 ? '#2E9E7B' : '#9A7B2E' }}>درجة {pr.score ?? '—'} {isOpen ? '▲' : '▼'}</span>
                 </div>
+                {pr.assessed_at && <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginTop:6 }}>📅 تاريخ التقييم: {fmtDate(pr.assessed_at)}</div>}
                 {isOpen && (
                   <div>
                     <div className="ap-grid">
@@ -407,6 +408,7 @@ export default function ApprovalsPage() {
                   {q.status === 'released' ? 'صادر ✓' : q.status === 'answered' ? 'جواب جاهز — بانتظار إصدارك' : 'بانتظار الجواب'}
                 </span>
               </div>
+              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:8 }}>📅 أرسل: {fmtDate(q.created_at)}</div>
               <p style={{ fontSize: 14, color:'#1A3D34', fontWeight: 700, marginBottom: 10 }}>س: {q.question}</p>
               {q.answer && (
                 <div style={{ maxHeight: 450, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
