@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
+const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 
 interface Company {
   id: string
@@ -229,6 +230,7 @@ export default function ApprovalsPage() {
                 <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{c.sector || '—'}</div></div>
                 <div className="ap-field"><div className="ap-field-label">الدفع</div><div className="ap-field-val">{c.payment_status === 'paid' ? 'مؤكد ✓' : 'لم يُؤكد بعد'}</div></div>
                 <div className="ap-field"><div className="ap-field-label">الإيصال</div><div className="ap-field-val">{c.receipt_path ? 'مرفوع 📎' : 'غير مرفوع'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">تاريخ الطلب</div><div className="ap-field-val">{fmtDate(c.created_at)}</div></div>
               </div>
               <div className="ap-actions">
                 {c.receipt_path && (
@@ -260,6 +262,7 @@ export default function ApprovalsPage() {
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
               </div>
+              <div style={{ color:'#9DB3AB', fontSize:12, fontWeight:600, marginBottom:12 }}>📅 سجّل: {fmtDate(c.created_at)}</div>
               <div className="ap-actions">
                 {c.receipt_path && (
                   <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>📎 عرض الإيصال</button>
@@ -356,6 +359,7 @@ export default function ApprovalsPage() {
                   {c.status === 'released' ? 'صادرة ✓' : c.status === 'ready' ? 'جاهزة — بانتظار إصدارك' : c.status === 'analyzing' ? 'قيد التوليد' : 'فشل التوليد'}
                 </span>
               </div>
+              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:10 }}>📅 أُنشئت: {fmtDate(c.created_at)}{c.released_at ? '  •  📤 صدرت: ' + fmtDate(c.released_at) : ''}</div>
               {c.content && (
                 <div style={{ maxHeight: 180, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
                   {c.content}{c.content.length > 1500 ? '...' : ''}
