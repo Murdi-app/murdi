@@ -92,6 +92,31 @@ async function generateRecoveryPath(data: Record<string, unknown>): Promise<stri
   return '<h3>مسار التعافي المقترح</h3><p>الشركة بحاجة لإعادة هيكلة ديونها وتحسين تدفقها النقدي قبل التفكير في جذب مستثمر.</p>';
 }
 
+async function generateReadinessPlan(data: Record<string, unknown>): Promise<string> {
+  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
+  const score = Number((data as { score?: number }).score) || 0;
+  const prompt = 'انت مستشار مالي وفق منهجية د. عبدالحكيم المرضي، تكتب لصاحب شركة سعودية سكور جاهزيتها للاستثمار ' + score + ' من 100 — أي دون عتبة جذب المستثمر (70). '
+    + 'مهمتك: خطة دقيقة وذكية ترفع جاهزية الشركة لتتجاوز 70 وتصبح جاذبة لمستثمر. '
+    + 'بيانات الشركة: ' + JSON.stringify(data) + '. '
+    + 'حلل الفجوة بدقة: ما الذي يخفض سكورها تحديدا (هامش الربح، النمو، الحوكمة، فصل الملكية، القوائم المدققة، عمر النشاط، حجم الإيرادات)، ورتب الخطوات حسب الأثر الأكبر على رفع السكور أولا. '
+    + 'لكل خطوة: ماذا يفعل بالضبط، ولماذا يرفع جاذبيته للمستثمر، مربوطة بأرقام الشركة الفعلية. واقعية بلا حلول خيالية ولا رأس مال ضخم. '
+    + 'اجعلها 4 الى 6 خطوات مركزة وموجزة. اخرج HTML عربي بسيط مكتمل ومغلق: <h3>خطة رفع الجاهزية للاستثمار</h3> ثم <ol> خطوات مرقمة كل <li> فيها رقم محسوب من بياناتهم. بلا اي اشارة لذكاء اصطناعي او تقنية. ابدا مباشرة بالـHTML بلا اي نص قبله او بعده.';
+  for (const model of MODELS) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const txt = (j.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
+      if (txt) return txt;
+    } catch {}
+  }
+  return '<h3>خطة رفع الجاهزية للاستثمار</h3><p>تحتاج الشركة رفع هامش ربحها وبناء حوكمة واضحة وفصل الملكية عن الإدارة قبل أن تصبح جاذبة للمستثمر.</p>';
+}
+
 export async function POST() {
   const cookieStore = await cookies();
 
@@ -209,11 +234,18 @@ export async function POST() {
 
   try {
     let investorSearch = '';
-    const isDefaulted = fd?.repayment_status === 'default';
+    const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
+    const lowScore = score < 70;
+    let planKind: 'recovery' | 'readiness' | 'search' = 'search';
     try {
       if (isDefaulted) {
+        planKind = 'recovery';
         investorSearch = await generateRecoveryPath({ ...fd });
+      } else if (lowScore) {
+        planKind = 'readiness';
+        investorSearch = await generateReadinessPlan({ ...fd, score, sector: fd?.sector || company?.sector });
       } else {
+        planKind = 'search';
         investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو');
       }
     } catch {}
@@ -227,14 +259,14 @@ export async function POST() {
     await resend.emails.send({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
-      subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
+      subject: (planKind === 'recovery' ? '⚠️ شركة متعثرة (مسار تعافي) — ' : planKind === 'readiness' ? '📈 خطة رفع جاهزية (سكور < 70) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
       html:
         '<div dir="rtl" style="font-family:Arial">' +
         '<h2>مطابقة استثمار جديدة</h2>' +
         '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
         '<p><b>القطاع:</b> ' + (fd.sector || company.sector || '—') + ' | <b>الجوال:</b> ' + (company.phone || '—') + '</p>' +
         '<p><b>درجة الجاهزية:</b> ' + score + ' — ' + (rr?.verdict ?? '') + '</p>' +
-        (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:16px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (isDefaulted ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') +
+        (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:16px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (planKind === 'recovery' ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : planKind === 'readiness' ? '📈 خطة رفع الجاهزية للاستثمار (سكور < 70 — فرصة خدمة تجهيز)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') +
         '<hr/>' +
         '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">تفاصيل الأرقام والجهات المطابقة الكاملة في لوحة الأدمن.</p>' +
