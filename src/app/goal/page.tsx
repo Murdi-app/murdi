@@ -183,6 +183,52 @@ export default function GoalPage() {
           </a>
         </div>
 
+        {/* خدمات التنفيذ مع فريق مُرضي */}
+        <div className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Amiri, serif' }}>من التوصية إلى التنفيذ</h2>
+            <p className="text-[#6B8A80] font-bold text-sm leading-relaxed max-w-xl mx-auto">المنصة تكشف لك ما تحتاجه شركتك. وفريق د. عبدالحكيم المرضي ينفّذه معك خطوةً بخطوة. هذه خدمات التنفيذ المتاحة:</p>
+          </div>
+          {[
+            { label: 'خدمات أساسية', note: 'تخدم المسارات الثلاثة', items: [
+              { icon: '📊', title: 'إعداد القوائم المالية المعتمدة', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
+              { icon: '🏛️', title: 'بناء الحوكمة المؤسسية', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
+              { icon: '💎', title: 'التقييم العادل المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
+              { icon: '🔧', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
+            ]},
+            { label: 'مسار التمويل', note: 'للوصول إلى التمويل المناسب', items: [
+              { icon: '🏦', title: 'تجهيز ملف التمويل والتفاوض', desc: 'إعداد ملفك التمويلي بصورة تُقنع البنوك وجهات التمويل، ومرافقتك في التفاوض حتى الحصول على التمويل.' },
+              { icon: '🗓️', title: 'إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
+            ]},
+            { label: 'مسار الاستثمار', note: 'لجعل شركتك جاذبة للمستثمر', items: [
+              { icon: '📈', title: 'تجهيز ملف عرض المستثمر', desc: 'بناء ملف العرض (Pitch) الذي يُبرز قيمة شركتك ويطمئن المستثمر المؤسسي.' },
+              { icon: '🎯', title: 'بناء خطة جذب المستثمر', desc: 'خطة عملية ترفع جاذبية شركتك وتجهّزها للعرض على الجهات الاستثمارية المناسبة.' },
+            ]},
+            { label: 'مسار الطرح والإدراج', note: 'الطريق المؤسسي نحو السوق المالية', items: [
+              { icon: '📁', title: 'تجهيز ملف هيئة السوق المالية', desc: 'إعداد ملف الطرح الكامل وفق متطلبات الهيئة خطوةً بخطوة، بمرافقة المستشار المالي المرخّص.' },
+              { icon: '⚖️', title: 'تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
+              { icon: '🗺️', title: 'خارطة طريق الإدراج', desc: 'خطة تنفيذية مرحلية بالمدد والمتطلبات، تقودك من وضعك الحالي حتى لحظة الإدراج.' },
+            ]},
+          ].map((cat, ci) => (
+            <div key={ci} className="mb-7">
+              <div className="flex items-baseline gap-3 mb-4 border-b-2 border-[#EAF2EE] pb-2">
+                <span className="text-lg font-black text-[#1A3D34]">{cat.label}</span>
+                <span className="text-[#9DB3AB] text-xs font-bold">{cat.note}</span>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                {cat.items.map((it, ii) => (
+                  <div key={ii} className="bg-white rounded-2xl p-6 border-2 border-[#EAF2EE] flex flex-col">
+                    <div className="text-2xl mb-2">{it.icon}</div>
+                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{it.title}</h4>
+                    <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
+                    <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أرغب بمعرفة تفاصيل خدمة: ' + it.title)} target="_blank" rel="noopener noreferrer" className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">تواصل لمعرفة التفاصيل ←</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* منهجية د. عبدالحكيم */}
         <div className="bg-[#1A3D34] rounded-3xl p-10 text-center mb-16">
           <p className="text-[#C9A84C] font-black text-sm tracking-widest mb-3">المنهجية</p>
