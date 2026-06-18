@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
+const isNew = (d: string) => d ? (Date.now() - new Date(d).getTime()) < 48*60*60*1000 : false
+const NewBadge = () => <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginRight:6 }}>جديد</span>
 
 interface Company {
   id: string
@@ -233,7 +235,7 @@ export default function ApprovalsPage() {
           {pending.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
-                <span className="ap-name">{c.company_name || 'بدون اسم'}</span>
+                <span className="ap-name">{isNew(c.created_at) && <NewBadge />}{c.company_name || 'بدون اسم'}</span>
                 <span className="ap-badge" style={{ background:'#FBF5E8', color:'#D9A441' }}>بانتظار المراجعة</span>
               </div>
               <div className="ap-grid">
@@ -306,7 +308,7 @@ export default function ApprovalsPage() {
             return (
               <div className="ap-card" key={pr.company?.id + '-' + idx}>
                 <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => setOpenProfile(isOpen ? null : pr.company?.id + '-' + idx)}>
-                  <span className="ap-name">📊 {pr.company?.company_name || 'شركة'} 
+                  <span className="ap-name">{isNew(pr.assessed_at) && <NewBadge />}📊 {pr.company?.company_name || 'شركة'} 
                     <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
                     {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
                   </span>
@@ -365,7 +367,7 @@ export default function ApprovalsPage() {
           {consultations.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
-                <span className="ap-name">🎓 {c.companies?.company_name || 'شركة'}
+                <span className="ap-name">{isNew(c.created_at) && <NewBadge />}🎓 {c.companies?.company_name || 'شركة'}
                   {(() => {
                     const T: Record<string, { ar: string; bg: string; fg: string }> = {
                       funding: { ar: 'تمويل', bg: '#E8F5EF', fg: '#2E9E7B' },
@@ -403,7 +405,7 @@ export default function ApprovalsPage() {
           {questions.map(q => (
             <div className="ap-card" key={q.id}>
               <div className="ap-card-top">
-                <span className="ap-name">💬 {q.companies?.company_name || 'شركة'}</span>
+                <span className="ap-name">{isNew(q.created_at) && <NewBadge />}💬 {q.companies?.company_name || 'شركة'}</span>
                 <span className="ap-badge" style={{ background: q.status === 'released' ? '#E8F5EF' : '#FBF5E8', color: q.status === 'released' ? '#2E9E7B' : '#9A7B2E' }}>
                   {q.status === 'released' ? 'صادر ✓' : q.status === 'answered' ? 'جواب جاهز — بانتظار إصدارك' : 'بانتظار الجواب'}
                 </span>
