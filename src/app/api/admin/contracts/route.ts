@@ -56,8 +56,20 @@ export async function PATCH(req: Request) {
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const k of ['contract_body', 'client_name', 'client_id_number', 'establishment_name', 'establishment_cr', 'fee_percent', 'deal_value', 'status']) {
+  for (const k of ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr', 'fee_percent', 'deal_value', 'status']) {
     if (body[k] !== undefined) updates[k] = body[k];
+  }
+  // إعادة توليد نص العقد بالحقول المعبأة (الحقول هي المصدر)
+  const { data: existing } = await admin.from('contracts').select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent').eq('id', body.id).single();
+  if (existing) {
+    const fields: ContractFields = {
+      clientName: body.client_name ?? existing.client_name,
+      clientIdNumber: body.client_id_number ?? existing.client_id_number,
+      establishmentName: body.establishment_name ?? existing.establishment_name,
+      establishmentCr: body.establishment_cr ?? existing.establishment_cr,
+      feePercent: body.fee_percent ?? existing.fee_percent,
+    };
+    updates.contract_body = existing.contract_type === 'investment' ? investmentContract(fields) : fundingContract(fields);
   }
   if (body.status === 'issued') updates.issued_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
