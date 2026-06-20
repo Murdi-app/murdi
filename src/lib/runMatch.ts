@@ -5,6 +5,63 @@ import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 const TYPE_LABELS: Record<string, string> = { cash: 'تمويل نقدي', working_capital: 'رأس مال عامل', revenue: 'تمويل الإيرادات', pos: 'تمويل نقاط البيع', invoices: 'تمويل الفواتير والمستخلصات', assets: 'تمويل أصول ومعدات', vehicles: 'تمويل مركبات وأساطيل', real_estate: 'عقاري تجاري', lc: 'اعتمادات وخطابات ضمان', project: 'تمويل مشاريع وعقود' };
 
+// بحث طبقة جغرافية واحدة للتمويل — يُرجع مصفوفة عروض (JSON أصغر = لا ينقطع)
+type FundOffer = { region: string; provider: string; product: string; requirements: string; fit: string; source: string };
+async function searchFundingLayer(layer: 'saudi' | 'gulf' | 'intl', profile: string, licensed: string, targetCount: number): Promise<FundOffer[]> {
+  const layerAr = layer === 'saudi' ? 'السعودية (مرخّصة من ساما: بنوك + شركات تمويل + منصات)' : layer === 'gulf' ? 'الخليج (جهات تموّل شركة سعودية عبر فرع في السعودية أو عبر الحدود)' : 'الدولية (تموّل شركات في السعودية أو الأسواق الناشئة)';
+  const regionVal = layer === 'saudi' ? 'السعودية' : layer === 'gulf' ? 'الخليج' : 'دولي';
+  const prompt = 'أنت محلل تمويل خبير رفيع المستوى يعمل لـ د. عبدالحكيم المرضي. ابحث في الويب بعمق وعناية فائقة عن جهات التمويل في طبقة واحدة فقط: ' + layerAr + '.\n\n'
+    + 'اجتهد وابحث جيداً واستهدف ' + targetCount + ' جهة مناسبة فعلاً في هذه الطبقة (لا تكتفِ بعدد قليل، وفي الوقت نفسه لا تُدرج جهة غير مناسبة لمجرد العدد).\n\n'
+    + 'الجهات المرجعية:\n' + licensed + '\n\n'
+    + 'ملف الشركة الباحثة عن تمويل:\n' + profile + '\n\n'
+    + 'شرط استبعاد إلزامي: لا تُدرج أي جهة تشترط أن تكون الشركة مسجّلة أو مقيمة في بلد تلك الجهة كي تموّلها. أدرج فقط الجهات التي تموّل فعلياً شركة سعودية.\n'
+    + 'قواعد: طابق نوع المنتج مع نشاط الشركة بدقة (لا تقترح تمويل نقاط بيع إلا إن كان لديها نقاط بيع، ولا تمويل فواتير إلا إن تصدر فواتير، ولا تمويل أسطول إلا إن لديها أسطول). نوّع المنتجات. للخليج والدولي اذكر المتطلبات الأعلى في requirements وما ينقص الشركة في fit.\n\n'
+    + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown، بهذا الشكل بالضبط:\n'
+    + '{"offers":[{"provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط باختصار","fit":"ما يتطابق وما ينقص","source":"رابط المصدر"}]}\n'
+    + 'رتّب من الأنسب للأقل. أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
+  try {
+    const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
+    let text = '';
+    for (let turn = 0; turn < 8; turn++) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }] }),
+      });
+      if (!res.ok) break;
+      const data = await res.json();
+      const content = (data.content || []) as { type: string; text?: string }[];
+      text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
+      if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+      break;
+    }
+    return parseOffers(text).map((o) => ({ ...o, region: regionVal }));
+  } catch { return []; }
+}
+
+// تحليل متسامح للـ JSON: لو انقطع، يقصّ لآخر عنصر مكتمل
+function parseOffers(text: string): FundOffer[] {
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  if (start === -1) return [];
+  let body = cleaned.slice(start);
+  // محاولة مباشرة
+  try { const p = JSON.parse(body); if (Array.isArray(p.offers)) return p.offers; } catch {}
+  // إصلاح: قصّ لآخر عنصر "}" مكتمل ثم إغلاق المصفوفة والكائن
+  const lastObj = body.lastIndexOf('}');
+  if (lastObj !== -1) {
+    let fixed = body.slice(0, lastObj + 1);
+    const opens = (fixed.match(/\{/g) || []).length;
+    const closes = (fixed.match(/\}/g) || []).length;
+    // أغلق ما نقص
+    fixed += '}'.repeat(Math.max(0, opens - closes - 1));
+    if (!fixed.includes(']')) fixed += ']}';
+    else fixed += '}';
+    try { const p = JSON.parse(fixed); if (Array.isArray(p.offers)) return p.offers; } catch {}
+  }
+  return [];
+}
+
 function admin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -270,61 +327,48 @@ async function runFundingMatch(companyId: string): Promise<void> {
     ? 'يوجد تمويل قائم بقيمة أصلية ' + Number(FD.original_loan_amount || 0).toLocaleString() + ' ريال، المتبقي ' + Number(FD.debt_remaining || 0).toLocaleString() + ' ريال لدى ' + (FD.lender_name || 'جهة تمويل') + '، الحالة: ' + (FD.debt_status === 'late' ? 'متأخر ' + (FD.months_late || 0) + ' شهر' : 'ملتزم بالسداد')
     : 'لا توجد ديون قائمة';
 
-  type WebOffer = { region?: string; provider: string; product: string; requirements: string; fit: string; source: string };
+  // ====== البحث الثلاثي المتوازي (سعودي + خليج + دولي) — لا ينقطع، يُحفظ في match_results ======
+  const profile =
+    '- نوع التمويل المطلوب: ' + typeLabel + '\n'
+    + '- الإيرادات السنوية: ' + rev.toLocaleString() + ' ريال\n'
+    + '- عمر النشاط: ' + years + ' سنة\n'
+    + '- القطاع: ' + (company.sector || 'غير محدد') + '\n'
+    + '- طبيعة النشاط: ' + (ACT_LABELS[String(FD.activity_type)] || FD.activity_type || 'غير محدد') + '\n'
+    + '- نقاط بيع: ' + (FD.has_pos ? 'نعم' : 'لا') + ' | يصدر فواتير آجلة: ' + (FD.issues_invoices ? 'نعم' : 'لا') + ' | أسطول/معدات: ' + (FD.has_fleet ? 'نعم' : 'لا') + '\n'
+    + '- ' + debtDesc + '\n'
+    + '- سجل تجاري ' + (FD.cr_valid ? 'ساري' : 'غير ساري') + '، التزام ضريبي: ' + (FD.tax_compliant ? 'نعم' : 'لا') + '، زكاة: ' + (FD.zakat_compliant ? 'نعم' : 'لا') + '، قوائم مالية: ' + (FD.has_financial_statements ? 'متوفرة' : 'غير متوفرة');
+
+  const LICENSED = 'البنوك المرخصة: البنك الأهلي السعودي، مصرف الراجحي، بنك الرياض، البنك السعودي الأول (ساب)، البنك السعودي الفرنسي، البنك العربي الوطني، بنك البلاد، بنك الجزيرة، مصرف الإنماء، البنك السعودي للاستثمار، بنك الخليج الدولي السعودية. شركات التمويل المرخصة من ساما: الأمثل، أملاك العالمية، دار التمليك، بداية، سهل، عبداللطيف جميل، اليسر، الراجحي للتمويل، نايفات، أمكان، تمويل الأولى، المتاجرة المالية، أصيل، التيسير العربية، ميفك كابيتال، تسهيل، فيول، منافع، عِمكان، سلفة، تمام (stc)، ماني فيلوز، فورس، ميسر، لندو، فنتك ردف، فرقد، مرابحة مرنة، قرض للتمويل الجماعي. جهات خليجية قد تمول شركات سعودية: الإمارات دبي الوطني، أبوظبي الأول (FAB)، دبي الإسلامي، أبوظبي الإسلامي، الكويت الوطني (NBK)، بيتك، QNB، قطر الإسلامي، البحرين والكويت، الأهلي المتحد. جهات دولية: مؤسسة التمويل الدولية (IFC)، البنك الإسلامي للتنمية، صناديق private credit الدولية، منصات تمويل المنشآت العابرة للحدود.';
+
+  type WebOffer = { region: string; provider: string; product: string; requirements: string; fit: string; source: string };
   let webOffers: WebOffer[] = [];
-  let webSearchOk = false;
-  let webSearchError = '';
-
+  const webSearchError = '';
   try {
-    const LICENSED = 'البنوك المرخصة: البنك الأهلي السعودي، مصرف الراجحي، بنك الرياض، البنك السعودي الأول (ساب)، البنك السعودي الفرنسي، البنك العربي الوطني، بنك البلاد، بنك الجزيرة، مصرف الإنماء، البنك السعودي للاستثمار، بنك الخليج الدولي السعودية. شركات التمويل المرخصة من ساما: الأمثل، أملاك العالمية، دار التمليك، بداية، سهل، عبداللطيف جميل، اليسر، الراجحي للتمويل، نايفات، أمكان، تمويل الأولى، المتاجرة المالية، أصيل، التيسير العربية، ميفك كابيتال، تسهيل، فيول، منافع، عِمكان، سلفة، تمام (stc)، ماني فيلوز، فورس، ميسر، لندو (Lendo)، فنتك ردف، فرقد، مرابحة مرنة، قرض للتمويل الجماعي. جهات خليجية قد تموّل شركات سعودية: الإمارات دبي الوطني، أبوظبي الأول (FAB)، دبي الإسلامي، أبوظبي الإسلامي، الكويت الوطني (NBK)، بيتك، QNB، قطر الإسلامي، البحرين والكويت، الأهلي المتحد. جهات دولية: مؤسسة التمويل الدولية (IFC)، البنك الإسلامي للتنمية، صناديق private credit الدولية، منصات تمويل المنشآت العابرة للحدود.';
-    const prompt = 'أنت محلل تمويل خبير رفيع المستوى في السوق السعودي والخليجي والدولي تعمل لـ د. عبدالحكيم المرضي. مهمتك بحث ويب دقيق ومتعمّق عن المنتجات التمويلية المتاحة حالياً للشركة. مطلوب منك أن تجتهد وتبحث بعناية فائقة وتُرجع عدداً وفيراً من الجهات (استهدف 30 جهة أو أكثر موزّعة على الطبقات الثلاث إن وجدت فعلاً ومناسبة)، لا تكتفِ بعدد قليل.\n\n'
-      + 'قسّم بحثك إلى ثلاث طبقات بالأولوية:\n'
-      + 'الطبقة الأولى (الأهم والأوسع — استهدف نصف النتائج أو أكثر): الجهات السعودية المرخّصة من ساما (بنوك + شركات تمويل + منصات). ابحث بعمق فهناك جهات كثيرة.\n'
-      + 'الطبقة الثانية (الخليج): جهات خليجية تموّل شركة سعودية فعلاً (لها فرع في السعودية أو تموّل عبر الحدود). ابحث في الإمارات والكويت والبحرين وقطر وعمان.\n'
-      + 'الطبقة الثالثة (الدولي): جهات دولية تموّل شركات في السعودية أو الأسواق الناشئة.\n'
-      + 'الجهات المرجعية:\n' + LICENSED + '\n\n'
-      + 'شرط استبعاد إلزامي: لا تُدرج أي جهة تشترط أن تكون الشركة مسجّلة أو مقيمة في بلد تلك الجهة كي تموّلها (مثال: جهة لا تمول إلا شركات مسجّلة في قطر أو الكويت). أدرج فقط الجهات التي تموّل فعلياً شركة سعودية (سواء سعودية، أو خليجية/دولية تموّل عبر الحدود أو عبر فرعها في السعودية). إن لم تتأكد أن الجهة تموّل شركة سعودية، لا تُدرجها.\n\n'
-      + 'ملف الشركة الباحثة عن تمويل:\n'
-      + '- نوع التمويل المطلوب: ' + typeLabel + '\n'
-      + '- الإيرادات السنوية: ' + rev.toLocaleString() + ' ريال\n'
-      + '- عمر النشاط: ' + years + ' سنة\n'
-      + '- القطاع: ' + (company.sector || 'غير محدد') + '\n'
-      + '- طبيعة النشاط: ' + (ACT_LABELS[String(FD.activity_type)] || FD.activity_type || 'غير محدد') + '\n'
-      + '- نقاط بيع: ' + (FD.has_pos ? 'نعم' : 'لا') + ' | يصدر فواتير آجلة: ' + (FD.issues_invoices ? 'نعم' : 'لا') + ' | أسطول/معدات: ' + (FD.has_fleet ? 'نعم' : 'لا') + '\n'
-      + '- ' + debtDesc + '\n'
-      + '- سجل تجاري ' + (FD.cr_valid ? 'ساري' : 'غير ساري') + '، التزام ضريبي: ' + (FD.tax_compliant ? 'نعم' : 'لا') + '، زكاة: ' + (FD.zakat_compliant ? 'نعم' : 'لا') + '، قوائم مالية: ' + (FD.has_financial_statements ? 'متوفرة' : 'غير متوفرة') + '\n\n'
-      + 'قواعد إلزامية:\n'
-      + '1) غطِّ مزيجاً متوازناً: لا تقتصر على البنوك — أدرج شركات التمويل المرخصة (نايفات، أمكان، لندو، سلفة، تمام، أملاك...) فهي أنسب للصغيرة والمتوسطة وفرص القبول أعلى. اجعل نصف العروض على الأقل من شركات التمويل والمنصات.\n'
-      + '2) طابق المنتجات مع تشخيص النشاط بدقة: اقترح تمويل نقاط البيع فقط إن كان "نقاط بيع = نعم"؛ تمويل الفواتير فقط إن "يصدر فواتير = نعم"؛ تمويل الأسطول/المعدات فقط إن "أسطول = نعم". إن كانت لا، لا تقترح ذلك النوع إطلاقاً.\n'
-      + '3) للخليج والدولي: اذكر في requirements المتطلبات الأعلى (قوائم مدققة، حد أدنى أعلى للإيرادات، سجل أطول)، وفي fit ما تستوفيه الشركة أو ما ينقصها. لا تقترح جهة إلا إذا كان حجم الشركة منطقياً لها وتموّل شركة سعودية.\n'
-      + '4) نوّع المنتجات حسب الطبقة: السعودية (تمويل عامل، مرابحة، إجارة، تمويل المنشآت)؛ الخليج (عابر للحدود، تجاري، خطوط ائتمان)؛ الدولي (private credit، تنموي، أسواق ناشئة).\n\n'
-      + 'أرجع JSON فقط بدون أي نص آخر وبدون markdown:\n'
-      + '{"offers":[{"region":"السعودية أو الخليج أو دولي","provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط باختصار","fit":"ما يتطابق وما ينقص","source":"رابط المصدر"}]}\n'
-      + 'اجتهد وابحث بعمق وأرجع كل العروض المناسبة فعلاً (استهدف 30+) عبر الطبقات الثلاث — الأولوية للسعودية ثم الخليج ثم الدولي. رتب داخل كل طبقة من الأنسب للأقل. لا تُدرج جهة تشترط بلدها ولا جهة غير مناسبة لمجرد العدد.';
+    const [sa, gulf, intl] = await Promise.all([
+      searchFundingLayer('saudi', profile, LICENSED, 50),
+      searchFundingLayer('gulf', profile, LICENSED, 30),
+      searchFundingLayer('intl', profile, LICENSED, 30),
+    ]);
+    webOffers = [...sa, ...gulf, ...intl];
+  } catch {}
 
-    const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
-    let text = '';
-    for (let turn = 0; turn < 10; turn++) {
-      const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 20 }] }),
-      });
-      if (!aiRes.ok) { webSearchError = 'HTTP ' + aiRes.status + ': ' + (await aiRes.text()).slice(0, 300); break; }
-      const aiData = await aiRes.json();
-      const content = (aiData.content || []) as { type: string; text?: string }[];
-      text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
-      if (aiData.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: aiData.content }); continue; }
-      break;
-    }
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd > jsonStart) {
-      const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
-      if (Array.isArray(parsed.offers)) { webOffers = parsed.offers; webSearchOk = true; }
-    }
-  } catch (err) { webSearchError = err instanceof Error ? err.message : String(err); }
+  // حفظ الجهات في قاعدة البيانات (تظهر في الأدمن)
+  if (webOffers.length > 0) {
+    try {
+      await adminClient.from('match_results').insert(
+        webOffers.map((o) => ({
+          company_id: company.id,
+          track: 'funding',
+          region: o.region,
+          provider: o.provider,
+          product: o.product,
+          requirements: o.requirements,
+          fit: o.fit,
+          source: o.source,
+        }))
+      );
+    } catch {}
+  }
 
   type DbMatch = { product: Record<string, unknown>; fit: number };
   const dbMatches: DbMatch[] = [];
@@ -379,7 +423,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
         + '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>'
         + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>درجة الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
         + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
-        + (webOffers.length === 0 && !webSearchOk ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY') + '</p>' : '')
+        + (webOffers.length === 0 ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY') + '</p>' : '')
         + '<hr/>'
         + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">المنطقة</th><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
         + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
