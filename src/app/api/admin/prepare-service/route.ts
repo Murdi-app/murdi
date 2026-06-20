@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { SERVICES } from '@/lib/serviceSuggestion';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -34,7 +35,10 @@ export async function POST(req: Request) {
   const sector = (sr.companies as { sector?: string })?.sector || 'غير محدد';
 
   const prompt = 'أنت تكتب نيابةً عن د. عبدالحكيم المرضي — مستشار مالي سعودي معتمد، دكتوراه إدارة أعمال، عضوية البورد الأمريكي، 15 سنة خبرة، عبر شركة حلول المرضي للاستشارات المالية. '
-    + 'مهمتك: تجهيز مخرَج خدمة "' + sr.service_title + '" لشركة "' + companyName + '" (قطاع: ' + sector + ') بشكل احترافي دقيق جاهز للتسليم للعميل.\\n\\n'
+    + 'تلتزم بمنهجية مُرضي في كل ما تكتب: تحليل مبني حصراً على أرقام الشركة الفعلية، تقديرات محافظة واقعية بلا مبالغة ولا حلول خيالية، خطوات عملية قابلة للتنفيذ مرتبة حسب الأثر، ولغة مهنية واضحة تخاطب صاحب الشركة باحترام وثقة. '
+    + 'مهمتك: تجهيز مخرَج خدمة "' + sr.service_title + '" لشركة "' + companyName + '" (قطاع: ' + sector + ') بشكل احترافي دقيق جاهز للتسليم للعميل.\\n'
+    + (SERVICES[sr.service_title] ? ('تعريف هذه الخدمة بالتحديد: ' + SERVICES[sr.service_title].definition + '\\nالمخرج المطلوب منك تحديداً: ' + SERVICES[sr.service_title].output + '\\nالتزم بهذا التعريف حصراً ولا تنحرف لموضوع آخر (مثلاً لا تكتب عن جاهزية التمويل إن كانت الخدمة تقييم قيمة).\\n') : '')
+    + '\\n'
     + 'بيانات الشركة المالية: ' + JSON.stringify(fd || {}) + '\\n'
     + 'نتيجة تقييم الجاهزية: ' + JSON.stringify(rr || {}) + '\\n\\n'
     + 'اكتب وثيقة الخدمة كاملة ومتقنة، مبنية على أرقام الشركة الفعلية، عملية وقابلة للتنفيذ، مرتّبة بعناوين وخطوات واضحة. '
