@@ -257,7 +257,7 @@ export default function GoalPage() {
                 {cat.items.map((it, ii) => (
                   <div key={ii} className="bg-white rounded-2xl p-6 border-2 border-[#EAF2EE] flex flex-col">
                     <div className="text-2xl mb-2">{it.icon}</div>
-                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{it.title}</h4>
+                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug"><span className="text-[#C9A84C]">خطة:</span> {it.title}</h4>
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
                     {(() => {
                       const req = serviceRequests[it.title];
