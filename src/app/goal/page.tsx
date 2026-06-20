@@ -5,6 +5,7 @@ import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
+import { COMMISSION_SERVICES } from '@/lib/contracts';
 
 const TRACKS = [
   { id: 'funding', icon: '💰', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -21,6 +22,7 @@ export default function GoalPage() {
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [companyId, setCompanyId] = useState('');
   const [serviceRequests, setServiceRequests] = useState<Record<string, { status: string; price: number | null; deliverable: string | null }>>({});
+  const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -57,6 +59,14 @@ export default function GoalPage() {
       const reqMap: Record<string, { status: string; price: number | null; deliverable: string | null }> = {};
       for (const r of (reqs || [])) { if (!reqMap[r.service_title]) reqMap[r.service_title] = { status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
       setServiceRequests(reqMap);
+      const { data: ctrs } = await supabase
+        .from('contracts')
+        .select('id, contract_type, status, contract_body, signed_file_url')
+        .eq('company_id', comp.id)
+        .order('created_at', { ascending: false });
+      const ctrMap: Record<string, { id: string; status: string; body: string; signedUrl: string | null }> = {};
+      for (const c of (ctrs || [])) { if (c.status !== 'draft' && !ctrMap[c.contract_type]) ctrMap[c.contract_type] = { id: c.id, status: c.status, body: c.contract_body, signedUrl: c.signed_file_url }; }
+      setClientContracts(ctrMap);
     };
     load();
   }, []);
@@ -78,6 +88,20 @@ export default function GoalPage() {
       service_category: category,
       status: 'submitted',
     });
+  };
+
+  const uploadSignedContract = async (contractId: string, contractType: string, file: File) => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+    );
+    const path = companyId + '/' + contractId + '_' + Date.now() + '_' + file.name;
+    const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
+    if (upErr) { alert('تعذّر رفع الملف، حاول مرة أخرى'); return; }
+    const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
+    await supabase.from('contracts').update({ signed_file_url: pub.publicUrl, status: 'signed', signed_at: new Date().toISOString() }).eq('id', contractId);
+    setClientContracts((prev) => ({ ...prev, [contractType]: { ...prev[contractType], status: 'signed', signedUrl: pub.publicUrl } }));
+    alert('تم رفع العقد الموقّع بنجاح، شكراً لك');
   };
 
   const go = () => {
@@ -257,7 +281,7 @@ export default function GoalPage() {
                 {cat.items.map((it, ii) => (
                   <div key={ii} className="bg-white rounded-2xl p-6 border-2 border-[#EAF2EE] flex flex-col">
                     <div className="text-2xl mb-2">{it.icon}</div>
-                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug"><span className="text-[#C9A84C]">خطة:</span> {it.title}</h4>
+                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{!COMMISSION_SERVICES[it.title] && <span className="text-[#C9A84C]">خطة: </span>}{it.title}</h4>
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
                     {(() => {
                       const req = serviceRequests[it.title];
@@ -298,6 +322,26 @@ export default function GoalPage() {
                           {req.status === 'delivered' && req.deliverable && (
                             <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + it.title + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
                           )}
+                        </div>
+                      );
+                    })()}
+                    {COMMISSION_SERVICES[it.title] && (() => {
+                      const ctype = COMMISSION_SERVICES[it.title];
+                      const ctr = clientContracts[ctype];
+                      if (!ctr) return null;
+                      return (
+                        <div className="mt-3 pt-3 border-t border-dashed border-[#EAD9A8]">
+                          <div className="text-[#9A7B2E] font-black text-xs mb-2">📄 عقد الخدمة {ctr.status === 'signed' ? '— تم استلام توقيعك ✅' : '— بانتظار توقيعك'}</div>
+                          <div className="flex flex-col gap-2">
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>عقد</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (ctr.body || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ اطبع العقد لقراءته وتوقيعه</button>
+                            {ctr.status !== 'signed' && (
+                              <label className="text-center py-2 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-xs cursor-pointer">
+                                📎 ارفع العقد بعد توقيعه
+                                <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSignedContract(ctr.id, ctype, f); }} />
+                              </label>
+                            )}
+                            {ctr.status === 'signed' && <div className="text-center py-2 rounded-full bg-[#EAF7F0] text-[#1E7A5A] font-black text-xs">✅ تم رفع العقد الموقّع — فريق مُرضي يتابع معك</div>}
+                          </div>
                         </div>
                       );
                     })()}

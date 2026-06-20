@@ -12,6 +12,7 @@ const STAT: Record<string, { t: string; bg: string; fg: string }> = {
   submitted: { t: 'بانتظار التجهيز', bg: '#FBF5E8', fg: '#9A7B2E' },
   in_progress: { t: 'تم التجهيز — بانتظار الإصدار', bg: '#EAF0FB', fg: '#3B5BA5' },
   delivered: { t: 'صادرة للعميل', bg: '#EAF7F0', fg: '#1E7A5A' },
+  in_follow_up: { t: 'قيد المتابعة مع الجهات', bg: '#EAF0FB', fg: '#3B5BA5' },
   completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
 }
 
@@ -69,6 +70,12 @@ export default function AdminServicesPage() {
     setBusy(c.service_request_id)
     const e = cEdits[c.id] || {}
     await fetch('/api/admin/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, contract_body: e.contract_body ?? c.contract_body, client_name: e.client_name ?? c.client_name, client_id_number: e.client_id_number ?? c.client_id_number, establishment_name: e.establishment_name ?? c.establishment_name, establishment_cr: e.establishment_cr ?? c.establishment_cr, fee_percent: (e.fee_percent ?? c.fee_percent) ? Number(e.fee_percent ?? c.fee_percent) : null, status }) })
+    if (status === 'issued') {
+      await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'in_follow_up' }) })
+    }
+    if (status === 'completed') {
+      await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'completed' }) })
+    }
     await load()
     setBusy('')
   }
@@ -109,7 +116,8 @@ export default function AdminServicesPage() {
                 <span style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:700, background:st.bg, color:st.fg }}>{st.t}</span>
               </div>
 
-              <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بالذكاء'}</button>
+              {!COMMISSION_SERVICES[r.service_title] && (<>
+              <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               <textarea value={e.deliverable} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, deliverable: ev.target.value } }))} placeholder="محتوى الخدمة (يُجهّز بالذكاء أو اكتبه يدوياً)..." style={{ width:'100%', minHeight:140, border:'1.5px solid #EAF2EE', borderRadius:12, padding:12, fontFamily:'Cairo', fontSize:13, lineHeight:1.8, color:'#1A3D34', marginBottom:10 }} />
 
@@ -119,6 +127,7 @@ export default function AdminServicesPage() {
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📤 إصدار للعميل</button>
                 {r.status === 'delivered' && <button onClick={() => save(r.id, e.deliverable, e.price, 'completed')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>🏆 إتمام</button>}
               </div>
+              </>)}
               {COMMISSION_SERVICES[r.service_title] && (() => {
                 const c = contracts[r.id]
                 if (!c) {
