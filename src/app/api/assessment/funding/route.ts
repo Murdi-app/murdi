@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { runFundingMatch } from '@/lib/runMatch';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
@@ -201,14 +202,9 @@ const { error: rrError } = await supabase.from('readiness_results').insert({
   });
   if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 
-  // تشغيل المطابقة تلقائياً (بحث الجهات + اقتراح الخدمة + الإيميل السري للأدمن)
+  // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري) — استدعاء داخلي متين بلا شبكة
   try {
-    const origin = new URL(req.url).origin;
-    await fetch(origin + '/api/match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
-      body: JSON.stringify({ score }),
-    });
+    await runFundingMatch(company.id);
   } catch {}
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict });
