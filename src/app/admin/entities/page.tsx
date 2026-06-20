@@ -82,6 +82,7 @@ export default function EntitiesAdmin() {
           <a href="/admin" className="px-4 py-3 text-[#6B8A80] font-bold text-sm">لوحة التحكم</a>
           <a href="/admin/approvals" className="px-4 py-3 text-[#6B8A80] font-bold text-sm">الاعتمادات</a>
           <span className="px-4 py-3 text-[#2E9E7B] font-black text-sm border-b-2 border-[#2E9E7B]">الجهات</span>
+          <a href="/admin/services" className="px-4 py-3 text-[#6B8A80] font-bold text-sm">الخدمات</a>
         </div>
         <h1 className="text-2xl font-black text-[#1A3D34] mb-6">🏦 إدارة الجهات والمنتجات</h1>
 

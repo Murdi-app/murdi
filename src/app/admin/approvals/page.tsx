@@ -222,6 +222,7 @@ export default function ApprovalsPage() {
             <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
             <div style={{ padding:'10px 18px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
             <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
+            <div onClick={()=>router.push('/admin/services')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الخدمات</div>
           </div>
           <div className="ap-head">لوحة الموافقات</div>
           <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>
