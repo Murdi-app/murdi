@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { runIpoMatch } from '@/lib/runMatch';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
@@ -286,14 +287,9 @@ export async function POST(req: Request) {
   });
   if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 
-  // تشغيل المطابقة تلقائياً (بحث جهات الطرح + اقتراح الخدمة + الإيميل السري للأدمن)
+  // تشغيل المطابقة مباشرةً (بحث جهات الطرح + اقتراح الخدمة + الإيميل السري) — استدعاء داخلي متين بلا شبكة
   try {
-    const origin = new URL(req.url).origin;
-    await fetch(origin + '/api/match/ipo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
-      body: JSON.stringify({ score }),
-    });
+    await runIpoMatch(company.id, score);
   } catch {}
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict, months_to_ready: monthsToReady });
