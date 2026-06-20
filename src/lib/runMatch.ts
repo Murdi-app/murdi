@@ -55,24 +55,32 @@ async function searchFundingLayer(layer: 'saudi' | 'gulf' | 'intl', profile: str
 // تحليل متسامح للـ JSON: لو انقطع، يقصّ لآخر عنصر مكتمل
 function parseOffers(text: string): FundOffer[] {
   const cleaned = text.replace(/```json|```/g, '').trim();
-  const start = cleaned.indexOf('{');
-  if (start === -1) return [];
-  let body = cleaned.slice(start);
-  // محاولة مباشرة
-  try { const p = JSON.parse(body); if (Array.isArray(p.offers)) return p.offers; } catch {}
-  // إصلاح: قصّ لآخر عنصر "}" مكتمل ثم إغلاق المصفوفة والكائن
-  const lastObj = body.lastIndexOf('}');
-  if (lastObj !== -1) {
-    let fixed = body.slice(0, lastObj + 1);
-    const opens = (fixed.match(/\{/g) || []).length;
-    const closes = (fixed.match(/\}/g) || []).length;
-    // أغلق ما نقص
-    fixed += '}'.repeat(Math.max(0, opens - closes - 1));
-    if (!fixed.includes(']')) fixed += ']}';
-    else fixed += '}';
-    try { const p = JSON.parse(fixed); if (Array.isArray(p.offers)) return p.offers; } catch {}
+  // المحاولة 1: تحليل كامل مباشر
+  try {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      const p = JSON.parse(cleaned.slice(start, end + 1));
+      if (Array.isArray(p.offers) && p.offers.length > 0) return p.offers;
+    }
+  } catch {}
+  // المحاولة 2 (المتينة): استخراج كل كائن جهة على حدة عبر مطابقة الحقول
+  const offers: FundOffer[] = [];
+  // نلتقط كل كتلة تبدأ بـ "provider" وتنتهي قبل التالية
+  const objRegex = /\{[^{}]*?"provider"[\s\S]*?\}/g;
+  const matches = cleaned.match(objRegex) || [];
+  for (const m of matches) {
+    try {
+      const o = JSON.parse(m);
+      if (o && o.provider) offers.push({ region: '', provider: String(o.provider || ''), product: String(o.product || ''), requirements: String(o.requirements || ''), fit: String(o.fit || ''), source: String(o.source || '') });
+    } catch {
+      // المحاولة 3: استخراج الحقول يدوياً بالـ regex لو فشل JSON.parse للكائن
+      const get = (k: string) => { const r = new RegExp('"' + k + '"\\s*:\\s*"([^"]*)"'); const mm = m.match(r); return mm ? mm[1] : ''; };
+      const provider = get('provider');
+      if (provider) offers.push({ region: '', provider, product: get('product'), requirements: get('requirements'), fit: get('fit'), source: get('source') });
+    }
   }
-  return [];
+  return offers;
 }
 
 function admin() {
