@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 
 const TRACKS = [
   { id: 'funding', icon: '💰', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -260,6 +261,22 @@ export default function GoalPage() {
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
                     {(() => {
                       const req = serviceRequests[it.title];
+                      const def = SERVICES[it.title];
+                      const neededTracks = def?.tracks || [];
+                      const hasTrack = neededTracks.length === 0 || neededTracks.some((tk) => scores[tk] !== undefined);
+                      if (!req && !hasTrack) {
+                        const missing = neededTracks.map((tk) => TRACK_LABEL[tk]).join(' أو ');
+                        const firstTrack = neededTracks[0];
+                        return (
+                          <div className="flex flex-col gap-2">
+                            <div className="rounded-2xl bg-[#FBF5E8] border border-[#EAD9A8] p-3 text-center">
+                              <div className="text-[#9A7B2E] font-black text-sm mb-1">🔒 تحتاج تقييم مسار {missing}</div>
+                              <div className="text-[#6B5A2E] text-xs font-bold leading-relaxed">هذه الخدمة تخص مسار {missing}. قيّم جاهزيتك فيه أولاً ليتمكّن فريق مُرضي من تحليل دقيق وفق منهجيته.</div>
+                            </div>
+                            <button onClick={() => router.push('/assessment/' + firstTrack)} className="text-center py-2.5 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">ابدأ تقييم {TRACK_LABEL[firstTrack]} ←</button>
+                          </div>
+                        );
+                      }
                       if (!req) {
                         return (
                           <div className="flex flex-col gap-2">
