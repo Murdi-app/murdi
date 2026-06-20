@@ -62,6 +62,7 @@ export default function AdminPage() {
         <div style={{ padding:'14px 22px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B' }}>لوحة التحكم</div>
         <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الاعتمادات</div>
         <div onClick={()=>router.push('/admin/entities')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الجهات</div>
+        <div onClick={()=>router.push('/admin/services')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الخدمات</div>
       </div>
 
       <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 24px' }}>
