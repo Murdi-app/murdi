@@ -68,11 +68,14 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
 
+  const fourMonthsAgo = new Date();
+  fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
   const { count: monthCount } = await adminGuard
-    .from('financial_data')
+    .from('readiness_results')
     .select('id', { count: 'exact', head: true })
     .eq('company_id', company.id)
-    .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+    .eq('result_type', 'funding')
+    .gte('created_at', fourMonthsAgo.toISOString());
 
   let usingEditRequest = false;
   if ((monthCount || 0) >= 1) {
@@ -83,7 +86,7 @@ export async function POST(req: Request) {
       .eq('status', 'approved')
       .limit(1);
     if (!er || er.length === 0) {
-      return NextResponse.json({ error: 'استنفدت تقييم هذا الشهر. إذا أخطأت في البيانات، أرسل طلب تعديل من صفحة الاستشارة وسيراجعه فريق د. عبدالحكيم.' }, { status: 429 });
+      return NextResponse.json({ error: 'استنفدت تقييم هذا المسار خلال فترة اشتراكك الحالية (٤ أشهر). إذا أخطأت في البيانات، أرسل طلب تعديل من صفحة الاستشارة وسيراجعه فريق د. عبدالحكيم.' }, { status: 429 });
     }
     usingEditRequest = true;
     // وسم الطلب كمستخدم + حذف الاستشارة القديمة نهائياً (ستتولد جديدة تلقائياً)
