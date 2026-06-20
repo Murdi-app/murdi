@@ -227,6 +227,7 @@ export async function POST(req: Request) {
 
   const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
+    result_type: 'investment',
     readiness_score: score,
     verdict,
     top_obstacles: obstacles,

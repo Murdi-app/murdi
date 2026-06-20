@@ -275,6 +275,7 @@ export async function POST(req: Request) {
 
   const { error: rrError } = await supabase.from('readiness_results').insert({
     company_id: company.id,
+    result_type: 'ipo',
     readiness_score: score,
     months_to_ready: monthsToReady,
     valuation_estimate: valuationStr,
