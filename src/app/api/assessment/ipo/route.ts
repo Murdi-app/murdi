@@ -286,5 +286,15 @@ export async function POST(req: Request) {
   });
   if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 
+  // تشغيل المطابقة تلقائياً (بحث جهات الطرح + اقتراح الخدمة + الإيميل السري للأدمن)
+  try {
+    const origin = new URL(req.url).origin;
+    await fetch(origin + '/api/match/ipo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
+      body: JSON.stringify({ score }),
+    });
+  } catch {}
+
   return NextResponse.json({ ok: true, readiness_score: score, verdict, months_to_ready: monthsToReady });
 }

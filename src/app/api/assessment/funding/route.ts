@@ -201,5 +201,15 @@ const { error: rrError } = await supabase.from('readiness_results').insert({
   });
   if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 
+  // تشغيل المطابقة تلقائياً (بحث الجهات + اقتراح الخدمة + الإيميل السري للأدمن)
+  try {
+    const origin = new URL(req.url).origin;
+    await fetch(origin + '/api/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: req.headers.get('cookie') || '' },
+      body: JSON.stringify({ score }),
+    });
+  } catch {}
+
   return NextResponse.json({ ok: true, readiness_score: score, verdict });
 }
