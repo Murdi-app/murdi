@@ -5,6 +5,7 @@ import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 const TYPE_LABELS: Record<string, string> = { cash: 'تمويل نقدي', working_capital: 'رأس مال عامل', revenue: 'تمويل الإيرادات', pos: 'تمويل نقاط البيع', invoices: 'تمويل الفواتير والمستخلصات', assets: 'تمويل أصول ومعدات', vehicles: 'تمويل مركبات وأساطيل', real_estate: 'عقاري تجاري', lc: 'اعتمادات وخطابات ضمان', project: 'تمويل مشاريع وعقود' };
 
+let MATCH_DIAG: string[] = [];
 // بحث طبقة جغرافية واحدة للتمويل — يُرجع مصفوفة عروض (JSON أصغر = لا ينقطع)
 type FundOffer = { region: string; provider: string; product: string; requirements: string; fit: string; source: string };
 async function searchFundingLayer(layer: 'saudi' | 'gulf' | 'intl', profile: string, licensed: string, targetCount: number): Promise<FundOffer[]> {
@@ -23,20 +24,32 @@ async function searchFundingLayer(layer: 'saudi' | 'gulf' | 'intl', profile: str
     const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
     let text = '';
     for (let turn = 0; turn < 8; turn++) {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }] }),
-      });
-      if (!res.ok) break;
+      let res: Response | null = null;
+      // إعادة محاولة عند الضغط (429) أو خطأ مؤقت
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }] }),
+        });
+        if (res.ok) break;
+        if (res.status === 429 || res.status === 529 || res.status >= 500) {
+          await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
+          continue;
+        }
+        break;
+      }
+      if (!res || !res.ok) { MATCH_DIAG.push(layer + ': HTTP ' + (res ? res.status : 'null')); break; }
       const data = await res.json();
       const content = (data.content || []) as { type: string; text?: string }[];
       text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
       if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
       break;
     }
-    return parseOffers(text).map((o) => ({ ...o, region: regionVal }));
-  } catch { return []; }
+    const offers = parseOffers(text).map((o) => ({ ...o, region: regionVal }));
+    MATCH_DIAG.push(layer + ': ' + offers.length + ' جهة' + (offers.length === 0 && text.length > 0 ? ' (نص ' + text.length + ' حرف لكن parse فشل)' : ''));
+    return offers;
+  } catch (e) { MATCH_DIAG.push(layer + ' خطأ: ' + (e instanceof Error ? e.message : String(e))); return []; }
 }
 
 // تحليل متسامح للـ JSON: لو انقطع، يقصّ لآخر عنصر مكتمل
@@ -286,6 +299,7 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
 
 export { runInvestmentMatch };
 async function runFundingMatch(companyId: string): Promise<void> {
+  MATCH_DIAG = [];
   const adminClient = admin();
 
   const { data: company } = await adminClient
@@ -423,7 +437,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
         + '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>'
         + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>درجة الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
         + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
-        + (webOffers.length === 0 ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY') + '</p>' : '')
+        + '<p style="color:#6B8A80;font-size:12px">تشخيص البحث: ' + (MATCH_DIAG.join(' | ') || '—') + '</p>'
         + '<hr/>'
         + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">المنطقة</th><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
         + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
