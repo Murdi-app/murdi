@@ -18,6 +18,8 @@ export default function GoalPage() {
   const [company, setCompany] = useState<{ name: string; sector: string } | null>(null);
   const [showCard, setShowCard] = useState(false);
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
+  const [companyId, setCompanyId] = useState('');
+  const [serviceRequests, setServiceRequests] = useState<Record<string, { status: string; price: number | null; deliverable: string | null }>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -45,6 +47,15 @@ export default function GoalPage() {
         if (match) out[t.id] = match.readiness_score;
       }
       setScores(out);
+      setCompanyId(comp.id);
+      const { data: reqs } = await supabase
+        .from('service_requests')
+        .select('service_title, status, price, admin_deliverable')
+        .eq('company_id', comp.id)
+        .order('created_at', { ascending: false });
+      const reqMap: Record<string, { status: string; price: number | null; deliverable: string | null }> = {};
+      for (const r of (reqs || [])) { if (!reqMap[r.service_title]) reqMap[r.service_title] = { status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
+      setServiceRequests(reqMap);
     };
     load();
   }, []);
@@ -52,6 +63,21 @@ export default function GoalPage() {
   const doneScores = Object.values(scores);
   const overall = doneScores.length ? Math.round(doneScores.reduce((a, b) => a + b, 0) / doneScores.length) : 0;
   const pct = overall >= 75 ? 90 : overall >= 70 ? 82 : overall >= 65 ? 74 : overall >= 55 ? 60 : overall >= 45 ? 45 : overall >= 35 ? 30 : 18;
+
+  const submitServiceRequest = async (title: string, category: string) => {
+    if (!companyId) return;
+    setServiceRequests((prev) => ({ ...prev, [title]: { status: 'submitted', price: null, deliverable: null } }));
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+    );
+    await supabase.from('service_requests').insert({
+      company_id: companyId,
+      service_title: title,
+      service_category: category,
+      status: 'submitted',
+    });
+  };
 
   const go = () => {
     const t = TRACKS.find((x) => x.id === selected);
@@ -232,7 +258,32 @@ export default function GoalPage() {
                     <div className="text-2xl mb-2">{it.icon}</div>
                     <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{it.title}</h4>
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
-                    <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أرغب بمعرفة تفاصيل خدمة: ' + it.title)} target="_blank" rel="noopener noreferrer" className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">تواصل لمعرفة التفاصيل ←</a>
+                    {(() => {
+                      const req = serviceRequests[it.title];
+                      if (!req) {
+                        return (
+                          <div className="flex flex-col gap-2">
+                            <button onClick={() => submitServiceRequest(it.title, cat.label)} className="text-center py-2.5 rounded-full bg-[#2E9E7B] text-white font-black text-sm">📤 تقديم طلب الخدمة</button>
+                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + it.title)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
+                          </div>
+                        );
+                      }
+                      const STAT: Record<string, { t: string; bg: string; fg: string }> = {
+                        submitted: { t: '⏳ بانتظار الفريق والدكتور', bg: '#FBF5E8', fg: '#9A7B2E' },
+                        in_progress: { t: '🛠️ قيد التجهيز', bg: '#EAF0FB', fg: '#3B5BA5' },
+                        delivered: { t: '✅ جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
+                        completed: { t: '🏆 مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
+                      };
+                      const st = STAT[req.status] || STAT.submitted;
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="text-center py-2.5 rounded-full font-black text-sm" style={{ background: st.bg, color: st.fg }}>{st.t}</div>
+                          {req.status === 'delivered' && req.deliverable && (
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + it.title + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
