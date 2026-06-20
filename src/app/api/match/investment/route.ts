@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 
 
 async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
@@ -276,6 +277,7 @@ export async function POST() {
         '<p><b>القطاع:</b> ' + (fd.sector || company.sector || '—') + ' | <b>الجوال:</b> ' + (company.phone || '—') + '</p>' +
         '<p><b>درجة الجاهزية:</b> ' + score + ' — ' + (rr?.verdict ?? '') + '</p>' +
         (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:16px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (planKind === 'recovery' ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : planKind === 'readiness' ? '📈 خطة رفع الجاهزية للاستثمار (سكور < 70 — فرصة خدمة تجهيز)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') +
+        suggestionBox(suggestService({ ...fd }, 'investment', score)) +
         '<hr/>' +
         '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">تفاصيل الأرقام والجهات المطابقة الكاملة في لوحة الأدمن.</p>' +

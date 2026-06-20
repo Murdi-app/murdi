@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { Resend } from 'resend';
+import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 
 async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
   const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -192,6 +193,7 @@ export async function POST() {
         '<p><b>السوق المقترح:</b> ' + marketLabel + ' | <b>⏱️ المدة التقديرية:</b> ' + monthsTxt + '</p>' +
         (recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;line-height:1.8">' + recoveryHtml + '</div>' : '') +
         (advisorsHtml ? '<hr/><h3 style="color:#1A3D34;margin-top:16px">🏛️ جهات الطرح والإدراج (بحث مباشر)</h3><div style="background:#FBF8EE;border-radius:10px;padding:14px;margin-top:6px;line-height:1.9">' + advisorsHtml + '</div>' : '') +
+        suggestionBox(suggestService({ ...fd }, 'ipo', score)) +
         '<hr/>' +
         '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">التفاصيل الكاملة (الأرقام، العوائق، خارطة الطريق، التقييم) في لوحة الأدمن.</p>' +
