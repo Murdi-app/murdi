@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { suggestService } from '@/lib/serviceSuggestion';
 import { createBrowserClient } from '@supabase/ssr';
 
 type Result = {
@@ -24,6 +25,7 @@ export default function InvestmentResult() {
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
   const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
+  const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
 
@@ -45,13 +47,13 @@ export default function InvestmentResult() {
 
       const { data: fd } = await supabase
         .from('financial_data')
-        .select('annual_revenue, net_profit, revenue_growth')
+        .select('annual_revenue, net_profit, revenue_growth, repayment_status, debt_status, has_financial_statements, audited_statements, has_governance, has_debt')
         .eq('company_id', company.id)
         .eq('assessment_type', 'investment')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-      if (fd) setFinData({ rev: Number(fd.annual_revenue) || 0, profit: Number(fd.net_profit) || 0, growth: fd.revenue_growth || '' });
+      if (fd) { setFinData({ rev: Number(fd.annual_revenue) || 0, profit: Number(fd.net_profit) || 0, growth: fd.revenue_growth || '' }); setFdRaw(fd); }
 
       const { data: rr } = await supabase
         .from('readiness_results')
@@ -296,28 +298,28 @@ export default function InvestmentResult() {
         )}
 
         {/* بطاقة الاستشارة القادمة — لفت انتباه العميل */}
-        {/* قسم: تنفيذ التوصيات كخدمات — فريق مُرضي (استثمار) */}
-        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
-          <h2 className="font-black text-white mb-1">✦ كيف تنفّذ خطتك مع فريق مُرضي</h2>
-          <p className="text-[#D8E8E0] text-xs font-bold mb-4 leading-relaxed">التوصيات أعلاه يحوّلها فريق د. عبدالحكيم المرضي إلى خطوات تنفيذية تجعل شركتك جاهزة لجذب المستثمر:</p>
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            {[
-              { t: 'تجهيز ملف عرض المستثمر', d: 'عرض احترافي وغرفة بيانات' },
-              { t: 'بناء الحوكمة وفصل الملكية', d: 'هيكل يطمئن المستثمر المؤسسي' },
-              { t: 'إعداد القوائم المعتمدة', d: 'بالتنسيق مع مراجع خارجي' },
-              { t: 'التقييم العادل وهيكلة الصفقة', d: 'تسعير مدعوم ومنطق صفقة واضح' },
-            ].map((sv, i) => (
-              <div key={i} className="bg-white/10 rounded-xl p-3">
-                <p className="text-white font-black text-sm mb-1">{sv.t}</p>
-                <p className="text-[#C9D8D0] text-xs font-bold leading-relaxed">{sv.d}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center">
-            <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%86%D9%87%D9%8A%D8%AA%20%D8%AA%D9%82%D9%8A%D9%8A%D9%85%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D8%AB%D9%85%D8%A7%D8%B1%20%D9%88%D8%A3%D8%B1%D8%BA%D8%A8%20%D8%A3%D9%86%20%D9%8A%D9%86%D9%81%D8%B0%20%D9%84%D9%8A%20%D9%81%D8%B1%D9%8A%D9%82%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A%20%D8%AA%D9%88%D8%B5%D9%8A%D8%A7%D8%AA%20%D8%AE%D8%B7%D8%A9%20%D8%A7%D9%84%D8%AA%D8%AD%D8%B3%D9%8A%D9%86" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#C9A84C] text-[#1A3D34] font-black px-7 py-3 rounded-full text-sm">احجز جلسة مع فريق مُرضي ←</a>
-            <p className="text-[#A3BAB2] text-xs font-bold mt-3">أول استشارة مجانية — نناقش خطتك ونحدّد الأولويات</p>
-          </div>
-        </div>
+        {/* بطاقة اقتراح الخدمة الذكية (استثمار) — تظهر حسب حاجة العميل فعلاً */}
+        {fdRaw && (() => {
+          const sug = suggestService(fdRaw, 'investment', result.readiness_score);
+          const theme = sug.urgency === 'required'
+            ? { bg: '#FBECEC', border: '#C0564B', label: '🔴 خدمة ضرورية قبل التقديم', labelColor: '#A33' }
+            : sug.urgency === 'none'
+            ? { bg: '#EAF7F0', border: '#2E9E7B', label: '✅ توجيه مُرضي', labelColor: '#1E7A5A' }
+            : { bg: '#FBF5E8', border: '#C9A84C', label: '💡 خدمة موصى بها تقوّي عرضك', labelColor: '#9A7B2E' };
+          return (
+            <div style={{ background: theme.bg, border: '2px solid ' + theme.border, borderRadius: 16, padding: '22px 24px' }}>
+              <div style={{ color: theme.labelColor, fontSize: 14, fontWeight: 900, marginBottom: 8 }}>{theme.label}</div>
+              <div style={{ color: '#1A3D34', fontSize: 18, fontWeight: 900, marginBottom: 8 }}>{sug.icon} {sug.service}</div>
+              <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: sug.urgency === 'none' ? 0 : 18 }}>{sug.why}</p>
+              {sug.urgency !== 'none' && (
+                <a href={'/goal?tab=services&highlight=' + encodeURIComponent(sug.service)}
+                  style={{ display: 'inline-block', background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 14, padding: '13px 30px', borderRadius: 999, textDecoration: 'none' }}>
+                  اطلب هذه الخدمة من فريق مُرضي ←
+                </a>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="bg-gradient-to-l from-[#FBF5E8] to-white rounded-2xl p-6 border-2 border-[#C9A84C]">
           <div className="flex items-start gap-3">
