@@ -66,6 +66,14 @@ const PRIOR_INV = [
   { id: 'no', label: 'لا' },
 ];
 
+const INVESTMENT_TYPES = [
+  { id: 'equity', label: 'حصة ملكية — مقابل نسبة من الشركة' },
+  { id: 'convertible', label: 'قرض قابل للتحويل لحصة لاحقاً' },
+  { id: 'strategic', label: 'شريك استراتيجي — مال + خبرة/علاقات' },
+  { id: 'debt', label: 'تمويل/قرض دون التنازل عن حصة' },
+  { id: 'flexible', label: 'مرن — الأفضل لمصلحة الشركة' },
+];
+
 const STEPS = ['القطاع والمرحلة', 'الأداء المالي', 'الحوكمة والقوائم', 'جاذبية الاستثمار'];
 
 export default function InvestmentAssessment() {
@@ -96,12 +104,17 @@ export default function InvestmentAssessment() {
   const [financingSources, setFinancingSources] = useState('');
   const [repaymentStatus, setRepaymentStatus] = useState('');
   const [debtDetails, setDebtDetails] = useState('');
+  const [roundSize, setRoundSize] = useState('');
+  const [investmentType, setInvestmentType] = useState('');
+  const [useOfFunds, setUseOfFunds] = useState('');
+  const [competitiveEdge, setCompetitiveEdge] = useState('');
+  const [monthsLateInv, setMonthsLateInv] = useState('');
 
   const stepValid = () => {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && investmentType !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
     return false;
   };
 
@@ -133,6 +146,11 @@ export default function InvestmentAssessment() {
           financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
           repayment_status: hasDebt ? repaymentStatus : '',
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
+          months_late_inv: hasDebt && repaymentStatus === 'default' ? (monthsLateInv.trim() || null) : null,
+          round_size: roundSize.trim() || null,
+          investment_type: investmentType || null,
+          use_of_funds: useOfFunds.trim() || null,
+          competitive_edge: competitiveEdge.trim() || null,
         }),
       });
       const data = await res.json();
@@ -266,6 +284,30 @@ export default function InvestmentAssessment() {
                 <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
                 <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
               </div>
+
+              <div className="bg-[#F5F8FB] rounded-2xl p-5 border-2 border-[#E1E9F2] space-y-5">
+                <p className="font-black text-[#3B5BA5] text-sm">🎯 ماذا تطلب من المستثمر؟ (يساعدنا نرشّح لك المستثمر الأنسب لصفقتك تحديداً)</p>
+                <div>
+                  <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
+                  <input type="number" inputMode="numeric" value={roundSize} onChange={(e) => setRoundSize(e.target.value)}
+                    placeholder="مثال: 5000000" className={inputCls + ' text-right'} />
+                </div>
+                <div>
+                  <label className="block font-black text-[#1A3D34] mb-3">نوع التمويل الذي تطلبه</label>
+                  <Choice items={INVESTMENT_TYPES} value={investmentType} onChange={setInvestmentType} />
+                </div>
+                <div>
+                  <label className="block font-black text-[#1A3D34] mb-2">غرض التمويل (فيمَ ستستخدم المبلغ؟)</label>
+                  <textarea value={useOfFunds} onChange={(e) => setUseOfFunds(e.target.value)} rows={2}
+                    placeholder="مثال: افتتاح 3 فروع جديدة، أو تطوير خط إنتاج، أو دخول سوق جديد..." className={inputCls + ' text-right'} />
+                </div>
+                <div>
+                  <label className="block font-black text-[#1A3D34] mb-2">ميزتك التنافسية (اختياري — ما الذي يميّز شركتك؟)</label>
+                  <textarea value={competitiveEdge} onChange={(e) => setCompetitiveEdge(e.target.value)} rows={2}
+                    placeholder="مثال: حصة سوقية رائدة، تقنية خاصة، عقود حصرية، فريق متميّز..." className={inputCls + ' text-right'} />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">هل على الشركة تمويل أو ديون قائمة؟</label>
                 <YesNo value={hasDebt} onChange={setHasDebt} />
@@ -308,6 +350,13 @@ export default function InvestmentAssessment() {
                     <label className="block font-black text-[#1A3D34] mb-3">ما وضع سداد الديون حالياً؟</label>
                     <Choice items={REPAYMENT} value={repaymentStatus} onChange={setRepaymentStatus} />
                   </div>
+                  {repaymentStatus === 'default' && (
+                    <div>
+                      <label className="block font-black text-[#1A3D34] mb-2">منذ كم شهر والتعثّر قائم؟</label>
+                      <input type="number" inputMode="numeric" value={monthsLateInv} onChange={(e) => setMonthsLateInv(e.target.value)}
+                        placeholder="مثال: 6" className={inputCls + ' text-right'} />
+                    </div>
+                  )}
                 </>
               )}
             </div>
