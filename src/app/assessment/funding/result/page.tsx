@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { suggestService } from '@/lib/serviceSuggestion';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -21,6 +22,7 @@ type Match = {
 
 export default function FundingResult() {
   const [result, setResult] = useState<Result | null>(null);
+  const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [matchCount, setMatchCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,17 @@ export default function FundingResult() {
         .single();
 
       setResult(rr);
+
+      const { data: fd } = await supabase
+        .from('financial_data')
+        .select('repayment_status, debt_status, has_financial_statements, audited_statements, has_governance, has_debt')
+        .eq('company_id', company.id)
+        .eq('assessment_type', 'funding')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (fd) setFdRaw(fd);
+
       setLoading(false);
 
       // الاستشارة فوراً (غير حاجبة) — قبل المطابقة البطيئة
@@ -199,6 +212,29 @@ export default function FundingResult() {
             </ul>
           </div>
         )}
+
+        {/* بطاقة اقتراح الخدمة الذكية — تظهر حسب حاجة العميل فعلاً */}
+        {fdRaw && (() => {
+          const sug = suggestService(fdRaw, 'funding', result.readiness_score);
+          const theme = sug.urgency === 'required'
+            ? { bg: '#FBECEC', border: '#C0564B', label: '🔴 خدمة ضرورية قبل التقديم', labelColor: '#A33' }
+            : sug.urgency === 'none'
+            ? { bg: '#EAF7F0', border: '#2E9E7B', label: '✅ توجيه مُرضي', labelColor: '#1E7A5A' }
+            : { bg: '#FBF5E8', border: '#C9A84C', label: '💡 خدمة موصى بها تقوّي ملفك', labelColor: '#9A7B2E' };
+          return (
+            <div style={{ background: theme.bg, border: '2px solid ' + theme.border, borderRadius: 16, padding: '22px 24px' }}>
+              <div style={{ color: theme.labelColor, fontSize: 14, fontWeight: 900, marginBottom: 8 }}>{theme.label}</div>
+              <div style={{ color: '#1A3D34', fontSize: 18, fontWeight: 900, marginBottom: 8 }}>{sug.icon} {sug.service}</div>
+              <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: sug.urgency === 'none' ? 0 : 18 }}>{sug.why}</p>
+              {sug.urgency !== 'none' && (
+                <a href={'/goal?tab=services&highlight=' + encodeURIComponent(sug.service)}
+                  style={{ display: 'inline-block', background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 14, padding: '13px 30px', borderRadius: 999, textDecoration: 'none' }}>
+                  اطلب هذه الخدمة من فريق مُرضي ←
+                </a>
+              )}
+            </div>
+          );
+        })()}
 
         {result.required_documents?.length > 0 && (
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#E8F5EF]">
