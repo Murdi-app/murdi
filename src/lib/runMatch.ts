@@ -437,7 +437,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
   const years = Number(FD.years_operating) || 0;
   const typeLabel = FD.funding_type === 'other' ? (String(FD.funding_type_other) || 'أخرى') : (TYPE_LABELS[String(FD.funding_type)] || String(FD.funding_type));
   const debtDesc = FD.has_debt
-    ? 'يوجد تمويل قائم بقيمة أصلية ' + Number(FD.original_loan_amount || 0).toLocaleString() + ' ريال، المتبقي ' + Number(FD.debt_remaining || 0).toLocaleString() + ' ريال لدى ' + (FD.lender_name || 'جهة تمويل') + '، الحالة: ' + (FD.debt_status === 'late' ? 'متأخر ' + (FD.months_late || 0) + ' شهر' : 'ملتزم بالسداد')
+    ? 'يوجد تمويل قائم بقيمة أصلية ' + Number(FD.original_loan_amount || 0).toLocaleString() + ' ريال، المتبقي ' + Number(FD.debt_remaining || 0).toLocaleString() + ' ريال لدى ' + (FD.lender_name || 'جهة تمويل') + '، الحالة: ' + (FD.debt_status === 'late' ? 'متأخر ' + (FD.months_late || 0) + ' شهر' : 'ملتزم بالسداد') + (FD.debt_narrative ? '. طبيعة الدين كما وصفها العميل: ' + FD.debt_narrative : '')
     : 'لا توجد ديون قائمة';
 
   // ====== البحث الثلاثي المتوازي (سعودي + خليج + دولي) — لا ينقطع، يُحفظ في match_results ======
@@ -446,8 +446,8 @@ async function runFundingMatch(companyId: string): Promise<void> {
     + '- الإيرادات السنوية: ' + rev.toLocaleString() + ' ريال\n'
     + '- عمر النشاط: ' + years + ' سنة\n'
     + '- القطاع: ' + (company.sector || 'غير محدد') + '\n'
-    + '- طبيعة النشاط: ' + (ACT_LABELS[String(FD.activity_type)] || FD.activity_type || 'غير محدد') + '\n'
-    + '- نقاط بيع: ' + (FD.has_pos ? 'نعم' : 'لا') + ' | يصدر فواتير آجلة: ' + (FD.issues_invoices ? 'نعم' : 'لا') + ' | أسطول/معدات: ' + (FD.has_fleet ? 'نعم' : 'لا') + '\n'
+    + '- طبيعة النشاط: ' + (FD.activity_type === 'other_activity' && FD.activity_type_other ? FD.activity_type_other : (ACT_LABELS[String(FD.activity_type)] || FD.activity_type || 'غير محدد')) + '\n'
+    + '- نقاط بيع: ' + (FD.has_pos ? ('نعم' + (FD.pos_types ? ' (' + FD.pos_types + ')' : '') + (FD.pos_count ? '، عدد الأجهزة: ' + FD.pos_count : '') + (FD.pos_usage_pct ? '، نسبة المبيعات عبرها: ' + FD.pos_usage_pct + '%' : '')) : 'لا') + ' | يصدر فواتير آجلة: ' + (FD.issues_invoices ? 'نعم' : 'لا') + ' | أسطول/معدات مملوكة: ' + (FD.has_fleet ? 'نعم' : 'لا') + '\n'
     + '- ' + debtDesc + '\n'
     + '- سجل تجاري ' + (FD.cr_valid ? 'ساري' : 'غير ساري') + '، التزام ضريبي: ' + (FD.tax_compliant ? 'نعم' : 'لا') + '، زكاة: ' + (FD.zakat_compliant ? 'نعم' : 'لا') + '، قوائم مالية: ' + (FD.has_financial_statements ? 'متوفرة' : 'غير متوفرة');
 
