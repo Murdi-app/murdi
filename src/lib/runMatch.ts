@@ -113,6 +113,57 @@ function sectorMatch(list: string[], val: string): boolean {
   });
 }
 
+async function searchInvestmentLayer(layer: 'saudi' | 'gulf' | 'intl', profile: string, targetCount: number): Promise<FundOffer[]> {
+  const regionVal = layer === 'saudi' ? 'السعودية' : layer === 'gulf' ? 'الخليج' : 'دولي';
+  const layerScope = layer === 'saudi'
+    ? 'مستثمرون مقرّهم داخل المملكة العربية السعودية حصراً: صناديق استثمار جريء وملكية خاصة سعودية، مكاتب عائلية، مسرّعات وحاضنات، ومستثمرون أفراد (ملائكيون) نشطون في السعودية. هذه الطبقة الأعمق والأكثر — أعطها أكبر نصيب.'
+    : layer === 'gulf'
+    ? 'مستثمرون مقرّهم في دول الخليج ما عدا السعودية حصراً (الإمارات، قطر، الكويت، البحرين، عُمان): صناديق، مكاتب عائلية، VC، ومستثمرون أفراد. الأولوية القصوى لمن سبق له الاستثمار فعلياً في السعودية أو شركات سعودية (اذكر الاستثمار السابق صراحةً في حقل fit)، يليهم من لا يمانع الاستثمار في السعودية. ممنوع إدراج أي مستثمر سعودي هنا.'
+    : 'مستثمرون مقرّهم في بريطانيا أو أوروبا أو الولايات المتحدة الأمريكية حصراً: صناديق رأس مال جريء (VC)، صناديق نمو، ملكية خاصة، محافظ استثمارية، ومستثمرون أفراد. الأولوية القصوى لمن سبق له الاستثمار في السعودية أو الشرق الأوسط ويتطابق قطاعه (اذكر استثماره السابق المشابه في fit)، يليهم من أبدى انفتاحاً على الأسواق الناشئة. ممنوع إدراج أي مستثمر خليجي أو سعودي هنا.';
+
+  const prompt = 'أنت باحث استثماري خبير رفيع المستوى يعمل لـ د. عبدالحكيم المرضي. مهمتك: البحث العميق والذكي والواسع في الويب لاكتشاف أكبر عدد من المستثمرين الحقيقيين المناسبين لهذه الشركة ضمن الطبقة الجغرافية المحددة. ابحث براحة وعمق — الكثرة مطلوبة طالما كل مستثمر مناسب فعلاً. لا تحصر نفسك في نوع واحد: ابحث في الصناديق والمكاتب العائلية وصناديق VC وPE والمستثمرين الأفراد (الملائكيين) معاً.\n\n'
+    + 'الطبقة الجغرافية المطلوبة (التزم بها حرفياً): ' + layerScope + '\n\n'
+    + 'ملف الشركة الباحثة عن استثمار:\n' + profile + '\n\n'
+    + 'قاعدة الأولوية الذهبية: داخل هذه الطبقة، رتّب بحيث (من سبق له الاستثمار في السعودية + يتطابق قطاعه) يأتي أولاً دائماً، ثم من ينفتح على السعودية ويناسب القطاع.\n\n'
+    + 'معايير المطابقة الذكية — لا تُدرج مستثمراً إلا إذا اجتاز:\n'
+    + '1) الجغرافيا: مقرّه ضمن الطبقة المحددة أعلاه حصراً.\n'
+    + '2) تطابق القطاع: استثمر في شركات بنفس قطاع هذه الشركة أو قطاع قريب.\n'
+    + '3) المرحلة وحجم الجولة: حجم استثماره المعتاد يناسب حجم وإيرادات ومرحلة الشركة (لا صندوق ضخم لجولة صغيرة ولا العكس).\n'
+    + '4) نشاط حديث: فضل من استثمر خلال آخر 2-3 سنوات.\n'
+    + '5) نوع المستثمر للمرحلة: ملائكي/تأسيسي للمبكرة، VC للنمو، ملكية خاصة للناضجة.\n\n'
+    + 'ابحث بأريحية وعمق واستقصِ السوق بدقّة: استهدف ٥٠ مستثمراً مناسباً أو أكثر لهذه الطبقة إن وُجد صالح — لا تبخل بالصالح ولا تتوقف مبكراً. وفي الوقت نفسه لا تُدرج مستثمراً غير مناسب لمجرد ملء العدد.\n\n'
+    + 'في حقل fit لكل مستثمر: لماذا يناسب هذه الشركة تحديداً (القطاع، المرحلة، حجم الجولة)، استثماراته السابقة المشابهة خاصة في السعودية/المنطقة إن وُجدت، وطريقة الوصول العملية (نموذج تواصل رسمي برابط مباشر أو بريد استثمار معلن — خطوة واحدة محددة لا عدة خيارات). في حقل requirements: شروط/تركيز المستثمر باختصار. في حقل product: فئة المستثمر (صندوق VC / ملكية خاصة / مكتب عائلي / مستثمر ملائكي / مسرّعة).\n\n'
+    + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown، بهذا الشكل بالضبط:\n'
+    + '{"offers":[{"provider":"اسم المستثمر/الجهة","product":"فئة المستثمر","requirements":"تركيز/شروط المستثمر باختصار","fit":"لماذا يناسب هذه الشركة + استثمار سابق في السعودية إن وُجد + طريقة الوصول","source":"رابط المصدر"}]}\n'
+    + 'رتّب من الأنسب للأقل. أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
+  try {
+    const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
+    let text = '';
+    for (let turn = 0; turn < 8; turn++) {
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 12 }] }),
+        });
+        if (res.ok) break;
+        if (res.status === 429 || res.status === 529 || res.status >= 500) { await new Promise((r) => setTimeout(r, 3000 * (attempt + 1))); continue; }
+        break;
+      }
+      if (!res || !res.ok) { MATCH_DIAG.push(layer + ': HTTP ' + (res ? res.status : 'null')); break; }
+      const data = await res.json();
+      const content = (data.content || []) as { type: string; text?: string }[];
+      text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
+      if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+      break;
+    }
+    const offers = parseOffers(text).map((o) => ({ ...o, region: regionVal }));
+    MATCH_DIAG.push(layer + ': ' + offers.length + ' مستثمر' + (offers.length === 0 && text.length > 0 ? ' (نص ' + text.length + ' حرف لكن parse فشل)' : ''));
+    return offers;
+  } catch (e) { MATCH_DIAG.push(layer + ' خطأ: ' + (e instanceof Error ? e.message : String(e))); return []; }
+}
+
 async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
   const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
   const prompt = 'انت باحث استثماري محترف رفيع المستوى تعمل لصالح د. عبدالحكيم المرضي (شركة حلول المرضي للاستشارات المالية، السعودية). مهمتك بحث ذكي ودقيق في الويب عن المستثمرين الأنسب لشركة بهذا الملف:\n'
@@ -223,6 +274,7 @@ async function generateReadinessPlan(data: Record<string, unknown>): Promise<str
 }
 
 async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise<void> {
+  MATCH_DIAG = [];
   const adminClient = admin();
 
   const { data: company } = await adminClient
@@ -285,16 +337,41 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
     provider_details: matches.slice(0, 5).map((m) => ({ entity: m.entity, fit: m.fit })),
   });
 
-  let investorSearch = '';
   const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
   const lowScore = score < 70;
   let planKind: 'recovery' | 'readiness' | 'search' = 'search';
-  // مسار التعافي/خطة الجاهزية أُلغيا — العوائق وخطة التحسين في التقييم يغطّيانهما. نُبقي بحث المستثمرين للمؤهّلين فقط.
-  try {
-    if (isDefaulted) { planKind = 'recovery'; }
-    else if (lowScore) { planKind = 'readiness'; }
-    else { planKind = 'search'; investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو'); }
-  } catch {}
+  let webCount = 0;
+  // المتعثّر/منخفض السكور: لا بحث مستثمرين (تغطّيه العوائق وخطة التحسين). المؤهّل: بحث عميق ثلاثي الطبقات.
+  if (isDefaulted) { planKind = 'recovery'; }
+  else if (lowScore) { planKind = 'readiness'; }
+  else {
+    planKind = 'search';
+    try {
+      const invProfile = 'القطاع: ' + (fd?.sector || company?.sector || 'غير محدد')
+        + ' | الإيرادات السنوية: ' + rev + ' ريال'
+        + ' | مرحلة الشركة: ' + (fd?.company_stage || 'نمو')
+        + ' | نمو الإيرادات: ' + (fd?.revenue_growth || 'غير محدد')
+        + ' | سنوات التشغيل: ' + (fd?.years_operating || 'غير محدد')
+        + ' | صافي الربح: ' + (fd?.net_profit || 'غير محدد')
+        + ' | حوكمة: ' + (fd?.has_governance === true ? 'نعم' : 'لا')
+        + ' | قوائم مدققة: ' + (fd?.audited_statements === true ? 'نعم' : 'لا')
+        + ' | السوق المستهدف: ' + (fd?.target_market || 'غير محدد')
+        + ' | درجة الجاهزية: ' + score + ' من 100';
+      const [invSa, invGulf, invIntl] = await Promise.all([
+        searchInvestmentLayer('saudi', invProfile, 50),
+        searchInvestmentLayer('gulf', invProfile, 50),
+        searchInvestmentLayer('intl', invProfile, 50),
+      ]);
+      const webInvestors = [...invSa, ...invGulf, ...invIntl];
+      webCount = webInvestors.length;
+      if (webInvestors.length > 0) {
+        await adminClient.from('match_results').insert(webInvestors.map((o) => ({
+          company_id: company.id, track: 'investment', region: o.region,
+          provider: o.provider, product: o.product, requirements: o.requirements, fit: o.fit, source: o.source,
+        })));
+      }
+    } catch {}
+  }
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -312,7 +389,7 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
         '<div style="flex:1;background:#F0F7F4;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">درجة الجاهزية</div><div style="color:#2E9E7B;font-size:24px;font-weight:900">' + score + '</div></div>' +
         '<div style="flex:1;background:#FBF8EE;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">الحكم</div><div style="color:#C9A84C;font-size:15px;font-weight:900;padding-top:6px">' + (rr?.verdict ?? '—') + '</div></div>' +
         '</div>' +
-        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، المستثمرون المطابقون) محفوظ في ملف العميل بلوحة الأدمن.</p>' +
+        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، المستثمرون المطابقون) محفوظ في ملف العميل بلوحة الأدمن.</p>' +(planKind === 'search' ? '<p style="color:#9DB3AB;font-size:12px;border-top:1px dashed #EAF2EE;padding-top:10px">🔎 بحث مُرضي: ' + webCount + ' مستثمر عبر الطبقات &nbsp;|&nbsp; تشخيص: ' + MATCH_DIAG.join(' · ') + '</p>' : '') +
         '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
         '</div></div>',
     });
