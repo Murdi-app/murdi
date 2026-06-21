@@ -205,16 +205,7 @@ export default function InvestmentResult() {
           </div>
         )}
 
-        {result.required_documents?.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">
-            <h2 className="font-black text-[#1A3D34] mb-4">المستندات المطلوبة</h2>
-            <ul className="space-y-2">
-              {result.required_documents.map((d, i) => (
-                <li key={i} className="text-[#6B8A80] font-bold text-sm">📄 {d}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* قسم المستندات المطلوبة مخفي عن العميل عمداً — يبقى في DB ويظهر للأدمن */}
 
         {result.readiness_score >= 70 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#2E9E7B]">
