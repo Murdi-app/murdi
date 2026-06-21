@@ -289,9 +289,10 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
   const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
   const lowScore = score < 70;
   let planKind: 'recovery' | 'readiness' | 'search' = 'search';
+  // مسار التعافي/خطة الجاهزية أُلغيا — العوائق وخطة التحسين في التقييم يغطّيانهما. نُبقي بحث المستثمرين للمؤهّلين فقط.
   try {
-    if (isDefaulted) { planKind = 'recovery'; investorSearch = await generateRecoveryPath({ ...fd }); }
-    else if (lowScore) { planKind = 'readiness'; investorSearch = await generateReadinessPlan({ ...fd, score, sector: fd?.sector || company?.sector }); }
+    if (isDefaulted) { planKind = 'recovery'; }
+    else if (lowScore) { planKind = 'readiness'; }
     else { planKind = 'search'; investorSearch = await searchInvestors((fd?.sector || company?.sector || 'غير محدد'), Number(fd?.annual_revenue) || 0, fd?.company_stage || 'نمو'); }
   } catch {}
 
@@ -555,10 +556,11 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
   try {
     const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
     const lowScore = score < 65;
-    let recoveryHtml = '';
+    const recoveryHtml = '';
+    // مسار التعافي/خطة الجاهزية أُلغيا — مُغطّيان بالعوائق وخطة التحسين في التقييم
     let planKind: 'recovery' | 'readiness' | 'qualified' | 'waiting' = score >= 65 ? 'qualified' : 'waiting';
-    if (isDefaulted) { planKind = 'recovery'; try { recoveryHtml = await ipoRecoveryPath({ ...fd }); } catch {} }
-    else if (lowScore) { planKind = 'readiness'; try { recoveryHtml = await ipoReadinessPlan({ ...fd, score, sector: fd?.sector || company?.sector }); } catch {} }
+    if (isDefaulted) { planKind = 'recovery'; }
+    else if (lowScore) { planKind = 'readiness'; }
     let advisorsHtml = '';
     if (planKind === 'qualified') { try { advisorsHtml = await searchIpoAdvisors(fd?.sector || company?.sector || 'غير محدد', marketLabel, rev); } catch {} }
 
