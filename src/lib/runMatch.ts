@@ -11,14 +11,25 @@ type FundOffer = { region: string; provider: string; product: string; requiremen
 async function searchFundingLayer(layer: 'saudi' | 'gulf' | 'intl', profile: string, licensed: string, targetCount: number): Promise<FundOffer[]> {
   const layerAr = layer === 'saudi' ? 'السعودية (مرخّصة من ساما: بنوك + شركات تمويل + منصات)' : layer === 'gulf' ? 'الخليج (جهات تموّل شركة سعودية عبر فرع في السعودية أو عبر الحدود)' : 'الدولية (تموّل شركات في السعودية أو الأسواق الناشئة)';
   const regionVal = layer === 'saudi' ? 'السعودية' : layer === 'gulf' ? 'الخليج' : 'دولي';
-  const prompt = 'أنت محلل تمويل خبير رفيع المستوى يعمل لـ د. عبدالحكيم المرضي. ابحث في الويب بعمق وعناية فائقة عن جهات التمويل في طبقة واحدة فقط: ' + layerAr + '.\n\n'
-    + 'اجتهد وابحث جيداً واستهدف ' + targetCount + ' جهة مناسبة فعلاً في هذه الطبقة (لا تكتفِ بعدد قليل، وفي الوقت نفسه لا تُدرج جهة غير مناسبة لمجرد العدد).\n\n'
-    + 'الجهات المرجعية:\n' + licensed + '\n\n'
+  const layerScope = layer === 'saudi'
+    ? 'جهات مقرّها الرئيسي داخل المملكة العربية السعودية حصراً (بنوك سعودية، شركات تمويل سعودية مرخّصة من ساما، صناديق ومنصات تمويل سعودية، برامج حكومية سعودية). ممنوع منعاً باتاً إدراج أي جهة مقرّها خارج السعودية حتى لو كان لها فرع في السعودية.'
+    : layer === 'gulf'
+    ? 'جهات مقرّها الرئيسي في دول الخليج ما عدا السعودية حصراً (الإمارات، قطر، الكويت، البحرين، عُمان). ممنوع منعاً باتاً إدراج أي جهة سعودية هنا — السعودية لها طبقة منفصلة. كل جهة تُدرجها هنا يجب أن يكون مقرّها في دولة خليجية غير السعودية.'
+    : 'جهات تمويل دولية مقرّها خارج منطقة الخليج بالكامل (مؤسسات تمويل تنموية، بنوك دولية، صناديق دين خاص عالمية). ممنوع إدراج أي جهة خليجية أو سعودية هنا.';
+
+  const prompt = 'أنت محلل تمويل خبير رفيع المستوى يعمل لـ د. عبدالحكيم المرضي، ومعروف بدقتك الشديدة وانتقائك الصارم. مهمتك ليست جمع أكبر عدد، بل انتقاء الجهات التي تناسب هذه الشركة تحديداً.\n\n'
+    + 'الطبقة الجغرافية المطلوبة (التزم بها حرفياً): ' + layerScope + '\n\n'
     + 'ملف الشركة الباحثة عن تمويل:\n' + profile + '\n\n'
-    + 'شرط استبعاد إلزامي: لا تُدرج أي جهة تشترط أن تكون الشركة مسجّلة أو مقيمة في بلد تلك الجهة كي تموّلها. أدرج فقط الجهات التي تموّل فعلياً شركة سعودية.\n'
-    + 'قواعد: طابق نوع المنتج مع نشاط الشركة بدقة (لا تقترح تمويل نقاط بيع إلا إن كان لديها نقاط بيع، ولا تمويل فواتير إلا إن تصدر فواتير، ولا تمويل أسطول إلا إن لديها أسطول). نوّع المنتجات. للخليج والدولي اذكر المتطلبات الأعلى في requirements وما ينقص الشركة في fit.\n\n'
+    + 'الجهات المرجعية المرخّصة (استأنس بها):\n' + licensed + '\n\n'
+    + 'معايير الانتقاء الصارمة — لا تُدرج جهة إلا إذا اجتازت كل ما يلي:\n'
+    + '1) الجغرافيا: مقرّها ضمن الطبقة المحددة أعلاه حصراً. أي خطأ جغرافي مرفوض.\n'
+    + '2) حجم الشركة: منتج الجهة يناسب حجم إيرادات الشركة ومرحلتها (لا تقترح تمويلاً لمنشآت كبرى على شركة صغيرة أو العكس).\n'
+    + '3) النشاط: المنتج يطابق نشاط الشركة فعلياً (لا تمويل نقاط بيع إلا إن لديها نقاط بيع، لا تمويل فواتير إلا إن تصدر فواتير آجلة، لا تمويل أسطول إلا إن تملك أسطولاً).\n'
+    + '4) الأهلية: لا تشترط الجهة أن تكون الشركة مسجّلة أو مقيمة في بلد الجهة كي تموّلها. تموّل فعلياً شركة سعودية.\n\n'
+    + 'إذا لم تجد سوى عدد قليل يطابق هذه المعايير بصدق، فأدرج القليل فقط. جهة واحدة دقيقة أفضل من عشر جهات عامة. الجودة والدقة أهم من العدد بكثير.\n\n'
+    + 'في حقل fit: اذكر بوضوح لماذا تناسب هذه الجهة هذه الشركة تحديداً (الحجم، النشاط، المرحلة)، وما الذي قد ينقص الشركة. كن محدداً لا عاماً.\n\n'
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown، بهذا الشكل بالضبط:\n'
-    + '{"offers":[{"provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط باختصار","fit":"ما يتطابق وما ينقص","source":"رابط المصدر"}]}\n'
+    + '{"offers":[{"provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط باختصار","fit":"لماذا تناسب هذه الشركة تحديداً + ما ينقص","source":"رابط المصدر"}]}\n'
     + 'رتّب من الأنسب للأقل. أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
   try {
     const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
@@ -291,16 +302,18 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
       to: 'hololalmurdi.fs@gmail.com',
       subject: (planKind === 'recovery' ? '⚠️ شركة متعثرة (مسار تعافي) — ' : planKind === 'readiness' ? '📈 خطة رفع جاهزية (سكور < 70) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
       html:
-        '<div dir="rtl" style="font-family:Arial">' +
-        '<h2>مطابقة استثمار جديدة</h2>' +
-        '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
-        '<p><b>القطاع:</b> ' + (fd.sector || company.sector || '—') + ' | <b>الجوال:</b> ' + (company.phone || '—') + '</p>' +
-        '<p><b>درجة الجاهزية:</b> ' + score + ' — ' + (rr?.verdict ?? '') + '</p>' +
-        (investorSearch ? '<div style="background:#FBF5E8;padding:16px;border-radius:12px;margin-top:16px"><h3 style="color:#9A7B2E;margin:0 0 8px">' + (planKind === 'recovery' ? '🔧 مسار التعافي المقترح (الشركة متعثرة — فرصة خدمة إعادة هيكلة)' : planKind === 'readiness' ? '📈 خطة رفع الجاهزية للاستثمار (سكور < 70 — فرصة خدمة تجهيز)' : '🔍 بحث المستثمرين الذكي (سري — لك فقط)') + '</h3><div style="white-space:pre-wrap;color:#1A3D34;font-size:14px;line-height:1.8">' + investorSearch + '</div></div>' : '') +
-        suggestionBox(suggestService({ ...fd }, 'investment', score)) +
-        '<hr/>' +
-        '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
-        '</div>',
+        '<div dir="rtl" style="font-family:Arial;max-width:560px;margin:auto">' +
+        '<div style="background:#1A3D34;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0"><h2 style="margin:0;font-size:18px">🔔 مطابقة استثمار جديدة</h2></div>' +
+        '<div style="background:#fff;border:1px solid #EAF2EE;border-top:none;padding:24px;border-radius:0 0 12px 12px">' +
+        '<p style="font-size:15px;color:#1A3D34"><b>' + company.company_name + '</b> — سجل: ' + (company.cr_number || '—') + '</p>' +
+        '<p style="color:#3A4D47">🏢 ' + (fd.sector || company.sector || '—') + ' &nbsp;|&nbsp; 📱 ' + (company.phone || '—') + '</p>' +
+        '<div style="display:flex;gap:12px;margin:18px 0">' +
+        '<div style="flex:1;background:#F0F7F4;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">درجة الجاهزية</div><div style="color:#2E9E7B;font-size:24px;font-weight:900">' + score + '</div></div>' +
+        '<div style="flex:1;background:#FBF8EE;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">الحكم</div><div style="color:#C9A84C;font-size:15px;font-weight:900;padding-top:6px">' + (rr?.verdict ?? '—') + '</div></div>' +
+        '</div>' +
+        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، المستثمرون المطابقون) محفوظ في ملف العميل بلوحة الأدمن.</p>' +
+        '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
+        '</div></div>',
     });
   } catch {}
 }
@@ -440,18 +453,18 @@ async function runFundingMatch(companyId: string): Promise<void> {
       to: 'hololalmurdi.fs@gmail.com',
       subject: 'مطابقة تمويل — ' + company.company_name + ' (' + totalCount + ' فرصة)',
       html:
-        '<div dir="rtl" style="font-family:Arial">'
-        + '<h2>مطابقة تمويل جديدة</h2>'
-        + '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>'
-        + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>درجة الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
-        + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
-        + '<p style="color:#6B8A80;font-size:12px">تشخيص البحث: ' + (MATCH_DIAG.join(' | ') || '—') + '</p>'
-        + '<hr/>'
-        + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">المنطقة</th><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
-        + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
-        + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
-        + suggestionBox(suggestService({ ...FD }, 'funding', Number(rr?.readiness_score) || 0))
-        + '</div>',
+        '<div dir="rtl" style="font-family:Arial;max-width:560px;margin:auto">'
+        + '<div style="background:#1A3D34;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0"><h2 style="margin:0;font-size:18px">🔔 مطابقة تمويل جديدة</h2></div>'
+        + '<div style="background:#fff;border:1px solid #EAF2EE;border-top:none;padding:24px;border-radius:0 0 12px 12px">'
+        + '<p style="font-size:15px;color:#1A3D34"><b>' + company.company_name + '</b> — سجل: ' + (company.cr_number || '—') + '</p>'
+        + '<p style="color:#3A4D47">📱 ' + (company.phone || '—') + '</p>'
+        + '<div style="display:flex;gap:12px;margin:18px 0">'
+        + '<div style="flex:1;background:#F0F7F4;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">درجة الجاهزية</div><div style="color:#2E9E7B;font-size:24px;font-weight:900">' + (rr?.readiness_score ?? '—') + '</div></div>'
+        + '<div style="flex:1;background:#FBF8EE;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">عدد الجهات المطابقة</div><div style="color:#C9A84C;font-size:24px;font-weight:900">' + totalCount + '</div></div>'
+        + '</div>'
+        + '<p style="color:#6B8A80;font-size:13px">الجهات كاملة (سعودي/خليج/دولي) محفوظة في ملف العميل بلوحة الأدمن مع كل التفاصيل.</p>'
+        + '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>'
+        + '</div></div>',
     });
   } catch {}
 }
@@ -555,23 +568,23 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
       to: 'hololalmurdi.fs@gmail.com',
       subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ')) + company.company_name + ' (درجة ' + score + ')',
       html:
-        '<div dir="rtl" style="font-family:Arial">' +
+        '<div dir="rtl" style="font-family:Arial;max-width:560px;margin:auto">' +
+        '<div style="background:#1A3D34;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0"><h2 style="margin:0;font-size:18px">🔔 ملف طرح جديد</h2></div>' +
+        '<div style="background:#fff;border:1px solid #EAF2EE;border-top:none;padding:24px;border-radius:0 0 12px 12px">' +
         (isDefaulted
-          ? '<div style="background:#FBECEC;border:2px solid #C0564B;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#A33;font-size:16px">⚠️ غير مؤهل للطرح حالياً — شركة متعثرة</b><br/>الفرصة هنا خدمة <b>إعادة هيكلة وتعافٍ</b> تقدّمها حلول المرضي، تمهّد لاحقاً للطرح.</div>'
+          ? '<div style="background:#FBECEC;border-right:4px solid #C0564B;border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#A33;font-weight:700">⚠️ غير مؤهل حالياً — شركة متعثرة (فرصة خدمة إعادة هيكلة)</div>'
           : (score >= 65
-          ? '<div style="background:#FBF5E8;border:2px solid #C9A84C;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#9A7B2E;font-size:16px">🎯 مؤهل للطرح — فرصة خدمة مدفوعة</b><br/>تواصل مع العميل لعرض خطة الطرح الكاملة.</div>'
-          : '<div style="background:#F0F5F3;border:1px solid #ddd;border-radius:10px;padding:14px;margin-bottom:14px"><b style="color:#6B8A80;font-size:16px">⏳ يحتاج تجهيزاً قبل الطرح — فرصة خدمة تجهيز</b><br/>عرض خطة رفع الجاهزية أدناه على العميل.</div>')) +
-        '<h2>ملف طرح جديد</h2>' +
-        '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + company.cr_number + '</p>' +
-        '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>المدينة:</b> ' + (company.city || '—') + ' | <b>القطاع:</b> ' + (fd?.sector || company.sector || '—') + '</p>' +
-        '<p><b>IPO Readiness Score:</b> ' + score + ' — ' + (rr?.verdict ?? '—') + '</p>' +
-        '<p><b>السوق المقترح:</b> ' + marketLabel + ' | <b>المدة التقديرية:</b> ' + monthsTxt + '</p>' +
-        (recoveryHtml ? '<hr/><div style="background:#F0F7F4;border-radius:10px;padding:14px;margin-top:10px;white-space:pre-wrap;line-height:1.8">' + recoveryHtml + '</div>' : '') +
-        (advisorsHtml ? '<hr/><h3 style="color:#1A3D34;margin-top:16px">🏛️ جهات الطرح والإدراج (بحث مباشر)</h3><div style="background:#FBF8EE;border-radius:10px;padding:14px;margin-top:6px;line-height:1.9">' + advisorsHtml + '</div>' : '') +
-        suggestionBox(suggestService({ ...fd }, 'ipo', score)) +
-        '<hr/>' +
-        '<p style="margin-top:14px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>' +
-        '</div>',
+          ? '<div style="background:#FBF5E8;border-right:4px solid #C9A84C;border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#9A7B2E;font-weight:700">🎯 مؤهل للطرح — فرصة خدمة مدفوعة</div>'
+          : '<div style="background:#F0F5F3;border-right:4px solid #6B8A80;border-radius:8px;padding:12px 14px;margin-bottom:14px;color:#6B8A80;font-weight:700">⏳ يحتاج تجهيزاً قبل الطرح — فرصة خدمة تجهيز</div>')) +
+        '<p style="font-size:15px;color:#1A3D34"><b>' + company.company_name + '</b> — سجل: ' + (company.cr_number || '—') + '</p>' +
+        '<p style="color:#3A4D47">📱 ' + (company.phone || '—') + ' &nbsp;|&nbsp; 🏙️ ' + (company.city || '—') + ' &nbsp;|&nbsp; 🏢 ' + (fd?.sector || company.sector || '—') + '</p>' +
+        '<div style="display:flex;gap:12px;margin:18px 0">' +
+        '<div style="flex:1;background:#F0F7F4;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">IPO Readiness</div><div style="color:#2E9E7B;font-size:24px;font-weight:900">' + score + '</div></div>' +
+        '<div style="flex:1;background:#FBF8EE;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">السوق المقترح</div><div style="color:#C9A84C;font-size:15px;font-weight:900;padding-top:6px">' + marketLabel + '</div></div>' +
+        '</div>' +
+        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، الأهلية، جهات الطرح) محفوظ في ملف العميل بلوحة الأدمن.</p>' +
+        '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
+        '</div></div>',
     });
   } catch {}
 }
