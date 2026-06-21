@@ -60,11 +60,13 @@ export default function FundingResult() {
       // الاستشارة فوراً (غير حاجبة) — قبل المطابقة البطيئة
       fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'funding' }) }).catch(() => {});
 
+      // المطابقة تتم تلقائياً وبشكل متين داخل التقييم (runFundingMatch)، وتُحفظ في الأدمن.
+      // هنا نقرأ عدد الفرص فقط للعرض على العميل (بلا استدعاء بحث مكرر).
       setMatchLoading(true);
       try {
-        const res = await fetch('/api/match', { method: 'POST' });
+        const res = await fetch('/api/match/summary?track=funding', { method: 'GET' });
         const data = await res.json();
-        if (res.ok) { setMatches(data.matches); setMatchCount(data.match_count); }
+        if (res.ok) { setMatches(data.matches || []); setMatchCount(data.match_count || 0); }
       } catch {}
       setMatchLoading(false);
 

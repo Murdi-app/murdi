@@ -59,8 +59,7 @@ export default function IpoResult() {
 
       // استدعاء الاستشارة فوراً (الأهم) — بلا انتظار أي شيء قبله
       fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'ipo' }) }).catch(() => {});
-      // إشعار الأدمن (خلفي، بلا انتظار)
-      fetch('/api/match/ipo', { method: 'POST' }).catch(() => {});
+      // المطابقة وإشعار الأدمن يتمّان تلقائياً ومتيناً داخل التقييم (runIpoMatch) — لا حاجة لاستدعاء هنا
 
       // تحليل الأهلية للطرح (بحث في مصادر الهيئة — يظهر للعميل)
       fetch('/api/ipo-eligibility', { method: 'POST' })
