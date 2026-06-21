@@ -58,6 +58,29 @@ export default function ApprovalsPage() {
     try { const r = await fetch('/api/admin/matches?company_id=' + companyId); if (r.ok) { const d = await r.json(); setMatchesByCompany(prev => ({ ...prev, [companyId]: d.matches || [] })) } } catch {}
   }
 
+  const [chatByCompany, setChatByCompany] = useState<Record<string, { role: string; content: string }[]>>({})
+  const [chatInput, setChatInput] = useState<Record<string, string>>({})
+  const [chatBusy, setChatBusy] = useState<string | null>(null)
+  const loadChat = async (companyId: string) => {
+    if (!companyId || chatByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/research-chat?company_id=' + companyId); if (r.ok) { const d = await r.json(); setChatByCompany(prev => ({ ...prev, [companyId]: d.messages || [] })) } } catch {}
+  }
+  const sendChat = async (companyId: string) => {
+    const msg = (chatInput[companyId] || '').trim()
+    if (!msg || chatBusy) return
+    setChatBusy(companyId)
+    setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'admin', content: msg }] }))
+    setChatInput(prev => ({ ...prev, [companyId]: '' }))
+    try {
+      const r = await fetch('/api/admin/research-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, message: msg }) })
+      const d = await r.json()
+      setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'murdi', content: d.answer || 'تعذّر الرد.' }] }))
+    } catch {
+      setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'murdi', content: 'تعذّر الاتصال. حاول مرة أخرى.' }] }))
+    }
+    setChatBusy(null)
+  }
+
   useEffect(() => { init() }, [])
 
   async function init() {
@@ -313,7 +336,7 @@ export default function ApprovalsPage() {
             const defaulted = pr.repayment_status === 'default';
             return (
               <div className="ap-card" key={pr.company?.id + '-' + idx}>
-                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) loadMatches(pr.company.id); }}>
+                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) { loadMatches(pr.company.id); loadChat(pr.company.id); } }}>
                   <span className="ap-name">{isNew(pr.assessed_at) && <NewBadge />}📊 {pr.company?.company_name || 'شركة'} 
                     <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
                     {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
@@ -419,6 +442,36 @@ export default function ApprovalsPage() {
                           {trackBlock('funding')}
                           {trackBlock('investment')}
                           {trackBlock('ipo')}
+                        </div>
+                      );
+                    })()}
+
+                    {/* مساعد البحث مُرضي — محادثة خاصة بالأدمن */}
+                    {pr.company?.id && (() => {
+                      const cid = pr.company.id;
+                      const msgs = chatByCompany[cid] || [];
+                      return (
+                        <div style={{ marginTop:18, background:'#F7F9FB', border:'2px solid #E1E9F2', borderRadius:12, padding:'16px 18px' }}>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:4 }}>💬 استشر مُرضي حول هذه الجهات</div>
+                          <div style={{ color:'#6B8A80', fontSize:12, marginBottom:12 }}>محادثة خاصة بك — اسأل عن تفاصيل أي جهة، منتجاتها، مقرّها، طريقة التواصل، أو اطلب جهات إضافية. مُرضي يبحث لك بدقّة.</div>
+                          <div style={{ maxHeight:340, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, marginBottom:12 }}>
+                            {msgs.length === 0 && <div style={{ color:'#9DB3AB', fontSize:12.5, textAlign:'center', padding:'14px 0' }}>لا توجد رسائل بعد. ابدأ بسؤال مثل: «فصّل لي أول جهة تمويل — منتجاتها وكيف أتواصل معها».</div>}
+                            {msgs.map((m, i) => (
+                              <div key={i} style={{ alignSelf: m.role === 'admin' ? 'flex-start' : 'flex-end', maxWidth:'88%', background: m.role === 'admin' ? '#1A3D34' : '#fff', color: m.role === 'admin' ? '#fff' : '#1A3D34', border: m.role === 'admin' ? 'none' : '1px solid #E1E9F2', borderRadius:12, padding:'10px 14px', fontSize:13, lineHeight:1.9, whiteSpace:'pre-wrap' }}>
+                                {m.role === 'murdi' && <div style={{ color:'#3B5BA5', fontSize:11, fontWeight:900, marginBottom:4 }}>مُرضي</div>}
+                                {m.content}
+                              </div>
+                            ))}
+                            {chatBusy === cid && <div style={{ alignSelf:'flex-end', color:'#3B5BA5', fontSize:12.5, fontWeight:700 }}>مُرضي يبحث الآن…</div>}
+                          </div>
+                          <div style={{ display:'flex', gap:8 }}>
+                            <input value={chatInput[cid] || ''} onChange={(e) => setChatInput(prev => ({ ...prev, [cid]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(cid); } }}
+                              placeholder="اكتب سؤالك لمُرضي…" disabled={chatBusy === cid}
+                              style={{ flex:1, padding:'11px 14px', borderRadius:10, border:'1.5px solid #E1E9F2', fontFamily:'Cairo', fontSize:13, outline:'none' }} />
+                            <button onClick={() => sendChat(cid)} disabled={chatBusy === cid || !(chatInput[cid] || '').trim()}
+                              style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'0 22px', borderRadius:10, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', opacity: chatBusy === cid ? 0.5 : 1 }}>إرسال</button>
+                          </div>
                         </div>
                       );
                     })()}
