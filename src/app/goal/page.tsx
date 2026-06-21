@@ -97,7 +97,7 @@ export default function GoalPage() {
       service_category: category,
       status: 'submitted',
     });
-    if (error) { console.error('فشل حفظ طلب الخدمة:', error); alert('تعذّر إرسال الطلب: ' + error.message); setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; }); }
+    if (error) { console.error('فشل حفظ طلب الخدمة:', error); setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; }); }
   };
 
   const uploadSignedContract = async (contractId: string, contractType: string, file: File) => {
