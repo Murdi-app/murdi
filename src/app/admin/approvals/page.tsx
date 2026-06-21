@@ -52,6 +52,11 @@ export default function ApprovalsPage() {
   const [edits, setEdits] = useState<any[]>([])
   const [profiles, setProfiles] = useState<any[]>([])
   const [openProfile, setOpenProfile] = useState<string | null>(null)
+  const [matchesByCompany, setMatchesByCompany] = useState<Record<string, any[]>>({})
+  const loadMatches = async (companyId: string) => {
+    if (!companyId || matchesByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/matches?company_id=' + companyId); if (r.ok) { const d = await r.json(); setMatchesByCompany(prev => ({ ...prev, [companyId]: d.matches || [] })) } } catch {}
+  }
 
   useEffect(() => { init() }, [])
 
@@ -308,7 +313,7 @@ export default function ApprovalsPage() {
             const defaulted = pr.repayment_status === 'default';
             return (
               <div className="ap-card" key={pr.company?.id + '-' + idx}>
-                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => setOpenProfile(isOpen ? null : pr.company?.id + '-' + idx)}>
+                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) loadMatches(pr.company.id); }}>
                   <span className="ap-name">{isNew(pr.assessed_at) && <NewBadge />}📊 {pr.company?.company_name || 'شركة'} 
                     <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
                     {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
@@ -354,6 +359,86 @@ export default function ApprovalsPage() {
                         <div style={{ color:'#3A4D47', fontSize:13.5, lineHeight:2.1, whiteSpace:'pre-wrap' }}>{pr.eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}</div>
                       </div>
                     )}
+                    {(() => {
+                      const ms = matchesByCompany[pr.company?.id] || [];
+                      if (ms.length === 0) return null;
+                      const byRegion = (rg: string) => ms.filter((m: any) => (m.region || 'السعودية') === rg);
+                      const regionBlock = (label: string, color: string, list: any[]) => list.length === 0 ? null : (
+                        <div style={{ marginBottom:14 }}>
+                          <div style={{ color, fontSize:13, fontWeight:900, margin:'10px 0 8px' }}>{label} <span style={{ background:color, color:'#fff', borderRadius:10, padding:'1px 8px', fontSize:11 }}>{list.length}</span></div>
+                          <div style={{ overflowX:'auto' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                              <thead><tr style={{ background:'#F0F5F3' }}>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الجهة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المنتج</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المتطلبات</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الملاءمة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المصدر</th>
+                              </tr></thead>
+                              <tbody>
+                                {list.map((m: any, i: number) => (
+                                  <tr key={i}>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', fontWeight:700, color:'#1A3D34' }}>{m.provider}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#3A4D47' }}>{m.product}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.requirements}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.fit}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8' }}>{m.source ? <a href={m.source} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B' }}>↗️</a> : '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                      return (
+                        <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:6 }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span></div>
+                          {regionBlock('🇸🇦 السعودية', '#2E9E7B', byRegion('السعودية'))}
+                          {regionBlock('🌙 الخليج', '#3B5BA5', byRegion('الخليج'))}
+                          {regionBlock('🌍 دولي', '#A53B3B', byRegion('دولي'))}
+                        </div>
+                      );
+                    })()}
+                    {(() => {
+                      const ms = matchesByCompany[pr.company?.id] || [];
+                      if (ms.length === 0) return null;
+                      const byRegion = (rg: string) => ms.filter((m: any) => (m.region || 'السعودية') === rg);
+                      const regionBlock = (label: string, color: string, list: any[]) => list.length === 0 ? null : (
+                        <div style={{ marginBottom:14 }}>
+                          <div style={{ color, fontSize:13, fontWeight:900, margin:'10px 0 8px' }}>{label} <span style={{ background:color, color:'#fff', borderRadius:10, padding:'1px 8px', fontSize:11 }}>{list.length}</span></div>
+                          <div style={{ overflowX:'auto' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                              <thead><tr style={{ background:'#F0F5F3' }}>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الجهة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المنتج</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المتطلبات</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الملاءمة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المصدر</th>
+                              </tr></thead>
+                              <tbody>
+                                {list.map((m: any, i: number) => (
+                                  <tr key={i}>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', fontWeight:700, color:'#1A3D34' }}>{m.provider}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#3A4D47' }}>{m.product}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.requirements}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.fit}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8' }}>{m.source ? <a href={m.source} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B' }}>↗️</a> : '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                      return (
+                        <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:6 }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span></div>
+                          {regionBlock('🇸🇦 السعودية', '#2E9E7B', byRegion('السعودية'))}
+                          {regionBlock('🌙 الخليج', '#3B5BA5', byRegion('الخليج'))}
+                          {regionBlock('🌍 دولي', '#A53B3B', byRegion('دولي'))}
+                        </div>
+                      );
+                    })()}
                     <div style={{ height:20 }} />
                   </div>
                 )}
