@@ -47,6 +47,7 @@ export default function FundingAssessment() {
   const [debtStatus, setDebtStatus] = useState('');
   const [monthsLate, setMonthsLate] = useState('');
   const [debtType, setDebtType] = useState('');
+  const [debtNarrative, setDebtNarrative] = useState('');
   const [debtTypeOther, setDebtTypeOther] = useState('');
   const [crValid, setCrValid] = useState<boolean | null>(null);
   const [taxCompliant, setTaxCompliant] = useState<boolean | null>(null);
@@ -54,7 +55,11 @@ export default function FundingAssessment() {
   const [hasStatements, setHasStatements] = useState<boolean | null>(null);
   const [hasBankStatement, setHasBankStatement] = useState<boolean | null>(null);
   const [activityType, setActivityType] = useState('');
+  const [activityTypeOther, setActivityTypeOther] = useState('');
   const [hasPos, setHasPos] = useState<boolean | null>(null);
+  const [posCount, setPosCount] = useState('');
+  const [posUsage, setPosUsage] = useState('');
+  const [posTypes, setPosTypes] = useState('');
   const [issuesInvoices, setIssuesInvoices] = useState<boolean | null>(null);
   const [hasFleet, setHasFleet] = useState<boolean | null>(null);
 
@@ -70,7 +75,7 @@ export default function FundingAssessment() {
       return true;
     }
     if (step === 3) return crValid !== null && taxCompliant !== null && zakatCompliant !== null && hasStatements !== null && hasBankStatement !== null;
-    if (step === 4) return activityType !== '' && hasPos !== null && issuesInvoices !== null && hasFleet !== null;
+    if (step === 4) return activityType !== '' && (activityType !== 'other_activity' || activityTypeOther.trim() !== '') && hasPos !== null && issuesInvoices !== null && hasFleet !== null;
     return false;
   };
 
@@ -96,6 +101,7 @@ export default function FundingAssessment() {
           debt_status: hasDebt ? debtStatus : null,
           months_late: hasDebt && debtStatus === 'late' ? Number(monthsLate) : null,
           debt_type: hasDebt ? debtType : null,
+          debt_narrative: hasDebt ? (debtNarrative.trim() || null) : null,
           debt_type_other: hasDebt && debtType === 'other' ? debtTypeOther.trim() : null,
           cr_valid: crValid,
           tax_compliant: taxCompliant,
@@ -103,7 +109,11 @@ export default function FundingAssessment() {
           has_financial_statements: hasStatements,
           has_bank_statement: hasBankStatement,
           activity_type: activityType,
+          activity_type_other: activityType === 'other_activity' ? activityTypeOther.trim() : null,
           has_pos: hasPos,
+          pos_count: hasPos ? (posCount.trim() || null) : null,
+          pos_usage_pct: hasPos ? (posUsage.trim() || null) : null,
+          pos_types: hasPos ? (posTypes.trim() || null) : null,
           issues_invoices: issuesInvoices,
           has_fleet: hasFleet,
         }),
@@ -246,6 +256,11 @@ export default function FundingAssessment() {
                         placeholder="اكتب نوع الدين" className={inputCls + ' text-right mt-3'} />
                     )}
                   </div>
+                  <div>
+                    <label className="block font-black text-[#1A3D34] mb-2">اشرح طبيعة ديونك (اختياري — يساعدنا نفهم وضعك بدقّة)</label>
+                    <textarea value={debtNarrative} onChange={(e) => setDebtNarrative(e.target.value)} rows={3}
+                      placeholder="مثال: قرض لشراء معدات، تمويل رأس مال عامل موسمي، دين مورّد مجدول..." className={inputCls + ' text-right'} />
+                  </div>
                 </>
               )}
             </div>
@@ -296,17 +311,31 @@ export default function FundingAssessment() {
                     </button>
                   ))}
                 </div>
+                {activityType === 'other_activity' && (
+                  <input value={activityTypeOther} onChange={(e) => setActivityTypeOther(e.target.value)}
+                    placeholder="اكتب طبيعة نشاطك بالتفصيل" className={inputCls + ' text-right mt-3'} />
+                )}
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">تستقبل مدفوعات عبر نقاط بيع (مدى / شبكة)؟</label>
                 <YesNo value={hasPos} onChange={setHasPos} />
+                {hasPos === true && (
+                  <div className="space-y-3 mt-3 bg-[#FBFCFB] rounded-xl p-4 border border-[#F0F5F3]">
+                    <input value={posTypes} onChange={(e) => setPosTypes(e.target.value)}
+                      placeholder="أنواع نقاط البيع (مثال: مدى، Apple Pay، STC Pay)" className={inputCls + ' text-right'} />
+                    <input type="number" inputMode="numeric" value={posCount} onChange={(e) => setPosCount(e.target.value)}
+                      placeholder="عدد أجهزة نقاط البيع" className={inputCls + ' text-right'} />
+                    <input type="number" inputMode="numeric" value={posUsage} onChange={(e) => setPosUsage(e.target.value)}
+                      placeholder="نسبة مبيعاتك عبر نقاط البيع تقريباً (%)" className={inputCls + ' text-right'} />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">تُصدر فواتير آجلة أو مستخلصات لعملاء/جهات؟</label>
                 <YesNo value={issuesInvoices} onChange={setIssuesInvoices} />
               </div>
               <div>
-                <label className="block font-black text-[#1A3D34] mb-2">لديك أسطول مركبات أو معدات تشغيلية؟</label>
+                <label className="block font-black text-[#1A3D34] mb-2">تملك أسطول مركبات أو معدات تشغيلية (على ملك الشركة، لا مؤجّرة باسم بنك)؟</label>
                 <YesNo value={hasFleet} onChange={setHasFleet} />
               </div>
             </div>
