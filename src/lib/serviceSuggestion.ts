@@ -81,8 +81,12 @@ interface ServiceSuggestion { service: string; icon: string; why: string; urgenc
 
 export function suggestService(fd: SuggestInput, track: Track, score: number): ServiceSuggestion {
   const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
-  const noStatements = fd?.has_financial_statements !== true && fd?.audited_statements !== true;
-  const noGovernance = fd?.has_governance !== true;
+  // نميّز "نعرف أنها ناقصة" (false صريح) عن "لا نعرف" (null/غير مذكور) — عند الشك لا نُرهق العميل
+  const stmtKnown = fd?.has_financial_statements !== undefined && fd?.has_financial_statements !== null;
+  const audKnown = fd?.audited_statements !== undefined && fd?.audited_statements !== null;
+  const noStatements = (stmtKnown || audKnown) && fd?.has_financial_statements !== true && fd?.audited_statements !== true;
+  const govKnown = fd?.has_governance !== undefined && fd?.has_governance !== null;
+  const noGovernance = govKnown && fd?.has_governance !== true;
   const hasDebt = fd?.has_debt === true;
   const qualified = score >= (track === 'ipo' ? 65 : 70);
 
@@ -118,7 +122,17 @@ export function suggestService(fd: SuggestInput, track: Track, score: number): S
     return { urgency: 'recommended', icon: '🏛️', service: 'بناء الحوكمة المؤسسية', why: 'نظام الحوكمة يطمئن المستثمر ويرفع التقييم. ليست شرطاً إلزامياً لكنها تقوّي العرض كثيراً.' };
   }
 
-  // ===== المؤهّل في مساره: خدمة تجهيز احترافية (تقوّي، اختيارية) =====
+  // ===== غير المؤهّل بلا عائق واضح: لا نرشّح خدمة تجهيز (لا نَعِد بما لا يناسب وضعه) =====
+  if (!qualified) {
+    const wait: Record<Track, string> = {
+      funding: 'درجة جاهزيتك للتمويل لم تبلغ العتبة بعد. راجع العوائق وخطة التحسين أعلاه — وعند ارتفاع جاهزيتك تنفتح لك خيارات أقوى. فريق مُرضي جاهز لمرافقتك متى احتجت.',
+      investment: 'درجة جاذبيتك للمستثمر لم تبلغ العتبة بعد. ركّز على معالجة العوائق أعلاه أولاً — وعند جاهزيتك يرافقك فريق مُرضي في تجهيز العرض.',
+      ipo: 'شركتك تحتاج تهيؤاً قبل الطرح. ركّز على معالجة العوائق أعلاه — وعند بلوغك مستوى الجاهزية يرافقك فريق مُرضي في رحلة الإدراج.',
+    };
+    return { urgency: 'none', icon: '🧭', service: 'ركّز على رفع جاهزيتك أولاً', why: wait[track] };
+  }
+
+  // ===== المؤهل في مساره: خدمة تجهيز احترافية (تقوّي، اختيارية) =====
   if (track === 'funding') {
     return { urgency: 'recommended', icon: '🏦', service: 'تجهيز ملف التمويل والتفاوض', why: 'الشركة مؤهّلة. تجهيز الملف احترافياً والتفاوض نيابةً عنها يرفع فرص القبول وبشروط أفضل — خدمة بعمولة نجاح عند صدور الموافقة.' };
   }
