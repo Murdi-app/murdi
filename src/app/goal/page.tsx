@@ -91,12 +91,13 @@ export default function GoalPage() {
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
     );
-    await supabase.from('service_requests').insert({
+    const { error } = await supabase.from('service_requests').insert({
       company_id: companyId,
       service_title: title,
       service_category: category,
       status: 'submitted',
     });
+    if (error) { console.error('فشل حفظ طلب الخدمة:', error); alert('تعذّر إرسال الطلب: ' + error.message); setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; }); }
   };
 
   const uploadSignedContract = async (contractId: string, contractType: string, file: File) => {
