@@ -588,34 +588,52 @@ async function ipoReadinessPlan(data: Record<string, unknown>): Promise<string> 
   return '<h3>خطة رفع الجاهزية للطرح</h3><p>تحتاج الشركة بناء الحوكمة المؤسسية، تعيين مراجع خارجي معتمد، تشكيل لجنة مراجعة، وتجهيز القوائم المالية المدققة قبل التقدم للإدراج.</p>';
 }
 
-async function searchIpoAdvisors(sector: string, market: string, revenue: number): Promise<string> {
-  const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
-  const prompt = 'أنت باحث أسواق مال محترف رفيع المستوى تعمل لصالح د. عبدالحكيم المرضي (حلول المرضي للاستشارات المالية، السعودية). شركة قطاعها "' + sector + '" وإيراداتها السنوية ' + revenue + ' ريال تستهدف الإدراج في ' + market + ' بالسوق السعودي (تداول). ابحث في الويب بدقة ومهنية وعمق (اجتهد ولا تكتفِ بعدد قليل) وقسّم نتائجك إلى ثلاثة أقسام:\n\n'
-    + '1) المستشارون الماليون المرخّصون من هيئة السوق المالية السعودية (CMA) الذين يقودون عمليات الطرح والإدراج — ركّز على المرخّصين فعلياً والنشطين في طروحات ' + market + '. لكل واحد: الاسم، ولماذا يناسب حجم وقطاع هذه الشركة، وطريقة تواصل عملية محددة (موقع رسمي/بريد إدارة الترتيب والاستشارات).\n\n'
-    + '2) متعهّدو التغطية والمراجعون (المدققون) المعتمدون لدى الهيئة المناسبون لطرح بهذا الحجم.\n\n'
-    + '3) طروحات مشابهة حديثة (آخر 2-3 سنوات) في قطاع "' + sector + '" أو قطاع قريب بالسوق السعودي (' + market + '): اسم الشركة، سنة الطرح، حجم الطرح والتغطية إن توفّر، ومن كان مستشارها المالي — كمرجع يستفيد منه صاحب الشركة.\n\n'
-    + 'ابدأ بقسم (الخلاصة التنفيذية): أفضل مستشارين ماليَّين للتواصل معهما الآن وسبب الترشيح. ثم التفاصيل بالأقسام الثلاثة أعلاه. ابحث براحتك دون التقيّد بعدد، أدرج فقط الجهات المرخّصة والمناسبة فعلاً لحجم الشركة. اجب بالعربية، مهني ومباشر بلا حشو، وأخرج HTML عربي بسيط (h3 للأقسام، ul/li للقوائم) وابدأ مباشرة بالـHTML بلا أي إشارة لذكاء اصطناعي.';
-  for (const model of MODELS) {
-    try {
-      const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
-      let textOut = '';
-      for (let turn = 0; turn < 10; turn++) {
-        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 5000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 20 }] }) });
-        if (!res.ok) break;
-        const data = await res.json();
-        const content = (data.content || []) as { type: string; text?: string }[];
-        textOut += content.filter((b) => b.type === 'text').map((b) => b.text || '').join(' ');
-        if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+async function searchIpoAdvisors(sector: string, market: string, revenue: number): Promise<FundOffer[]> {
+  const prompt = 'أنت باحث أسواق مال خبير رفيع المستوى يعمل لـ د. عبدالحكيم المرضي. شركة قطاعها "' + sector + '" وإيراداتها السنوية ' + revenue + ' ريال تستهدف الإدراج في ' + market + ' بالسوق السعودي (تداول). مهمتك: البحث العميق والذكي والواسع في الويب عن الجهات المرخّصة من هيئة السوق المالية السعودية (CMA) القابلة للتواصل التي تخدم طرحاً بهذا الحجم والقطاع. ابحث براحة وعمق — الكثرة مطلوبة طالما كل جهة مرخّصة ومناسبة فعلاً.\n\n'
+    + 'ابحث في ثلاثة أنواع من الجهات (وميّزها في حقل product):\n'
+    + '1) "مستشار مالي CMA": المستشارون الماليون المرخّصون من الهيئة الذين يقودون الطرح والإدراج (مديرو الاكتتاب والترتيب) — النشطون فعلياً في طروحات ' + market + '.\n'
+    + '2) "متعهد تغطية": متعهّدو التغطية المرخّصون المناسبون لطرح بهذا الحجم.\n'
+    + '3) "مراجع معتمد": مكاتب المراجعة (المدققون) المعتمدون لدى الهيئة المناسبون لشركة بهذا الحجم.\n\n'
+    + 'معايير المطابقة الذكية — لا تُدرج جهة إلا إذا اجتازت:\n'
+    + '1) الترخيص: مرخّصة فعلياً من هيئة السوق المالية السعودية للنشاط المذكور.\n'
+    + '2) الحجم: تخدم طروحاً بحجم يناسب إيرادات هذه الشركة (لا جهة تخدم الطروحات العملاقة فقط لشركة متوسطة).\n'
+    + '3) القطاع/النشاط: لها خبرة في قطاع هذه الشركة أو قطاع قريب إن أمكن.\n'
+    + '4) نشاط حديث: فضّل من شارك في طروحات خلال آخر 2-3 سنوات.\n\n'
+    + 'ابحث بأريحية وعمق واستقصِ السوق بدقّة: أدرج كل جهة مرخّصة ومناسبة فعلاً — لا تبخل بالصالح ولا تتوقف مبكراً، ولا تُدرج جهة غير مرخّصة أو غير مناسبة لمجرد العدد.\n\n'
+    + 'في حقل fit لكل جهة: لماذا تناسب هذه الشركة تحديداً (الحجم، القطاع، خبرتها في طروحات مشابهة)، وطريقة الوصول العملية (موقع رسمي أو بريد إدارة الترتيب/الاستشارات — خطوة واحدة محددة). في حقل requirements: تركيز/متطلبات الجهة باختصار. في حقل product: نوع الجهة (مستشار مالي CMA / متعهد تغطية / مراجع معتمد).\n\n'
+    + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown، بهذا الشكل بالضبط:\n'
+    + '{"offers":[{"provider":"اسم الجهة","product":"نوع الجهة","requirements":"تركيز/متطلبات الجهة باختصار","fit":"لماذا تناسب هذه الشركة + طريقة الوصول","source":"رابط المصدر"}]}\n'
+    + 'رتّب من الأنسب للأقل. أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
+  try {
+    const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
+    let text = '';
+    for (let turn = 0; turn < 10; turn++) {
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 20 }] }),
+        });
+        if (res.ok) break;
+        if (res.status === 429 || res.status === 529 || res.status >= 500) { await new Promise((r) => setTimeout(r, 3000 * (attempt + 1))); continue; }
         break;
       }
-      textOut = textOut.trim();
-      if (textOut.length > 80) return textOut;
-    } catch {}
-  }
-  return '<h3>جهات الطرح والإدراج</h3><p>يتولى فريق حلول المرضي ترشيح المستشار المالي المرخّص الأنسب ومرافقتكم في رحلة الإدراج.</p>';
+      if (!res || !res.ok) { MATCH_DIAG.push('ipo: HTTP ' + (res ? res.status : 'null')); break; }
+      const data = await res.json();
+      const content = (data.content || []) as { type: string; text?: string }[];
+      text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
+      if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+      break;
+    }
+    const offers = parseOffers(text).map((o) => ({ ...o, region: 'السعودية' }));
+    MATCH_DIAG.push('ipo: ' + offers.length + ' جهة' + (offers.length === 0 && text.length > 0 ? ' (نص ' + text.length + ' حرف لكن parse فشل)' : ''));
+    return offers;
+  } catch (e) { MATCH_DIAG.push('ipo خطأ: ' + (e instanceof Error ? e.message : String(e))); return []; }
 }
 
 async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> {
+  MATCH_DIAG = [];
   const adminClient = admin();
   const { data: company } = await adminClient.from('companies').select('id, company_name, cr_number, city, sector, phone, account_status').eq('id', companyId).single();
   if (company === null || company.account_status !== 'active') return;
@@ -638,8 +656,19 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
     let planKind: 'recovery' | 'readiness' | 'qualified' | 'waiting' = score >= 65 ? 'qualified' : 'waiting';
     if (isDefaulted) { planKind = 'recovery'; }
     else if (lowScore) { planKind = 'readiness'; }
-    let advisorsHtml = '';
-    if (planKind === 'qualified') { try { advisorsHtml = await searchIpoAdvisors(fd?.sector || company?.sector || 'غير محدد', marketLabel, rev); } catch {} }
+    let ipoCount = 0;
+    if (planKind === 'qualified') {
+      try {
+        const advisors = await searchIpoAdvisors(fd?.sector || company?.sector || 'غير محدد', marketLabel, rev);
+        ipoCount = advisors.length;
+        if (advisors.length > 0) {
+          await adminClient.from('match_results').insert(advisors.map((o) => ({
+            company_id: company.id, track: 'ipo', region: o.region,
+            provider: o.provider, product: o.product, requirements: o.requirements, fit: o.fit, source: o.source,
+          })));
+        }
+      } catch {}
+    }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
@@ -661,7 +690,7 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
         '<div style="flex:1;background:#F0F7F4;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">IPO Readiness</div><div style="color:#2E9E7B;font-size:24px;font-weight:900">' + score + '</div></div>' +
         '<div style="flex:1;background:#FBF8EE;border-radius:10px;padding:14px;text-align:center"><div style="color:#9DB3AB;font-size:12px">السوق المقترح</div><div style="color:#C9A84C;font-size:15px;font-weight:900;padding-top:6px">' + marketLabel + '</div></div>' +
         '</div>' +
-        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، الأهلية، جهات الطرح) محفوظ في ملف العميل بلوحة الأدمن.</p>' +
+        '<p style="color:#6B8A80;font-size:13px">التحليل الكامل (العوائق، خطة التحسين، الأهلية، جهات الطرح) محفوظ في ملف العميل بلوحة الأدمن.</p>' +(planKind === 'qualified' ? '<p style="color:#9DB3AB;font-size:12px;border-top:1px dashed #EAF2EE;padding-top:10px">🔎 بحث مُرضي: ' + ipoCount + ' جهة طرح &nbsp;|&nbsp; تشخيص: ' + MATCH_DIAG.join(' · ') + '</p>' : '') +
         '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
         '</div></div>',
     });
