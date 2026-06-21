@@ -68,11 +68,12 @@ export default function InvestmentResult() {
       fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'investment' }) }).catch(() => {});
 
       if (rr !== null && rr.readiness_score >= 70) {
+        // المطابقة تتم تلقائياً ومتيناً داخل التقييم وتُحفظ في الأدمن — هنا نقرأ العدد فقط
         setMatchLoading(true);
         try {
-          const res = await fetch('/api/match/investment', { method: 'POST' });
+          const res = await fetch('/api/match/summary?track=investment', { method: 'GET' });
           const data = await res.json();
-          if (res.ok) { setMatches(data.matches); setMatchCount(data.match_count); }
+          if (res.ok) { setMatches(data.matches || []); setMatchCount(data.match_count || 0); }
         } catch {}
         setMatchLoading(false);
       }
