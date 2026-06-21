@@ -390,12 +390,35 @@ export default function ApprovalsPage() {
                           </div>
                         </div>
                       );
+                      const TRACK_META: Record<string, { ar: string; color: string; icon: string }> = {
+                        funding: { ar: 'التمويل', color: '#2E9E7B', icon: '💰' },
+                        investment: { ar: 'الاستثمار', color: '#3B5BA5', icon: '📈' },
+                        ipo: { ar: 'الطرح العام', color: '#A53B3B', icon: '🏛️' },
+                      };
+                      const byTrack = (tk: string) => ms.filter((m: any) => (m.track || 'funding') === tk);
+                      const trackBlock = (tk: string) => {
+                        const tl = byTrack(tk);
+                        if (tl.length === 0) return null;
+                        const meta = TRACK_META[tk] || TRACK_META.funding;
+                        const inRegion = (rg: string) => tl.filter((m: any) => (m.region || 'السعودية') === rg);
+                        return (
+                          <div key={tk} style={{ marginBottom:18, paddingBottom:14, borderBottom:'1px solid #EEF4F1' }}>
+                            <div style={{ color:meta.color, fontSize:13.5, fontWeight:900, margin:'4px 0 10px', display:'flex', alignItems:'center', gap:6 }}>
+                              <span>{meta.icon} مسار {meta.ar}</span>
+                              <span style={{ background:meta.color, color:'#fff', borderRadius:10, padding:'1px 9px', fontSize:11 }}>{tl.length}</span>
+                            </div>
+                            {regionBlock('🇸🇦 السعودية', '#2E9E7B', inRegion('السعودية'))}
+                            {regionBlock('🌙 الخليج', '#3B5BA5', inRegion('الخليج'))}
+                            {regionBlock('🌍 دولي', '#A53B3B', inRegion('دولي'))}
+                          </div>
+                        );
+                      };
                       return (
                         <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
-                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:6 }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span></div>
-                          {regionBlock('🇸🇦 السعودية', '#2E9E7B', byRegion('السعودية'))}
-                          {regionBlock('🌙 الخليج', '#3B5BA5', byRegion('الخليج'))}
-                          {regionBlock('🌍 دولي', '#A53B3B', byRegion('دولي'))}
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:10 }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span></div>
+                          {trackBlock('funding')}
+                          {trackBlock('investment')}
+                          {trackBlock('ipo')}
                         </div>
                       );
                     })()}
