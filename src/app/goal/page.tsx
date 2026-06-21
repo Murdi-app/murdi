@@ -20,9 +20,18 @@ export default function GoalPage() {
   const [company, setCompany] = useState<{ name: string; sector: string } | null>(null);
   const [showCard, setShowCard] = useState(false);
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
+  const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [serviceRequests, setServiceRequests] = useState<Record<string, { status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('tab');
+    if (t === 'services' || t === 'consult' || t === 'overview') setTab(t);
+    const h = params.get('highlight');
+    if (h) setHighlightService(h);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -278,8 +287,14 @@ export default function GoalPage() {
                 <span className="text-[#9DB3AB] text-xs font-bold">{cat.note}</span>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
-                {cat.items.map((it, ii) => (
-                  <div key={ii} className="bg-white rounded-2xl p-6 border-2 border-[#EAF2EE] flex flex-col">
+                {cat.items.map((it, ii) => {
+                  const isHighlighted = highlightService === it.title;
+                  return (
+                  <div key={ii}
+                    ref={isHighlighted ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); } : undefined}
+                    className="bg-white rounded-2xl p-6 flex flex-col"
+                    style={{ border: isHighlighted ? '2.5px solid #C9A84C' : '2px solid #EAF2EE', boxShadow: isHighlighted ? '0 0 0 4px rgba(201,168,76,0.15)' : undefined }}>
+                    {isHighlighted && <div style={{ background: '#C9A84C', color: '#fff', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 999, alignSelf: 'flex-start', marginBottom: 10 }}>⭐ الخدمة المقترحة لك</div>}
                     <div className="text-2xl mb-2">{it.icon}</div>
                     <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{!COMMISSION_SERVICES[it.title] && <span className="text-[#C9A84C]">خطة: </span>}{it.title}</h4>
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
@@ -346,7 +361,8 @@ export default function GoalPage() {
                       );
                     })()}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
