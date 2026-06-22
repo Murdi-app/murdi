@@ -9,7 +9,7 @@ type Lead = {
   id: string; category: string; company_name: string; sector: string; signal: string;
   contact_phone: string | null; contact_email: string | null; contact_social: string | null;
   source: string | null; notes: string | null; status: string;
-  lead_kind: string | null; hotness: string | null; entry_angle: string | null;
+  lead_kind: string | null; hotness: string | null; entry_angle: string | null; saved: boolean | null;
 };
 
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
@@ -24,6 +24,7 @@ export default function HuntPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [viewMode, setViewMode] = useState<'today' | 'saved'>('today');
   const [date, setDate] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -43,11 +44,24 @@ export default function HuntPage() {
     setLoading(false);
   }
 
-  async function loadLeads() {
+  async function loadLeads(mode: 'today' | 'saved' = 'today') {
     try {
-      const r = await fetch('/api/admin/daily-hunt');
+      const r = await fetch('/api/admin/daily-hunt' + (mode === 'saved' ? '?saved=true' : ''));
       if (r.ok) { const d = await r.json(); setLeads(d.leads || []); setDate(d.date || ''); }
     } catch { /* تجاهل */ }
+  }
+  function switchView(mode: 'today' | 'saved') { setViewMode(mode); loadLeads(mode); }
+
+  async function toggleSave(id: string, current: boolean) {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, saved: !current } : l));
+    try { await fetch('/api/admin/save-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, saved: !current }) }); }
+    catch { setLeads(prev => prev.map(l => l.id === id ? { ...l, saved: current } : l)); }
+  }
+
+  async function deleteLead(id: string) {
+    if (!confirm('حذف هذه الفرصة نهائياً؟')) return;
+    setLeads(prev => prev.filter(l => l.id !== id));
+    try { await fetch('/api/admin/save-lead?id=' + id, { method: 'DELETE' }); } catch { /* تجاهل */ }
   }
 
   async function runHunt() {
@@ -73,10 +87,16 @@ export default function HuntPage() {
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 1100, margin: '0 auto', padding: '28px 20px', background: '#FBFCFB', minHeight: '100vh' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
         <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, margin: 0 }}>🎯 صيد الفرص اليومي</h1>
-        <button onClick={runHunt} disabled={running}
-          style={{ background: running ? '#9DB3AB' : '#1A3D34', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: running ? 'default' : 'pointer' }}>
-          {running ? 'جارٍ الصيد…' : '🔍 شغّل جولة اليوم'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', background: '#EEF3F1', borderRadius: 999, padding: 3 }}>
+            <button onClick={() => switchView('today')} style={{ background: viewMode === 'today' ? '#1A3D34' : 'transparent', color: viewMode === 'today' ? '#fff' : '#6B8A80', border: 'none', padding: '8px 18px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>فرص اليوم</button>
+            <button onClick={() => switchView('saved')} style={{ background: viewMode === 'saved' ? '#C9A84C' : 'transparent', color: viewMode === 'saved' ? '#fff' : '#6B8A80', border: 'none', padding: '8px 18px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>📌 المحفوظة</button>
+          </div>
+          <button onClick={runHunt} disabled={running}
+            style={{ background: running ? '#9DB3AB' : '#1A3D34', color: '#fff', border: 'none', padding: '12px 28px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: running ? 'default' : 'pointer' }}>
+            {running ? 'جارٍ الصيد…' : '🔍 شغّل جولة اليوم'}
+          </button>
+        </div>
       </div>
       <p style={{ color: '#6B8A80', fontSize: 13, marginTop: 0, marginBottom: 6 }}>مُرضي يبحث في السوق السعودي عن شركات تمثّل فرص تمويل واستثمار وطرح — مع بيانات التواصل.</p>
       {date && <p style={{ color: '#9DB3AB', fontSize: 12, marginTop: 0 }}>جولة تاريخ: {date} &nbsp;·&nbsp; الإجمالي: {leads.length} فرصة</p>}
@@ -109,7 +129,15 @@ export default function HuntPage() {
                       {isScout && <span style={{ background: '#C9A84C', color: '#fff', borderRadius: 6, padding: '2px 9px', fontSize: 11, fontWeight: 900 }}>🏞️ مرتع — صيد يدوي</span>}
                       {hot && <span style={{ background: hotColor, color: '#fff', borderRadius: 6, padding: '2px 9px', fontSize: 11, fontWeight: 900 }}>{hot.includes('ساخ') ? '🔥' : ''} {hot}</span>}
                     </div>
-                    {l.sector && <div style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>{l.sector}</div>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {l.sector && <div style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>{l.sector}</div>}
+                      <button onClick={() => toggleSave(l.id, l.saved === true)} title={l.saved ? 'محفوظة — اضغط للإلغاء' : 'احفظ هذه الفرصة'}
+                        style={{ background: l.saved ? '#C9A84C' : '#F0F4F2', color: l.saved ? '#fff' : '#6B8A80', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>
+                        {l.saved ? '📌 محفوظة' : '📌 حفظ'}
+                      </button>
+                      <button onClick={() => deleteLead(l.id)} title="حذف نهائي"
+                        style={{ background: '#FBEEEC', color: '#C0564B', border: 'none', borderRadius: 8, padding: '5px 9px', fontSize: 13, cursor: 'pointer', fontWeight: 900 }}>🗑️</button>
+                    </div>
                   </div>
                   {l.signal && <div style={{ color: '#3A4D47', fontSize: 13.5, fontWeight: 700, margin: '8px 0', lineHeight: 1.8 }}>📌 {l.signal}</div>}
                   {l.notes && <div style={{ color: '#6B8A80', fontSize: 12.5, lineHeight: 1.8, marginBottom: 8 }}>{l.notes}</div>}

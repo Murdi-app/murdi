@@ -27,7 +27,17 @@ async function getAdmin() {
 export async function GET(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const date = new URL(req.url).searchParams.get('date') || new Date().toISOString().slice(0, 10);
+  const url = new URL(req.url);
+  const savedOnly = url.searchParams.get('saved') === 'true';
+  const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+  if (savedOnly) {
+    const { data } = await admin
+      .from('daily_leads')
+      .select('*')
+      .eq('saved', true)
+      .order('created_at', { ascending: false });
+    return NextResponse.json({ leads: data || [], date: 'saved' });
+  }
   const { data } = await admin
     .from('daily_leads')
     .select('*')
