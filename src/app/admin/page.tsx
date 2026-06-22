@@ -64,6 +64,7 @@ export default function AdminPage() {
         <div onClick={()=>router.push('/admin/entities')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الجهات</div>
         <div onClick={()=>router.push('/admin/services')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الخدمات</div>
         <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>🎯 صيد الفرص</div>
+        <div onClick={()=>router.push('/admin/payments')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>💳 المدفوعات</div>
       </div>
 
       <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 24px' }}>
