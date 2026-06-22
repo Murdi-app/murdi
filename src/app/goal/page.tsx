@@ -24,7 +24,7 @@ export default function GoalPage() {
   const [companyId, setCompanyId] = useState('');
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [serviceRequests, setServiceRequests] = useState<Record<string, { status: string; price: number | null; deliverable: string | null }>>({});
+  const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
   useEffect(() => {
@@ -66,11 +66,11 @@ export default function GoalPage() {
       setCompanyId(comp.id);
       const { data: reqs } = await supabase
         .from('service_requests')
-        .select('service_title, status, price, admin_deliverable')
+        .select('id, service_title, status, price, admin_deliverable')
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
-      const reqMap: Record<string, { status: string; price: number | null; deliverable: string | null }> = {};
-      for (const r of (reqs || [])) { if (!reqMap[r.service_title]) reqMap[r.service_title] = { status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
+      const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null }> = {};
+      for (const r of (reqs || [])) { if (!reqMap[r.service_title]) reqMap[r.service_title] = { id: r.id, status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
       setServiceRequests(reqMap);
       const { data: ctrs } = await supabase
         .from('contracts')
@@ -90,7 +90,7 @@ export default function GoalPage() {
 
   const submitServiceRequest = async (title: string, category: string) => {
     if (!companyId) return;
-    setServiceRequests((prev) => ({ ...prev, [title]: { status: 'submitted', price: null, deliverable: null } }));
+    setServiceRequests((prev) => ({ ...prev, [title]: { id: '', status: 'submitted', price: null, deliverable: null } }));
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
@@ -333,6 +333,8 @@ export default function GoalPage() {
                       const STAT: Record<string, { t: string; bg: string; fg: string }> = {
                         submitted: { t: '⏳ بانتظار الفريق والدكتور', bg: '#FBF5E8', fg: '#9A7B2E' },
                         in_progress: { t: '🛠️ قيد التجهيز', bg: '#EAF0FB', fg: '#3B5BA5' },
+                        priced: { t: '💳 جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
+                        paid: { t: '✅ تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
                         delivered: { t: '✅ جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
                         completed: { t: '🏆 مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
                       };
@@ -340,6 +342,13 @@ export default function GoalPage() {
                       return (
                         <div className="flex flex-col gap-2">
                           <div className="text-center py-2.5 rounded-full font-black text-sm" style={{ background: st.bg, color: st.fg }}>{st.t}</div>
+                          {req.status === 'priced' && req.price && (
+                            <div className="flex flex-col gap-2 mt-1">
+                              <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
+                              <button onClick={() => router.push('/pay?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">💳 ادفع أونلاين</button>
+                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2 rounded-full border-2 border-[#1A3D34] text-[#1A3D34] font-black text-xs">🏦 تحويل بنكي</button>
+                            </div>
+                          )}
                           {req.status === 'delivered' && req.deliverable && (
                             <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + it.title + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
                           )}

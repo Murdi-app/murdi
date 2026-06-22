@@ -50,6 +50,12 @@ export async function POST(req: Request) {
       const until = new Date(); until.setMonth(until.getMonth() + 4);
       await admin.from('companies').update({ subscription_active: true, subscription_until: until.toISOString() }).eq('id', pay.company_id);
     }
+    // عند تأكيد تحويل خدمة: ربط الدفعة بالطلب وتحويله إلى مدفوع
+    if (pay.kind === 'service' && pay.company_id) {
+      await admin.from('service_requests')
+        .update({ status: 'paid', payment_id: id, updated_at: new Date().toISOString() })
+        .eq('company_id', pay.company_id).eq('status', 'priced');
+    }
     return NextResponse.json({ ok: true });
   }
   if (action === 'reject') {

@@ -58,5 +58,12 @@ export async function POST(req: Request) {
       .eq('id', companyId);
   }
 
+  // عند نجاح دفع خدمة: تحديث الطلب إلى مدفوع (بانتظار التسليم من الأدمن)
+  if (isPaid && kind === 'service' && meta.sr) {
+    await sb.from('service_requests')
+      .update({ status: 'paid', payment_id: existing?.id || null, updated_at: new Date().toISOString() })
+      .eq('id', meta.sr);
+  }
+
   return NextResponse.json({ ok: true, status: mp.status, paid: isPaid });
 }
