@@ -410,13 +410,16 @@ export default function GoalPage() {
             <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
             <button onClick={() => router.push('/pay?amount=2900&kind=subscription&company_id=' + companyId)}
               style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              💳 ادفع واشترك الآن
+              💳 الدفع أونلاين (بطاقة)
+            </button>
+            <button onClick={() => router.push('/pay/transfer?amount=2900&kind=subscription&company_id=' + companyId)}
+              style={{ width: '100%', background: '#fff', color: '#1A3D34', border: '2px solid #1A3D34', padding: '12px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
+              🏦 تحويل بنكي
             </button>
             <button onClick={() => setShowPaywall(false)}
               style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               ربما لاحقاً
             </button>
-            <p style={{ color: '#9DB3AB', fontSize: 11.5, marginTop: 12 }}>أو الدفع عبر تحويل بنكي — تواصل معنا عبر واتساب</p>
           </div>
         </div>
       )}
