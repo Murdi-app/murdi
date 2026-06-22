@@ -38,7 +38,7 @@ function PayInner() {
       description: label,
       publishable_api_key: PUB_KEY,
       callback_url: origin + '/pay/done',
-      methods: ['creditcard', 'applepay', 'stcpay'],
+      methods: ['creditcard'],
       metadata: { kind, company_id: companyId },
     });
   }, [ready, amountSar, kind, companyId, label]);
