@@ -22,6 +22,8 @@ export default function GoalPage() {
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
+  const [subscriptionActive, setSubscriptionActive] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
@@ -42,10 +44,12 @@ export default function GoalPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: comp } = await supabase
-        .from('companies').select('id, company_name, sector')
+        .from('companies').select('id, company_name, sector, subscription_active, subscription_until')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!comp) return;
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
+      const subActive = comp.subscription_active === true && (!comp.subscription_until || new Date(comp.subscription_until) > new Date());
+      setSubscriptionActive(subActive);
       const out: Record<string, number> = {};
       const { data: rows } = await supabase
         .from('readiness_results')
@@ -115,6 +119,7 @@ export default function GoalPage() {
   };
 
   const go = () => {
+    if (!subscriptionActive) { setShowPaywall(true); return; }
     const t = TRACKS.find((x) => x.id === selected);
     if (t) router.push(t.href);
   };
@@ -392,6 +397,29 @@ export default function GoalPage() {
         </>)}
 
       </div>
+
+      {showPaywall && (
+        <div onClick={() => setShowPaywall(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>🔑</div>
+            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>افتح كامل منصّة مُرضي</h2>
+            <p style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.9, margin: '0 0 8px' }}>
+              باشتراكك تفتح جميع مسارات الجاهزية (التمويل، الاستثمار، الطرح)، مع التقييم الكامل، خطة التحسين، ومتابعة د. عبدالحكيم المرضي.
+            </p>
+            <div style={{ color: '#1A3D34', fontSize: 28, fontWeight: 900, margin: '14px 0 4px' }}>2,900 <span style={{ fontSize: 15 }}>ر.س</span></div>
+            <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
+            <button onClick={() => router.push('/pay?amount=2900&kind=subscription&company_id=' + companyId)}
+              style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
+              💳 ادفع واشترك الآن
+            </button>
+            <button onClick={() => setShowPaywall(false)}
+              style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              ربما لاحقاً
+            </button>
+            <p style={{ color: '#9DB3AB', fontSize: 11.5, marginTop: 12 }}>أو الدفع عبر تحويل بنكي — تواصل معنا عبر واتساب</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
