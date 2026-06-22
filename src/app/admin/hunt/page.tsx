@@ -9,15 +9,15 @@ type Lead = {
   id: string; category: string; company_name: string; sector: string; signal: string;
   contact_phone: string | null; contact_email: string | null; contact_social: string | null;
   source: string | null; notes: string | null; status: string;
+  lead_kind: string | null; hotness: string | null; entry_angle: string | null;
 };
 
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
-  small_funding: { ar: 'تمويل — صغيرة صاعدة طموحة', icon: '🌱', color: '#2E9E7B' },
-  small_investment: { ar: 'استثمار — صغيرة تطمح لشريك', icon: '🌿', color: '#3B5BA5' },
-  funding_need: { ar: 'تمويل — متوسطة بحاجة عاجلة', icon: '⚡', color: '#2E9E7B' },
-  investment_ready: { ar: 'استثمار — متوسطة جاهزة', icon: '📈', color: '#3B5BA5' },
-  ipo_aspirant: { ar: 'طرح — كيان متوسط يطمح', icon: '🏛️', color: '#A53B3B' },
-  distress_small: { ar: 'إنقاذ — متعثّرة تبحث عن حل', icon: '🔧', color: '#C9A84C' },
+  reserve_funding: { ar: 'مراتع التمويل — عملاء كشفوا حاجتهم', icon: '🎯', color: '#2E9E7B' },
+  reserve_investment: { ar: 'مراتع الاستثمار — عملاء كشفوا رغبتهم', icon: '🎯', color: '#3B5BA5' },
+  silent_funding: { ar: 'إشارات صامتة — تمويل', icon: '🌑', color: '#2E9E7B' },
+  silent_investment: { ar: 'إشارات صامتة — استثمار', icon: '🌑', color: '#3B5BA5' },
+  silent_ipo: { ar: 'إشارات صامتة — طرح', icon: '🌑', color: '#A53B3B' },
 };
 
 export default function HuntPage() {
@@ -99,23 +99,33 @@ export default function HuntPage() {
               <span style={{ background: meta.color, color: '#fff', borderRadius: 999, padding: '2px 11px', fontSize: 12, fontWeight: 900 }}>{list.length}</span>
             </div>
             <div style={{ display: 'grid', gap: 12 }}>
-              {list.map((l) => (
-                <div key={l.id} style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 12, padding: '16px 18px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ color: '#1A3D34', fontSize: 16, fontWeight: 900 }}>{l.company_name}</div>
+              {list.map((l) => {
+                const isScout = l.lead_kind === 'scout';
+                const hot = l.hotness || '';
+                const hotColor = hot.includes('ساخ') ? '#C0564B' : hot.includes('داف') ? '#C9A84C' : '#9DB3AB';
+                return (
+                <div key={l.id} style={{ background: isScout ? '#FFFBF2' : '#fff', border: isScout ? '1.5px solid #E8DBB8' : '1.5px solid #EAF2EE', borderRadius: 12, padding: '16px 18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ color: '#1A3D34', fontSize: 16, fontWeight: 900 }}>{l.company_name}</div>
+                      {isScout && <span style={{ background: '#C9A84C', color: '#fff', borderRadius: 6, padding: '2px 9px', fontSize: 11, fontWeight: 900 }}>🏞️ مرتع — صيد يدوي</span>}
+                      {hot && <span style={{ background: hotColor, color: '#fff', borderRadius: 6, padding: '2px 9px', fontSize: 11, fontWeight: 900 }}>{hot.includes('ساخ') ? '🔥' : ''} {hot}</span>}
+                    </div>
                     {l.sector && <div style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>{l.sector}</div>}
                   </div>
                   {l.signal && <div style={{ color: '#3A4D47', fontSize: 13.5, fontWeight: 700, margin: '8px 0', lineHeight: 1.8 }}>📌 {l.signal}</div>}
                   {l.notes && <div style={{ color: '#6B8A80', fontSize: 12.5, lineHeight: 1.8, marginBottom: 8 }}>{l.notes}</div>}
+                  {l.entry_angle && <div style={{ background: '#F0F7F4', borderRight: '3px solid #2E9E7B', color: '#1A3D34', fontSize: 12.5, lineHeight: 1.8, padding: '8px 12px', borderRadius: 6, marginBottom: 8 }}>💬 زاوية الدخول: {l.entry_angle}</div>}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                     {l.contact_phone && <a href={'tel:' + l.contact_phone} style={{ background: '#F0F7F4', color: '#1E7A5A', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>📞 {l.contact_phone}</a>}
                     {l.contact_email && <a href={'mailto:' + l.contact_email} style={{ background: '#F0F7F4', color: '#1E7A5A', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>✉️ {l.contact_email}</a>}
                     {l.contact_social && <a href={l.contact_social.startsWith('http') ? l.contact_social : '#'} target="_blank" rel="noopener noreferrer" style={{ background: '#EAF0FB', color: '#3B5BA5', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>🔗 {l.contact_social}</a>}
                     {l.source && <a href={l.source} target="_blank" rel="noopener noreferrer" style={{ color: '#9DB3AB', fontSize: 12, padding: '6px 0', textDecoration: 'none' }}>↗️ المصدر</a>}
                   </div>
-                  {!l.contact_phone && !l.contact_email && !l.contact_social && <div style={{ color: '#C0564B', fontSize: 12, marginTop: 6 }}>⚠️ بلا بيانات تواصل — يحتاج بحثاً يدوياً</div>}
+                  {!l.contact_phone && !l.contact_email && !l.contact_social && !isScout && <div style={{ color: '#C0564B', fontSize: 12, marginTop: 6 }}>⚠️ بلا بيانات تواصل — يحتاج بحثاً يدوياً</div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
