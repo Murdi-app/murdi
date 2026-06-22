@@ -13,11 +13,9 @@ type Lead = {
 };
 
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
-  reserve_funding: { ar: 'مراتع التمويل — عملاء كشفوا حاجتهم', icon: '🎯', color: '#2E9E7B' },
-  reserve_investment: { ar: 'مراتع الاستثمار — عملاء كشفوا رغبتهم', icon: '🎯', color: '#3B5BA5' },
-  silent_funding: { ar: 'إشارات صامتة — تمويل', icon: '🌑', color: '#2E9E7B' },
-  silent_investment: { ar: 'إشارات صامتة — استثمار', icon: '🌑', color: '#3B5BA5' },
-  silent_ipo: { ar: 'إشارات صامتة — طرح', icon: '🌑', color: '#A53B3B' },
+  funding_reserves: { ar: 'التمويل — مراتع وعملاء كشفوا حاجتهم', icon: '🎯', color: '#2E9E7B' },
+  investment_reserves: { ar: 'الاستثمار — مراتع وعملاء كشفوا رغبتهم', icon: '🎯', color: '#3B5BA5' },
+  ipo_early_intent: { ar: 'الطرح — رغبة مبكّرة (قابل للتجهيز)', icon: '🌑', color: '#A53B3B' },
 };
 
 export default function HuntPage() {
