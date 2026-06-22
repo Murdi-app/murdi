@@ -38,6 +38,7 @@ export async function PATCH(req: Request) {
   if (body.status) updates.status = body.status;
   if (body.admin_deliverable !== undefined) updates.admin_deliverable = body.admin_deliverable;
   if (body.price !== undefined) updates.price = body.price;
+  if (body.status === 'priced') updates.priced_at = new Date().toISOString();
   if (body.status === 'delivered') updates.delivered_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
   const { error } = await admin.from('service_requests').update(updates).eq('id', body.id);
