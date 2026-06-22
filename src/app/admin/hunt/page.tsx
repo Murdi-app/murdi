@@ -12,12 +12,12 @@ type Lead = {
 };
 
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
-  funding_expansion: { ar: 'تمويل — توسّع وفروع', icon: '🏗️', color: '#2E9E7B' },
-  funding_contracts: { ar: 'تمويل — مناقصات وعقود', icon: '📋', color: '#2E9E7B' },
-  investment_growth: { ar: 'استثمار — نمو وجولات', icon: '📈', color: '#3B5BA5' },
-  investment_sectors: { ar: 'استثمار — قطاعات جاذبة', icon: '💡', color: '#3B5BA5' },
-  ipo: { ar: 'طرح عام — Pre-IPO', icon: '🏛️', color: '#A53B3B' },
-  distress: { ar: 'إنقاذ — تعثّر وإعادة هيكلة', icon: '🔧', color: '#C9A84C' },
+  small_funding: { ar: 'تمويل — صغيرة صاعدة طموحة', icon: '🌱', color: '#2E9E7B' },
+  small_investment: { ar: 'استثمار — صغيرة تطمح لشريك', icon: '🌿', color: '#3B5BA5' },
+  funding_need: { ar: 'تمويل — متوسطة بحاجة عاجلة', icon: '⚡', color: '#2E9E7B' },
+  investment_ready: { ar: 'استثمار — متوسطة جاهزة', icon: '📈', color: '#3B5BA5' },
+  ipo_aspirant: { ar: 'طرح — كيان متوسط يطمح', icon: '🏛️', color: '#A53B3B' },
+  distress_small: { ar: 'إنقاذ — متعثّرة تبحث عن حل', icon: '🔧', color: '#C9A84C' },
 };
 
 export default function HuntPage() {
