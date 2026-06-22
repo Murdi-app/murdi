@@ -16,14 +16,8 @@ export async function POST(req: Request) {
   if (!paymentId) return NextResponse.json({ error: 'paymentId مطلوب' }, { status: 400 });
 
   // التحقق المباشر من Moyasar (مصدر الحقيقة)
-  const hasKey = !!process.env.MOYASAR_SECRET_KEY;
-  console.log('[verify] paymentId=', paymentId, 'hasSecretKey=', hasKey);
   const mp = await fetchPayment(paymentId);
-  if (!mp) {
-    console.log('[verify] fetchPayment returned null — تحقق من المفتاح أو الشبكة');
-    return NextResponse.json({ error: 'تعذّر التحقق من الدفعة', hasKey }, { status: 502 });
-  }
-  console.log('[verify] moyasar status=', mp.status);
+  if (!mp) return NextResponse.json({ error: 'تعذّر التحقق من الدفعة' }, { status: 502 });
 
   const sb = admin();
   const meta = mp.metadata || {};

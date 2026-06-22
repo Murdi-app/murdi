@@ -32,14 +32,9 @@ export async function fetchPayment(paymentId: string): Promise<MoyasarPayment | 
       method: 'GET',
       headers: { Authorization: authHeader() },
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.log('[moyasar] HTTP', res.status, '—', body.slice(0, 300));
-      return null;
-    }
+    if (!res.ok) return null;
     return (await res.json()) as MoyasarPayment;
-  } catch (e) {
-    console.log('[moyasar] fetch error:', e instanceof Error ? e.message : String(e));
+  } catch {
     return null;
   }
 }
