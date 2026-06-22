@@ -9,6 +9,7 @@ function PayInner() {
   const amountSar = Number(params.get('amount') || '2900');
   const kind = params.get('kind') || 'subscription';
   const companyId = params.get('company_id') || '';
+  const sr = params.get('sr') || '';
   const label = kind === 'subscription' ? 'اشتراك العضوية الربعي' : 'خدمة استشارية';
   const [ready, setReady] = useState(false);
 
@@ -39,9 +40,9 @@ function PayInner() {
       publishable_api_key: PUB_KEY,
       callback_url: origin + '/pay/done',
       methods: ['creditcard'],
-      metadata: { kind, company_id: companyId },
+      metadata: { kind, company_id: companyId, sr },
     });
-  }, [ready, amountSar, kind, companyId, label]);
+  }, [ready, amountSar, kind, companyId, label, sr]);
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 560, margin: '0 auto', padding: '40px 20px', minHeight: '100vh', background: '#FBFCFB' }}>
