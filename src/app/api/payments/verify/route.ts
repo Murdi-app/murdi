@@ -49,5 +49,14 @@ export async function POST(req: Request) {
     await sb.from('payments').insert(row);
   }
 
+  // تفعيل الاشتراك تلقائياً عند نجاح دفع الاشتراك
+  if (isPaid && kind === 'subscription' && companyId) {
+    const until = new Date();
+    until.setMonth(until.getMonth() + 4); // اشتراك ربعي (4 أشهر)
+    await sb.from('companies')
+      .update({ subscription_active: true, subscription_until: until.toISOString() })
+      .eq('id', companyId);
+  }
+
   return NextResponse.json({ ok: true, status: mp.status, paid: isPaid });
 }
