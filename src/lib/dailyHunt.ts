@@ -99,7 +99,7 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
 
   const adminClient = admin();
   const today = fmt(now);
-  await adminClient.from('daily_leads').delete().eq('hunt_date', today);
+  await adminClient.from('daily_leads').delete().eq('hunt_date', today).neq('saved', true);
 
   const byCategory: Record<string, number> = {};
   let total = 0;
