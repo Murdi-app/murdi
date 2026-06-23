@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import MiniAssessment from '@/components/MiniAssessment'
 
 export default function Home() {
   const router = useRouter()
@@ -147,6 +148,45 @@ export default function Home() {
         .lp-footer-col h4 { color:#fff; font-size:14px; margin-bottom:12px; font-weight:800; }
         .lp-footer-col p { font-size:13px; line-height:2; }
         .lp-footer-bottom { max-width:1000px; margin:26px auto 0; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1); text-align:center; font-size:12px; color:#6B8A80; }
+
+        .lp-mini { background:#F4FBF8; padding:56px 20px; }
+        .lp-mini-inner { max-width:640px; margin:0 auto; text-align:center; }
+        .lp-mini-badge { display:inline-block; background:#C9A84C; color:#fff; font-weight:700; font-size:13px; padding:6px 16px; border-radius:30px; margin-bottom:16px; }
+        .lp-mini h2 { font-size:30px; font-weight:900; color:#1A3D34; margin:0 0 8px; }
+        .lp-mini-sub { color:#5a6f68; font-size:16px; margin:0 0 28px; }
+        .lp-mini-card { background:#fff; border:1px solid #E8F5EF; border-radius:20px; padding:32px 26px; box-shadow:0 8px 30px rgba(46,158,123,0.08); text-align:right; }
+        .lp-mini-progress { height:6px; background:#E8F5EF; border-radius:10px; overflow:hidden; margin-bottom:18px; }
+        .lp-mini-bar { height:100%; background:#2E9E7B; border-radius:10px; transition:width .3s ease; }
+        .lp-mini-qnum { color:#C9A84C; font-weight:700; font-size:13px; margin-bottom:8px; }
+        .lp-mini-q { font-size:21px; font-weight:700; color:#1A3D34; margin:0 0 20px; }
+        .lp-mini-opts { display:grid; gap:11px; }
+        .lp-mini-opt { background:#F4FBF8; border:1.5px solid #E8F5EF; color:#1A3D34; padding:14px 18px; border-radius:14px; font-family:'Cairo'; font-weight:600; font-size:15px; cursor:pointer; text-align:right; transition:all .15s ease; }
+        .lp-mini-opt:hover { border-color:#2E9E7B; background:#fff; transform:translateY(-1px); }
+        .lp-mini-score { font-size:64px; font-weight:900; text-align:center; line-height:1; }
+        .lp-mini-score span { font-size:24px; color:#9bb0a8; }
+        .lp-mini-verdict { display:block; width:fit-content; margin:14px auto 18px; color:#fff; font-weight:700; font-size:15px; padding:7px 22px; border-radius:30px; }
+        .lp-mini-text { color:#3d524b; font-size:16px; line-height:1.8; text-align:center; margin:0 0 24px; }
+        .lp-mini-gate { border-top:1px dashed #E8F5EF; padding-top:22px; }
+        .lp-mini-gate-t { font-weight:700; color:#1A3D34; font-size:15px; margin:0 0 14px; text-align:center; }
+        .lp-mini-input { width:100%; box-sizing:border-box; border:1.5px solid #E8F5EF; border-radius:12px; padding:13px 16px; font-family:'Cairo'; font-size:15px; margin-bottom:11px; text-align:right; }
+        .lp-mini-input:focus { outline:none; border-color:#2E9E7B; }
+        .lp-mini-err { color:#d9534f; font-size:14px; font-weight:600; margin-bottom:10px; text-align:center; }
+        .lp-mini-submit { width:100%; background:#2E9E7B; color:#fff; border:none; padding:15px; border-radius:14px; font-family:'Cairo'; font-weight:700; font-size:16px; cursor:pointer; }
+        .lp-mini-submit:hover { background:#268768; }
+        .lp-mini-submit:disabled { opacity:.6; cursor:default; }
+        .lp-mini-thanks { text-align:center; }
+        .lp-mini-check { width:60px; height:60px; line-height:60px; margin:0 auto 14px; background:#2E9E7B; color:#fff; font-size:30px; border-radius:50%; }
+        .lp-mini-thanks h3 { font-size:23px; color:#1A3D34; margin:0 0 8px; }
+        .lp-mini-thanks-sub { color:#5a6f68; font-size:15px; line-height:1.7; margin:0 0 24px; }
+        .lp-mini-benefits { display:grid; gap:16px; text-align:right; margin-bottom:26px; }
+        .lp-mini-benefit { display:flex; gap:14px; align-items:flex-start; background:#F4FBF8; border-radius:14px; padding:16px; }
+        .lp-mini-b-icon { font-size:26px; flex-shrink:0; }
+        .lp-mini-benefit b { color:#1A3D34; font-size:16px; display:block; margin-bottom:4px; }
+        .lp-mini-benefit p { color:#5a6f68; font-size:14px; line-height:1.7; margin:0; }
+        .lp-mini-register { width:100%; background:linear-gradient(135deg,#2E9E7B,#1A3D34); color:#fff; border:none; padding:16px; border-radius:14px; font-family:'Cairo'; font-weight:700; font-size:17px; cursor:pointer; }
+        .lp-mini-register:hover { opacity:.93; }
+        .lp-mini-note { color:#9bb0a8; font-size:13px; margin:12px 0 0; }
+
         @media (max-width:860px) {
           .lp-h1 { font-size:30px; }
           .lp-paths, .lp-steps, .lp-companion, .lp-why, .lp-tst { grid-template-columns:1fr; }
@@ -184,6 +224,8 @@ export default function Home() {
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
           <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
         </section>
+
+        <MiniAssessment />
 
         <section className="lp-section">
           <h2 className="lp-sec-title">اختر هدفك — والباقي علينا</h2>
