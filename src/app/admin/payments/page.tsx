@@ -104,6 +104,14 @@ export default function PaymentsPage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 900, margin: '0 auto', padding: '28px 20px', background: '#FBFCFB', minHeight: '100vh' }}>
+      <div style={{ display:'flex', gap:8, marginBottom:22, borderBottom:'2px solid #EAF2EE', paddingBottom:0, flexWrap:'wrap' }}>
+        <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
+        <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
+        <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
+        <div onClick={()=>router.push('/admin/services')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الخدمات</div>
+        <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>🎯 صيد الفرص</div>
+        <div style={{ padding:'10px 18px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B', fontFamily:'Cairo,sans-serif' }}>💳 المدفوعات</div>
+      </div>
       <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, margin: 0 }}>💳 المدفوعات</h1>
       <p style={{ color: '#6B8A80', fontSize: 13, marginTop: 4, marginBottom: 20 }}>التحويلات البنكية بانتظار تأكيدك، وسجلّ كل المدفوعات.</p>
 
