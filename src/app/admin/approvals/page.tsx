@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import AdminNav from '@/components/AdminNav'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
@@ -246,14 +247,7 @@ export default function ApprovalsPage() {
       `}</style>
       <div className="ap-wrapper">
         <div className="ap-inner">
-          <div style={{ display:'flex', gap:8, marginBottom:22, borderBottom:'2px solid #EAF2EE', paddingBottom:0 }}>
-            <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
-            <div style={{ padding:'10px 18px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
-            <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
-            <div onClick={()=>router.push('/admin/services')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الخدمات</div>
-            <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>🎯 صيد الفرص</div>
-            <div onClick={()=>router.push('/admin/payments')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>💳 المدفوعات</div>
-          </div>
+          <AdminNav />
           <div className="ap-head">لوحة الموافقات</div>
           <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>
 

@@ -1,4 +1,5 @@
 'use client';
+import AdminNav from '@/components/AdminNav';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
@@ -85,6 +86,7 @@ export default function HuntPage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 1100, margin: '0 auto', padding: '28px 20px', background: '#FBFCFB', minHeight: '100vh' }}>
+      <AdminNav />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
         <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, margin: 0 }}>🎯 صيد الفرص اليومي</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
