@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin/services', label: 'الخدمات' },
   { href: '/admin/hunt', label: '🎯 صيد الفرص' },
   { href: '/admin/payments', label: '💳 المدفوعات' },
+  { href: '/admin/leads', label: '📋 العملاء المحتملون' },
 ]
 
 export default function AdminNav() {
