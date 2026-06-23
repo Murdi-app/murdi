@@ -158,7 +158,7 @@ export default function Home() {
       <div className="lp">
 
         <div className="lp-trust-bar">
-          <span>🛡️ منصة سعودية مصرّحة</span>
+          <span>🛡️ شركة سعودية</span>
           <span>💳 دفع إلكتروني آمن</span>
           <span>🌍 جهات محلية وعالمية</span>
           <span>📞 دعم ٢٤ ساعة</span>
@@ -283,7 +283,7 @@ export default function Home() {
 
         <div className="lp-cred-wrap">
           <div className="lp-cred">
-            <h2 className="lp-sec-title">منصة مصرّحة وموثوقة</h2>
+            <h2 className="lp-sec-title">شركة سعودية موثوقة</h2>
             <p className="lp-sec-sub">شفافية كاملة — تعرف مع من تتعامل</p>
             <div className="lp-cred-grid">
               <div className="lp-cred-item">
