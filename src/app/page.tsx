@@ -10,19 +10,19 @@ export default function Home() {
 
   const paths = [
     {
-      icon: '🏦', title: 'تمويل', tag: 'الأكثر طلباً',
-      desc: 'رأس مال عامل، تمويل فواتير ومستخلصات، تمويل أصول وعقاري.',
-      detail: 'نقيس جاهزيتك التمويلية بدقّة، نكشف العوائق التي تمنع قبولك، ونطابقك مع جهة التمويل ومنتجها المناسب لحالتك — محلياً وعالميا.',
+      icon: '🏦', title: 'تمويل', tag: '',
+      desc: 'كل أبواب التمويل المتاحة لمنشأتك.',
+      detail: 'نقيس جاهزيتك، نكشف ما يمنع قبولك، ونفتح لك الباب المناسب من بين جهات تمويل محلية وعالمية — أياً كان احتياجك.',
     },
     {
       icon: '📈', title: 'استثمار', tag: '',
-      desc: 'صناديق، محافظ، ملكية خاصة، وشركاء استراتيجيين.',
-      detail: 'نجهّز ملفك الاستثماري باحترافية، نقيّم جاذبية شركتك للمستثمر، ونعرضك على الجهة المناسبة لمرحلتك وقطاعك — داخل المملكة وخارجها.',
+      desc: 'من المستثمر الفردي إلى الصناديق المؤسسية.',
+      detail: 'نجهّز ملفك، نُبرز جاذبية شركتك، ونصلك بالشريك أو المستثمر المناسب لمرحلتك — من داخل المملكة وخارجها.',
     },
     {
       icon: '🏛️', title: 'طرح', tag: '',
-      desc: 'السوق الرئيسية أو السوق الموازية نمو.',
-      detail: 'نحسب درجة جاهزيتك للطرح (IPO Readiness)، ونرسم خارطة طريق كاملة من وضعك الحالي حتى الإدراج، مع متابعة كل خطوة.',
+      desc: 'طريقك نحو الإدراج، خطوة بخطوة.',
+      detail: 'نقيس جاهزيتك للطرح، ونرسم لك خارطة طريق واضحة من وضعك الحالي حتى الإدراج في السوق المناسبة، مع مرافقة كاملة.',
     },
   ]
 
@@ -34,10 +34,10 @@ export default function Home() {
   ]
 
   const companion = [
-    { icon: '🧭', t: 'مرافقة كاملة ٤ أشهر', d: 'فريق مُرضي يرافقك طوال مدة اشتراكك في كل مسار وكل خطوة — لا تمشي وحدك.' },
-    { icon: '🔍', t: 'متابعة دقيقة', d: 'نراقب تقدّم ملفك، نحدّث خطتك، ونذكّرك بالخطوة التالية في وقتها المناسب.' },
-    { icon: '🧠', t: 'ذاكرة مُرضي', d: 'المنصة تتذكّر كل تفاصيل شركتك وتاريخها، فلا تبدأ من الصفر في كل مرة.' },
-    { icon: '🎯', t: 'جهات مرشّحة لك', d: 'ترى بوضوح الجهات المرشّحة لتمويلك أو استثمارك، ولماذا تناسبك تحديداً.' },
+    { icon: '⚡', t: 'نجهّز ملفك في أيام', d: 'بدل شهور من المحاولة والرفض، نعدّ ملفك المالي جاهزاً للتقديم بسرعة واحترافية — ونختصر عليك الطريق.' },
+    { icon: '🎯', t: 'الجهات الأقرب لك', d: 'لا نضيّع وقتك على أبواب لا تناسبك — نحدّد الجهات الأقرب لقبولك محلياً وعالمياً، ونوجّهك إليها مباشرة.' },
+    { icon: '🚪', t: 'ثلاثة مسارات مفتوحة', d: 'تمويل، استثمار، وطرح — كلها متاحة لك طوال اشتراكك. انطلق في أيٍّ منها متى شئت، وفريق مُرضي معك في كل خطوة.' },
+    { icon: '🧠', t: 'ذاكرة لا تنساك', d: 'مُرضي يتذكّر كل تفاصيل شركتك وتاريخها — فكل استشارة تبني على ما قبلها، ولا تبدأ من الصفر أبداً.' },
   ]
 
   const reasons = [
@@ -73,6 +73,7 @@ export default function Home() {
         .lp-badge { display:inline-block; background:#E8F5EF; color:#2E9E7B; padding:8px 20px; border-radius:30px; font-size:13px; font-weight:800; margin-bottom:22px; }
         .lp-h1 { font-size:40px; font-weight:900; line-height:1.4; margin-bottom:20px; color:#1A3D34; }
         .lp-h1 em { color:#2E9E7B; font-style:normal; }
+        .lp-pain { color:#C0564B; font-size:17px; font-weight:800; line-height:1.8; max-width:640px; margin:0 auto 14px; }
         .lp-sub { color:#5B7068; font-size:17px; line-height:2; max-width:680px; margin:0 auto 16px; }
         .lp-global { display:inline-flex; align-items:center; gap:8px; background:#FBF3DC; color:#9A7B2E; padding:9px 22px; border-radius:30px; font-size:14px; font-weight:800; margin-bottom:26px; }
         .lp-cta { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; border:none; padding:17px 52px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:17px; font-weight:900; cursor:pointer; box-shadow:0 10px 28px rgba(46,158,123,0.32); transition:transform .15s; display:block; margin:0 auto; }
@@ -170,9 +171,10 @@ export default function Home() {
         <section className="lp-hero">
           <div className="lp-badge">منصة جاهزية رأس المال الأولى في السعودية</div>
           <h1 className="lp-h1">شركتك تستحق <em>تمويلاً، استثماراً، أو طرحاً</em><br/>لكن هل هي جاهزة؟</h1>
+          <p className="lp-pain">تعِبت من رفض الجهات؟ تائه بين الأبواب؟ لا تعرف أين الخلل في ملفك؟</p>
           <p className="lp-sub">
-            لا نمنحك تمويلاً ولا نعدك باستثمار — نخبرك أين تقف شركتك بالضبط، وما الذي يمنعها،
-            والطريق لتصبح جاهزة. ثم نطابقك مع الجهات المناسبة وفريقنا يفتح لك الباب.
+            مرضي يكشف لك أين تقف شركتك بالضبط، وما الذي يمنعها، ويجهّز ملفك في أيام —
+            ثم يوصلك بالجهات الأقرب لقبولك محلياً وعالمياً، ويرافقك حتى تفتح الباب.
           </p>
           <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
@@ -211,8 +213,8 @@ export default function Home() {
 
         <div className="lp-companion-wrap">
           <section className="lp-section">
-            <h2 className="lp-sec-title">لا تمشي وحدك — مُرضي معك ٤ أشهر</h2>
-            <p className="lp-sec-sub">اشتراكك ليس تقييماً يُسلَم ويُنسى، بل مرافقة ومتابعة دقيقة في كل مسار وكل خطوة</p>
+            <h2 className="lp-sec-title">اشتراك واحد… يفتح لك كل الأبواب</h2>
+            <p className="lp-sec-sub">تدفع مرة، فتحصل على تقييم دقيق وخارطة طريق واستشارة و٣ مسارات شغّالة طوال اشتراكك — وفريق مُرضي يجهّز ملفك ويختصر طريقك</p>
             <div className="lp-companion">
               {companion.map(c => (
                 <div className="lp-comp-item" key={c.t}>
