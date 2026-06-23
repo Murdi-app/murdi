@@ -97,6 +97,10 @@ export default function Home() {
         .lp-step-d { color:#6B8A80; font-size:13.5px; line-height:1.75; }
         .lp-companion-wrap { background:linear-gradient(135deg,#F0F7F4,#E8F5EF); }
         .lp-companion { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+        .lp-services-hint { margin-top:26px; background:#fff; border:1.5px dashed #2E9E7B; border-radius:18px; padding:24px 28px; display:flex; gap:18px; align-items:center; }
+        .lp-services-hint-icon { font-size:38px; flex-shrink:0; }
+        .lp-services-hint-t { font-size:18px; font-weight:900; color:#1A3D34; margin-bottom:6px; }
+        .lp-services-hint-d { color:#5B7068; font-size:14px; line-height:1.85; }
         .lp-comp-item { background:#fff; border-radius:18px; padding:26px 22px; text-align:center; }
         .lp-comp-icon { font-size:34px; margin-bottom:12px; }
         .lp-comp-t { font-size:16px; font-weight:900; color:#1A3D34; margin-bottom:8px; }
@@ -223,6 +227,13 @@ export default function Home() {
                   <div className="lp-comp-d">{c.d}</div>
                 </div>
               ))}
+            </div>
+            <div className="lp-services-hint">
+              <div className="lp-services-hint-icon">🤝</div>
+              <div>
+                <div className="lp-services-hint-t">وخدمات احترافية تساندك عند الحاجة</div>
+                <div className="lp-services-hint-d">لا تبحث ولا تتنقّل بين المكاتب — كل ما تحتاجه لتجهيز منشأتك نوفّره لك داخل مُرضي، نجهّزه خطوة بخطوة حسب حالتك.</div>
+              </div>
             </div>
           </section>
         </div>
