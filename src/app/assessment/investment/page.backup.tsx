@@ -114,7 +114,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && investmentType !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
     return false;
   };
 
@@ -291,6 +291,10 @@ export default function InvestmentAssessment() {
                   <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
                   <input type="number" inputMode="numeric" value={roundSize} onChange={(e) => setRoundSize(e.target.value)}
                     placeholder="مثال: 5000000" className={inputCls + ' text-right'} />
+                </div>
+                <div>
+                  <label className="block font-black text-[#1A3D34] mb-3">نوع التمويل الذي تطلبه</label>
+                  <Choice items={INVESTMENT_TYPES} value={investmentType} onChange={setInvestmentType} />
                 </div>
                 <div>
                   <label className="block font-black text-[#1A3D34] mb-2">غرض التمويل (فيمَ ستستخدم المبلغ؟)</label>
