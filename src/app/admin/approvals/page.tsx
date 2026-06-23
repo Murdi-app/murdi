@@ -252,6 +252,7 @@ export default function ApprovalsPage() {
             <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
             <div onClick={()=>router.push('/admin/services')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الخدمات</div>
             <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>🎯 صيد الفرص</div>
+            <div onClick={()=>router.push('/admin/payments')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>💳 المدفوعات</div>
           </div>
           <div className="ap-head">لوحة الموافقات</div>
           <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>

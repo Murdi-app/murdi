@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
@@ -91,11 +92,8 @@ export default function AdminServicesPage() {
         <div style={{ fontSize:22, fontWeight:700, color:'#1A3D34', fontFamily:'Amiri,serif' }}>مُرضي <span style={{ fontSize:13, color:'#C9A84C', fontWeight:900, fontFamily:'Cairo' }}>ADMIN</span></div>
         <button onClick={()=>router.push('/goal')} style={{ padding:'8px 18px', borderRadius:30, border:'1px solid #E8F5EF', background:'transparent', color:'#6B8A80', cursor:'pointer', fontSize:13, fontFamily:'Cairo', fontWeight:700 }}>المركز الرئيسي</button>
       </div>
-      <div style={{ background:'#fff', padding:'0 32px', display:'flex', gap:8, borderBottom:'2px solid #EAF2EE' }}>
-        <div onClick={()=>router.push('/admin')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>لوحة التحكم</div>
-        <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الاعتمادات</div>
-        <div onClick={()=>router.push('/admin/entities')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الجهات</div>
-        <div style={{ padding:'14px 22px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B' }}>الخدمات</div>
+      <div style={{ background:'#fff', padding:'0 32px' }}>
+        <AdminNav />
       </div>
 
       <div style={{ maxWidth:900, margin:'0 auto', padding:'32px 24px' }}>
