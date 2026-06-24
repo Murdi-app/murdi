@@ -45,7 +45,7 @@ export default function Login() {
         .lg-wrap { min-height:100vh; background:#FBFCFB; display:flex; align-items:center; justify-content:center; font-family:'Cairo',sans-serif; direction:rtl; padding:20px; }
         .lg-card { background:#fff; border:1.5px solid #EAF1EE; border-radius:24px; padding:48px 40px; width:100%; max-width:430px; box-shadow:0 10px 36px rgba(26,61,52,0.08); }
         .lg-logo-box { width:58px; height:58px; border-radius:16px; background:linear-gradient(135deg,#2E9E7B,#7DD3B0); display:flex; align-items:center; justify-content:center; margin:0 auto 14px; box-shadow:0 6px 18px rgba(46,158,123,0.3); }
-        .lg-brand { font-family:'Amiri',serif; font-size:27px; font-weight:700; color:#1A3D34; text-align:center; }
+        .lg-brand { font-family:'Amiri',serif; font-size:27px; font-weight:700; color:#2E9E7B; text-align:center; }
         .lg-tag { font-size:12.5px; color:#6B8A80; text-align:center; margin-top:4px; }
         .lg-card { text-align:center; }
         .lg-title { margin-top:22px; font-size:18px; font-weight:900; color:#1A3D34; text-align:center; margin-bottom:26px; }

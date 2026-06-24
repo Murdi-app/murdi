@@ -135,7 +135,7 @@ export default function GoalPage() {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <span className="font-black text-[#1A3D34] text-lg block leading-tight">مُرضي</span>
+              <span className="font-black text-[#2E9E7B] text-lg block leading-tight">مُرضي</span>
               <span className="text-[10px] tracking-widest text-[#A3BAB2] font-black">MURDI</span>
             </div>
           </div>
