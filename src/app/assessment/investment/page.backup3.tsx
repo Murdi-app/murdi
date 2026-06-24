@@ -115,9 +115,6 @@ export default function InvestmentAssessment() {
   const [investmentType, setInvestmentType] = useState('');
   const [useOfFunds, setUseOfFunds] = useState('');
   const [competitiveEdge, setCompetitiveEdge] = useState('');
-  const [problemSolved, setProblemSolved] = useState('');
-  const [teamInfo, setTeamInfo] = useState('');
-  const [futurePlan, setFuturePlan] = useState('');
   const [monthsLateInv, setMonthsLateInv] = useState('');
 
   const stepValid = () => {
@@ -161,9 +158,6 @@ export default function InvestmentAssessment() {
           investment_type: investmentType || null,
           use_of_funds: useOfFunds.trim() || null,
           competitive_edge: competitiveEdge.trim() || null,
-          problem_solved: problemSolved.trim() || null,
-          team_info: teamInfo.trim() || null,
-          future_plan: futurePlan.trim() || null,
         }),
       });
       const data = await res.json();
@@ -314,21 +308,6 @@ export default function InvestmentAssessment() {
                   <label className="block font-black text-[#1A3D34] mb-2">ميزتك التنافسية (اختياري — ما الذي يميّز شركتك؟)</label>
                   <textarea value={competitiveEdge} onChange={(e) => setCompetitiveEdge(e.target.value)} rows={2}
                     placeholder="مثال: حصة سوقية رائدة، تقنية خاصة، عقود حصرية، فريق متميّز..." className={inputCls + ' text-right'} />
-                </div>
-                <div>
-                  <label className="block font-black text-[#1A3D34] mb-2">المشكلة التي تحلّها شركتك (اختياري — يقوّي عرض المستثمر)</label>
-                  <textarea value={problemSolved} onChange={(e) => setProblemSolved(e.target.value)} rows={2}
-                    placeholder="مثال: نعالج صعوبة وصول المطاعم الصغيرة لموردين موثوقين بأسعار عادلة..." className={inputCls + ' text-right'} />
-                </div>
-                <div>
-                  <label className="block font-black text-[#1A3D34] mb-2">الفريق المؤسس وخبراته (اختياري — المستثمر يستثمر في الناس)</label>
-                  <textarea value={teamInfo} onChange={(e) => setTeamInfo(e.target.value)} rows={2}
-                    placeholder="مثال: المؤسس خبرة 12 سنة في القطاع، شريك تقني سابق في شركة ناجحة..." className={inputCls + ' text-right'} />
-                </div>
-                <div>
-                  <label className="block font-black text-[#1A3D34] mb-2">خطة النمو القادمة (اختياري — المستثمر يشتري المستقبل)</label>
-                  <textarea value={futurePlan} onChange={(e) => setFuturePlan(e.target.value)} rows={2}
-                    placeholder="مثال: التوسّع لثلاث مدن خلال سنتين، إطلاق خط منتجات جديد، مضاعفة الإيراد..." className={inputCls + ' text-right'} />
                 </div>
               </div>
 
