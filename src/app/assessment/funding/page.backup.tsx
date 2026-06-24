@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const FUNDING_TYPES = [
@@ -31,13 +31,6 @@ export default function FundingAssessment() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!loading) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [loading]);
   const [error, setError] = useState('');
 
   const [fundingType, setFundingType] = useState('');
@@ -358,11 +351,6 @@ export default function FundingAssessment() {
             {step < 4 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
                 className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
-            )}
-            {step === 4 && loading && (
-              <div style={{ width:'100%', background:'#FDF8EC', border:'2px solid #C9A84C', borderRadius:12, padding:'12px 16px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:13.5, textAlign:'center', lineHeight:1.7 }}>
-                ⏳ التحليل جارٍ — لا تغلق الصفحة ولا تنتقل منها حتى تظهر النتيجة.
-              </div>
             )}
             {step === 4 && (
               <button type="button" disabled={stepValid() === false || loading} onClick={submit}
