@@ -17,6 +17,7 @@ const STAT: Record<string, { t: string; bg: string; fg: string }> = {
   delivered: { t: 'صادرة للعميل', bg: '#EAF7F0', fg: '#1E7A5A' },
   in_follow_up: { t: 'قيد المتابعة مع الجهات', bg: '#EAF0FB', fg: '#3B5BA5' },
   completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
+  rejected: { t: 'مرفوضة', bg: '#FBEEEC', fg: '#C0564B' },
 }
 
 export default function AdminServicesPage() {
@@ -128,6 +129,7 @@ export default function AdminServicesPage() {
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📤 إصدار مباشر</button>
                 {r.status === 'paid' && <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#1E7A5A', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>🔓 سلّم المحتوى</button>}
                 {r.status === 'delivered' && <button onClick={() => save(r.id, e.deliverable, e.price, 'completed')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>🏆 إتمام</button>}
+                {r.status !== 'completed' && r.status !== 'rejected' && r.status !== 'delivered' && <button onClick={() => { if (confirm('هل أنت متأكد من رفض هذه الخدمة؟')) save(r.id, e.deliverable, e.price, 'rejected') }} disabled={busy === r.id} style={{ background:'transparent', color:'#C0564B', border:'1.5px solid #F0D5D1', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>✕ رفض الخدمة</button>}
               </div>
               </>)}
               {COMMISSION_SERVICES[r.service_title] && (() => {
