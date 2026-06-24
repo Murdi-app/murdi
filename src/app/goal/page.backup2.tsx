@@ -268,14 +268,14 @@ export default function GoalPage() {
           </div>
           {[
             { label: 'خدمات أساسية', note: 'تخدم المسارات الثلاثة', items: [
-              { icon: '📊', title: 'إعداد القوائم المالية المعتمدة', display: 'تجهيز ملف القوائم المالية الجاهز للاعتماد', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
-              { icon: '🏛️', title: 'بناء الحوكمة المؤسسية', display: 'إعداد لوائح الحوكمة ومسوّداتها الجاهزة', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
-              { icon: '💎', title: 'التقييم العادل المعمّق', display: 'تقرير تقييم القيمة العادلة المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
-              { icon: '🔧', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', display: 'خطة إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
+              { icon: '📊', title: 'إعداد القوائم المالية المعتمدة', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
+              { icon: '🏛️', title: 'بناء الحوكمة المؤسسية', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
+              { icon: '💎', title: 'التقييم العادل المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
+              { icon: '🔧', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
             ]},
             { label: 'مسار التمويل', note: 'للوصول إلى التمويل المناسب', items: [
               { icon: '🏦', title: 'تجهيز ملف التمويل والتفاوض', desc: 'إعداد ملفك التمويلي بصورة تُقنع البنوك وجهات التمويل، ومرافقتك في التفاوض حتى الحصول على التمويل.' },
-              { icon: '🗓️', title: 'إعادة جدولة الديون', display: 'خطة إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
+              { icon: '🗓️', title: 'إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
             ]},
             { label: 'مسار الاستثمار', note: 'لجعل شركتك جاذبة للمستثمر', items: [
               { icon: '📈', title: 'تجهيز ملف عرض المستثمر والتفاوض', desc: 'بناء ملف العرض (Pitch) الذي يُبرز قيمة شركتك ويطمئن المستثمر المؤسسي، ومرافقتك في التفاوض حتى إتمام الصفقة.' },
@@ -283,7 +283,7 @@ export default function GoalPage() {
             ]},
             { label: 'مسار الطرح والإدراج', note: 'الطريق المؤسسي نحو السوق المالية', items: [
               { icon: '📁', title: 'تجهيز ملف هيئة السوق المالية', desc: 'خدمة استشارية ترافقك في التهيؤ للإدراج: تحديد متطلبات الهيئة النظامية وتجهيز ملف الشركة، والتنسيق مع مستشار مالي مرخّص يتولّى الإجراءات الخاضعة للترخيص.' },
-              { icon: '⚖️', title: 'تشكيل لجنة المراجعة والحوكمة', display: 'خطة تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
+              { icon: '⚖️', title: 'تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
               { icon: '🗺️', title: 'خارطة طريق الإدراج', desc: 'خطة تنفيذية مرحلية بالمدد والمتطلبات، تقودك من وضعك الحالي حتى لحظة الإدراج.' },
             ]},
           ].map((cat, ci) => (
@@ -302,7 +302,7 @@ export default function GoalPage() {
                     style={{ border: isHighlighted ? '2.5px solid #C9A84C' : '2px solid #EAF2EE', boxShadow: isHighlighted ? '0 0 0 4px rgba(201,168,76,0.15)' : undefined }}>
                     {isHighlighted && <div style={{ background: '#C9A84C', color: '#fff', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 999, alignSelf: 'flex-start', marginBottom: 10 }}>⭐ الخدمة المقترحة لك</div>}
                     <div className="text-2xl mb-2">{it.icon}</div>
-                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{(it as any).display || it.title}</h4>
+                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{!COMMISSION_SERVICES[it.title] && <span className="text-[#C9A84C]">خطة: </span>}{it.title}</h4>
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
                     {(() => {
                       const req = serviceRequests[it.title];
@@ -326,7 +326,7 @@ export default function GoalPage() {
                         return (
                           <div className="flex flex-col gap-2">
                             <button onClick={() => submitServiceRequest(it.title, cat.label)} className="text-center py-2.5 rounded-full bg-[#2E9E7B] text-white font-black text-sm">📤 تقديم طلب الخدمة</button>
-                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + ((it as any).display || it.title))} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
+                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + it.title)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
                           </div>
                         );
                       }
@@ -350,7 +350,7 @@ export default function GoalPage() {
                             </div>
                           )}
                           {req.status === 'delivered' && req.deliverable && (
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + ((it as any).display || it.title) + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + it.title + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
                           )}
                         </div>
                       );
