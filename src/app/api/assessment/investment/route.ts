@@ -212,6 +212,12 @@ export async function POST(req: Request) {
     has_board: body.has_board,
     has_financial_statements: body.has_financial_statements,
     audited_statements: body.audited_statements,
+    competitive_edge: body.competitive_edge,
+    use_of_funds: body.use_of_funds,
+    round_size: body.round_size,
+    problem_solved: body.problem_solved,
+    team_info: body.team_info,
+    future_plan: body.future_plan,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
