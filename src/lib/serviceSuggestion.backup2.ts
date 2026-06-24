@@ -122,11 +122,6 @@ export function suggestService(fd: SuggestInput, track: Track, score: number): S
     return { urgency: 'recommended', icon: '🏛️', service: 'بناء الحوكمة المؤسسية', why: 'نظام الحوكمة يطمئن المستثمر ويرفع التقييم. ليست شرطاً إلزامياً لكنها تقوّي العرض كثيراً.' };
   }
 
-  // ===== غير المؤهّل في الاستثمار: خطة جذب المستثمر ترفع جاذبيته =====
-  if (!qualified && track === 'investment') {
-    return { urgency: 'recommended', icon: '🎯', service: 'بناء خطة جذب المستثمر', why: 'درجة جاذبيتك للمستثمر لم تبلغ العتبة بعد. خطة جذب المستثمر تعالج الفجوات التي تخفض جاذبيتك وتجهّز شركتك للعرض — الخطوة الأنسب قبل تجهيز ملف العرض.' };
-  }
-
   // ===== غير المؤهّل بلا عائق واضح: لا نرشّح خدمة تجهيز (لا نَعِد بما لا يناسب وضعه) =====
   if (!qualified) {
     const wait: Record<Track, string> = {
