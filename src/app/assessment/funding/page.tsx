@@ -264,9 +264,9 @@ export default function FundingAssessment() {
                     )}
                   </div>
                   <div>
-                    <label className="block font-black text-[#1A3D34] mb-2">اشرح طبيعة ديونك (اختياري — يساعدنا نفهم وضعك بدقّة)</label>
-                    <textarea value={debtNarrative} onChange={(e) => setDebtNarrative(e.target.value)} rows={3}
-                      placeholder="مثال: قرض لشراء معدات، تمويل رأس مال عامل موسمي، دين مورّد مجدول..." className={inputCls + ' text-right'} />
+                    <label className="block font-black text-[#1A3D34] mb-2">اشرح طبيعة ديونك (اختياري — وإن كان عليك أكثر من تمويل، فصّلها كلها هنا)</label>
+                    <textarea value={debtNarrative} onChange={(e) => setDebtNarrative(e.target.value)} rows={4}
+                      placeholder={'لو عندك أكثر من تمويل، اكتب كل واحد في سطر:\nبنك الراجحي — 800,000 ريال — قسط 25,000 شهرياً\nشركة تمويل — 400,000 ريال — قسط 12,000 شهرياً'} className={inputCls + ' text-right leading-relaxed'} />
                   </div>
                 </>
               )}
