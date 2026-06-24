@@ -187,9 +187,20 @@ export default function Home() {
         .lp-mini-register:hover { opacity:.93; }
         .lp-mini-note { color:#9bb0a8; font-size:13px; margin:12px 0 0; }
 
+        .lp-score-wrap { background:#F4FBF8; }
+        .lp-score-inner { max-width:900px; margin:0 auto; padding:56px 20px; text-align:center; }
+        .lp-score-badge { display:inline-block; background:#C9A84C; color:#fff; font-weight:700; font-size:13px; padding:6px 18px; border-radius:30px; margin-bottom:16px; }
+        .lp-score-h { font-size:28px; font-weight:900; color:#1A3D34; margin:0 0 14px; }
+        .lp-score-sub { color:#5B7068; font-size:15.5px; line-height:2; max-width:720px; margin:0 auto 36px; }
+        .lp-score-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+        .lp-score-item { background:#fff; border:1.5px solid #E8F5EF; border-radius:16px; padding:26px 22px; text-align:right; }
+        .lp-score-icon { font-size:30px; margin-bottom:12px; }
+        .lp-score-t { font-size:16px; font-weight:900; color:#2E9E7B; margin-bottom:8px; }
+        .lp-score-d { color:#5B7068; font-size:13.5px; line-height:1.9; }
+
         @media (max-width:860px) {
           .lp-h1 { font-size:30px; }
-          .lp-paths, .lp-steps, .lp-companion, .lp-why, .lp-tst { grid-template-columns:1fr; }
+          .lp-paths, .lp-steps, .lp-companion, .lp-why, .lp-tst, .lp-score-grid { grid-template-columns:1fr; }
           .lp-sec-title { font-size:24px; }
           .lp-nav { padding:14px 18px; }
         }
@@ -293,14 +304,28 @@ export default function Home() {
           </div>
         </section>
 
+        <div className="lp-score-wrap">
+          <div className="lp-score-inner">
+            <div className="lp-score-badge">مُرضي سكور</div>
+            <h2 className="lp-score-h">رقمٌ واحد يكشف أين تقف شركتك</h2>
+            <p className="lp-score-sub">مُرضي سكور ليس رقماً عشوائياً — هو خلاصة منهجية المستشار الدكتور عبدالحكيم المرضي، المبنية على دكتوراه في إدارة الأعمال وخبرة عميقة في المال والأعمال. يقرأ أرقامك الفعلية، يقارنها بمعايير السوق السعودي، ويحوّلها إلى درجة دقيقة (٠–١٠٠) تكشف جاهزيتك الحقيقية.</p>
+            <div className="lp-score-grid">
+              <div className="lp-score-item"><div className="lp-score-icon">🎯</div><div className="lp-score-t">تحليل عميق لأرقامك</div><div className="lp-score-d">كل جانب مالي وتشغيلي في شركتك يُقاس ويُوزن وفق منهجية مدروسة.</div></div>
+              <div className="lp-score-item"><div className="lp-score-icon">📊</div><div className="lp-score-t">مقارنة بمعايير السوق</div><div className="lp-score-d">نضع وضعك مقابل معايير قطاعك في السوق السعودي، لتعرف فجوتك بدقة.</div></div>
+              <div className="lp-score-item"><div className="lp-score-icon">🧭</div><div className="lp-score-t">يكشف العوائق والطريق</div><div className="lp-score-d">الدرجة ليست النهاية — بل بداية خطة واضحة ترفع جاهزيتك خطوة بخطوة.</div></div>
+            </div>
+          </div>
+        </div>
+
         <div className="lp-advisor-wrap">
           <div className="lp-advisor">
             <div className="lp-advisor-photo">👨‍💼</div>
             <div className="lp-advisor-body">
-              <div className="lp-advisor-name">د. عبدالحكيم المرضي</div>
-              <div className="lp-advisor-title">مؤسس مُرضي · مستشار مالي معتمد</div>
+              <div className="lp-advisor-name">المستشار الدكتور عبدالحكيم المرضي</div>
+              <div className="lp-advisor-title">مؤسس مُرضي · مستشار مالي معتمد · دكتوراه في إدارة الأعمال</div>
               <div className="lp-advisor-desc">
-                خمسة عشر عاماً من الخبرة في القطاع المالي، وعضوية البورد الأمريكي، مبنية داخل كل تقييم تقدّمه المنصة.
+                دكتوراه في إدارة الأعمال، وعضوية البورد الأمريكي، وخمسة عشر عاماً من الخبرة في القطاع المالي — مبنية داخل كل تقييم تقدّمه المنصة.
+                أمتلك شبكة علاقات محلية ودولية واسعة في مجالات التمويل والاستثمار والمال والأعمال، أضعها في خدمة جاهزيتك.
                 بنيتُ مُرضي لأضع خبرتي بين يديك مباشرة — لا وعوداً، بل وضوحاً وطريقاً ومرافقة حتى تصل.
               </div>
               <div className="lp-advisor-lic">🪪 رخصة استشارة رقم: FL-457927015</div>
