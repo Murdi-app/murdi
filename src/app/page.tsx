@@ -262,6 +262,8 @@ export default function Home() {
         )}
         {/* HIDE_FOR_PAYMENT_REVIEW_END */}
 
+        {/* HIDE2_START كيف تعمل — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
+        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">كيف تعمل المنصة؟</h2>
           <p className="lp-sec-sub">أربع خطوات من التسجيل حتى فتح الأبواب</p>
@@ -275,7 +277,11 @@ export default function Home() {
             ))}
           </div>
         </section>
+        )}
+        {/* HIDE2_END */}
 
+        {/* HIDE2_START اشتراك واحد — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
+        {false && (
         <div className="lp-companion-wrap">
           <section className="lp-section">
             <h2 className="lp-sec-title">اشتراك واحد… يفتح لك كل الأبواب</h2>
@@ -298,7 +304,11 @@ export default function Home() {
             </div>
           </section>
         </div>
+        )}
+        {/* HIDE2_END */}
 
+        {/* HIDE2_START لماذا مرضي — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
+        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">لماذا مُرضي؟</h2>
           <p className="lp-sec-sub">منصة بُنيت على خبرة حقيقية وعلاقات حقيقية</p>
@@ -311,6 +321,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+        )}
+        {/* HIDE2_END */}
 
         <div className="lp-score-wrap">
           <div className="lp-score-inner">
