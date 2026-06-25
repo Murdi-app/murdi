@@ -76,7 +76,6 @@ export default function Home() {
         .lp-h1 em { color:#2E9E7B; font-style:normal; }
         .lp-pain { color:#C0564B; font-size:17px; font-weight:800; line-height:1.8; max-width:640px; margin:0 auto 14px; }
         .lp-sub { color:#5B7068; font-size:17px; line-height:2; max-width:680px; margin:0 auto 16px; }
-        .lp-clarify { display:inline-block; background:#EAF7F0; color:#1E7A5A; font-size:13.5px; font-weight:700; padding:7px 16px; border-radius:30px; margin-bottom:16px; border:1px solid #C5E8D8; }
         .lp-global { display:inline-flex; align-items:center; gap:8px; background:#FBF3DC; color:#9A7B2E; padding:9px 22px; border-radius:30px; font-size:14px; font-weight:800; margin-bottom:26px; }
         .lp-cta { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; border:none; padding:17px 52px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:17px; font-weight:900; cursor:pointer; box-shadow:0 10px 28px rgba(46,158,123,0.32); transition:transform .15s; display:block; margin:0 auto; }
         .lp-cta:hover { transform:translateY(-2px); }
@@ -228,7 +227,6 @@ export default function Home() {
           <div className="lp-badge">منصة جاهزية رأس المال الأولى في السعودية</div>
           <h1 className="lp-h1">شركتك تستحق <em>تمويلاً، استثماراً، أو طرحاً</em><br/>لكن هل هي جاهزة؟</h1>
           <p className="lp-pain">تعِبت من رفض الجهات؟ تائه بين الأبواب؟ لا تعرف أين الخلل في ملفك؟</p>
-          <div className="lp-clarify">منصة استشارية لقياس وتجهيز جاهزية رأس المال — لا نمنح تمويلاً ولا نضمن نتيجة</div>
           <p className="lp-sub">
             مرضي يكشف لك أين تقف شركتك بالضبط، وما الذي يمنعها، ويجهّز ملفك في أيام —
             ثم يوصلك بالجهات الأقرب لقبولك محلياً وعالمياً، ويرافقك حتى تفتح الباب.
