@@ -233,17 +233,13 @@ export default function Home() {
             مرضي يكشف لك أين تقف شركتك بالضبط، وما الذي يمنعها، ويجهّز ملفك في أيام —
             ثم يوصلك بالجهات الأقرب لقبولك محلياً وعالمياً، ويرافقك حتى تفتح الباب.
           </p>
-          {/* HIDE_FOR_PAYMENT_REVIEW_START — لإرجاعها: احذف هذا السطر والسطر المقابل END */}
-          {false && <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>}
-          {/* HIDE_FOR_PAYMENT_REVIEW_END */}
+          <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
           <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
         </section>
 
         <MiniAssessment />
 
-        {/* HIDE_FOR_PAYMENT_REVIEW_START — قسم البطاقات — لإرجاعه: احذف سطر البداية وسطر النهاية فقط */}
-        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">اختر هدفك — والباقي علينا</h2>
           <p className="lp-sec-sub">ثلاثة مسارات، لكل مسار محرك تقييم خاص ومطابقة مع الجهات المناسبة</p>
@@ -259,8 +255,6 @@ export default function Home() {
             ))}
           </div>
         </section>
-        )}
-        {/* HIDE_FOR_PAYMENT_REVIEW_END */}
 
         <section className="lp-section">
           <h2 className="lp-sec-title">كيف تعمل المنصة؟</h2>
