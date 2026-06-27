@@ -86,6 +86,8 @@ export async function POST(req: Request) {
           entity_name: entity.provider,
           entity_email: gen.email,
           entity_language: gen.language,
+          alt_contact: gen.altContact,
+          contact_method: gen.contactMethod,
           track: entityTrack,
           subject: gen.subject,
           message_body: gen.body,

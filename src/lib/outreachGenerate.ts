@@ -28,14 +28,16 @@ export interface GeneratedMessage {
   email: string | null;
   emailConfidence: 'مؤكّد' | 'غير مؤكّد' | 'غير متوفّر';
   emailSource: string;
+  altContact: string | null;
+  contactMethod: string;
   language: 'عربي' | 'إنجليزي';
 }
 
 export async function findEntityEmail(
   entity: EntityInput
-): Promise<{ email: string | null; confidence: GeneratedMessage['emailConfidence']; source: string }> {
+): Promise<{ email: string | null; confidence: GeneratedMessage['emailConfidence']; source: string; altContact: string | null; contactMethod: string }> {
   if (entity.knownEmail && entity.knownEmail.includes('@')) {
-    return { email: entity.knownEmail.trim(), confidence: 'مؤكّد', source: 'قاعدة بيانات مُرضي' };
+    return { email: entity.knownEmail.trim(), confidence: 'مؤكّد', source: 'قاعدة بيانات مُرضي', altContact: null, contactMethod: 'إيميل' };
   }
 
   const prompt = `أنت باحث دقيق عن معلومات التواصل الرسمية للجهات المالية.
@@ -45,11 +47,13 @@ export async function findEntityEmail(
 ${entity.product ? 'المنتج/الخدمة: ' + entity.product : ''}
 ${entity.region ? 'المنطقة: ' + entity.region : ''}
 
-ابحث في الموقع الرسمي للجهة فقط. أرجع ردّك بصيغة JSON نقية بدون أي نص إضافي:
+ابحث في الموقع الرسمي. رتّب أولوياتك: بريد مؤكّد، وإلا اقترح بريداً محتملاً منطقياً (غير مؤكّد)، وابحث عن طريقة تواصل بديلة (نموذج/رقم/لينكدإن). أرجع JSON نقي فقط:
 {
-  "email": "البريد الرسمي أو null إن لم تجد بريداً مؤكّداً",
-  "confidence": "مؤكّد" إن كان من الموقع الرسمي، أو "غير مؤكّد" إن كان تخمينا، أو "غير متوفّر" إن لم تجد,
-  "source": "وصف موجز للمصدر"
+  "email": "البريد المؤكّد أو المحتمل أو null",
+  "confidence": "مؤكّد" إن كان من الموقع الرسمي، أو "غير مؤكّد" إن كان اقتراحاً منطقياً، أو "غير متوفّر" إن لم تجد,
+  "source": "وصف موجز للمصدر",
+  "alt_contact": "طريقة تواصل بديلة كنص (رابط نموذج أو رقم أو لينكدإن) أو null",
+  "contact_method": "إيميل" أو "نموذج" أو "هاتف" أو "لينكدإن"
 }
 
 مهم جداً: لا تخترع بريداً. إن لم تجد بريداً رسمياً مؤكّداً، أرجع "غير متوفّر" أو "غير مؤكّد". الدقة أهم من الإجابة.`;
@@ -71,7 +75,7 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
     });
 
     if (!res.ok) {
-      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر البحث' };
+      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر البحث', altContact: null, contactMethod: 'إيميل' };
     }
 
     const data = await res.json();
@@ -83,7 +87,7 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
     const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
     const m = clean.match(/\{[\s\S]*\}/);
     if (!m) {
-      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر التحليل' };
+      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر التحليل', altContact: null, contactMethod: 'إيميل' };
     }
 
     const parsed = JSON.parse(m[0]);
@@ -92,9 +96,11 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
       email === null ? 'غير متوفّر'
       : (parsed.confidence === 'مؤكّد' ? 'مؤكّد' : 'غير مؤكّد');
 
-    return { email, confidence, source: String(parsed.source || 'بحث الإنترنت') };
+    const altContact = parsed.alt_contact && String(parsed.alt_contact).trim() && String(parsed.alt_contact) !== 'null' ? String(parsed.alt_contact).trim() : null;
+    const contactMethod = String(parsed.contact_method || 'إيميل');
+    return { email, confidence, source: String(parsed.source || 'بحث الإنترنت'), altContact, contactMethod };
   } catch {
-    return { email: null, confidence: 'غير متوفّر', source: 'خطأ في البحث' };
+    return { email: null, confidence: 'غير متوفّر', source: 'خطأ في البحث', altContact: null, contactMethod: 'إيميل' };
   }
 }
 
@@ -190,5 +196,7 @@ export async function buildFullOutreach(
     email: emailInfo.email,
     emailConfidence: emailInfo.confidence,
     emailSource: emailInfo.source,
+    altContact: emailInfo.altContact,
+    contactMethod: emailInfo.contactMethod,
   };
 }
