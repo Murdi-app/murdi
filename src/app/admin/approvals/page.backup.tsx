@@ -438,12 +438,6 @@ export default function ApprovalsPage() {
                           {trackBlock('funding')}
                           {trackBlock('investment')}
                           {trackBlock('ipo')}
-                          {pr.company?.id && ms.length > 0 && (
-                            <button onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id, '_blank')}
-                              style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background:'#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
-                              📨 خاطب هذه الجهات نيابة عن العميل
-                            </button>
-                          )}
                         </div>
                       );
                     })()}
