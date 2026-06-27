@@ -9,7 +9,6 @@ const LINKS = [
   { href: '/admin/hunt', label: '🎯 صيد الفرص' },
   { href: '/admin/payments', label: '💳 المدفوعات' },
   { href: '/admin/leads', label: '📋 العملاء المحتملون' },
-  { href: '/admin/outreach', label: '📨 مخاطبة الجهات' },
 ]
 
 export default function AdminNav() {
