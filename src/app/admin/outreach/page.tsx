@@ -6,6 +6,7 @@ type Msg = {
   id: string; entity_name: string; entity_email: string | null;
   entity_language: string; track: string; subject: string;
   message_body: string; status: string; error_note: string | null;
+  alt_contact: string | null; contact_method: string | null;
 };
 
 const C = { ink:'#1A3D34', green:'#2E9E7B', gray:'#6B8A80', mint:'#E8F5EF', bg:'#F0F5F3', card:'#FBFCFB' };
@@ -142,6 +143,11 @@ export default function OutreachPage() {
               {/* الإيميل */}
               <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>
                 البريد: {m.entity_email || '—'} · اللغة: {m.entity_language}
+                {m.alt_contact && (
+                  <div style={{ marginTop:6, padding:'6px 10px', background:'#FFF8E6', border:'1px solid #E8D9A8', borderRadius:8, color:'#8A6D1A', fontSize:12, fontWeight:700 }}>
+                    📎 تواصل بديل ({m.contact_method || 'أخرى'}): {m.alt_contact}
+                  </div>
+                )}
               </div>
 
               {editId === m.id ? (
