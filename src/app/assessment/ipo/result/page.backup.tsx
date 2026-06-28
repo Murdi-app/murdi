@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
+import { suggestService } from '@/lib/serviceSuggestion';
 import { createBrowserClient } from '@supabase/ssr';
 
 type Result = {
@@ -21,8 +21,6 @@ export default function IpoResult() {
   const [eligLoading, setEligLoading] = useState(true);
   const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
   const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
-  const [companyId, setCompanyId] = useState<string>('');
-  const [bundleStatus, setBundleStatus] = useState<string>('');
 
   useEffect(() => {
     const load = async () => {
@@ -39,7 +37,6 @@ export default function IpoResult() {
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
-      setCompanyId(company.id);
 
       const { data: fd } = await supabase
         .from('financial_data')
@@ -241,59 +238,6 @@ export default function IpoResult() {
                   style={{ display: 'inline-block', background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 14, padding: '13px 30px', borderRadius: 999, textDecoration: 'none' }}>
                   اطلب هذه الخدمة من فريق مُرضي ←
                 </a>
-              )}
-            </div>
-          );
-        })()}
-
-        {fdRaw && result.readiness_score < 65 && (() => {
-          const all = suggestAllServices(fdRaw, 'ipo', result.readiness_score);
-          if (all.length === 0) return null;
-          const submitAll = async () => {
-            if (!companyId) return;
-            const names = all.map(a => '• ' + a.service).join('\n');
-            if (!confirm('سيتم تقديم طلب لكل الخدمات التالية:\n\n' + names + '\n\nتأكيد؟')) return;
-            setBundleStatus('جارٍ التقديم...');
-            const supabase = createBrowserClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-            );
-            const rows = all.map(a => ({
-              company_id: companyId,
-              service_title: a.service,
-              service_category: 'تجهيز',
-              status: 'submitted',
-            }));
-            const { error } = await supabase.from('service_requests').insert(rows);
-            if (error) { setBundleStatus('تعذّر التقديم، حاول مرة أخرى'); return; }
-            setBundleStatus('✅ تم تقديم طلباتك — فريق مُرضي سيتابع معك');
-          };
-          return (
-            <div style={{ background: '#FBF5E8', border: '2px solid #C9A84C', borderRadius: 16, padding: '22px 24px', marginBottom: 20 }}>
-              <div style={{ color: '#9A7B2E', fontSize: 14, fontWeight: 900, marginBottom: 10 }}>🧭 خطتك للجاهزية</div>
-              <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: 14 }}>
-                بناءً على نتيجتك، هذه الخطوات التي تهيّئ شركتك لرحلة الطرح. يرافقك فريق مُرضي فيها:
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-                {all.map((a, i) => (
-                  <div key={i} style={{ background: '#fff', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>{a.icon}</span>
-                    <div>
-                      <div style={{ color: '#1A3D34', fontSize: 15, fontWeight: 900 }}>{a.service}
-                        {a.urgency === 'required' && <span style={{ color: '#A33', fontSize: 11, fontWeight: 900, marginRight: 8 }}>ضروري</span>}
-                      </div>
-                      <div style={{ color: '#5C4A1F', fontSize: 12.5, lineHeight: 1.7, marginTop: 2 }}>{a.why}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {bundleStatus ? (
-                <div style={{ background: '#EAF7F0', color: '#1E7A5A', fontWeight: 900, fontSize: 14, padding: '13px 20px', borderRadius: 999, textAlign: 'center' }}>{bundleStatus}</div>
-              ) : (
-                <button onClick={submitAll}
-                  style={{ width: '100%', background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 15, padding: '15px 30px', borderRadius: 999, border: 'none', cursor: 'pointer' }}>
-                  قدّم لكل ما تحتاجه بضغطة — ويرافقك فريق مُرضي ←
-                </button>
               )}
             </div>
           );
