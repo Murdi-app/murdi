@@ -55,6 +55,24 @@ export default function AdminServicesPage() {
     setBusy('')
   }
 
+  async function generateFile(r: any) {
+    setBusy(r.id)
+    const track = r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' ? 'investment' : 'funding'
+    try {
+      const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track }) })
+      const d = await res.json()
+      if (d.ok && d.html) {
+        const w = window.open('', '_blank')
+        if (w) { w.document.write(d.html); w.document.close() }
+      } else {
+        alert(d.error || 'تعذّر توليد الملف')
+      }
+    } catch {
+      alert('تعذّر الاتصال بالخادم')
+    }
+    setBusy('')
+  }
+
   async function save(id: string, deliverable: string, price: string, status?: string) {
     setBusy(id)
     await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status }) })
@@ -139,6 +157,11 @@ export default function AdminServicesPage() {
               </>)}
               {COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || r.status === 'delivered' || r.status === 'completed') && (() => {
                 const c = contracts[r.id]
+                return (<>
+                <div style={{ marginTop:16 }}>
+                  <button onClick={() => generateFile(r)} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ التوليد...' : '📄 جهّز الملف الاحترافي'}</button>
+                </div>
+                {(() => {
                 if (!c) {
                   return (
                     <div style={{ marginTop:16, paddingTop:16, borderTop:'1px dashed #EAD9A8' }}>
@@ -173,6 +196,8 @@ export default function AdminServicesPage() {
                     {c.signed_file_url && <a href={c.signed_file_url} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:8, color:'#2E9E7B', fontWeight:700, fontSize:12.5 }}>📎 عرض النسخة الموقّعة من العميل</a>}
                   </div>
                 )
+                })()}
+                </>)
               })()}
             </div>
           )
