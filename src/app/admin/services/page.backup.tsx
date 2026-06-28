@@ -117,12 +117,7 @@ export default function AdminServicesPage() {
                 <span style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:700, background:st.bg, color:st.fg }}>{st.t}</span>
               </div>
 
-              {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
-                <div style={{ background:'#EAF0FB', border:'1.5px solid #B9CCEC', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#3B5BA5', fontWeight:900, fontSize:12.5 }}>
-                  🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
-                </div>
-              )}
-              {(!COMMISSION_SERVICES[r.service_title] || r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض') && (<>
+              {!COMMISSION_SERVICES[r.service_title] && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               <textarea value={e.deliverable} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, deliverable: ev.target.value } }))} placeholder="محتوى الخدمة (يُجهّز بالذكاء أو اكتبه يدوياً)..." style={{ width:'100%', minHeight:140, border:'1.5px solid #EAF2EE', borderRadius:12, padding:12, fontFamily:'Cairo', fontSize:13, lineHeight:1.8, color:'#1A3D34', marginBottom:10 }} />
@@ -137,7 +132,7 @@ export default function AdminServicesPage() {
                 {r.status !== 'completed' && r.status !== 'rejected' && r.status !== 'delivered' && <button onClick={() => { if (confirm('هل أنت متأكد من رفض هذه الخدمة؟')) save(r.id, e.deliverable, e.price, 'rejected') }} disabled={busy === r.id} style={{ background:'transparent', color:'#C0564B', border:'1.5px solid #F0D5D1', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>✕ رفض الخدمة</button>}
               </div>
               </>)}
-              {COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || r.status === 'delivered' || r.status === 'completed') && (() => {
+              {COMMISSION_SERVICES[r.service_title] && (() => {
                 const c = contracts[r.id]
                 if (!c) {
                   return (
