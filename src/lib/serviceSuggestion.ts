@@ -159,3 +159,52 @@ export function suggestionBox(s: ServiceSuggestion): string {
     + '<div style="color:#5C4A1F;font-size:13.5px;line-height:1.8">' + s.why + '</div>'
     + '</div>';
 }
+
+// ════════════════════════════════════════════════════════════════
+// suggestAllServices — ترجّع كل الخدمات التي يحتاجها العميل (مرتّبة بالأولوية)
+// تستخدم لزر "قدّم لكل ما تحتاجه دفعة واحدة" لغير المؤهل
+// لا تمسّ suggestService الأصلية — منطق مستقل يجمع كل العوائق
+// ════════════════════════════════════════════════════════════════
+export function suggestAllServices(fd: SuggestInput, track: Track, score: number): ServiceSuggestion[] {
+  const out: ServiceSuggestion[] = [];
+  const seen = new Set<string>();
+  const add = (s: ServiceSuggestion) => { if (!seen.has(s.service)) { seen.add(s.service); out.push(s); } };
+
+  const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
+  const stmtKnown = fd?.has_financial_statements !== undefined && fd?.has_financial_statements !== null;
+  const audKnown = fd?.audited_statements !== undefined && fd?.audited_statements !== null;
+  const noStatements = (stmtKnown || audKnown) && fd?.has_financial_statements !== true && fd?.audited_statements !== true;
+  const govKnown = fd?.has_governance !== undefined && fd?.has_governance !== null;
+  const noGovernance = govKnown && fd?.has_governance !== true;
+  const hasDebt = fd?.has_debt === true;
+  const qualified = score >= (track === 'ipo' ? 65 : 70);
+
+  // ١) التعثّر — أول وأهم عائق (ضروري)
+  if (isDefaulted) {
+    add({ urgency: 'required', icon: '🔧', service: 'إعادة الهيكلة المالية ومعالجة التعثّر', why: 'الشركة متعثّرة في السداد — معالجة التعثّر أول خطوة ضرورية قبل أي تقديم.' });
+  }
+
+  // ٢) غياب القوائم المالية (ضروري للاستثمار/الطرح، يقوّي للتمويل)
+  if (noStatements) {
+    const req = (track === 'investment' || track === 'ipo');
+    add({ urgency: req ? 'required' : 'recommended', icon: '📊', service: 'إعداد القوائم المالية المعتمدة', why: req ? 'لا توجد قوائم مالية معتمدة — وهي شرط أساسي للمستثمر والجهات الرقابية.' : 'إعداد القوائم يفتح خيارات تمويل أوسع وبشروط أفضل.' });
+  }
+
+  // ٣) غياب الحوكمة (ضروري للطرح، يقوّي للاستثمار)
+  if (noGovernance && (track === 'ipo' || track === 'investment')) {
+    const req = track === 'ipo';
+    add({ urgency: req ? 'required' : 'recommended', icon: '🏛️', service: 'بناء الحوكمة المؤسسية', why: req ? 'لا يوجد نظام حوكمة — شرط تشترطه هيئة السوق المالية للطرح.' : 'نظام الحوكمة يطمئن المستثمر ويرفع التقييم.' });
+  }
+
+  // ٤) الديون (جدولة — تقوّي)
+  if (hasDebt) {
+    add({ urgency: 'recommended', icon: '🗓️', service: 'إعادة جدولة الديون', why: 'إعادة جدولة الديون تخفّف الضغط النقدي وترفع فرص القبول.' });
+  }
+
+  // ٥) خطة جذب المستثمر (للاستثمار غير المؤهل)
+  if (!qualified && track === 'investment') {
+    add({ urgency: 'recommended', icon: '🎯', service: 'بناء خطة جذب المستثمر', why: 'خطة الجذب تعالج الفجوات التي تخفض جاذبيتك وتجهّز شركتك للعرض.' });
+  }
+
+  return out;
+}
