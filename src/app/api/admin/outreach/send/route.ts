@@ -43,6 +43,22 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: 'تعذّر الجلب' }, { status: 500 });
   if (!msgs || msgs.length === 0) return NextResponse.json({ error: 'لا توجد رسائل معتمدة' }, { status: 404 });
 
+  // نجلب الملف المرفق (إن وُجد) ونحمّله مرة واحدة
+  let attachmentData: { filename: string; content: string } | null = null;
+  const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).single();
+  if (att && att.file_url) {
+    try {
+      const fileRes = await fetch(att.file_url);
+      if (fileRes.ok) {
+        const buf = await fileRes.arrayBuffer();
+        attachmentData = {
+          filename: att.file_name || 'ملف-المخاطبة.pdf',
+          content: Buffer.from(buf).toString('base64'),
+        };
+      }
+    } catch {}
+  }
+
   let sent = 0;
   let skipped = 0;
 
@@ -69,6 +85,7 @@ export async function POST(req: Request) {
         to: String(m.entity_email).trim(),
         subject: m.subject || 'استفسار',
         html,
+        attachments: attachmentData ? [attachmentData] : undefined,
       });
 
       await admin.from('outreach_messages')
