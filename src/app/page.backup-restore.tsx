@@ -230,7 +230,7 @@ export default function Home() {
           <p className="lp-pain">تعِبت من رفض الجهات؟ تائه بين الأبواب؟ لا تعرف أين الخلل في ملفك؟</p>
           <div className="lp-clarify">منصة استشارية لقياس وتجهيز جاهزية رأس المال — لا نمنح تمويلاً ولا نضمن نتيجة</div>
           {/* HIDE2_START فقرة الوصف — لإرجاعها احذف هذا السطر وسطر النهاية */}
-          {true && (
+          {false && (
           <p className="lp-sub">
             مرضي يكشف لك أين تقف شركتك بالضبط، وما الذي يمنعها، ويجهّز ملفك في أيام —
             ثم يوصلك بالجهات الأقرب لقبولك محلياً وعالمياً، ويرافقك حتى تفتح الباب.
@@ -238,7 +238,7 @@ export default function Home() {
           )}
           {/* HIDE2_END */}
           {/* HIDE_FOR_PAYMENT_REVIEW_START — لإرجاعها: احذف هذا السطر والسطر المقابل END */}
-          {true && <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>}
+          {false && <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>}
           {/* HIDE_FOR_PAYMENT_REVIEW_END */}
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
           <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
@@ -247,7 +247,7 @@ export default function Home() {
         <MiniAssessment />
 
         {/* HIDE_FOR_PAYMENT_REVIEW_START — قسم البطاقات — لإرجاعه: احذف سطر البداية وسطر النهاية فقط */}
-        {true && (
+        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">اختر هدفك — والباقي علينا</h2>
           <p className="lp-sec-sub">ثلاثة مسارات، لكل مسار محرك تقييم خاص ومطابقة مع الجهات المناسبة</p>
@@ -267,7 +267,7 @@ export default function Home() {
         {/* HIDE_FOR_PAYMENT_REVIEW_END */}
 
         {/* HIDE2_START كيف تعمل — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
+        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">كيف تعمل المنصة؟</h2>
           <p className="lp-sec-sub">أربع خطوات من التسجيل حتى فتح الأبواب</p>
@@ -285,7 +285,7 @@ export default function Home() {
         {/* HIDE2_END */}
 
         {/* HIDE2_START اشتراك واحد — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
+        {false && (
         <div className="lp-companion-wrap">
           <section className="lp-section">
             <h2 className="lp-sec-title">اشتراك واحد… يفتح لك كل الأبواب</h2>
@@ -312,7 +312,7 @@ export default function Home() {
         {/* HIDE2_END */}
 
         {/* HIDE2_START لماذا مرضي — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
+        {false && (
         <section className="lp-section">
           <h2 className="lp-sec-title">لماذا مُرضي؟</h2>
           <p className="lp-sec-sub">منصة بُنيت على خبرة حقيقية وعلاقات حقيقية</p>
