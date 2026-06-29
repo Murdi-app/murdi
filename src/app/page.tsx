@@ -211,7 +211,7 @@ export default function Home() {
 
         <div className="lp-trust-bar">
           <span>🛡️ شركة سعودية</span>
-          <span>💳 دفع إلكتروني آمن</span>
+          <span>🏦 دفع آمن عبر تحويل بنكي</span>
           <span>🌍 جهات محلية وعالمية</span>
           <span>📞 دعم ٢٤ ساعة</span>
         </div>
@@ -425,7 +425,7 @@ export default function Home() {
             </div>
             <div className="lp-footer-col">
               <h4>بيانات نظامية</h4>
-              <p>السجل التجاري: 7039663724<br/>رخصة الاستشارة: FL-457927015<br/>💳 دفع إلكتروني مصرّح</p>
+              <p>السجل التجاري: 7039663724<br/>رخصة الاستشارة: FL-457927015<br/>🏦 تحصيل عبر حساب بنكي موثّق</p>
             </div>
           </div>
           <div className="lp-footer-bottom">

@@ -345,8 +345,7 @@ export default function GoalPage() {
                           {req.status === 'priced' && req.price && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
-                              <button onClick={() => router.push('/pay?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">💳 ادفع أونلاين</button>
-                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2 rounded-full border-2 border-[#1A3D34] text-[#1A3D34] font-black text-xs">🏦 تحويل بنكي</button>
+                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">🏦 الدفع عبر تحويل بنكي</button>
                             </div>
                           )}
                           {req.status === 'delivered' && req.deliverable && (
@@ -417,13 +416,9 @@ export default function GoalPage() {
             </p>
             <div style={{ color: '#1A3D34', fontSize: 28, fontWeight: 900, margin: '14px 0 4px' }}>2,900 <span style={{ fontSize: 15 }}>ر.س</span></div>
             <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
-            <button onClick={() => router.push('/pay?amount=2900&kind=subscription&company_id=' + companyId)}
-              style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              💳 الدفع أونلاين (بطاقة)
-            </button>
             <button onClick={() => router.push('/pay/transfer?amount=2900&kind=subscription&company_id=' + companyId)}
-              style={{ width: '100%', background: '#fff', color: '#1A3D34', border: '2px solid #1A3D34', padding: '12px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              🏦 تحويل بنكي
+              style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
+              🏦 الدفع عبر تحويل بنكي
             </button>
             <button onClick={() => setShowPaywall(false)}
               style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
