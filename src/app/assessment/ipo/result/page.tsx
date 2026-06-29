@@ -156,7 +156,7 @@ export default function IpoResult() {
       + '</style></head><body>'
       + '<div class=head><div class=brand>حلول المرضي للاستشارات المالية · منصة مُرضي</div><h1>تقرير جاهزيتك للطرح (IPO)</h1></div>'
       + '<div class=score-box><div class=score>' + sc + '<small>/100</small></div><div class=verdict style="color:' + col + '">' + esc(result.verdict) + '</div></div>'
-      + ((val || months || mkt) ? '<div class=info>' + (val ? '<div class=chip>التقييم: ' + val + '</div>' : '') + (months ? '<div class=chip>المdة المتوقعة: ' + months + '</div>' : '') + (mkt ? '<div class=chip>' + esc(mkt) + '</div>' : '') + '</div>' : '')
+      + ((val || months || mkt) ? '<div class=info>' + (val ? '<div class=chip>التقييم: ' + val + '</div>' : '') + (months ? '<div class=chip>المدة المتوقعة: ' + months + '</div>' : '') + (mkt ? '<div class=chip>' + esc(mkt) + '</div>' : '') + '</div>' : '')
       + (obstacles ? '<div class=sec><h2>أبرز العقبات</h2>' + obstacles + '</div>' : '')
       + (roadmapHTML ? '<div class=sec><h2>خارطة الطريق للطرح</h2>' + roadmapHTML + '</div>' : '')
       + '<div class=method>تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة ١٥ عاماً في القطاع المالي</div>'
