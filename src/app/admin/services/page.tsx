@@ -59,14 +59,19 @@ export default function AdminServicesPage() {
     setBusy(r.id)
     const track = r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' ? 'investment' : 'funding'
     try {
-      const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track }) })
-      const d = await res.json()
-      if (d.ok && d.html) {
-        const w = window.open('', '_blank')
-        if (w) { w.document.write(d.html); w.document.close() }
-      } else {
-        alert(d.error || 'تعذّر توليد الملف')
+      // نولّد نسختين: عربية (محلي) + إنجليزية (دولي). احفظ كل واحدة PDF وارفعها في قسم المخاطبة.
+      const regions = ['محلي', 'دولي']
+      let okCount = 0
+      for (const region of regions) {
+        const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region }) })
+        const d = await res.json()
+        if (d.ok && d.html) {
+          const w = window.open('', '_blank')
+          if (w) { w.document.write(d.html); w.document.close() }
+          okCount++
+        }
       }
+      if (okCount === 0) alert('تعذّر توليد الملفات')
     } catch {
       alert('تعذّر الاتصال بالخادم')
     }

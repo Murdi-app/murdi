@@ -30,17 +30,11 @@ export interface GeneratedFile {
 
 export async function generateFileContent(
   client: FileClientData,
-  track: 'funding' | 'investment',
-  region?: string
+  track: 'funding' | 'investment'
 ): Promise<GeneratedFile> {
   const isInvestment = track === 'investment';
-  const isIntl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
-  const docType = isIntl
-    ? (isInvestment ? 'investment offering document' : 'financing proposal document')
-    : (isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي');
-  const targetAudience = isIntl
-    ? (isInvestment ? 'institutional investors' : 'international financing institutions and banks')
-    : (isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك');
+  const docType = isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي';
+  const targetAudience = isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك';
   const num = (n?: number) => n ? n.toLocaleString('en-US') + ' ريال' : '';
 
   const lines = [
@@ -57,20 +51,11 @@ export async function generateFileContent(
     client.readinessScore ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
   ].filter(Boolean).join('\\n');
 
-  const reqLine = isIntl
-    ? (isInvestment
-        ? 'theRequest: the investment offer — amount sought, use of funds, and value offered to the investor'
-        : 'theRequest: the financing request — amount, purpose, and repayment capacity')
-    : (isInvestment
-        ? 'theRequest: عرض الاستثمار — المبلغ المطلوب وأوجه استخدامه والقيمة المعروضة للمستثمر'
-        : 'theRequest: طلب التمويل — المبلغ والغرض والقدرة على السداد');
+  const reqLine = isInvestment
+    ? 'theRequest: عرض الاستثمار — المبلغ المطلوب وأوجه استخدامه والقيمة المعروضة للمستثمر'
+    : 'theRequest: طلب التمويل — المبلغ والغرض والقدرة على السداد';
 
-  const prompt = (isIntl
-    ? 'You are an expert preparing a professional ' + docType + ' at Holol Almurdi Financial Consulting (Murdi). Write the entire content in formal institutional ENGLISH. '
-      + 'Address it to ' + targetAudience + '. Use the same 6-section JSON structure and rules described below, but write every section in professional English, no Arabic. '
-      + 'Keep the exact same JSON keys.\\n\\n'
-    : '')
-    + 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
+  const prompt = 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
     + 'اكتب محتوى ' + docType + ' متكامل ومقنع موجّه إلى ' + targetAudience + '.\\n\\n'
     + 'بيانات الشركة والوضع المالي:\\n' + lines + '\\n\\n'
     + 'اكتب ٦ أقسام احترافية، كل قسم فقرات متماسكة (لا نقاط مختصرة):\\n'
@@ -121,35 +106,26 @@ export async function generateFileContent(
 export function buildFileHTML(
   client: FileClientData,
   content: GeneratedFile,
-  track: 'funding' | 'investment',
-  region?: string
+  track: 'funding' | 'investment'
 ): string {
   const isInv = track === 'investment';
-  const intl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
-  const dirAttr = intl ? 'ltr' : 'rtl';
-  const langAttr = intl ? 'en' : 'ar';
-  const title = intl
-    ? (isInv ? 'Investment Offering' : 'Financing Proposal')
-    : (isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي');
-  const L = intl
-    ? { exec: 'Executive Summary', company: 'Company Overview', fin: 'Financial Position', req: isInv ? 'The Investment Offer' : 'The Financing Request', strengths: 'Key Strengths', closing: 'Closing', sector: 'Sector', city: 'City', cr: 'CR Number', score: 'Readiness Score', brand: 'HOLOL ALMURDI FINANCIAL CONSULTING' }
-    : { exec: 'الملخص التنفيذي', company: 'نبذة عن الشركة', fin: 'الوضع المالي', req: isInv ? 'العرض الاستثماري' : 'طلب التمويل', strengths: 'نقاط القوة', closing: 'الخاتمة', sector: 'القطاع', city: 'المدينة', cr: 'السجل التجاري', score: 'درجة الجاهزية', brand: 'حلول المرضي للاستشارات المالية' };
+  const title = isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي';
   const ink = '#1A3D34', gold = '#C9A84C', green = '#2E9E7B', gray = '#6B8A80';
-  const today = new Date().toLocaleDateString(intl ? 'en-GB' : 'ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+  const today = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const section = (t: string, body: string) =>
     '<div class="sec"><h2>' + t + '</h2><p>' + String(body).replace(/\\n/g, '<br>') + '</p></div>';
 
   const facts: ([string, string] | null)[] = [
-    client.sector ? [L.sector, client.sector] as [string, string] : null,
-    client.city ? [L.city, client.city] as [string, string] : null,
-    client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
-    client.readinessScore ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
+    client.sector ? ['القطاع', client.sector] as [string, string] : null,
+    client.city ? ['المدينة', client.city] as [string, string] : null,
+    client.crNumber ? ['السجل التجاري', client.crNumber] as [string, string] : null,
+    client.readinessScore ? ['درجة الجاهزية', client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
 
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
 
-  return '<!DOCTYPE html><html dir="' + dirAttr + '" lang="' + langAttr + '"><head><meta charset="utf-8">'
+  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">'
     + '<title>' + title + ' — ' + client.companyName + '</title>'
     + '<style>'
     + '@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap");'
@@ -174,19 +150,19 @@ export function buildFileHTML(
     + '.footer b{color:' + ink + '}'
     + '@media print{.cover{padding:120px 60px}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     + '</style></head><body><div class="page">'
-    + '<div class="cover"><div class="brand">' + L.brand + '</div>'
+    + '<div class="cover"><div class="brand">حلول المرضي للاستشارات المالية</div>'
     + '<div class="line"></div>'
     + '<h1>' + title + '</h1>'
     + '<div class="company">' + client.companyName + '</div>'
     + '<div class="date">' + today + '</div></div>'
     + '<div class="content">'
     + (factsHTML ? '<div class="facts">' + factsHTML + '</div>' : '')
-    + section(L.exec, content.executiveSummary)
-    + section(L.company, content.companyOverview)
-    + section(L.fin, content.financialPosition)
-    + section(L.req, content.theRequest)
-    + section(L.strengths, content.strengths)
-    + section(L.closing, content.closing)
+    + section('الملخص التنفيذي', content.executiveSummary)
+    + section('نبذة عن الشركة', content.companyOverview)
+    + section('الوضع المالي', content.financialPosition)
+    + section(isInv ? 'عرض الاستثمار' : 'طلب التمويل', content.theRequest)
+    + section('نقاط القوة', content.strengths)
+    + section('خاتمة', content.closing)
     + '<div class="footer"><b>حلول المرضي للاستشارات المالية</b><br>'
     + 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>'
     + '</div></div></body></html>';
