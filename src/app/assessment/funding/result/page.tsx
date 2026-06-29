@@ -126,7 +126,6 @@ export default function FundingResult() {
     const listHTML = (arr: unknown) => Array.isArray(arr) && arr.length
       ? '<ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
     const obstacles = listHTML(result.top_obstacles);
-    const docs = listHTML(result.required_documents);
     const plan = listHTML(result.improvement_plan);
     const html = '<!DOCTYPE html><html dir=rtl lang=ar><head><meta charset=utf-8><title>نتيجة جاهزيتك التمويلية</title>'
       + '<style>'
@@ -150,7 +149,6 @@ export default function FundingResult() {
       + '<div class=head><div class=brand>حلول المرضي للاستشارات المالية · منصة مُرضي</div><h1>تقرير جاهزيتك التمويلية</h1></div>'
       + '<div class=score-box><div class=score>' + sc + '<small>/100</small></div><div class=verdict style="color:' + col + '">' + esc(result.verdict) + '</div></div>'
       + (obstacles ? '<div class=sec><h2>أبرز العقبات</h2>' + obstacles + '</div>' : '')
-      + (docs ? '<div class=sec><h2>المستندات المطلوبة</h2>' + docs + '</div>' : '')
       + (plan ? '<div class=sec><h2>خطة رفع الجاهزية</h2>' + plan + '</div>' : '')
       + '<div class=method>تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة ١٥ عاماً في القطاع المالي</div>'
       + '<div class=footer>' + today + ' · هذا التقرير لأغراض التقييم الاسترشادي</div>'
