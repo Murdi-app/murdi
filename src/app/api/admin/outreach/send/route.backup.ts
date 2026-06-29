@@ -43,26 +43,20 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: 'تعذّر الجلب' }, { status: 500 });
   if (!msgs || msgs.length === 0) return NextResponse.json({ error: 'لا توجد رسائل معتمدة' }, { status: 404 });
 
-  // نجلب نسختي الملف (عربية + إنجليزية) ونحمّلهما مرة واحدة
-  type Att = { filename: string; content: string };
-  let attAr: Att | null = null;
-  let attEn: Att | null = null;
+  // نجلب الملف المرفق (إن وُجد) ونحمّله مرة واحدة
+  let attachmentData: { filename: string; content: string } | null = null;
   const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).single();
-  const loadAtt = async (fileUrl?: string, fileName?: string): Promise<Att | null> => {
-    if (!fileUrl) return null;
+  if (att && att.file_url) {
     try {
-      const fileRes = await fetch(fileUrl);
+      const fileRes = await fetch(att.file_url);
       if (fileRes.ok) {
         const buf = await fileRes.arrayBuffer();
-        return { filename: fileName || 'document.pdf', content: Buffer.from(buf).toString('base64') };
+        attachmentData = {
+          filename: att.file_name || 'ملف-المخاطبة.pdf',
+          content: Buffer.from(buf).toString('base64'),
+        };
       }
     } catch {}
-    return null;
-  };
-  if (att) {
-    // الأعمدة الجديدة، مع دعم القديم (file_url) كنسخة عربية احتياطية
-    attAr = await loadAtt(att.file_url_ar || att.file_url, att.file_name_ar || att.file_name);
-    attEn = await loadAtt(att.file_url_en, att.file_name_en);
   }
 
   let sent = 0;
@@ -91,7 +85,7 @@ export async function POST(req: Request) {
         to: String(m.entity_email).trim(),
         subject: m.subject || 'استفسار',
         html,
-        attachments: (m.entity_language === 'إنجليزي' ? (attEn || attAr) : (attAr || attEn)) ? [ (m.entity_language === 'إنجليزي' ? (attEn || attAr) : (attAr || attEn)) as { filename: string; content: string } ] : undefined,
+        attachments: attachmentData ? [attachmentData] : undefined,
       });
 
       await admin.from('outreach_messages')

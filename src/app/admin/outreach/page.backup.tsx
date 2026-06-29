@@ -1,11 +1,13 @@
 'use client';
 import AdminNav from '@/components/AdminNav';
 import { useState } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 
 type Msg = {
   id: string; entity_name: string; entity_email: string | null;
   entity_language: string; track: string; subject: string;
   message_body: string; status: string; error_note: string | null;
+  alt_contact: string | null; contact_method: string | null;
 };
 
 const C = { ink:'#1A3D34', green:'#2E9E7B', gray:'#6B8A80', mint:'#E8F5EF', bg:'#F0F5F3', card:'#FBFCFB' };
@@ -23,10 +25,57 @@ export default function OutreachPage() {
   const [editId, setEditId] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [attachment, setAttachment] = useState<{ file_url: string; file_name: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 3000); };
 
+  // جلب الملف المرفق
+  const loadAttachment = async (cid: string) => {
+    try {
+      const r = await fetch('/api/admin/outreach/attachment?company_id=' + cid);
+      const d = await r.json();
+      if (d.ok) setAttachment(d.attachment);
+    } catch {}
+  };
+
+  // رفع ملف المخاطبة (PDF)
+  const uploadAttachment = async (file: File) => {
+    if (!companyId.trim()) { flash('أدخل معرّف العميل أولاً'); return; }
+    setUploading(true);
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+      );
+      const path = companyId.trim() + '/outreach_' + Date.now() + '_' + file.name;
+      const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
+      if (upErr) { flash('تعذّر الرفع: ' + upErr.message); setUploading(false); return; }
+      const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
+      const r = await fetch('/api/admin/outreach/attachment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: companyId.trim(), file_url: pub.publicUrl, file_name: file.name }),
+      });
+      const d = await r.json();
+      if (d.ok) { flash('✓ رُفع الملف'); setAttachment({ file_url: pub.publicUrl, file_name: file.name }); }
+      else flash(d.error || 'خطأ');
+    } catch {
+      flash('تعذّر الرفع');
+    }
+    setUploading(false);
+  };
+
+  // حذف الملف المرفق
+  const deleteAttachment = async () => {
+    if (!confirm('حذف الملف المرفق؟')) return;
+    await fetch('/api/admin/outreach/attachment?company_id=' + companyId.trim(), { method: 'DELETE' });
+    setAttachment(null);
+    flash('✓ حُذف الملف');
+  };
+
+
   const load = async (cid: string) => {
+    loadAttachment(cid);
     const r = await fetch('/api/admin/outreach/manage?company_id=' + cid);
     const d = await r.json();
     if (d.ok) setMsgs(d.messages);
@@ -111,6 +160,28 @@ export default function OutreachPage() {
 
         {note && <div style={{ background:C.ink, color:'#fff', padding:'10px 16px', borderRadius:10, marginBottom:16, fontSize:13, fontWeight:700 }}>{note}</div>}
 
+        {/* قسم ملف المخاطبة المرفق */}
+        {msgs.length > 0 && (
+          <div style={{ background:'#FFF8E6', border:'2px solid #E8D9A8', borderRadius:14, padding:16, marginBottom:16 }}>
+            <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:14, marginBottom:8 }}>📎 ملف المخاطبة (يرفق مع كل الرسائل)</div>
+            {attachment ? (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+                <a href={attachment.file_url} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B', fontWeight:700, fontSize:13 }}>📄 {attachment.file_name || 'الملف المرفق'} (عرض)</a>
+                <button onClick={deleteAttachment} style={{ background:'#FDECEA', color:'#C0392B', border:'none', padding:'6px 16px', borderRadius:8, fontWeight:900, fontSize:12.5, cursor:'pointer' }}>حذف</button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color:'#8A6D1A', fontSize:12.5, marginBottom:8 }}>ارفع ملف PDF (جهّزه من «جهّز الملف الاحترافي» واحفظه PDF) ليُرفق مع رسائل الجهات.</p>
+                <label style={{ display:'inline-block', background:C.ink, color:'#fff', fontWeight:900, fontSize:13, padding:'9px 20px', borderRadius:10, cursor:'pointer' }}>
+                  {uploading ? 'جارٍ الرفع...' : '⬆️ ارفع ملف PDF'}
+                  <input type="file" accept="application/pdf" style={{ display:'none' }} disabled={uploading}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadAttachment(f); }} />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* زر الإرسال */}
         {msgs.length > 0 && (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
@@ -142,6 +213,11 @@ export default function OutreachPage() {
               {/* الإيميل */}
               <div style={{ fontSize:12, color:C.gray, marginBottom:8 }}>
                 البريد: {m.entity_email || '—'} · اللغة: {m.entity_language}
+                {m.alt_contact && (
+                  <div style={{ marginTop:6, padding:'6px 10px', background:'#FFF8E6', border:'1px solid #E8D9A8', borderRadius:8, color:'#8A6D1A', fontSize:12, fontWeight:700 }}>
+                    📎 تواصل بديل ({m.contact_method || 'أخرى'}): {m.alt_contact}
+                  </div>
+                )}
               </div>
 
               {editId === m.id ? (

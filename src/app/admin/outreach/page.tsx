@@ -25,7 +25,8 @@ export default function OutreachPage() {
   const [editId, setEditId] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [attachment, setAttachment] = useState<{ file_url: string; file_name: string } | null>(null);
+  const [attAr, setAttAr] = useState<{ file_url: string; file_name: string } | null>(null);
+  const [attEn, setAttEn] = useState<{ file_url: string; file_name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 3000); };
@@ -35,12 +36,16 @@ export default function OutreachPage() {
     try {
       const r = await fetch('/api/admin/outreach/attachment?company_id=' + cid);
       const d = await r.json();
-      if (d.ok) setAttachment(d.attachment);
+      if (d.ok && d.attachment) {
+        const a = d.attachment;
+        setAttAr(a.file_url_ar ? { file_url: a.file_url_ar, file_name: a.file_name_ar || 'النسخة العربية' } : null);
+        setAttEn(a.file_url_en ? { file_url: a.file_url_en, file_name: a.file_name_en || 'English version' } : null);
+      } else { setAttAr(null); setAttEn(null); }
     } catch {}
   };
 
   // رفع ملف المخاطبة (PDF)
-  const uploadAttachment = async (file: File) => {
+  const uploadAttachment = async (file: File, lang: 'ar' | 'en') => {
     if (!companyId.trim()) { flash('أدخل معرّف العميل أولاً'); return; }
     setUploading(true);
     try {
@@ -48,17 +53,20 @@ export default function OutreachPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL as string,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
       );
-      const path = companyId.trim() + '/outreach_' + Date.now() + '_' + file.name;
+      const path = companyId.trim() + '/outreach_' + lang + '_' + Date.now() + '_' + file.name;
       const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
       if (upErr) { flash('تعذّر الرفع: ' + upErr.message); setUploading(false); return; }
       const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
       const r = await fetch('/api/admin/outreach/attachment', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_id: companyId.trim(), file_url: pub.publicUrl, file_name: file.name }),
+        body: JSON.stringify({ company_id: companyId.trim(), lang, file_url: pub.publicUrl, file_name: file.name }),
       });
       const d = await r.json();
-      if (d.ok) { flash('✓ رُفع الملف'); setAttachment({ file_url: pub.publicUrl, file_name: file.name }); }
-      else flash(d.error || 'خطأ');
+      if (d.ok) {
+        flash('✓ رُفعت ' + (lang === 'ar' ? 'النسخة العربية' : 'النسخة الإنجليزية'));
+        if (lang === 'ar') setAttAr({ file_url: pub.publicUrl, file_name: file.name });
+        else setAttEn({ file_url: pub.publicUrl, file_name: file.name });
+      } else flash(d.error || 'خطأ');
     } catch {
       flash('تعذّر الرفع');
     }
@@ -66,11 +74,11 @@ export default function OutreachPage() {
   };
 
   // حذف الملف المرفق
-  const deleteAttachment = async () => {
-    if (!confirm('حذف الملف المرفق؟')) return;
-    await fetch('/api/admin/outreach/attachment?company_id=' + companyId.trim(), { method: 'DELETE' });
-    setAttachment(null);
-    flash('✓ حُذف الملف');
+  const deleteAttachment = async (lang: 'ar' | 'en') => {
+    if (!confirm('حذف هذه النسخة؟')) return;
+    await fetch('/api/admin/outreach/attachment?company_id=' + companyId.trim() + '&lang=' + lang, { method: 'DELETE' });
+    if (lang === 'ar') setAttAr(null); else setAttEn(null);
+    flash('✓ حُذفت النسخة');
   };
 
 
@@ -160,25 +168,29 @@ export default function OutreachPage() {
 
         {note && <div style={{ background:C.ink, color:'#fff', padding:'10px 16px', borderRadius:10, marginBottom:16, fontSize:13, fontWeight:700 }}>{note}</div>}
 
-        {/* قسم ملف المخاطبة المرفق */}
+        {/* قسم ملفات المخاطبة المرفقة (نسختان: عربية + إنجليزية) */}
         {msgs.length > 0 && (
           <div style={{ background:'#FFF8E6', border:'2px solid #E8D9A8', borderRadius:14, padding:16, marginBottom:16 }}>
-            <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:14, marginBottom:8 }}>📎 ملف المخاطبة (يرفق مع كل الرسائل)</div>
-            {attachment ? (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-                <a href={attachment.file_url} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B', fontWeight:700, fontSize:13 }}>📄 {attachment.file_name || 'الملف المرفق'} (عرض)</a>
-                <button onClick={deleteAttachment} style={{ background:'#FDECEA', color:'#C0392B', border:'none', padding:'6px 16px', borderRadius:8, fontWeight:900, fontSize:12.5, cursor:'pointer' }}>حذف</button>
+            <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:14, marginBottom:4 }}>📎 ملفات المخاطبة</div>
+            <p style={{ color:'#8A6D1A', fontSize:12, marginBottom:12, lineHeight:1.7 }}>جهّز الملف من «الخدمات» (يفتح نسختين)، احفظ كلّا منهما PDF وارفعها هنا. النظام يرسل لكل جهة النسخة المناسبة للغتها تلقائياً.</p>
+
+            {([['ar','📄 النسخة العربية (للجهات المحلية/الخليجية)', attAr],['en','📄 English version (for international entities)', attEn]] as const).map(([lang, label, att]) => (
+              <div key={lang} style={{ background:'#fff', border:'1.5px solid #E8D9A8', borderRadius:10, padding:12, marginBottom:10 }}>
+                <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:12.5, marginBottom:8 }}>{label}</div>
+                {att ? (
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+                    <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B', fontWeight:700, fontSize:13 }}>📄 {att.file_name} (عرض)</a>
+                    <button onClick={() => deleteAttachment(lang)} style={{ background:'#FDECEA', color:'#C0392B', border:'none', padding:'6px 16px', borderRadius:8, fontWeight:900, fontSize:12.5, cursor:'pointer' }}>حذف</button>
+                  </div>
+                ) : (
+                  <label style={{ display:'inline-block', background:C.ink, color:'#fff', fontWeight:900, fontSize:12.5, padding:'8px 18px', borderRadius:10, cursor:'pointer' }}>
+                    {uploading ? 'جارٍ الرفع...' : '⬆️ ارفع PDF'}
+                    <input type="file" accept="application/pdf" style={{ display:'none' }} disabled={uploading}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadAttachment(f, lang); }} />
+                  </label>
+                )}
               </div>
-            ) : (
-              <div>
-                <p style={{ color:'#8A6D1A', fontSize:12.5, marginBottom:8 }}>ارفع ملف PDF (جهّزه من «جهّز الملف الاحترافي» واحفظه PDF) ليُرفق مع رسائل الجهات.</p>
-                <label style={{ display:'inline-block', background:C.ink, color:'#fff', fontWeight:900, fontSize:13, padding:'9px 20px', borderRadius:10, cursor:'pointer' }}>
-                  {uploading ? 'جارٍ الرفع...' : '⬆️ ارفع ملف PDF'}
-                  <input type="file" accept="application/pdf" style={{ display:'none' }} disabled={uploading}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadAttachment(f); }} />
-                </label>
-              </div>
-            )}
+            ))}
           </div>
         )}
 

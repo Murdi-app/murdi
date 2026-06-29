@@ -26,8 +26,8 @@ export async function POST(req: Request) {
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
-  let companyId = '', track = 'funding';
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = b.track === 'investment' ? 'investment' : 'funding'; }
+  let companyId = '', track = 'funding', region = '';
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = b.track === 'investment' ? 'investment' : 'funding'; region = String(b.region || ''); }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
 
@@ -71,8 +71,8 @@ export async function POST(req: Request) {
   };
 
   try {
-    const content = await generateFileContent(client, track as 'funding' | 'investment');
-    const html = buildFileHTML(client, content, track as 'funding' | 'investment');
+    const content = await generateFileContent(client, track as 'funding' | 'investment', region);
+    const html = buildFileHTML(client, content, track as 'funding' | 'investment', region);
     return NextResponse.json({ ok: true, html });
   } catch (e) {
     return NextResponse.json({ error: 'تعذر التوليد: ' + String(e).slice(0, 120) }, { status: 500 });
