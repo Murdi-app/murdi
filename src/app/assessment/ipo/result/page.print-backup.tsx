@@ -119,53 +119,6 @@ export default function IpoResult() {
   const valuation = aiVal ? { lo: aiVal.lo, hi: aiVal.hi, basis: 'multiple', note: aiVal.note || '' } : estimateValuation();
   const fmtM = (n: number) => (n >= 1000000 ? (n / 1000000).toFixed(1) + ' مليون' : Math.round(n / 1000).toLocaleString() + ' ألف');
 
-  function printResult() {
-    if (!result) return;
-    const esc = (t: unknown) => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const sc = result.readiness_score;
-    const col = sc >= 70 ? '#2E9E7B' : sc >= 50 ? '#C9A84C' : '#C0564B';
-    const today = new Date().toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
-    const listHTML = (arr: unknown) => Array.isArray(arr) && arr.length
-      ? '<ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
-    const rmap = (result.improvement_plan || []).filter((p: string) => p.startsWith('السوق المقترح') === false);
-    const mkt = (result.improvement_plan || []).find((p: string) => p.startsWith('السوق المقترح'));
-    const obstacles = listHTML(result.top_obstacles);
-    const roadmapHTML = listHTML(rmap);
-    const val = result.valuation_estimate ? esc(result.valuation_estimate) : '';
-    const months = result.months_to_ready ? esc(result.months_to_ready) : '';
-    const html = '<!DOCTYPE html><html dir=rtl lang=ar><head><meta charset=utf-8><title>نتيجة جاهزيتك للطرح</title>'
-      + '<style>'
-      + '@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap");'
-      + '*{margin:0;padding:0;box-sizing:border-box;font-family:Cairo,Arial,sans-serif}'
-      + 'body{padding:40px;color:#1A3D34;line-height:1.9}'
-      + '.head{text-align:center;border-bottom:3px solid #C9A84C;padding-bottom:20px;margin-bottom:28px}'
-      + '.brand{color:#C9A84C;font-size:14px;font-weight:900;letter-spacing:1px}'
-      + '.head h1{font-size:24px;margin-top:8px}'
-      + '.score-box{text-align:center;margin:30px 0}'
-      + '.score{font-size:64px;font-weight:900;color:' + col + '}'
-      + '.score small{font-size:20px;color:#A3BAB2}'
-      + '.verdict{font-size:20px;font-weight:900;margin-top:10px}'
-      + '.info{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0}'
-      + '.chip{background:#F0F5F3;border-radius:12px;padding:12px 18px;font-size:14px;font-weight:900;color:#1A3D34}'
-      + '.sec{margin:24px 0}'
-      + '.sec h2{font-size:17px;color:#1A3D34;border-right:5px solid #2E9E7B;padding-right:10px;margin-bottom:10px}'
-      + 'ul{padding-right:24px}li{margin-bottom:7px;font-size:14px}'
-      + '.method{background:#F0F5F3;border-radius:12px;padding:14px;font-size:12.5px;color:#6B8A80;text-align:center;margin-top:20px}'
-      + '.footer{margin-top:30px;padding-top:16px;border-top:2px solid #EEE;text-align:center;color:#9DB3AB;font-size:12px}'
-      + '@media print{body{padding:20px}}'
-      + '</style></head><body>'
-      + '<div class=head><div class=brand>حلول المرضي للاستشارات المالية · منصة مُرضي</div><h1>تقرير جاهزيتك للطرح (IPO)</h1></div>'
-      + '<div class=score-box><div class=score>' + sc + '<small>/100</small></div><div class=verdict style="color:' + col + '">' + esc(result.verdict) + '</div></div>'
-      + ((val || months || mkt) ? '<div class=info>' + (val ? '<div class=chip>التقييم: ' + val + '</div>' : '') + (months ? '<div class=chip>المdة المتوقعة: ' + months + '</div>' : '') + (mkt ? '<div class=chip>' + esc(mkt) + '</div>' : '') + '</div>' : '')
-      + (obstacles ? '<div class=sec><h2>أبرز العقبات</h2>' + obstacles + '</div>' : '')
-      + (roadmapHTML ? '<div class=sec><h2>خارطة الطريق للطرح</h2>' + roadmapHTML + '</div>' : '')
-      + '<div class=method>تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة ١٥ عاماً في القطاع المالي</div>'
-      + '<div class=footer>' + today + ' · هذا التقرير لأغراض التقييم الاسترشادي</div>'
-      + '</body></html>';
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
-  }
-
   const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
   const roadmap = result.improvement_plan?.filter((p) => p.startsWith('السوق المقترح') === false) || [];
   const market = result.improvement_plan?.find((p) => p.startsWith('السوق المقترح'));
@@ -173,14 +126,9 @@ export default function IpoResult() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
       <div className="max-w-2xl mx-auto mb-4">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
-            <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
-          </a>
-          <button onClick={printResult} className="inline-flex items-center gap-2 bg-[#1A3D34] text-white font-black text-sm px-5 py-2.5 rounded-full hover:opacity-90 transition">
-            🖨️ احفظ نتيجتك PDF
-          </button>
-        </div>
+        <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+          <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
+        </a>
       </div>
       <div className="max-w-xl mx-auto space-y-6">
 
