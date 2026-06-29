@@ -47,6 +47,7 @@ export default function ApprovalsPage() {
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
+  const [search, setSearch] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [consultations, setConsultations] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
@@ -213,8 +214,11 @@ export default function ApprovalsPage() {
     </div>
   )
 
-  const pending = companies.filter(c => c.account_status === 'pending_approval')
-  const others = companies.filter(c => c.account_status !== 'pending_approval')
+  const q = search.trim().toLowerCase()
+  const matchSearch = (c: Company) => !q || [c.company_name, c.cr_number, c.phone, c.owner_name, c.city, c.sector].some(v => (v || '').toLowerCase().includes(q))
+  const filtered = companies.filter(matchSearch)
+  const pending = filtered.filter(c => c.account_status === 'pending_approval')
+  const others = filtered.filter(c => c.account_status !== 'pending_approval')
 
   return (
     <>
@@ -250,6 +254,19 @@ export default function ApprovalsPage() {
           <AdminNav />
           <div className="ap-head">لوحة الموافقات</div>
           <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>
+          <div style={{ marginBottom:24 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="🔍 ابحث بالاسم، السجل التجاري، الجوال، المالك، المدينة، أو القطاع..."
+              style={{ width:'100%', border:'1.5px solid #EAF1EE', borderRadius:30, padding:'13px 22px', fontFamily:'Cairo,sans-serif', fontSize:14, color:'#1A3D34', outline:'none', background:'#fff', boxShadow:'0 2px 12px rgba(26,61,52,0.04)' }}
+            />
+            {search.trim() && (
+              <div style={{ color:'#6B8A80', fontSize:13, marginTop:8, paddingRight:8 }}>
+                نتائج البحث: {filtered.length} من {companies.length} عميل
+              </div>
+            )}
+          </div>
 
           <div className="ap-section-title">
             طلبات بانتظار المراجعة <span className="ap-count">{pending.length}</span>
