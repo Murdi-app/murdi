@@ -10,7 +10,6 @@ const LINKS = [
   { href: '/admin/payments', label: '💳 المدفوعات' },
   { href: '/admin/leads', label: '📋 العملاء المحتملون' },
   { href: '/admin/outreach', label: '📨 مخاطبة الجهات' },
-  { href: '/admin/payment-links', label: '🔗 طلبات روابط الدفع' },
 ]
 
 export default function AdminNav() {
