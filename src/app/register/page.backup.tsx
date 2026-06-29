@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 const IBAN = 'SA3710000026300000961004'
 const BENEFICIARY = 'شركة حلول المرضي للاستشارات المالية'
-const FEE = '2,900 ر.س'
+const FEE = '1,900 ر.س'
 
 export default function RegisterPage() {
   const supabase = createBrowserClient(
@@ -176,11 +176,11 @@ export default function RegisterPage() {
 
         {step === 2 && (
           <>
-            <div className="rg-title">رسوم الاشتراك</div>
+            <div className="rg-title">رسوم فتح الملف</div>
             <div className="rg-sub">حوّل المبلغ على الحساب التالي، ثم ارفع إيصال التحويل</div>
             <div className="rg-card">
               <div className="rg-fee-box">
-                <div className="rg-fee-label">رسوم الاشتراك (لمدة ٤ أشهر)</div>
+                <div className="rg-fee-label">رسوم فتح الملف (مرة واحدة)</div>
                 <div className="rg-fee-amount">{FEE}</div>
               </div>
               <div className="rg-bank-row">

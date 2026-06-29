@@ -39,8 +39,8 @@ export default function PendingPage() {
   }
 
   const content: Record<Status, { icon: string; title: string; msg: string }> = {
-    none: { icon: '📋', title: 'لم تسجّل شركتك بعد', msg: 'ابدأ بتسجيل شركتك ودفع رسوم الاشتراك لتفعيل حسابك.' },
-    pending_payment: { icon: '💳', title: 'بانتظار الدفع', msg: 'أكمل دفع رسوم الاشتراك ليتم مراجعة طلبك.' },
+    none: { icon: '📋', title: 'لم تسجّل شركتك بعد', msg: 'ابدأ بتسجيل شركتك ودفع رسوم فتح الملف لتفعيل حسابك.' },
+    pending_payment: { icon: '💳', title: 'بانتظار الدفع', msg: 'أكمل دفع رسوم فتح الملف ليتم مراجعة طلبك.' },
     pending_approval: { icon: '⏳', title: 'طلبك قيد المراجعة', msg: 'استلمنا طلبك ودفعتك. فريق Murdi يراجع بياناتك، وسنفعّل حسابك قريباً.' },
     active: { icon: '✓', title: 'حسابك مفعّل', msg: 'جارٍ تحويلك...' },
     rejected: { icon: '✕', title: 'لم يُقبل الطلب', msg: 'لم نتمكن من قبول طلبك حالياً. تواصل معنا للمزيد.' },
