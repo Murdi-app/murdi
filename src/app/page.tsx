@@ -74,6 +74,10 @@ export default function Home() {
         .lp-h1 { font-size:40px; font-weight:900; line-height:1.4; margin-bottom:20px; color:#1A3D34; }
         .lp-h1 em { color:#2E9E7B; font-style:normal; }
         .lp-pain { color:#C0564B; font-size:17px; font-weight:800; line-height:1.8; max-width:640px; margin:0 auto 14px; }
+        .lp-painlead { max-width:680px; margin:0 auto 24px; }
+        .lp-painlead-1 { color:#1A3D34; font-size:24px; font-weight:900; line-height:1.7; margin-bottom:12px; }
+        .lp-painlead-1 span { color:#C0564B; }
+        .lp-painlead-2 { color:#5B7068; font-size:16px; font-weight:700; line-height:1.9; }
         .lp-sub { color:#5B7068; font-size:17px; line-height:2; max-width:680px; margin:0 auto 16px; }
         .lp-clarify { display:inline-block; background:#EAF7F0; color:#1E7A5A; font-size:13.5px; font-weight:700; padding:7px 16px; border-radius:30px; margin-bottom:16px; border:1px solid #C5E8D8; }
         .lp-global { display:inline-flex; align-items:center; gap:8px; background:#FBF3DC; color:#9A7B2E; padding:9px 22px; border-radius:30px; font-size:14px; font-weight:800; margin-bottom:26px; }
@@ -225,6 +229,10 @@ export default function Home() {
 
         <section className="lp-hero">
           <div className="lp-badge">منصة جاهزية رأس المال الأولى في السعودية</div>
+          <div className="lp-painlead">
+            <p className="lp-painlead-1">أكثر ما يمنع الشركات من الوصول إلى رأس المال ليس نقص الفرص…<br/><span>بل نقص الجاهزية.</span></p>
+            <p className="lp-painlead-2">قبل أن تضيّع وقتك مع البنوك، أو المستثمرين، أو التفكير في الإدراج — اعرف أولاً أين تقف.</p>
+          </div>
           <h1 className="lp-h1">شركتك تستحق <em>تمويلاً، استثماراً، أو طرحاً</em><br/>لكن هل هي جاهزة؟</h1>
           <p className="lp-pain">تعِبت من رفض الجهات؟ تائه بين الأبواب؟ لا تعرف أين الخلل في ملفك؟</p>
           <div className="lp-clarify">منصة استشارية لقياس وتجهيز جاهزية رأس المال — لا نمنح تمويلاً ولا نضمن نتيجة</div>
