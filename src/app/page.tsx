@@ -434,6 +434,10 @@ export default function Home() {
               <h4>بيانات نظامية</h4>
               <p>السجل التجاري: 7039663724<br/>رخصة الاستشارة: FL-457927015<br/>🏦 تحصيل عبر حساب بنكي موثّق</p>
             </div>
+            <div className="lp-footer-col">
+              <h4>روابط نظامية</h4>
+              <p><a href="/terms" style={{color:'#9DB3AB',textDecoration:'none'}}>الشروط والأحكام</a><br/><a href="/privacy" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الخصوصية</a><br/><a href="/refund" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الاسترجاع والإلغاء</a><br/><a href="/disclaimer" style={{color:'#9DB3AB',textDecoration:'none'}}>إخلاء المسؤولية</a></p>
+            </div>
           </div>
           <div className="lp-footer-bottom">
             ©️ 2026 مُرضي · حلول المرضي للاستشارات المالية · جميع الحقوق محفوظة
