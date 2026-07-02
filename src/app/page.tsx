@@ -251,6 +251,10 @@ export default function Home() {
           <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
         </section>
 
+        <div style={{maxWidth:760,margin:'0 auto 14px',background:'#13302A',borderRadius:14,padding:'16px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+          <span style={{color:'#fff',fontSize:15,lineHeight:1.8}}>مؤشر مُرضي: متوسط جاهزية الشركات السعودية <strong style={{color:'#C9A24B',fontSize:20}}>43/100</strong></span>
+          <a href="/readiness-index" style={{color:'#C9A24B',fontWeight:700,textDecoration:'none',fontSize:14,whiteSpace:'nowrap'}}>اقرأ التقرير الكامل ←</a>
+        </div>
         <div id="mini-assessment"><MiniAssessment /></div>
 
         {/* HIDE_FOR_PAYMENT_REVIEW_START — قسم البطاقات — لإرجاعه: احذف سطر البداية وسطر النهاية فقط */}
