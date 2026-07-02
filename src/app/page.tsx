@@ -251,7 +251,7 @@ export default function Home() {
           <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
         </section>
 
-        <MiniAssessment />
+        <div id="mini-assessment"><MiniAssessment /></div>
 
         {/* HIDE_FOR_PAYMENT_REVIEW_START — قسم البطاقات — لإرجاعه: احذف سطر البداية وسطر النهاية فقط */}
         {true && (
