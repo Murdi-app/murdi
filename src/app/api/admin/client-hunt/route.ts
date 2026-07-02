@@ -85,7 +85,8 @@ export async function PATCH() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.RESEND_API_KEY },
         body: JSON.stringify({
-          from: 'منصة مُرضي <info@murdi.sa>',
+          from: 'منصة مُرضي <noreply@murdi.sa>',
+          reply_to: ['hololalmurdi.fs@gmail.com'],
           to: [lead.email],
           subject: 'كم جاهزية شركتكم للحصول على رأس المال؟',
           text: lead.message + '\n\n—\nإن لم ترغبوا باستقبال رسائلنا، يكفي الرد بكلمة "إيقاف".',
