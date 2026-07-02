@@ -89,7 +89,9 @@ export async function PATCH() {
           reply_to: ['hololalmurdi.fs@gmail.com'],
           to: [lead.email],
           subject: 'كم جاهزية شركتكم للحصول على رأس المال؟',
-          text: lead.message + '\n\n—\nإن لم ترغبوا باستقبال رسائلنا، يكفي الرد بكلمة "إيقاف".',
+          html: '<div dir="rtl" style="text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:2;color:#222;">'
+            + lead.message.replace(/\n/g, '<br/>')
+            + '<br/><br/><span style="color:#888;font-size:12.5px;">— إن لم ترغبوا باستقبال رسائلنا، يكفي الرد بكلمة "إيقاف".</span></div>',
         }),
       });
       if (res.ok) {
