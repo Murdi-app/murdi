@@ -1,0 +1,113 @@
+import { createClient } from '@supabase/supabase-js';
+
+type CLead = { company_name: string; sector: string; city: string; signal: string; email: string; phone: string; source: string; message: string };
+
+function admin() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+}
+
+function parseCLeads(text: string): CLead[] {
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const out: CLead[] = [];
+  const norm = (o: Record<string, unknown>): CLead => ({
+    company_name: String(o.company_name || '').trim(),
+    sector: String(o.sector || '').trim(),
+    city: String(o.city || '').trim(),
+    signal: String(o.signal || '').trim(),
+    email: String(o.email || '').trim(),
+    phone: String(o.phone || '').trim(),
+    source: String(o.source || '').trim(),
+    message: String(o.message || '').trim(),
+  });
+  try {
+    const start = cleaned.indexOf('{'); const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      const p = JSON.parse(cleaned.slice(start, end + 1));
+      if (Array.isArray(p.leads)) return p.leads.map(norm).filter((l: CLead) => l.company_name && (l.email || l.phone));
+    }
+  } catch { /* تابع */ }
+  const objs = cleaned.match(/\{[^{}]*"company_name"[^{}]*\}/g) || [];
+  for (const o of objs) { try { out.push(norm(JSON.parse(o))); } catch { /* تجاهل */ } }
+  return out.filter((l) => l.company_name && (l.email || l.phone));
+}
+
+async function huntClientsAxis(sectorsLabel: string, dateContext: string, dedupContext: string, count: number): Promise<CLead[]> {
+  const prompt = 'أنت باحث تسويق ميداني خبير تعمل لمنصة مُرضي (murdi.sa) — منصة سعودية لقياس جاهزية الشركات للحصول على رأس المال (تمويل، استثمار، طرح) تتبع حلول المرضي للاستشارات المالية.\n\n'
+    + 'مهمتك: البحث العميق عن شركات سعودية قائمة ونشطة في القطاعات التالية: ' + sectorsLabel + '، يُرجّح احتياجها لرأس مال (توسع، عقود جديدة، نمو، فروع جديدة، رغبة طرح مستقبلية).\n\n'
+    + dateContext + dedupContext + '\n\n'
+    + '=== الدستور الصارم ===\n'
+    + '1) شركات سعودية قائمة فقط، متوسطة الحجم (إيراد أو نشاط تقديري 2 إلى 300 مليون ريال). ممنوع: المدرجة في تداول أو نمو، الكبرى المعروفة، اليونيكورن، من جمع جولة تمويل أو عيّن مستشاراً للطرح.\n'
+    + '2) شرط القبول الحاسم: لا تُدرج أي شركة إلا إذا وجدت لها وسيلة تواصل حقيقية منشورة: إيميل رسمي أو رقم جوال/واتساب من موقعها الرسمي أو حسابها الموثق أو دليل أعمال موثوق. لا تخترع أبداً — التلفيق خيانة للمهمة. إن لم تجد وسيلة تواصل فلا تدرج الشركة مهما كانت مغرية.\n'
+    + '3) اذكر في signal لماذا هذه الشركة مرشحة (إشارة توسع/عقد/نمو/نشاط) بإيجاز مع المصدر والتاريخ إن وُجد.\n'
+    + '4) رابط المصدر في source إلزامي (موقع الشركة أو صفحة الدليل أو الخبر).\n'
+    + '5) التنويع: مدن مختلفة (الرياض، جدة، الدمام، الخبر، مكة، المدينة، القصيم، أبها...) وأحجام مختلفة داخل النطاق.\n\n'
+    + '=== الرسالة (message) — الأهم ===\n'
+    + 'اكتب لكل شركة رسالة عربية مهنية دافئة (3 إلى 4 أسطر) جاهزة للإرسال إيميل أو واتساب، بهذا الهيكل: تحية + إشارة مخصصة لنشاطهم أو توسعهم تحديداً + تعريف موجز: "منصة مُرضي هي منصة سعودية متخصصة في قياس ورفع جاهزية الشركات للحصول على رأس المال — تمويلاً واستثماراً وإدراجاً" + دعوة: "تقدرون تقيسون جاهزية شركتكم مجاناً خلال دقيقتين عبر: https://murdi.sa" + توقيع: "فريق منصة مُرضي — حلول المرضي للاستشارات المالية". بلا أسعار وبلا مبالغات وبلا ضغط بيعي.\n\n'
+    + 'استهدف ' + count + ' شركة موثقة. الجودة وصحة بيانات التواصل أهم من العدد — شركة واحدة بإيميل صحيح خير من عشر بلا وسيلة تواصل.\n\n'
+    + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
+    + '{"leads":[{"company_name":"","sector":"","city":"","signal":"","email":"","phone":"","source":"","message":""}]}\n'
+    + 'أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
+  try {
+    const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
+    let text = '';
+    for (let turn = 0; turn < 10; turn++) {
+      let res: Response | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 18 }] }),
+        });
+        if (res.ok) break;
+        if (res.status === 429 || res.status === 529 || res.status >= 500) { await new Promise((r) => setTimeout(r, 3000 * (attempt + 1))); continue; }
+        break;
+      }
+      if (!res || !res.ok) break;
+      const data = await res.json();
+      const content = (data.content || []) as { type: string; text?: string }[];
+      text += content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
+      if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+      break;
+    }
+    return parseCLeads(text);
+  } catch { return []; }
+}
+
+export async function runClientHunt(): Promise<{ total: number }> {
+  const now = new Date();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const dateContext = '=== التاريخ ===\nتاريخ اليوم: ' + fmt(now) + '. فضّل الإشارات الحديثة (آخر 6 أشهر).';
+
+  const adminClient = admin();
+  const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(400);
+  const prevNames = Array.from(new Set(((prev || []) as { company_name: string }[]).map((r) => r.company_name)));
+  const dedupContext = prevNames.length
+    ? '\n\n=== ممنوع التكرار ===\nالشركات التالية موجودة عندنا — لا تدرج أياً منها:\n' + prevNames.join('، ')
+    : '';
+
+  const axes = [
+    { sectors: 'المقاولات والإنشاءات، التطوير العقاري، الصيانة والتشغيل', count: 40 },
+    { sectors: 'الصناعة والتصنيع، الأغذية والمشروبات، التغليف وسلاسل الإمداد', count: 40 },
+    { sectors: 'التجزئة والتجارة، المطاعم والكافيهات (سلاسل)، الرعاية الصحية والعيادات', count: 40 },
+    { sectors: 'التقنية والمنصات، الخدمات اللوجستية، الخدمات المهنية والتعليم الخاص', count: 40 },
+  ];
+
+  const results = await Promise.all(axes.map((a) => huntClientsAxis(a.sectors, dateContext, dedupContext, a.count)));
+
+  const seen = new Set<string>(prevNames.map((n) => n.trim().toLowerCase()));
+  const rows: Record<string, unknown>[] = [];
+  for (const leads of results) {
+    for (const l of leads) {
+      const key = l.company_name.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        hunt_date: fmt(now), company_name: l.company_name, sector: l.sector || null, city: l.city || null,
+        signal: l.signal || null, email: l.email || null, phone: l.phone || null,
+        source: l.source || null, message: l.message || null, status: 'new',
+      });
+    }
+  }
+  if (rows.length) await adminClient.from('client_hunt_leads').insert(rows);
+  return { total: rows.length };
+}
