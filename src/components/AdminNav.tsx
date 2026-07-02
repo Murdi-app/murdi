@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/admin/entities', label: 'الجهات' },
   { href: '/admin/services', label: 'الخدمات' },
   { href: '/admin/hunt', label: '🎯 صيد الفرص' },
+  { href: '/admin/client-hunt', label: '🪝 صيد العملاء' },
   { href: '/admin/payments', label: '💳 المدفوعات' },
   { href: '/admin/leads', label: '📋 العملاء المحتملون' },
   { href: '/admin/outreach', label: '📨 مخاطبة الجهات' },
