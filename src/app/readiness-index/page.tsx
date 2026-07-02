@@ -19,6 +19,7 @@ export default function ReadinessIndex() {
     <div dir="rtl" style={{ fontFamily: 'inherit', background: '#f7f7f4', minHeight: '100vh', padding: '48px 20px' }}>
       <div style={{ maxWidth: 860, margin: '0 auto' }}>
 
+        <a href="/" style={{ color: NAVY, textDecoration: 'none', fontSize: 14, fontWeight: 700, display: 'inline-block', marginBottom: 20 }}>← العودة للرئيسية</a>
         <p style={{ color: GOLD, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>إصدار الربع الثالث ٢٠٢٦</p>
         <h1 style={{ color: NAVY, fontSize: 34, lineHeight: 1.4, marginBottom: 12 }}>مؤشر مُرضي لجاهزية رأس المال في السعودية</h1>
         <p style={{ color: '#444', fontSize: 17, lineHeight: 1.9, marginBottom: 40 }}>

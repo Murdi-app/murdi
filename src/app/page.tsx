@@ -440,7 +440,7 @@ export default function Home() {
             </div>
             <div className="lp-footer-col">
               <h4>روابط نظامية</h4>
-              <p><a href="/terms" style={{color:'#9DB3AB',textDecoration:'none'}}>الشروط والأحكام</a><br/><a href="/privacy" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الخصوصية</a><br/><a href="/refund" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الاسترجاع والإلغاء</a><br/><a href="/disclaimer" style={{color:'#9DB3AB',textDecoration:'none'}}>إخلاء المسؤولية</a></p>
+              <p><a href="/terms" style={{color:'#9DB3AB',textDecoration:'none'}}>الشروط والأحكام</a><br/><a href="/privacy" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الخصوصية</a><br/><a href="/refund" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الاسترجاع والإلغاء</a><br/><a href="/disclaimer" style={{color:'#9DB3AB',textDecoration:'none'}}>إخلاء المسؤولية</a><br/><a href="/readiness-index" style={{color:'#9DB3AB',textDecoration:'none'}}>مؤشر جاهزية رأس المال</a></p>
             </div>
           </div>
           <div className="lp-footer-bottom">
