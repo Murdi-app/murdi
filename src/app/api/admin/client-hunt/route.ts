@@ -48,6 +48,16 @@ export async function POST() {
   }
 }
 
+// PUT : تعليم شركة أنها رُوسلت واتساب
+export async function PUT(req: Request) {
+  const admin = await getAdmin();
+  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: 'معرف مفقود' }, { status: 400 });
+  await admin.from('client_hunt_leads').update({ status: 'whatsapped' }).eq('id', id).eq('status', 'new');
+  return NextResponse.json({ ok: true });
+}
+
 // PATCH : إرسال دفعة الإيميل اليومية (محكومة بحد أقصى)
 export async function PATCH() {
   const admin = await getAdmin();
