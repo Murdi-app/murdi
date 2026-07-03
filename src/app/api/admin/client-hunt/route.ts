@@ -48,6 +48,16 @@ export async function POST() {
   }
 }
 
+// DELETE : استبعاد شركات محددة من قوائم الإرسال
+export async function DELETE(req: Request) {
+  const admin = await getAdmin();
+  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  const { ids } = await req.json();
+  if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'قائمة فارغة' }, { status: 400 });
+  await admin.from('client_hunt_leads').update({ status: 'excluded' }).in('id', ids).eq('status', 'new');
+  return NextResponse.json({ ok: true, excluded: ids.length });
+}
+
 // PUT : تعليم شركة أنها رُوسلت واتساب
 export async function PUT(req: Request) {
   const admin = await getAdmin();
@@ -59,7 +69,7 @@ export async function PUT(req: Request) {
 }
 
 // PATCH : إرسال دفعة الإيميل اليومية (محكومة بحد أقصى)
-export async function PATCH() {
+export async function PATCH(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
@@ -74,7 +84,10 @@ export async function PATCH() {
     return NextResponse.json({ ok: true, sent: 0, note: 'اكتمل حد اليوم (' + DAILY_EMAIL_LIMIT + ') — الدفعة القادمة غداً' });
   }
 
-  const { data: batch } = await admin
+  let ids: string[] = [];
+  try { const body = await req.json(); if (Array.isArray(body?.ids)) ids = body.ids; } catch { /* دفعة تلقائية */ }
+
+  let query = admin
     .from('client_hunt_leads')
     .select('id, company_name, email, message')
     .eq('status', 'new')
@@ -82,6 +95,8 @@ export async function PATCH() {
     .neq('email', '')
     .order('created_at', { ascending: true })
     .limit(remaining);
+  if (ids.length > 0) query = query.in('id', ids);
+  const { data: batch } = await query;
 
   if (!batch || batch.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, note: 'لا توجد شركات جديدة بإيميل بانتظار الإرسال' });
