@@ -80,6 +80,11 @@ export default function ClientHuntPage() {
     return 'https://wa.me/' + intl + '?text=' + encodeURIComponent(l.message || '');
   }
 
+  async function markWhatsapped(id: string) {
+    setLeads(prev => prev.map(x => x.id === id ? { ...x, status: 'whatsapped' } : x));
+    try { await fetch('/api/admin/client-hunt', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); } catch { /* تجاهل */ }
+  }
+
   function copyMsg(l: CLead) {
     navigator.clipboard.writeText(l.message || '');
     setCopied(l.id);
@@ -132,8 +137,8 @@ export default function ClientHuntPage() {
             <div key={l.id} style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
                 <strong style={{ color: '#13302A', fontSize: 16 }}>{l.company_name}</strong>
-                <span style={{ fontSize: 12.5, color: l.status === 'emailed' ? '#2E9E7B' : '#999', fontWeight: 700 }}>
-                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : 'جديدة'} · {l.hunt_date}
+                <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' ? '#2E9E7B' : '#999', fontWeight: 700 }}>
+                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : 'جديدة'} · {l.hunt_date}
                 </span>
               </div>
               <div style={{ fontSize: 13.5, color: '#666', marginBottom: 8 }}>
@@ -146,7 +151,7 @@ export default function ClientHuntPage() {
                 <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#333', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{l.message}</div>
               )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {l.phone && <a href={waLink(l)} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', borderRadius: 8, padding: '7px 16px', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>واتساب 📲</a>}
+                {l.phone && <a href={waLink(l)} onClick={() => markWhatsapped(l.id)} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', borderRadius: 8, padding: '7px 16px', fontSize: 13.5, fontWeight: 700, textDecoration: 'none' }}>واتساب 📲</a>}
                 <button onClick={() => copyMsg(l)} style={{ background: '#13302A', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
                   {copied === l.id ? '✓ نُسخت' : 'نسخ الرسالة 📋'}
                 </button>
