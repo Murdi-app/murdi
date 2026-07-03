@@ -26,7 +26,7 @@ export default function CheckPage() {
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           <span style={{ color: GOLD, fontWeight: 800, fontSize: 17, letterSpacing: 1 }}>مُرضي</span>
           <h1 style={{ color: '#fff', fontSize: 30, lineHeight: 1.6, margin: '18px 0 12px' }}>
-            البنك ما يرفض شركتك لأن نشاطها ضعيف —<br />يرفضها لأنها <span style={{ color: GOLD }}>غير جاهزة</span>
+            جهة التمويل ما ترفض شركتك، والمستثمر ما يعتذر،<br />لأن نشاطك ضعيف — بل لأنها <span style={{ color: GOLD }}>غير جاهزة</span>
           </h1>
           <p style={{ color: '#cfd6e4', fontSize: 16.5, lineHeight: 1.9, margin: '0 0 26px' }}>
             وفق مؤشر مُرضي لجاهزية رأس المال، متوسط جاهزية الشركات السعودية:
@@ -36,6 +36,13 @@ export default function CheckPage() {
           <a href="#assess" style={{ display: 'inline-block', marginTop: 26, background: GOLD, color: NAVY, fontWeight: 800, fontSize: 17, padding: '15px 40px', borderRadius: 99, textDecoration: 'none' }}>قِس جاهزية شركتك الآن — مجاناً ⬇</a>
           <p style={{ color: '#8fa39a', fontSize: 13, marginTop: 12 }}>دقيقتان · ثماني أسئلة · بلا تسجيل</p>
         </div>
+      </section>
+
+      {/* المقطع الثالث: التقييم نفسه */}
+      <section id="assess" style={{ padding: '10px 16px 30px', maxWidth: 760, margin: '0 auto' }}>
+        <h2 style={{ color: NAVY, fontSize: 24, textAlign: 'center', marginBottom: 6 }}>حان دورك — قِس جاهزية شركتك</h2>
+        <p style={{ color: '#666', fontSize: 15, textAlign: 'center', marginBottom: 18 }}>نتيجتك فورية: سكور من 100 + تصنيف وضعك الحالي</p>
+        <MiniAssessment />
       </section>
 
       {/* المقطع الثاني: القطاعات — البرهان */}
@@ -57,13 +64,6 @@ export default function CheckPage() {
         <p style={{ textAlign: 'center', fontSize: 13.5, marginTop: 14 }}>
           <a href="/readiness-index" style={{ color: '#888' }}>المصدر: مؤشر مُرضي لجاهزية رأس المال — اقرأ التقرير الكامل</a>
         </p>
-      </section>
-
-      {/* المقطع الثالث: التقييم نفسه */}
-      <section id="assess" style={{ padding: '10px 16px 30px', maxWidth: 760, margin: '0 auto' }}>
-        <h2 style={{ color: NAVY, fontSize: 24, textAlign: 'center', marginBottom: 6 }}>حان دورك — قِس جاهزية شركتك</h2>
-        <p style={{ color: '#666', fontSize: 15, textAlign: 'center', marginBottom: 18 }}>نتيجتك فورية: سكور من 100 + تصنيف وضعك الحالي</p>
-        <MiniAssessment />
       </section>
 
       {/* المقطع الرابع: الخطوة التالية */}
