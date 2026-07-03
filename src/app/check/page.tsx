@@ -33,7 +33,7 @@ export default function CheckPage() {
           </p>
           <div style={{ color: GOLD, fontSize: 66, fontWeight: 800, lineHeight: 1 }}>43<span style={{ fontSize: 26, color: '#cfd6e4' }}> / 100</span></div>
           <p style={{ color: '#cfd6e4', fontSize: 15, marginTop: 10 }}>أي أن أكثر من نصف الشركات لو تقدّمت اليوم للتمويل أو الاستثمار… تُرفض.</p>
-          <a href="#assess" style={{ display: 'inline-block', marginTop: 26, background: GOLD, color: NAVY, fontWeight: 800, fontSize: 17, padding: '15px 40px', borderRadius: 99, textDecoration: 'none' }}>قِس جاهزية شركتك الآن — مجاناً ⬇</a>
+          <a href="/#mini-assessment" style={{ display: 'inline-block', marginTop: 26, background: GOLD, color: NAVY, fontWeight: 800, fontSize: 17, padding: '15px 40px', borderRadius: 99, textDecoration: 'none' }}>قِس جاهزية شركتك الآن — مجاناً ←</a>
           <p style={{ color: '#8fa39a', fontSize: 13, marginTop: 12 }}>دقيقتان · ثماني أسئلة · بلا تسجيل</p>
         </div>
       </section>
