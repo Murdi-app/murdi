@@ -22,6 +22,46 @@ export default function ClientHuntPage() {
   const [msg, setMsg] = useState('');
   const [q, setQ] = useState('');
   const [copied, setCopied] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  }
+
+  async function sendSelected() {
+    if (selected.size === 0) return;
+    if (!confirm('إرسال إيميل لـ ' + selected.size + ' شركة محددة؟ (ضمن حد ٣٥ اليومي)')) return;
+    setSending(true); setMsg('جاري الإرسال للمحدد…');
+    try {
+      const r = await fetch('/api/admin/client-hunt', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: Array.from(selected) }) });
+      const d = await r.json();
+      if (r.ok) {
+        let t = '✅ أُرسل: ' + (d.sent || 0);
+        if (d.failed) t += ' · فشل: ' + d.failed;
+        if (d.note) t += ' · ' + d.note;
+        setMsg(t);
+      } else setMsg('❌ ' + (d.error || 'فشل الإرسال'));
+      setSelected(new Set());
+      await load();
+    } catch { setMsg('❌ خطأ في الاتصال'); }
+    setSending(false);
+  }
+
+  async function excludeSelected() {
+    if (selected.size === 0) return;
+    if (!confirm('استبعاد ' + selected.size + ' شركة من قوائم الإرسال؟ (مناسب لمن ستراسلهم واتساب أو لا تريد مراسلتهم)')) return;
+    try {
+      const r = await fetch('/api/admin/client-hunt', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: Array.from(selected) }) });
+      const d = await r.json();
+      setMsg(r.ok ? '✅ استُبعد: ' + (d.excluded || 0) : '❌ ' + (d.error || 'فشل الاستبعاد'));
+      setSelected(new Set());
+      await load();
+    } catch { setMsg('❌ خطأ في الاتصال'); }
+  }
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -120,6 +160,15 @@ export default function ClientHuntPage() {
           </button>
         </div>
 
+        {selected.size > 0 && (
+          <div style={{ position: 'sticky', top: 8, zIndex: 5, background: '#13302A', borderRadius: 12, padding: '11px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', boxShadow: '0 3px 10px rgba(0,0,0,0.18)' }}>
+            <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>محدد: {selected.size}</span>
+            <button onClick={sendSelected} disabled={sending} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>✉️ إرسال إيميل للمحدد</button>
+            <button onClick={excludeSelected} style={{ background: '#A53B3B', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>🚫 استبعاد</button>
+            <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', color: '#cfd6e4', border: '1px solid #3d5449', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>إلغاء التحديد</button>
+          </div>
+        )}
+
         {msg && <div style={{ background: '#fff', border: '1px solid #e2e0d8', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 14, color: '#13302A' }}>{msg}</div>}
 
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 14, fontSize: 13.5, color: '#444' }}>
@@ -136,9 +185,12 @@ export default function ClientHuntPage() {
           {filtered.map((l) => (
             <div key={l.id} style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-                <strong style={{ color: '#13302A', fontSize: 16 }}>{l.company_name}</strong>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  {l.status === 'new' && <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} style={{ width: 18, height: 18, accentColor: '#13302A', cursor: 'pointer' }} />}
+                  <strong style={{ color: '#13302A', fontSize: 16 }}>{l.company_name}</strong>
+                </label>
                 <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' ? '#2E9E7B' : '#999', fontWeight: 700 }}>
-                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : 'جديدة'} · {l.hunt_date}
+                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : l.status === 'excluded' ? '🚫 مستبعدة' : 'جديدة'} · {l.hunt_date}
                 </span>
               </div>
               <div style={{ fontSize: 13.5, color: '#666', marginBottom: 8 }}>
