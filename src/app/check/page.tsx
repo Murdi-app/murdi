@@ -1,4 +1,3 @@
-import MiniAssessment from '@/components/MiniAssessment';
 
 export const metadata = {
   title: 'قِس جاهزية شركتك — منصة مُرضي',
@@ -36,13 +35,6 @@ export default function CheckPage() {
           <a href="/#mini-assessment" style={{ display: 'inline-block', marginTop: 26, background: GOLD, color: NAVY, fontWeight: 800, fontSize: 17, padding: '15px 40px', borderRadius: 99, textDecoration: 'none' }}>قِس جاهزية شركتك الآن — مجاناً ←</a>
           <p style={{ color: '#8fa39a', fontSize: 13, marginTop: 12 }}>دقيقتان · ثماني أسئلة · بلا تسجيل</p>
         </div>
-      </section>
-
-      {/* المقطع الثالث: التقييم نفسه */}
-      <section id="assess" style={{ padding: '10px 16px 30px', maxWidth: 760, margin: '0 auto' }}>
-        <h2 style={{ color: NAVY, fontSize: 24, textAlign: 'center', marginBottom: 6 }}>حان دورك — قِس جاهزية شركتك</h2>
-        <p style={{ color: '#666', fontSize: 15, textAlign: 'center', marginBottom: 18 }}>نتيجتك فورية: سكور من 100 + تصنيف وضعك الحالي</p>
-        <MiniAssessment />
       </section>
 
       {/* المقطع الثاني: القطاعات — البرهان */}
