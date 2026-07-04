@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -70,6 +70,15 @@ export default function MiniAssessment() {
   const pct = Math.round((score / MAX) * 100)
   const v = verdict(pct)
 
+  const [adSrc, setAdSrc] = useState('')
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('src')
+      if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
+      else { const s = sessionStorage.getItem('murdi_src'); if (s) setAdSrc(s) }
+    } catch { /* تجاهل */ }
+  }, [])
+
   const submit = async () => {
     setErr('')
     if (name.trim().length < 2) { setErr('فضلاً اكتب اسمك'); return }
@@ -79,7 +88,7 @@ export default function MiniAssessment() {
       const track = ['تمويل','استثمار','طرح','استكشاف'][[8,8,8,6].indexOf(ans[7])] || ''
       await sb.from('mini_assessments').insert({
         full_name: name.trim(), phone: phone.trim(),
-        track, score: pct, answers: ans,
+        track, score: pct, answers: ans, src: adSrc || null,
       })
       setDone(true)
     } catch {
