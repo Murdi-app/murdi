@@ -68,26 +68,31 @@ function MatchesPrintInner() {
         أُعدت هذه القائمة وفق منهجية مُرضي بناءً على تقييم المنشأة ومعطياتها — الترتيب لا يعني أفضلية مطلقة، والمواءمة النهائية تتم مع فريق مُرضي.
       </p>
 
-      {matches.map((m, i) => {
-        const name = val(m, ['entity_name', 'name', 'funding_type', 'investor_type', 'entity']);
-        const etype = val(m, ['entity_type', 'type', 'category', 'layer']);
-        const product = val(m, ['product', 'funding_type', 'program']);
-        const fit = val(m, ['fit_percent', 'fit', 'score']);
-        const reasons = arr(m, ['reasons', 'reason_list']);
-        const next = val(m, ['next_step', 'next']);
+      {(['funding', 'investment', 'ipo'] as const).map((tr) => {
+        const group = matches
+          .filter((m) => (m.track || '') === tr)
+          .sort((x, y) => (Number(y.fit) || 0) - (Number(x.fit) || 0));
+        if (group.length === 0) return null;
         return (
-          <div key={m.id} style={{ border: '1px solid #ddd', borderRadius: 10, padding: '13px 16px', marginBottom: 13, pageBreakInside: 'avoid' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-              <strong style={{ color: '#13302A', fontSize: 15.5 }}>{i + 1}) {name || 'جهة'}</strong>
-              <span style={{ color: '#C9A24B', fontWeight: 800, fontSize: 13.5 }}>{fit ? 'الملاءمة: ' + fit + '%' : ''}</span>
-            </div>
-            <div style={{ fontSize: 12.5, color: '#666', margin: '5px 0' }}>{[etype, product && product !== name ? product : ''].filter(Boolean).join(' · ')}</div>
-            {reasons.length > 0 && (
-              <ul style={{ fontSize: 12.5, color: '#444', lineHeight: 1.9, margin: '7px 0 0', paddingRight: 18 }}>
-                {reasons.slice(0, 4).map((r, j) => <li key={j}>{r}</li>)}
-              </ul>
-            )}
-            {next && <div style={{ fontSize: 12.5, color: '#13302A', marginTop: 7, fontWeight: 700 }}>الخطوة التالية: {next}</div>}
+          <div key={tr} style={{ marginBottom: 22 }}>
+            <h2 style={{ color: '#13302A', fontSize: 16.5, borderBottom: '2px solid #C9A24B', paddingBottom: 6, marginBottom: 12 }}>مسار {TRACK_AR[tr]} ({group.length} جهة)</h2>
+            {group.map((m, i) => {
+              const provider = String(m.provider || 'جهة');
+              const product = String(m.product || '');
+              const region = String(m.region || '');
+              const fit = Number(m.fit) || 0;
+              const req = String(m.requirements || '');
+              return (
+                <div key={m.id} style={{ border: '1px solid #ddd', borderRadius: 10, padding: '13px 16px', marginBottom: 12, pageBreakInside: 'avoid' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                    <strong style={{ color: '#13302A', fontSize: 15.5 }}>{i + 1}) {provider}</strong>
+                    {fit > 0 && <span style={{ color: '#C9A24B', fontWeight: 800, fontSize: 13.5 }}>الملاءمة: {fit}%</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#13302A', fontWeight: 700, margin: '6px 0 3px' }}>{[product, region].filter(Boolean).join(' · ')}</div>
+                  {req && <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.9 }}>{req}</div>}
+                </div>
+              );
+            })}
           </div>
         );
       })}
