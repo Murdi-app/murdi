@@ -108,6 +108,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, sent: 0, note: 'لا توجد شركات جديدة بإيميل بانتظار الإرسال' });
   }
 
+  const dayNote = 'رصيد اليوم قبل الإرسال: ' + remaining + ' من ' + DAILY_EMAIL_LIMIT + ' (أُرسل سابقاً اليوم: ' + (sentToday || 0) + ')';
   let sent = 0;
   const errors: string[] = [];
   for (const lead of batch) {
@@ -137,5 +138,5 @@ export async function PATCH(req: Request) {
       errors.push(lead.company_name + ': ' + (e instanceof Error ? e.message : 'خطأ'));
     }
   }
-  return NextResponse.json({ ok: true, sent, failed: errors.length, errors: errors.slice(0, 5) });
+  return NextResponse.json({ ok: true, sent, failed: errors.length, errors: errors.slice(0, 5), note: dayNote });
 }

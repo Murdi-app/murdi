@@ -260,8 +260,8 @@ export default function ClientHuntPage() {
                   {l.status === 'new' && <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} style={{ width: 18, height: 18, accentColor: '#13302A', cursor: 'pointer' }} />}
                   <strong style={{ color: '#13302A', fontSize: 16 }}>{l.company_name}</strong>
                 </label>
-                <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' ? '#2E9E7B' : '#999', fontWeight: 700 }}>
-                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : l.status === 'excluded' ? '🚫 مستبعدة' : 'جديدة'} · {l.hunt_date}
+                <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' || l.status === 'distributed' ? '#2E9E7B' : l.status === 'call_list' ? '#5B3A8E' : '#999', fontWeight: 700 }}>
+                  {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : l.status === 'excluded' ? '🚫 مستبعدة' : l.status === 'distributed' ? '✓ وُزّعت على موظفة' : l.status === 'call_list' ? '📞 متاحة للتوزيع' : 'جديدة'} · {l.hunt_date}
                 </span>
               </div>
               <div style={{ fontSize: 13.5, color: '#666', marginBottom: 8 }}>
