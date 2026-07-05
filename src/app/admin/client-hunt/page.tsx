@@ -9,7 +9,7 @@ const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 type CLead = {
   id: string; hunt_date: string; company_name: string; sector: string | null; city: string | null;
   signal: string | null; email: string | null; phone: string | null; source: string | null;
-  message: string | null; status: string; email_sent_at: string | null;
+  message: string | null; status: string; email_sent_at: string | null; call_script: string | null;
 };
 
 export default function ClientHuntPage() {
@@ -86,6 +86,43 @@ export default function ClientHuntPage() {
     } catch { /* تجاهل */ }
   }
 
+  const [view, setView] = useState<'all' | 'call_list'>('all');
+
+  async function runCallHunt() {
+    setRunning(true); setMsg('جولة قائمة الاتصال انطلقت… قد تستغرق حتى ٥ دقائق، لا تغلق الصفحة.');
+    try {
+      const r = await fetch('/api/admin/client-hunt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'call_list' }) });
+      const d = await r.json();
+      setMsg(r.ok ? '✅ اكتملت الجولة: ' + (d.total || 0) + ' منشأة بجوال وسكربت' : '❌ ' + (d.error || 'فشل الصيد'));
+      await load();
+      setView('call_list');
+    } catch { setMsg('❌ خطأ في الاتصال'); }
+    setRunning(false);
+  }
+
+  function copyForEmployee(items: CLead[]) {
+    const chunk = items.slice(0, 25);
+    const text = chunk.map((l, i) =>
+      (i + 1) + ') ' + l.company_name + (l.city ? ' — ' + l.city : '') + (l.sector ? ' (' + l.sector + ')' : '')
+      + '\n📱 ' + (l.phone || '')
+      + (l.signal ? '\nℹ️ ' + l.signal : '')
+      + (l.call_script ? '\n📞 السكربت:\n' + l.call_script : '')
+    ).join('\n\n──────────\n\n');
+    navigator.clipboard.writeText('📋 قائمة اتصال مُرضي — ' + new Date().toLocaleDateString('ar-SA') + ' (' + chunk.length + ' منشأة)\n\n' + text);
+    setMsg('✅ نُسخت قائمة ' + chunk.length + ' منشأة — الصقها في واتساب الموظفة، ثم علّميها كموزّعة');
+  }
+
+  async function markDistributed(items: CLead[]) {
+    const ids = items.slice(0, 25).map((l) => l.id);
+    if (ids.length === 0) return;
+    if (!confirm('تعليم ' + ids.length + ' منشأة كموزَّعة على موظفة؟ (تختفي من القائمة المتاحة)')) return;
+    try {
+      await fetch('/api/admin/client-hunt', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, newStatus: 'distributed' }) });
+      setMsg('✅ وُزّعت ' + ids.length + ' منشأة');
+      await load();
+    } catch { setMsg('❌ خطأ'); }
+  }
+
   async function runHunt() {
     setRunning(true); setMsg('جولة الصيد انطلقت… قد تستغرق حتى ٥ دقائق، لا تغلق الصفحة.');
     try {
@@ -131,7 +168,7 @@ export default function ClientHuntPage() {
     setTimeout(() => setCopied(''), 1500);
   }
 
-  const filtered = leads.filter((l) =>
+  const filtered = leads.filter((l) => view === 'all' ? l.status !== 'call_list' && l.status !== 'distributed' : (l.status === 'call_list' || l.status === 'distributed')).filter((l) =>
     !q || l.company_name.includes(q) || (l.sector || '').includes(q) || (l.city || '').includes(q) || (l.status || '').includes(q)
   );
   const stats = {
@@ -154,6 +191,9 @@ export default function ClientHuntPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
           <button onClick={runHunt} disabled={running} style={{ background: '#13302A', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>
             {running ? '⏳ جاري الصيد…' : '🔍 جولة صيد جديدة'}
+          </button>
+          <button onClick={runCallHunt} disabled={running} style={{ background: '#5B3A8E', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>
+            {running ? '⏳ جاري الصيد…' : '📞 جولة قائمة الاتصال (للموظفات)'}
           </button>
           <button onClick={sendBatch} disabled={sending} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 800, cursor: 'pointer', opacity: sending ? 0.6 : 1 }}>
             {sending ? '⏳ جاري الإرسال…' : '✉️ إرسال دفعة الإيميل اليومية'}
@@ -178,6 +218,22 @@ export default function ClientHuntPage() {
           <span>رُوسلوا إيميل: <strong style={{ color: '#2E9E7B' }}>{stats.emailed}</strong></span>
         </div>
 
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setView('all')} style={{ background: view === 'all' ? '#13302A' : '#e8e6df', color: view === 'all' ? '#fff' : '#555', border: 'none', borderRadius: 99, padding: '8px 18px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>الكل</button>
+          <button onClick={() => setView('call_list')} style={{ background: view === 'call_list' ? '#5B3A8E' : '#e8e6df', color: view === 'call_list' ? '#fff' : '#555', border: 'none', borderRadius: 99, padding: '8px 18px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>📞 قائمة الاتصال</button>
+        </div>
+
+        {view === 'call_list' && (() => {
+          const avail = leads.filter((l) => l.status === 'call_list');
+          return avail.length > 0 ? (
+            <div style={{ background: '#5B3A8E', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>متاح للتوزيع: {avail.length}</span>
+              <button onClick={() => copyForEmployee(avail)} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>📋 نسخ قائمة موظفة (٢٥)</button>
+              <button onClick={() => markDistributed(avail)} style={{ background: 'transparent', color: '#e8dff5', border: '1px solid #7c5bb0', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✓ تعليمها كموزَّعة</button>
+            </div>
+          ) : <div style={{ textAlign: 'center', color: '#999', padding: 20, marginBottom: 10 }}>لا توجد منشآت متاحة — شغّل جولة قائمة الاتصال</div>;
+        })()}
+
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث: اسم، قطاع، مدينة، حالة…"
           style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #ddd', marginBottom: 18, fontSize: 14 }} />
 
@@ -199,6 +255,9 @@ export default function ClientHuntPage() {
                 {l.phone ? ' · 📱 ' + l.phone : ''}
               </div>
               {l.signal && <p style={{ fontSize: 13.5, color: '#444', lineHeight: 1.8, marginBottom: 8 }}>{l.signal}</p>}
+              {l.call_script && (
+                <div style={{ background: '#f3eefb', border: '1px solid #d9cbf0', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#3a2960', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}><strong>📞 سكربت المكالمة:</strong>{'\n'}{l.call_script}</div>
+              )}
               {l.message && (
                 <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#333', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{l.message}</div>
               )}
