@@ -451,7 +451,9 @@ export default function ApprovalsPage() {
                       };
                       return (
                         <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
-                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:10 }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span></div>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:10, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span>
+                            {ms.length > 0 && <a href={'/admin/matches-print?company_id=' + pr.company?.id} target="_blank" style={{ background:'#13302A', color:'#fff', borderRadius:8, padding:'5px 14px', fontSize:12.5, fontWeight:700, textDecoration:'none' }}>🖨️ طباعة PDF للعميل</a>}
+                          </div>
                           {trackBlock('funding')}
                           {trackBlock('investment')}
                           {trackBlock('ipo')}
