@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { runClientHunt } from '@/lib/clientHunt';
+import { runClientHunt, runCallListHunt } from '@/lib/clientHunt';
 
 export const maxDuration = 300;
 
@@ -36,12 +36,14 @@ export async function GET() {
   return NextResponse.json({ leads: data || [] });
 }
 
-// POST : تشغيل جولة صيد عملاء جديدة
-export async function POST() {
+// POST : تشغيل جولة صيد (عادية أو قائمة اتصال حسب mode)
+export async function POST(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  let mode = '';
+  try { const body = await req.json(); mode = String(body?.mode || ''); } catch { /* عادية */ }
   try {
-    const result = await runClientHunt();
+    const result = mode === 'call_list' ? await runCallListHunt() : await runClientHunt();
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'فشل الصيد' }, { status: 500 });
@@ -52,8 +54,12 @@ export async function POST() {
 export async function DELETE(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const { ids } = await req.json();
+  const { ids, newStatus } = await req.json();
   if (!Array.isArray(ids) || ids.length === 0) return NextResponse.json({ error: 'قائمة فارغة' }, { status: 400 });
+  if (newStatus === 'distributed') {
+    await admin.from('client_hunt_leads').update({ status: 'distributed' }).in('id', ids).eq('status', 'call_list');
+    return NextResponse.json({ ok: true, excluded: ids.length });
+  }
   await admin.from('client_hunt_leads').update({ status: 'excluded' }).in('id', ids).eq('status', 'new');
   return NextResponse.json({ ok: true, excluded: ids.length });
 }
