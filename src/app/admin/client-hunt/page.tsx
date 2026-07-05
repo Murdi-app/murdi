@@ -108,8 +108,17 @@ export default function ClientHuntPage() {
       + (l.signal ? '\nℹ️ ' + l.signal : '')
       + (l.call_script ? '\n📞 السكربت:\n' + l.call_script : '')
     ).join('\n\n──────────\n\n');
-    navigator.clipboard.writeText('📋 قائمة اتصال مُرضي — ' + new Date().toLocaleDateString('ar-SA') + ' (' + chunk.length + ' منشأة)\n\n' + text);
-    setMsg('✅ نُسخت قائمة ' + chunk.length + ' منشأة — الصقها في واتساب الموظفة، ثم علّميها كموزّعة');
+    const full = '📋 قائمة اتصال مُرضي — ' + new Date().toLocaleDateString('ar-SA') + ' (' + chunk.length + ' منشأة)\n\n' + text;
+    const blob = new Blob(['\ufeff' + full], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'قائمة-اتصال-مرضي-' + new Date().toISOString().slice(0, 10) + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setMsg('✅ نُزّل ملف قائمة ' + chunk.length + ' منشأة كاملة — أرسله واتساب للموظفة، ثم علّمها كموزَّعة');
   }
 
   async function markDistributed(items: CLead[]) {
@@ -228,12 +237,18 @@ export default function ClientHuntPage() {
           return avail.length > 0 ? (
             <div style={{ background: '#5B3A8E', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>متاح للتوزيع: {avail.length}</span>
-              <button onClick={() => copyForEmployee(avail)} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>📋 نسخ قائمة موظفة (٢٥)</button>
+              <button onClick={() => copyForEmployee(avail)} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>📥 تنزيل قائمة موظفة (٢٥)</button>
+              <a href="/admin/client-hunt/print?mode=call_list" target="_blank" style={{ background: '#fff', color: '#5B3A8E', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>🖨️ طباعة PDF</a>
               <button onClick={() => markDistributed(avail)} style={{ background: 'transparent', color: '#e8dff5', border: '1px solid #7c5bb0', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✓ تعليمها كموزَّعة</button>
             </div>
           ) : <div style={{ textAlign: 'center', color: '#999', padding: 20, marginBottom: 10 }}>لا توجد منشآت متاحة — شغّل جولة قائمة الاتصال</div>;
         })()}
 
+        {view === 'all' && (
+          <div style={{ marginBottom: 12 }}>
+            <a href="/admin/client-hunt/print?mode=all" target="_blank" style={{ background: '#13302A', color: '#fff', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13.5, textDecoration: 'none' }}>🖨️ طباعة قائمة الصيد PDF</a>
+          </div>
+        )}
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ابحث: اسم، قطاع، مدينة، حالة…"
           style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #ddd', marginBottom: 18, fontSize: 14 }} />
 
