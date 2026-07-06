@@ -1,6 +1,6 @@
 'use client';
 import AdminNav from '@/components/AdminNav';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 
 type Msg = {
@@ -14,6 +14,33 @@ const C = { ink:'#1A3D34', green:'#2E9E7B', gray:'#6B8A80', mint:'#E8F5EF', bg:'
 
 export default function OutreachPage() {
   const [companyId, setCompanyId] = useState('');
+  type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
+  const [dueList, setDueList] = useState<DueFU[]>([]);
+  const [fuMsg, setFuMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDueList(d.due || [])).catch(() => {});
+  }, []);
+
+  async function sendFollowup(item: DueFU) {
+    setFuMsg('جاري إرسال المتابعة لـ ' + item.entity_name + '…');
+    try {
+      const r = await fetch('/api/admin/outreach/followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, company_name: '' }) });
+      const d = await r.json();
+      if (r.ok) {
+        setFuMsg('✅ أُرسلت المتابعة ' + (d.stage === 1 ? 'الأولى' : 'الأخيرة') + ' لـ ' + item.entity_name);
+        setDueList(prev => prev.filter(x => x.id !== item.id));
+      } else setFuMsg('❌ ' + (d.error || 'فشل'));
+    } catch { setFuMsg('❌ خطأ في الاتصال'); }
+  }
+
+  async function setReply(item: DueFU, rs: string) {
+    try {
+      await fetch('/api/admin/outreach/followups', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, reply_status: rs }) });
+      setDueList(prev => prev.filter(x => x.id !== item.id));
+      setFuMsg(rs === 'replied' ? '✅ سُجّلت كردّت — تابعها من ملف العميل' : '📁 أُقفلت');
+    } catch { setFuMsg('❌ خطأ'); }
+  }
   // قراءة العميل تلقائياً من الرابط (?company_id=...)
   if (typeof window !== 'undefined' && !companyId) {
     const p = new URLSearchParams(window.location.search).get('company_id');
@@ -141,6 +168,28 @@ export default function OutreachPage() {
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh' }}>
+
+      {dueList.length > 0 && (
+        <div style={{ maxWidth: 1000, margin: '14px auto 0', background: '#FFF8E7', border: '2px solid #C9A24B', borderRadius: 14, padding: '14px 18px' }}>
+          <div style={{ fontWeight: 900, color: '#7a5a12', fontSize: 15, marginBottom: 10 }}>⏰ متابعات مستحقة اليوم ({dueList.length})</div>
+          {fuMsg && <div style={{ fontSize: 13, color: '#1A3D34', marginBottom: 8 }}>{fuMsg}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {dueList.map((f) => (
+              <div key={f.id} style={{ background: '#fff', borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontSize: 13.5 }}>
+                  <strong style={{ color: '#1A3D34' }}>{f.entity_name}</strong>
+                  <span style={{ color: '#888', marginRight: 8 }}> · {(f.followup_stage || 0) === 0 ? 'تستحق المتابعة الأولى' : 'تستحق المتابعة الأخيرة'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button onClick={() => sendFollowup(f)} style={{ background: '#C9A24B', color: '#1A3D34', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>✉️ إرسال المتابعة</button>
+                  <button onClick={() => setReply(f, 'replied')} style={{ background: '#2E9E7B', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>✅ ردّت</button>
+                  <button onClick={() => setReply(f, 'closed')} style={{ background: '#eee', color: '#555', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, cursor: 'pointer' }}>إقفال</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <AdminNav />
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px', direction:'rtl' }}>
         <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, marginBottom:6 }}>📨 مخاطبة الجهات</h1>
