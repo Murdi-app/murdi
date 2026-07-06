@@ -95,7 +95,10 @@ export async function POST(req: Request) {
       });
 
       await admin.from('outreach_messages')
-        .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, updated_at: new Date().toISOString() })
+        .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, updated_at: new Date().toISOString(),
+          last_sent_at: new Date().toISOString(),
+          next_followup_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+          reply_status: 'awaiting' })
         .eq('id', m.id);
       sent++;
     } catch (e) {
