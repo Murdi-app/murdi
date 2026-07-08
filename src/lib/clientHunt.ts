@@ -144,7 +144,7 @@ export async function runCallListHunt(): Promise<{ total: number }> {
   const dateContext = '=== التاريخ ===\nتاريخ اليوم: ' + fmt(now) + '. فضّل الإشارات الحديثة (آخر 6 أشهر).';
 
   const adminClient = admin();
-  const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(400);
+  const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(120);
   const prevNames = Array.from(new Set(((prev || []) as { company_name: string }[]).map((r) => r.company_name)));
   const dedupContext = prevNames.length
     ? '\n\n=== ممنوع التكرار ===\nالمنشآت التالية موجودة عندنا — لا تدرج أياً منها:\n' + prevNames.join('، ')
@@ -179,19 +179,19 @@ export async function runClientHunt(): Promise<{ total: number }> {
   const dateContext = '=== التاريخ ===\nتاريخ اليوم: ' + fmt(now) + '. فضّل الإشارات الحديثة (آخر 6 أشهر).';
 
   const adminClient = admin();
-  const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(400);
+  const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(120);
   const prevNames = Array.from(new Set(((prev || []) as { company_name: string }[]).map((r) => r.company_name)));
   const dedupContext = prevNames.length
     ? '\n\n=== ممنوع التكرار ===\nالشركات التالية موجودة عندنا — لا تدرج أياً منها:\n' + prevNames.join('، ')
     : '';
 
   const axes = [
-    { sectors: 'المقاولات والإنشاءات، التشطيب والديكور، الصيانة والتشغيل', count: 35 },
-    { sectors: 'الصناعة والتصنيع، الأغذية والمشروبات، التغليف والبلاستيك والمعادن', count: 35 },
-    { sectors: 'التجزئة والتجارة الإلكترونية، المطاعم والكافيهات والامتياز التجاري، سلاسل السوبرماركت', count: 35 },
-    { sectors: 'الرعاية الصحية والعيادات والمراكز الطبية، الصيدليات، مراكز التجميل والعناية', count: 35 },
-    { sectors: 'التقنية والمنصات والبرمجيات، التسويق والإعلام الرقمي، التعليم والتدريب الخاص', count: 35 },
-    { sectors: 'اللوجستيات والنقل والتخزين والشحن، تجارة الجملة والتوزيع، الطاقة والمقاولات المتخصصة، الخدمات العقارية والإدارية', count: 35 },
+    { sectors: 'المقاولات والإنشاءات، التشطيب والديكور، الصيانة والتشغيل', count: 40 },
+    { sectors: 'الصناعة والتصنيع، الأغذية والمشروبات، التغليف والبلاستيك والمعادن', count: 40 },
+    { sectors: 'التجزئة والتجارة الإلكترونية، المطاعم والكافيهات والامتياز التجاري، سلاسل السوبرماركت', count: 40 },
+    { sectors: 'الرعاية الصحية والعيادات والمراكز الطبية، الصيدليات، مراكز التجميل والعناية', count: 40 },
+    { sectors: 'التقنية والمنصات والبرمجيات، التسويق والإعلام الرقمي، التعليم والتدريب الخاص', count: 40 },
+    { sectors: 'اللوجستيات والنقل والتخزين والشحن، تجارة الجملة والتوزيع، الطاقة والمقاولات المتخصصة، الخدمات العقارية والإدارية', count: 40 },
   ];
 
   const results = await Promise.all(axes.map((a) => huntClientsAxis(a.sectors, dateContext, dedupContext, a.count)));
