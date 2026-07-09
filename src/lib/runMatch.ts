@@ -374,7 +374,14 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
           provider: o.provider, product: o.product, requirements: o.requirements, fit: o.fit, source: o.source,
         })));
       }
-    } catch {}
+    } catch (e) {
+      try {
+        const r = new Resend(process.env.RESEND_API_KEY);
+        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+          subject: '🚨 فشل بحث المطابقة (استثمار) — ' + (company?.company_name || companyId),
+          html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: استثمار</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
+      } catch {}
+    }
   }
 
   try {
@@ -467,7 +474,14 @@ async function runFundingMatch(companyId: string): Promise<void> {
       searchFundingLayer('intl', profile, LICENSED, 30),
     ]);
     webOffers = [...sa, ...gulf, ...intl];
-  } catch {}
+  } catch (e) {
+      try {
+        const r = new Resend(process.env.RESEND_API_KEY);
+        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+          subject: '🚨 فشل بحث المطابقة (تمويل) — ' + (company?.company_name || companyId),
+          html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: تمويل</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
+      } catch {}
+    }
 
   // حفظ الجهات في قاعدة البيانات (تظهر في الأدمن)
   if (webOffers.length > 0) {
@@ -671,7 +685,14 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
             provider: o.provider, product: o.product, requirements: o.requirements, fit: o.fit, source: o.source,
           })));
         }
+      } catch (e) {
+      try {
+        const r = new Resend(process.env.RESEND_API_KEY);
+        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+          subject: '🚨 فشل بحث المطابقة (طرح) — ' + (company?.company_name || companyId),
+          html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: طرح</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
       } catch {}
+    }
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
