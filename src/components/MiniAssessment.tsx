@@ -124,12 +124,12 @@ export default function MiniAssessment() {
             <div className="lp-mini-verdict" style={{ background: v.color }}>{v.label}</div>
             <p className="lp-mini-text">{v.text}</p>
             <div className="lp-mini-gate">
-              <p className="lp-mini-gate-t">احصل على نتيجتك التفصيلية وتوصية فريق مُرضي:</p>
+              <p className="lp-mini-gate-t">اكتب اسمك وجوالك ليتواصل معك مستشار مُرضي، ويطلعك على نتيجتك التفصيلية وخطوتك التالية نحو رأس المال.</p>
               <input className="lp-mini-input" placeholder="الاسم" value={name} onChange={e => setName(e.target.value)} />
               <input className="lp-mini-input" placeholder="رقم الجوال" value={phone} onChange={e => setPhone(e.target.value)} />
               {err && <div className="lp-mini-err">{err}</div>}
               <button className="lp-mini-submit" onClick={submit} disabled={saving}>
-                {saving ? 'جارٍ الإرسال…' : 'أرسل وأكمل طريقي'}
+                {saving ? 'جارٍ الإرسال…' : 'أبدأ — ليتواصل معي مستشار مُرضي'}
               </button>
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function MiniAssessment() {
           <div className="lp-mini-card lp-mini-thanks">
             <div className="lp-mini-check">✓</div>
             <h3>هذه بدايتك يا {name}</h3>
-            <p className="lp-mini-thanks-sub">درجتك المبدئية {pct}/100 — وهي مجرد لمحة. عند تسجيلك يفتح لك مُرضي الصورة الكاملة:</p>
+            <p className="lp-mini-thanks-sub">درجتك {pct}/100 — وصلَنا طلبك وسيتواصل معك مستشار مُرضي قريباً. وهذا ما يفتحه لك مرضي:</p>
 
             <div className="lp-mini-benefits">
               <div className="lp-mini-benefit">
