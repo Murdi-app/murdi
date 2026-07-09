@@ -90,41 +90,31 @@ async function huntClientsAxis(sectorsLabel: string, dateContext: string, dedupC
   } catch { return []; }
 }
 
-async function huntCallListAxis(dateContext: string, dedupContext: string): Promise<CLead[]> {
-  const prompt = 'أنت باحث ميداني خبير تجهّز قائمة اتصال يومية لفريق مبيعات نسائي يعمل لمنصة مُرضي (murdi.sa) — منصة سعودية لقياس ورفع جاهزية الشركات للحصول على رأس المال، تتبع حلول المرضي للاستشارات المالية.\n\n'
-    + 'مهمتك: إيجاد منشآت سعودية قائمة، صغيرة إلى متوسطة واعدة، الموظفة ستتصل عليها مباشرة وتفاوضها على الاشتراك.\n\n'
-    + dateContext + dedupContext + '\n\n'
-    + '=== شروط القبول الصارمة (كلها إلزامية) ===\n'
-    + '1) منشأة سعودية قائمة منذ سنتين فأكثر، نشاطها التقديري من 500 ألف إلى 60 مليون ريال سنوياً. مؤشرات الجدية المطلوبة: فروع أو فريق أو حضور رقمي نشط أو نمو ظاهر. ممنوع: المتناهية الصغر (كشك، حساب فردي، نشاط بلا كيان)، ومن تتجاوز 60 مليوناً، والمدرجة، والممولة من صناديق.\n'
-    + '2) الرقم اختياري لا إلزامي: إن وجدت رقماً حقيقياً منشوراً (جوال 05/9665 أو موحد 920/800 أو ثابت 01) فضعه، وإلا اتركه فارغاً — الموظفة ستبحث عنه بنفسها. لا تخترع رقماً أبداً؛ الفراغ أشرف من رقم ملفّق. ركّز جهدك على إيجاد اسم المنشأة الحقيقي وقطاعها ومدينتها بدقة.\n'
-    + '3) القطاعات المستهدفة (لها قرار رأسمالي حقيقي): اللوجستيات والنقل والشحن والتخزين (أولوية قصوى)، تجارة الجملة والتوزيع، المقاولات والإنشاءات، الصناعة والتصنيع والمصانع، الأغذية والمشروبات كمنتجين، المستودعات والتوريد، الخدمات الصناعية. استبعد نهائياً: الصالونات، ورش السيارات، الكوافيرات، المحلات الفردية الصغيرة، المطاعم/الكافيهات المفردة — هذه لا تسعى لتمويل. نوّع المدن (الرياض، جدة، الدمام، الخبر، القصيم، مكة).\n'
-    + '4) signal: لماذا هذه المنشأة مرشحة الآن (توسع، فرع جديد، نمو، إعلان توظيف، نشاط ملحوظ) بإيجاز مع المصدر.\n'
-    + '5) source: رابط المصدر إلزامي.\n\n'
-    + '=== سكربت المكالمة (call_script) — الأهم إطلاقاً ===\n'
-    + 'اكتب لكل منشأة نص مكالمة هاتفية جاهزاً تقرؤه الموظفة حرفياً، بالعربية الفصيحة المبسطة القريبة، بهذا الهيكل الدقيق:\n'
-    + '(الافتتاح): السلام عليكم، معك [اسمي] من منصة مُرضي للاستشارات المالية — أتصل بخصوص [اسم المنشأة]. ثم جملة مخصصة تلمس نشاطهم أو توسعهم المذكور في signal تحديداً.\n'
-    + '(الوجع): جملة واحدة تربط وضعهم بحاجة رأس المال.\n'
-    + '(العرض): منصة مُرضي تقيس جاهزية منشأتكم للتمويل والاستثمار وتعطيكم خطة واضحة — وأول خطوة تقييم مجاني خلال دقيقتين.\n'
-    + '(الإغلاق): أرسل لكم رابط التقييم واتساب على هذا الرقم؟ وبعد ما تشوفون نتيجتكم أتواصل معكم نكمل.\n'
-    + '(اعتراض شائع + رد): سطر واحد لأرجح اعتراض من هذه المنشأة تحديداً ورد مقنع مختصر عليه.\n'
-    + 'بلا أسعار في المكالمة الأولى، وبلا مبالغات، ونبرة محترمة دافئة.\n\n'
-    + 'استهدف 80 منشأة حقيقية موثقة الاسم والقطاع. بما أن الرقم اختياري، وسّع بحثك بحرية في أدلة الأعمال وخرائط جوجل ولينكدإن لاستخراج أكبر عدد من الأسماء الحقيقية في القطاعات المستهدفة. دقة اسم المنشأة وقطاعها أهم من الرقم.\n\n'
+async function huntCallListBatch(sector: string, city: string, dedupContext: string): Promise<CLead[]> {
+  const prompt = 'أنت باحث أعمال سعودي. مهمة واحدة صغيرة ومحددة:\n\n'
+    + 'ابحث في الويب وأعطني 10 منشآت سعودية حقيقية قائمة في قطاع "' + sector + '" في مدينة "' + city + '".\n\n'
+    + '=== الشروط ===\n'
+    + '1) منشآت صغيرة إلى متوسطة (نشاط تقديري من مليون إلى 60 مليون ريال). ممنوع: الشركات الكبرى المعروفة، المدرجة، المجموعات القابضة، الفروع التابعة لسلاسل كبيرة.\n'
+    + '2) الاسم الحقيقي الدقيق للمنشأة إلزامي — لا تخترع اسما أبداً. أسماء أقل حقيقية خير من 10 ملفقة.\n'
+    + '3) الرقم اختياري: إن وجدت رقماً منشوراً ضعه، وإلا اتركه فارغاً — لا تخترع رقماً.\n'
+    + '4) signal: سطر واحد لماذا هذه المنشأة مرشحة (نشاط، توسع، حضور).\n'
+    + dedupContext + '\n\n'
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
-    + '{"leads":[{"company_name":"","sector":"","city":"","signal":"","email":"","phone":"","source":"","message":"","call_script":""}]}\n'
-    + 'أرجع JSON صالحاً ومكتملاً ومغلقاً بالكامل.';
+    + '{"leads":[{"company_name":"","sector":"' + sector + '","city":"' + city + '","signal":"","email":"","phone":"","source":"","message":"","call_script":""}]}\n'
+    + 'أرجع JSON صالحا ومكتملاً ومغلقاً.';
   try {
     const messages: { role: string; content: unknown }[] = [{ role: 'user', content: prompt }];
     let text = '';
-    for (let turn = 0; turn < 10; turn++) {
+    for (let turn = 0; turn < 6; turn++) {
       let res: Response | null = null;
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 18 }] }),
+          body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }),
         });
         if (res.ok) break;
-        if (res.status === 429 || res.status === 529 || res.status >= 500) { await new Promise((r) => setTimeout(r, 3000 * (attempt + 1))); continue; }
+        if (res.status === 429 || res.status === 529 || res.status >= 500) { await new Promise((r) => setTimeout(r, 2500 * (attempt + 1))); continue; }
         break;
       }
       if (!res || !res.ok) break;
@@ -141,19 +131,27 @@ async function huntCallListAxis(dateContext: string, dedupContext: string): Prom
 export async function runCallListHunt(): Promise<{ total: number }> {
   const now = new Date();
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  const dateContext = '=== التاريخ ===\nتاريخ اليوم: ' + fmt(now) + '. فضّل الإشارات الحديثة (آخر 6 أشهر).';
 
   const adminClient = admin();
   const { data: prev } = await adminClient.from('client_hunt_leads').select('company_name').order('created_at', { ascending: false }).limit(120);
   const prevNames = Array.from(new Set(((prev || []) as { company_name: string }[]).map((r) => r.company_name)));
   const dedupContext = prevNames.length
-    ? '\n\n=== ممنوع التكرار ===\nالمنشآت التالية موجودة عندنا — لا تدرج أياً منها:\n' + prevNames.join('، ')
+    ? '\n=== ممنوع التكرار ===\nلا تدرج أياً من: ' + prevNames.slice(0, 60).join('، ')
     : '';
 
-  const results = await Promise.all([
-    huntCallListAxis(dateContext, dedupContext),
-    huntCallListAxis(dateContext, dedupContext + '\n(ركّز هذه الجولة على مدن ومناطق غير الرياض: جدة، الدمام، الخبر، مكة، المدينة، القصيم، أبها، الطائف، تبوك، حائل)'),
-  ]);
+  // 8 دفعات صغيرة متوازية: قطاع واحد × مدينة واحدة × 10 أسماء
+  const batches: { sector: string; city: string }[] = [
+    { sector: 'النقل والشحن واللوجستيات', city: 'جدة' },
+    { sector: 'النقل والتخزين واللوجستيات', city: 'الرياض' },
+    { sector: 'تجارة الجملة والتوزيع', city: 'الرياض' },
+    { sector: 'تجارة الجملة والتوزيع', city: 'الدمام' },
+    { sector: 'المصانع والتصنيع', city: 'الرياض' },
+    { sector: 'المصانع والتصنيع الغذائي', city: 'جدة' },
+    { sector: 'المقاولات والإنشاءات المتوسطة', city: 'الدمام' },
+    { sector: 'المقاولات والإنشاءات المتوسطة', city: 'مكة المكرمة' },
+  ];
+
+  const results = await Promise.all(batches.map((b) => huntCallListBatch(b.sector, b.city, dedupContext)));
 
   const seen = new Set<string>(prevNames.map((n) => n.trim().toLowerCase()));
   const rows: Record<string, unknown>[] = [];
