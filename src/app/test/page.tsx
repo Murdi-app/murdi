@@ -101,12 +101,12 @@ export default function TestPage() {
     if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
     setBusy(true)
     try {
-      const { data, error } = await sb.from('mini_assessments').insert({
-        full_name: name.trim(), phone: phone.trim(),
-        answers: [], score: 0, src: adSrc || null, completed: false,
-      }).select('id').single()
-      if (error) throw error
-      setRowId(data.id)
+      const res = await fetch('/api/mini-save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), answers: [], score: 0, src: adSrc || null, completed: false }),
+      })
+      const j = await res.json()
+      if (j.id) setRowId(j.id)
       setStage('q')
     } catch {
       // حتى لو فشل الحفظ، نكمل التجربة حتى لا نخسر العميل
@@ -122,7 +122,7 @@ export default function TestPage() {
       const done = nextAns.length === QUESTIONS.length
       const t = done ? (TRACK[[8, 8, 8, 6].indexOf(nextAns[7])] || '') : ''
       const p = done ? Math.round((nextAns.reduce((s, x) => s + x, 0) / MAX) * 100) : 0
-      sb.from('mini_assessments').update({ answers: nextAns, score: p, track: t, completed: done }).eq('id', rowId).then(() => {})
+      fetch('/api/mini-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rowId, name, phone, answers: nextAns, score: p, track: t, completed: done }) }).catch(() => {})
     }
     if (nextAns.length < QUESTIONS.length) {
       setQIndex(qIndex + 1)
