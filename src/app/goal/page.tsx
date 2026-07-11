@@ -173,7 +173,7 @@ export default function GoalPage() {
               <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
               <p className="text-[#8FA8A0] text-xs font-bold mt-1">يتحدّث مع كل تقييم</p>
             </div>
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
               {TRACKS.map((t) => (
                 <div key={t.id} className="bg-white rounded-2xl p-5 border-2 border-[#F0F5F3] text-center">
                   <div className="text-2xl mb-1">{t.icon}</div>
