@@ -167,7 +167,7 @@ export default function FundingAssessment() {
           {step === 0 && (
             <div className="space-y-3">
               <h2 className="font-black text-[#1A3D34] mb-4">ما نوع التمويل الذي تحتاجه شركتك؟</h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {FUNDING_TYPES.map((t) => (
                   <button key={t.id} type="button" onClick={() => setFundingType(t.id)}
                     className={'p-4 rounded-xl border-2 text-right font-bold text-sm transition ' + (fundingType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
@@ -250,7 +250,7 @@ export default function FundingAssessment() {
                   )}
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">نوع الدين</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {DEBT_TYPES.map((t) => (
                         <button key={t.id} type="button" onClick={() => setDebtType(t.id)}
                           className={'p-3 rounded-xl border-2 font-bold transition ' + (debtType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
@@ -303,7 +303,7 @@ export default function FundingAssessment() {
               <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">هذه الأسئلة تساعدنا نرشّح لك المنتجات التمويلية المناسبة لطبيعة نشاطك تحديداً — لا منتجات عامة.</p>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">ما طبيعة نشاط شركتك؟</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
                     { id: 'retail', label: 'تجزئة / مطاعم' },
                     { id: 'contracting', label: 'مقاولات / توريد' },
