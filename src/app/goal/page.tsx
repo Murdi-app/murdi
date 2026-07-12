@@ -128,7 +128,7 @@ export default function GoalPage() {
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
 
       {/* الشريط العلوي */}
-      <nav className="bg-white border-b border-[#F0F5F3] px-6 py-4">
+      <nav className="bg-white border-b border-[#F0F5F3] px-3 md:px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-[#2E9E7B] flex items-center justify-center">
@@ -146,8 +146,8 @@ export default function GoalPage() {
       </nav>
 
       {/* شريط التبويبات */}
-      <div className="bg-white border-b border-[#F0F5F3] px-6">
-        <div className="max-w-5xl mx-auto flex gap-1">
+      <div className="bg-white border-b border-[#F0F5F3] px-3 md:px-6">
+        <div className="max-w-5xl mx-auto flex gap-1 overflow-x-auto">
           {[
             { id: 'overview', label: 'نظرة عامة' },
             { id: 'consult', label: 'الاستشارة والأسئلة' },
@@ -169,7 +169,7 @@ export default function GoalPage() {
           <div className="mb-12">
             <div className="rounded-3xl p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
               <p className="text-[#C9D8D0] text-sm font-bold mb-2">مؤشر جاهزية {company?.name || 'شركتك'}</p>
-              <div className="text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 100</span></div>
+              <div className="text-5xl md:text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 100</span></div>
               <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
               <p className="text-[#8FA8A0] text-xs font-bold mt-1">يتحدّث مع كل تقييم</p>
             </div>
