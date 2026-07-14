@@ -21,11 +21,14 @@ async function getAdmin() {
   );
 }
 
-// GET: كل العقود
-export async function GET() {
+// GET: كل العقود (أو عقود شركة واحدة عبر ?company_id=)
+export async function GET(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const { data } = await admin.from('contracts').select('*, companies(company_name, phone)').order('created_at', { ascending: false });
+  const companyId = new URL(req.url).searchParams.get('company_id');
+  let q = admin.from('contracts').select('*, companies(company_name, phone)').order('created_at', { ascending: false });
+  if (companyId) q = q.eq('company_id', companyId);
+  const { data } = await q;
   return NextResponse.json({ contracts: data || [] });
 }
 
