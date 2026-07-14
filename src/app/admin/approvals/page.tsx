@@ -60,6 +60,12 @@ export default function ApprovalsPage() {
     try { const r = await fetch('/api/admin/matches?company_id=' + companyId); if (r.ok) { const d = await r.json(); setMatchesByCompany(prev => ({ ...prev, [companyId]: d.matches || [] })) } } catch {}
   }
 
+  const [contractsByCompany, setContractsByCompany] = useState<Record<string, any[]>>({})
+  const loadContracts = async (companyId: string) => {
+    if (!companyId || contractsByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/contracts?company_id=' + companyId); if (r.ok) { const d = await r.json(); setContractsByCompany(prev => ({ ...prev, [companyId]: d.contracts || [] })) } } catch {}
+  }
+
   const [chatByCompany, setChatByCompany] = useState<Record<string, { role: string; content: string }[]>>({})
   const [chatInput, setChatInput] = useState<Record<string, string>>({})
   const [chatBusy, setChatBusy] = useState<string | null>(null)
@@ -349,7 +355,7 @@ export default function ApprovalsPage() {
             const defaulted = pr.repayment_status === 'default';
             return (
               <div className="ap-card" key={pr.company?.id + '-' + idx}>
-                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) { loadMatches(pr.company.id); loadChat(pr.company.id); } }}>
+                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) { loadMatches(pr.company.id); loadChat(pr.company.id); loadContracts(pr.company.id); } }}>
                   <span className="ap-name">{isNew(pr.assessed_at) && <NewBadge />}📊 {pr.company?.company_name || 'شركة'} 
                     <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
                     {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
@@ -457,12 +463,23 @@ export default function ApprovalsPage() {
                           {trackBlock('funding')}
                           {trackBlock('investment')}
                           {trackBlock('ipo')}
-                          {pr.company?.id && ms.length > 0 && (
-                            <button onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id, '_blank')}
-                              style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background:'#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
-                              📨 خاطب هذه الجهات نيابة عن العميل
-                            </button>
-                          )}
+                          {pr.company?.id && ms.length > 0 && (() => {
+                            const cts = contractsByCompany[pr.company.id] || []
+                            const active = cts.find((c: any) => c.status === 'issued' || c.status === 'signed' || c.status === 'completed')
+                            if (!active) return (
+                              <div style={{ marginTop:12, background:'#FBF5E8', border:'2px solid #E8D9A8', borderRadius:10, padding:'14px 16px' }}>
+                                <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:13.5, marginBottom:6 }}>🔒 المخاطبة مقفلة — لا يوجد عقد تجهيز ملف</div>
+                                <div style={{ color:'#8A6D1A', fontSize:12.5, lineHeight:1.9 }}>مخاطبة الجهات بملف غير مجهّز تعني رفضاً شبه مؤكد، والرفض يُسجّل ضد العميل. أصدر عقد «تجهيز الملف والتفاوض» من صفحة الخدمات أولاً.</div>
+                                <a href="/admin/services" target="_blank" style={{ display:'inline-block', marginTop:10, background:'#9A7B2E', color:'#fff', borderRadius:8, padding:'7px 16px', fontSize:12.5, fontWeight:900, textDecoration:'none' }}>📄 اذهب إلى الخدمات والعقود</a>
+                              </div>
+                            )
+                            return (
+                              <button onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id, '_blank')}
+                                style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background:'#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
+                                📨 خاطب هذه الجهات نيابة عن العميل
+                              </button>
+                            )
+                          })()}
                         </div>
                       );
                     })()}
