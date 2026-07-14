@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
   const body = await req.json();
-  const { company_id, total_financing, remaining_debt, annual_revenue, source_note } = body;
+  const { company_id, original_loan_amount, debt_remaining, annual_revenue, source_note } = body;
 
   if (!company_id) return NextResponse.json({ error: 'معرّف الشركة مطلوب' }, { status: 400 });
   if (!source_note || String(source_note).trim().length < 5) {
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin.from('admin_corrections').insert({
     company_id,
-    total_financing: n(total_financing),
-    remaining_debt: n(remaining_debt),
+    original_loan_amount: n(original_loan_amount),
+    debt_remaining: n(debt_remaining),
     annual_revenue: n(annual_revenue),
     source_note: String(source_note).trim(),
     corrected_by: ADMIN_EMAIL,

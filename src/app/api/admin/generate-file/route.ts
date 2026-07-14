@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateFileContent, buildFileHTML, type FileClientData } from '@/lib/fileGenerate';
+import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -57,14 +58,33 @@ export async function POST(req: Request) {
     .limit(1)
     .single();
 
+  // طبقة التصحيح: إن وُجد تصحيح معتمد من المستشار، فهو مصدر الحقيقة
+  const { data: corr } = await admin.from('admin_corrections').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  const effective = {
+    ...(fd || {}),
+    ...(corr?.original_loan_amount != null ? { original_loan_amount: corr.original_loan_amount } : {}),
+    ...(corr?.debt_remaining != null ? { debt_remaining: corr.debt_remaining } : {}),
+    ...(corr?.annual_revenue != null ? { annual_revenue: corr.annual_revenue } : {}),
+  };
+
+  // بوابة السلامة: لا يخرج ملف يُخاطَب به طرف خارجي وهو يحمل تناقضاً
+  const issues = checkFinancialIntegrity(effective);
+  if (issues.length > 0) {
+    const dn = normalizeDebt(effective);
+    return NextResponse.json({ error: 'INTEGRITY_FAILED', issues, current: { original_loan_amount: dn.original, debt_remaining: dn.remaining, annual_revenue: dn.revenue }, companyId }, { status: 422 });
+  }
+
+  const dn = normalizeDebt(effective);
+
   const client: FileClientData = {
     companyName: company.company_name || 'الشركة',
     crNumber: company.cr_number || undefined,
     sector: company.sector || undefined,
     city: company.city || undefined,
     goal: company.goal || undefined,
-    revenue: fd?.annual_revenue ?? undefined,
-    liabilities: fd?.debt_remaining ?? undefined,
+    revenue: dn.revenue ?? undefined,
+    liabilities: dn.remaining ?? undefined,
     readinessScore: rr?.readiness_score ?? undefined,
     verdict: rr?.verdict ?? undefined,
     valuationEstimate: rr?.valuation_estimate ?? undefined,
