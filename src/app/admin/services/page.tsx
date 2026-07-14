@@ -78,7 +78,7 @@ export default function AdminServicesPage() {
     if (res.status === 422) {
       const d = await res.json()
       setIntegrity(p => ({ ...p, [id]: d }))
-      setFixEdits(p => ({ ...p, [id]: { total_financing: d.current?.total_financing ?? '', remaining_debt: d.current?.remaining_debt ?? '', annual_revenue: d.current?.annual_revenue ?? '', source_note: '' } }))
+      setFixEdits(p => ({ ...p, [id]: { original_loan_amount: d.current?.original_loan_amount ?? '', debt_remaining: d.current?.debt_remaining ?? '', annual_revenue: d.current?.annual_revenue ?? '', source_note: '' } }))
       setBusy('')
       return
     }
@@ -92,7 +92,7 @@ export default function AdminServicesPage() {
     const e = fixEdits[reqId] || {}
     if (!e.source_note || String(e.source_note).trim().length < 5) { alert('اكتب مصدر التصحيح (المستند الرسمي الذي استندت إليه)'); return }
     setBusy(reqId)
-    const res = await fetch('/api/admin/corrections', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, total_financing: e.total_financing, remaining_debt: e.remaining_debt, annual_revenue: e.annual_revenue, source_note: e.source_note }) })
+    const res = await fetch('/api/admin/corrections', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, original_loan_amount: e.original_loan_amount, debt_remaining: e.debt_remaining, annual_revenue: e.annual_revenue, source_note: e.source_note }) })
     if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || 'تعذّر حفظ التصحيح'); setBusy(''); return }
     setBusy('')
     await prepare(reqId)
@@ -108,6 +108,12 @@ export default function AdminServicesPage() {
       for (const region of regions) {
         const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region }) })
         const d = await res.json()
+        if (res.status === 422) {
+          setIntegrity(p => ({ ...p, [r.id]: d }))
+          setFixEdits(p => ({ ...p, [r.id]: { original_loan_amount: d.current?.original_loan_amount ?? '', debt_remaining: d.current?.debt_remaining ?? '', annual_revenue: d.current?.annual_revenue ?? '', source_note: '' } }))
+          setBusy('')
+          return
+        }
         if (d.ok && d.html) {
           const w = window.open('', '_blank')
           if (w) { w.document.write(d.html); w.document.close() }
@@ -242,11 +248,11 @@ export default function AdminServicesPage() {
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:10 }}>
                       <div>
                         <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>أصل التمويل</div>
-                        <input type="number" value={fe.total_financing ?? ''} onChange={ev => setFe('total_financing', ev.target.value)} style={inp} />
+                        <input type="number" value={fe.original_loan_amount ?? ''} onChange={ev => setFe('original_loan_amount', ev.target.value)} style={inp} />
                       </div>
                       <div>
                         <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>المتبقي من الدين</div>
-                        <input type="number" value={fe.remaining_debt ?? ''} onChange={ev => setFe('remaining_debt', ev.target.value)} style={inp} />
+                        <input type="number" value={fe.debt_remaining ?? ''} onChange={ev => setFe('debt_remaining', ev.target.value)} style={inp} />
                       </div>
                       <div>
                         <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>الإيراد السنوي</div>

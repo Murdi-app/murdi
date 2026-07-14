@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { SERVICES } from '@/lib/serviceSuggestion';
-import { checkFinancialIntegrity } from '@/lib/dataIntegrity';
+import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -37,15 +37,15 @@ export async function POST(req: Request) {
 
   const effective = {
     ...(fd || {}),
-    ...(corr?.total_financing != null ? { total_financing: corr.total_financing } : {}),
-    ...(corr?.remaining_debt != null ? { remaining_debt: corr.remaining_debt } : {}),
+    ...(corr?.original_loan_amount != null ? { original_loan_amount: corr.original_loan_amount, total_financing: corr.original_loan_amount } : {}),
+    ...(corr?.debt_remaining != null ? { debt_remaining: corr.debt_remaining, remaining_debt: corr.debt_remaining } : {}),
     ...(corr?.annual_revenue != null ? { annual_revenue: corr.annual_revenue } : {}),
   };
 
   // بوابة السلامة: لا تُولَّد وثيقة تُخاطَب بها جهة خارجية وهي تحمل تناقضاً
   const issues = checkFinancialIntegrity(effective);
   if (issues.length > 0) {
-    return NextResponse.json({ error: 'INTEGRITY_FAILED', issues, current: { total_financing: effective.total_financing ?? null, remaining_debt: effective.remaining_debt ?? null, annual_revenue: effective.annual_revenue ?? null }, companyId }, { status: 422 });
+    const dn = normalizeDebt(effective); return NextResponse.json({ error: 'INTEGRITY_FAILED', issues, current: { original_loan_amount: dn.original, debt_remaining: dn.remaining, annual_revenue: dn.revenue }, companyId }, { status: 422 });
   }
 
   const companyName = (sr.companies as { company_name?: string })?.company_name || 'الشركة';
