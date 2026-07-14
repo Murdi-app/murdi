@@ -28,6 +28,8 @@ export default function AdminServicesPage() {
   const [edits, setEdits] = useState<Record<string, { deliverable: string; price: string }>>({})
   const [contracts, setContracts] = useState<Record<string, any>>({})
   const [cEdits, setCEdits] = useState<Record<string, any>>({})
+  const [integrity, setIntegrity] = useState<Record<string, any>>({})
+  const [fixEdits, setFixEdits] = useState<Record<string, any>>({})
 
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
 
@@ -50,9 +52,27 @@ export default function AdminServicesPage() {
   async function prepare(id: string) {
     setBusy(id)
     const res = await fetch('/api/admin/prepare-service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id }) })
+    if (res.status === 422) {
+      const d = await res.json()
+      setIntegrity(p => ({ ...p, [id]: d }))
+      setFixEdits(p => ({ ...p, [id]: { total_financing: d.current?.total_financing ?? '', remaining_debt: d.current?.remaining_debt ?? '', annual_revenue: d.current?.annual_revenue ?? '', source_note: '' } }))
+      setBusy('')
+      return
+    }
+    setIntegrity(p => { const c = { ...p }; delete c[id]; return c })
     if (res.ok) { const d = await res.json(); setEdits(p => ({ ...p, [id]: { deliverable: d.deliverable || '', price: edits[id]?.price || '' } })) }
     await load()
     setBusy('')
+  }
+
+  async function saveCorrection(reqId: string, companyId: string) {
+    const e = fixEdits[reqId] || {}
+    if (!e.source_note || String(e.source_note).trim().length < 5) { alert('اكتب مصدر التصحيح (المستند الرسمي الذي استندت إليه)'); return }
+    setBusy(reqId)
+    const res = await fetch('/api/admin/corrections', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, total_financing: e.total_financing, remaining_debt: e.remaining_debt, annual_revenue: e.annual_revenue, source_note: e.source_note }) })
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || 'تعذّر حفظ التصحيح'); setBusy(''); return }
+    setBusy('')
+    await prepare(reqId)
   }
 
   async function generateFile(r: any) {
@@ -147,6 +167,42 @@ export default function AdminServicesPage() {
               )}
               {(!COMMISSION_SERVICES[r.service_title] || r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض') && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
+
+              {integrity[r.id] && (() => {
+                const ig = integrity[r.id]
+                const fe = fixEdits[r.id] || {}
+                const setFe = (k: string, v: string) => setFixEdits(p => ({ ...p, [r.id]: { ...fe, [k]: v } }))
+                const inp: React.CSSProperties = { width:'100%', border:'1.5px solid #E8D9A8', borderRadius:10, padding:'9px 12px', fontFamily:'Cairo', fontSize:13, background:'#fff' }
+                return (
+                  <div style={{ background:'#FBF5E8', border:'2px solid #E8D9A8', borderRadius:12, padding:'16px 18px', marginBottom:14 }}>
+                    <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:14, marginBottom:10 }}>⚠️ تعذّر التوليد — تناقض في البيانات</div>
+                    {(ig.issues || []).map((iss: any, i: number) => (
+                      <div key={i} style={{ background:'#fff', borderRadius:10, padding:'10px 14px', marginBottom:8 }}>
+                        <div style={{ color:'#C0564B', fontWeight:900, fontSize:13, marginBottom:4 }}>{iss.title}</div>
+                        <div style={{ color:'#5C4A1F', fontSize:12.5, lineHeight:1.9 }}>{iss.detail}</div>
+                      </div>
+                    ))}
+                    <div style={{ color:'#8A6D1A', fontSize:12.5, fontWeight:900, margin:'14px 0 8px' }}>صحّح بناءً على مستند رسمي:</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                      <div>
+                        <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>أصل التمويل</div>
+                        <input type="number" value={fe.total_financing ?? ''} onChange={ev => setFe('total_financing', ev.target.value)} style={inp} />
+                      </div>
+                      <div>
+                        <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>المتبقي من الدين</div>
+                        <input type="number" value={fe.remaining_debt ?? ''} onChange={ev => setFe('remaining_debt', ev.target.value)} style={inp} />
+                      </div>
+                      <div>
+                        <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>الإيراد السنوي</div>
+                        <input type="number" value={fe.annual_revenue ?? ''} onChange={ev => setFe('annual_revenue', ev.target.value)} style={inp} />
+                      </div>
+                    </div>
+                    <div style={{ color:'#8A6D1A', fontSize:11.5, marginBottom:4 }}>مصدر التصحيح (إلزامي)</div>
+                    <input value={fe.source_note ?? ''} onChange={ev => setFe('source_note', ev.target.value)} placeholder="مثال: كشف رسمي من الجهة الممولة بتاريخ 2026/07/14" style={{ ...inp, marginBottom:12 }} />
+                    <button onClick={() => saveCorrection(r.id, ig.companyId)} disabled={busy === r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ...' : '💾 اعتمد التصحيح وولّد'}</button>
+                  </div>
+                )
+              })()}
 
               <textarea value={e.deliverable} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, deliverable: ev.target.value } }))} placeholder="محتوى الخدمة (يُجهّز بالذكاء أو اكتبه يدوياً)..." style={{ width:'100%', minHeight:140, border:'1.5px solid #EAF2EE', borderRadius:12, padding:12, fontFamily:'Cairo', fontSize:13, lineHeight:1.8, color:'#1A3D34', marginBottom:10 }} />
 

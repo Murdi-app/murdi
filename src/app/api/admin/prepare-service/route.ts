@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { SERVICES } from '@/lib/serviceSuggestion';
+import { checkFinancialIntegrity } from '@/lib/dataIntegrity';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -31,6 +32,22 @@ export async function POST(req: Request) {
   const { data: fd } = await admin.from('financial_data').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: rr } = await admin.from('readiness_results').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
+  // طبقة التصحيح: إن وُجد تصحيح معتمد من الأدمن، فهو مصدر الحقيقة
+  const { data: corr } = await admin.from('admin_corrections').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  const effective = {
+    ...(fd || {}),
+    ...(corr?.total_financing != null ? { total_financing: corr.total_financing } : {}),
+    ...(corr?.remaining_debt != null ? { remaining_debt: corr.remaining_debt } : {}),
+    ...(corr?.annual_revenue != null ? { annual_revenue: corr.annual_revenue } : {}),
+  };
+
+  // بوابة السلامة: لا تُولَّد وثيقة تُخاطَب بها جهة خارجية وهي تحمل تناقضاً
+  const issues = checkFinancialIntegrity(effective);
+  if (issues.length > 0) {
+    return NextResponse.json({ error: 'INTEGRITY_FAILED', issues, current: { total_financing: effective.total_financing ?? null, remaining_debt: effective.remaining_debt ?? null, annual_revenue: effective.annual_revenue ?? null }, companyId }, { status: 422 });
+  }
+
   const companyName = (sr.companies as { company_name?: string })?.company_name || 'الشركة';
   const sector = (sr.companies as { sector?: string })?.sector || 'غير محدد';
 
@@ -39,7 +56,8 @@ export async function POST(req: Request) {
     + 'مهمتك: تجهيز مخرَج خدمة "' + sr.service_title + '" لشركة "' + companyName + '" (قطاع: ' + sector + ') بشكل احترافي دقيق جاهز للتسليم للعميل.\\n'
     + (SERVICES[sr.service_title] ? ('تعريف هذه الخدمة بالتحديد: ' + SERVICES[sr.service_title].definition + '\\nالمخرج المطلوب منك تحديداً: ' + SERVICES[sr.service_title].output + '\\nالتزم بهذا التعريف حصراً ولا تنحرف لموضوع آخر (مثلاً لا تكتب عن جاهزية التمويل إن كانت الخدمة تقييم قيمة).\\n') : '')
     + '\\n'
-    + 'بيانات الشركة المالية: ' + JSON.stringify(fd || {}) + '\\n'
+    + 'بيانات الشركة المالية: ' + JSON.stringify(effective) + '\\n'
+    + (corr ? ('⚠️ تنبيه: بيانات الدين/الإيراد المُدخلة من العميل كانت غير دقيقة، وصُحّحت رسمياً بواسطة المستشار بناءً على: ' + corr.source_note + '. اعتمد الأرقام المصحّحة أعلاه حصرا، ولا تُشر إلى وجود تصحيح في الوثيقة.\\n') : '')
     + 'نتيجة تقييم الجاهزية: ' + JSON.stringify(rr || {}) + '\\n\\n'
     + 'اكتب وثيقة الخدمة كاملة ومتقنة، مبنية على أرقام الشركة الفعلية، عملية وقابلة للتنفيذ، مرتّبة بعناوين وخطوات واضحة. '
     + 'اكتبها بصيغة وثيقة رسمية صادرة عن حلول المرضي للاستشارات المالية، بلا أي إشارة لذكاء اصطناعي أو تقنية. '
