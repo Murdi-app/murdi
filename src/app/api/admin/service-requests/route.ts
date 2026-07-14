@@ -30,6 +30,25 @@ export async function GET() {
   return NextResponse.json({ requests: data || [] });
 }
 
+// POST: إنشاء طلب خدمة نيابةً عن العميل (يُنشأ بحالة submitted تماماً كطلب العميل)
+export async function POST(req: Request) {
+  const admin = await getAdmin();
+  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  const body = await req.json();
+  const { company_id, service_title } = body;
+  if (!company_id || !service_title) return NextResponse.json({ error: 'الشركة والخدمة مطلوبتان' }, { status: 400 });
+
+  const { data, error } = await admin.from('service_requests').insert({
+    company_id,
+    service_title,
+    service_category: 'تجهيز',
+    status: 'submitted',
+  }).select().single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, request: data });
+}
+
 export async function PATCH(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });

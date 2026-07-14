@@ -4,6 +4,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
+import { SERVICES } from '@/lib/serviceSuggestion'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
@@ -30,6 +31,10 @@ export default function AdminServicesPage() {
   const [cEdits, setCEdits] = useState<Record<string, any>>({})
   const [integrity, setIntegrity] = useState<Record<string, any>>({})
   const [fixEdits, setFixEdits] = useState<Record<string, any>>({})
+  const [addOpen, setAddOpen] = useState(false)
+  const [addCompanies, setAddCompanies] = useState<any[]>([])
+  const [addCompanyId, setAddCompanyId] = useState('')
+  const [addService, setAddService] = useState('')
 
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
 
@@ -48,6 +53,24 @@ export default function AdminServicesPage() {
       await load()
     })()
   }, [])
+
+  async function openAdd() {
+    setAddOpen(true)
+    if (addCompanies.length === 0) {
+      const { data } = await supabase.from('companies').select('id, company_name').eq('account_status', 'active').order('created_at', { ascending: false })
+      setAddCompanies(data || [])
+    }
+  }
+
+  async function createRequest() {
+    if (!addCompanyId || !addService) { alert('اختر العميل والخدمة'); return }
+    setBusy('add')
+    const res = await fetch('/api/admin/service-requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: addCompanyId, service_title: addService }) })
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error || 'تعذر الإنشاء'); setBusy(''); return }
+    setAddOpen(false); setAddCompanyId(''); setAddService('')
+    await load()
+    setBusy('')
+  }
 
   async function prepare(id: string) {
     setBusy(id)
@@ -142,7 +165,40 @@ export default function AdminServicesPage() {
 
       <div style={{ maxWidth:900, margin:'0 auto', padding:'32px 24px' }}>
         <h1 style={{ fontSize:24, fontWeight:900, color:'#1A3D34', marginBottom:6 }}>طلبات الخدمات</h1>
-        <p style={{ color:'#6B8A80', fontSize:14, fontWeight:600, marginBottom:24 }}>جهّز الخدمة، حدّد السعر بعد التفاوض، ثم أصدرها للعميل</p>
+        <p style={{ color:'#6B8A80', fontSize:14, fontWeight:600, marginBottom:16 }}>جهّز الخدمة، حدّد السعر بعد التفاوض، ثم أصدرها للعميل</p>
+
+        {!addOpen && (
+          <button onClick={openAdd} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'10px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:24 }}>➕ إنشاء طلب خدمة نيابةً عن العميل</button>
+        )}
+
+        {addOpen && (
+          <div style={{ background:'#F7FAF9', border:'2px solid #E1EDE8', borderRadius:14, padding:'18px 20px', marginBottom:24 }}>
+            <div style={{ color:'#1A3D34', fontWeight:900, fontSize:14, marginBottom:12 }}>➕ إنشاء طلب خدمة نيابةً عن العميل</div>
+            <div style={{ color:'#6B8A80', fontSize:12.5, marginBottom:14, lineHeight:1.8 }}>يُنشأ الطلب بحالة «بانتظار التجهيز» تماماً كما لو طلبه العميل بنفسه. استخدمه بعد إغلاق الصفقة هاتفياً.</div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:14 }}>
+              <div>
+                <div style={{ color:'#6B8A80', fontSize:11.5, fontWeight:700, marginBottom:5 }}>العميل</div>
+                <select value={addCompanyId} onChange={e => setAddCompanyId(e.target.value)} style={{ width:'100%', border:'1.5px solid #EAF2EE', borderRadius:10, padding:'10px 12px', fontFamily:'Cairo', fontSize:13, background:'#fff', color:'#1A3D34' }}>
+                  <option value="">— اختر العميل —</option>
+                  {addCompanies.map((c: any) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ color:'#6B8A80', fontSize:11.5, fontWeight:700, marginBottom:5 }}>الخدمة</div>
+                <select value={addService} onChange={e => setAddService(e.target.value)} style={{ width:'100%', border:'1.5px solid #EAF2EE', borderRadius:10, padding:'10px 12px', fontFamily:'Cairo', fontSize:13, background:'#fff', color:'#1A3D34' }}>
+                  <option value="">— اختر الخدمة —</option>
+                  {Object.keys(SERVICES).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={createRequest} disabled={busy === 'add'} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === 'add' ? 'جارٍ...' : '✅ إنشاء الطلب'}</button>
+              <button onClick={() => setAddOpen(false)} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>إلغاء</button>
+            </div>
+          </div>
+        )}
 
         {reqs.length === 0 && <div style={{ color:'#9DB3AB', textAlign:'center', padding:40 }}>لا توجد طلبات بعد</div>}
 
