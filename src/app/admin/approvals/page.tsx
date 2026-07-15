@@ -178,6 +178,7 @@ export default function ApprovalsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     await supabase.from('companies').update({
       account_status: 'active',
+      subscription_active: true,
       is_locked: true,
       locked_at: new Date().toISOString(),
       approved_by: user?.id,
@@ -194,14 +195,14 @@ export default function ApprovalsPage() {
     const cur = c.subscription_end ? new Date(c.subscription_end) : new Date()
     const base = cur > new Date() ? cur : new Date()
     const newEnd = new Date(base.getTime() + 120*24*60*60*1000)
-    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active' }).eq('id', c.id)
+    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active', subscription_active: true, subscription_until: newEnd.toISOString() }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
 
   async function setStatus(c: Company, status: string) {
     setBusy(c.id)
-    await supabase.from('companies').update({ account_status: status }).eq('id', c.id)
+    await supabase.from('companies').update({ account_status: status, subscription_active: status === 'active' }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
