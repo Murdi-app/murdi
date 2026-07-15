@@ -32,6 +32,9 @@ export async function POST(req: Request) {
   const { data: fd } = await admin.from('financial_data').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: rr } = await admin.from('readiness_results').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
+  // مدخلات مالية يدوية (لخدمة إعداد القوائم المالية) — إن وُجدت، تُبنى عليها قوائم فعلية
+  const { data: si } = await admin.from('service_inputs').select('*').eq('service_request_id', requestId).maybeSingle();
+
   // طبقة التصحيح: إن وُجد تصحيح معتمد من الأدمن، فهو مصدر الحقيقة
   const { data: corr } = await admin.from('admin_corrections').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
@@ -57,6 +60,13 @@ export async function POST(req: Request) {
     + (SERVICES[sr.service_title] ? ('تعريف هذه الخدمة بالتحديد: ' + SERVICES[sr.service_title].definition + '\\nالمخرج المطلوب منك تحديداً: ' + SERVICES[sr.service_title].output + '\\nالتزم بهذا التعريف حصراً ولا تنحرف لموضوع آخر (مثلاً لا تكتب عن جاهزية التمويل إن كانت الخدمة تقييم قيمة).\\n') : '')
     + '\\n'
     + 'بيانات الشركة المالية: ' + JSON.stringify(effective) + '\\n'
+    + (si && si.inputs && Object.keys(si.inputs).length > 0 ? (
+        '\\n════ أرقام مالية فعلية أدخلها المستشار (نوع النشاط: ' + (si.activity_kind || 'عام') + ') ════\\n'
+        + JSON.stringify(si.inputs) + '\\n'
+        + 'مهم جداً: هذي أرقام فعلية موثّقة من دفاتر العميل. ابنِ عليها قوائم مالية كاملة ومترابطة رياضياً (قائمة الدخل، المركز المالي، التدفقات النقدية، التغيرات في حقوق الملكية، والإيضاحات) وفق معايير SOCPA السعودية، متكيّفة مع طبيعة النشاط المذكور. '
+        + 'احسب البنود المشتقة بدقة: مجمل الربح = الإيراد − تكلفة النشاط؛ الربح التشغيلي = مجمل الربح − المصروفات التشغيلية؛ صافي الربح = الربح التشغيلي − الزكاة. وازِن المركز المالي (الأصول = الالتزامات + حقوق الملكية). '
+        + 'قدّم القوائم مكتملة بالأرقام لا كهيكل فارغ. أي بند غير مُدخل، عالجه بمنطق محاسبي سليم أو أشر إليه صراحة كبند يحتاج استكمالاً، دون اختلاق رقم.\\n'
+      ) : '')
     + (corr ? ('⚠️ تنبيه: بيانات الدين/الإيراد المُدخلة من العميل كانت غير دقيقة، وصُحّحت رسمياً بواسطة المستشار بناءً على: ' + corr.source_note + '. اعتمد الأرقام المصحّحة أعلاه حصرا، ولا تُشر إلى وجود تصحيح في الوثيقة.\\n') : '')
     + 'نتيجة تقييم الجاهزية: ' + JSON.stringify(rr || {}) + '\\n\\n'
     + 'اكتب وثيقة الخدمة كاملة ومتقنة، مبنية على أرقام الشركة الفعلية، عملية وقابلة للتنفيذ، مرتّبة بعناوين وخطوات واضحة. '

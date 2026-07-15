@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
 import { SERVICES } from '@/lib/serviceSuggestion'
+import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
@@ -31,6 +32,8 @@ export default function AdminServicesPage() {
   const [cEdits, setCEdits] = useState<Record<string, any>>({})
   const [integrity, setIntegrity] = useState<Record<string, any>>({})
   const [fixEdits, setFixEdits] = useState<Record<string, any>>({})
+  const [inputsOpen, setInputsOpen] = useState<Record<string, boolean>>({})
+  const [inputsData, setInputsData] = useState<Record<string, { activity_kind: string; inputs: Record<string, string> }>>({})
   const [addOpen, setAddOpen] = useState(false)
   const [addCompanies, setAddCompanies] = useState<any[]>([])
   const [addCompanyId, setAddCompanyId] = useState('')
@@ -70,6 +73,24 @@ export default function AdminServicesPage() {
     setAddOpen(false); setAddCompanyId(''); setAddService('')
     await load()
     setBusy('')
+  }
+
+  async function openInputs(r: any) {
+    setInputsOpen(p => ({ ...p, [r.id]: !p[r.id] }))
+    if (inputsData[r.id]) return
+    const res = await fetch('/api/admin/service-inputs?service_request_id=' + r.id)
+    const d = await res.json().catch(() => ({}))
+    const rec = d.record
+    setInputsData(p => ({ ...p, [r.id]: { activity_kind: rec?.activity_kind || 'trade', inputs: rec?.inputs || {} } }))
+  }
+
+  async function saveInputs(r: any) {
+    const cur = inputsData[r.id]
+    if (!cur) return
+    setBusy(r.id)
+    await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: r.id, company_id: r.company_id, activity_kind: cur.activity_kind, inputs: cur.inputs }) })
+    setBusy('')
+    alert('✅ حُفظت الأرقام — الآن اضغط «جهّز الخدمة» لتوليد القوائم')
   }
 
   async function prepare(id: string) {
@@ -229,6 +250,52 @@ export default function AdminServicesPage() {
               )}
               {(!COMMISSION_SERVICES[r.service_title] || r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض') && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
+
+              {r.service_title === 'إعداد القوائم المالية المعتمدة' && (
+                <div style={{ marginBottom:14 }}>
+                  <button onClick={() => openInputs(r)} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>
+                    {inputsOpen[r.id] ? '▲ إخفاء أرقام العميل' : '🔢 أدخل أرقام العميل لتوليد قوائم فعلية'}
+                  </button>
+
+                  {inputsOpen[r.id] && inputsData[r.id] && (() => {
+                    const cur = inputsData[r.id]
+                    const setKind = (k: string) => setInputsData(p => ({ ...p, [r.id]: { ...cur, activity_kind: k } }))
+                    const setVal = (k: string, v: string) => setInputsData(p => ({ ...p, [r.id]: { ...cur, inputs: { ...cur.inputs, [k]: v } } }))
+                    const flds = fieldsFor(cur.activity_kind)
+                    const groups: Record<string, string> = { income: '📈 الدخل والتكاليف', assets: '🏦 الأصول', liabilities: '📉 الالتزامات', equity: '💼 حقوق الملكية' }
+                    const inp: React.CSSProperties = { width:'100%', border:'1.5px solid #D8E8E0', borderRadius:8, padding:'8px 10px', fontFamily:'Cairo', fontSize:12.5, background:'#fff' }
+                    return (
+                      <div style={{ background:'#F7FAF9', border:'2px solid #D8E8E0', borderRadius:12, padding:'16px 18px', marginTop:10 }}>
+                        <div style={{ color:'#6B8A80', fontSize:12, fontWeight:700, marginBottom:6 }}>نوع النشاط (يكيّف القوائم تلقائياً)</div>
+                        <select value={cur.activity_kind} onChange={e => setKind(e.target.value)} style={{ ...inp, marginBottom:16 }}>
+                          {ACTIVITIES.map(a => <option key={a.key} value={a.key}>{a.name}</option>)}
+                        </select>
+
+                        {(['income','assets','liabilities','equity'] as const).map(g => {
+                          const gf = flds.filter(f => f.group === g)
+                          if (gf.length === 0) return null
+                          return (
+                            <div key={g} style={{ marginBottom:14 }}>
+                              <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:8 }}>{groups[g]}</div>
+                              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                                {gf.map(f => (
+                                  <div key={f.key}>
+                                    <div style={{ color:'#6B8A80', fontSize:11.5, marginBottom:3 }}>{f.label}{f.hint && <span style={{ color:'#B0C4BC' }}> · {f.hint}</span>}</div>
+                                    <input type="number" value={cur.inputs[f.key] ?? ''} onChange={e => setVal(f.key, e.target.value)} placeholder="0" style={inp} />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        })}
+
+                        <button onClick={() => saveInputs(r)} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginTop:6 }}>{busy === r.id ? 'جارٍ الحفظ...' : '💾 احفظ الأرقام'}</button>
+                        <div style={{ color:'#9DB3AB', fontSize:11.5, marginTop:8, lineHeight:1.7 }}>اترك أي حقل فارغاً إن لم ينطبق. بعد الحفظ، اضغط «جهّز الخدمة» لتوليد القوائم من هذي الأرقام.</div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
 
               {integrity[r.id] && (() => {
                 const ig = integrity[r.id]
