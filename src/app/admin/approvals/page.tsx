@@ -327,6 +327,16 @@ export default function ApprovalsPage() {
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
               </div>
+              {c.account_status === 'pending_payment' && (
+                <div className="ap-grid">
+                  <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{c.phone || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">المالك</div><div className="ap-field-val">{c.owner_name || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">السجل التجاري</div><div className="ap-field-val">{c.cr_number || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">المدينة</div><div className="ap-field-val">{c.city || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{c.sector || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">الإيصال</div><div className="ap-field-val">{c.receipt_path ? 'مرفوع 📎' : 'غير مرفوع'}</div></div>
+                </div>
+              )}
               <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:12 }}>
                 <span style={{ color:'#9DB3AB', fontSize:12, fontWeight:600 }}>📅 سجّل: {fmtDate(c.created_at)}</span>
                 {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#D96A6A' : days <= 14 ? '#D9A441' : '#2E9E7B'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>⏳ الاشتراك: {fmtDate(c.subscription_end)} ({days < 0 ? 'منتهٍ' : days + ' يوم'})</span> })()}
@@ -344,6 +354,11 @@ export default function ApprovalsPage() {
                 {c.account_status === 'active' && (
                   <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => renew(c)}>{busy === c.id ? 'جارٍ...' : '🔄 تجديد ٤ أشهر'}</button>
                 )}
+                {c.account_status === 'pending_payment' && (<>
+                  {c.phone && <a className="ap-btn ap-btn-receipt" href={'https://wa.me/' + c.phone.replace(/[^0-9]/g, '').replace(/^0/, '966')} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>💬 واتساب</a>}
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => { if (confirm('تفعيل حساب ' + c.company_name + '؟ سيتمكّن من التقييم فوراً.')) renew(c) }}>{busy === c.id ? 'جارٍ...' : '✓ تفعيل الحساب'}</button>
+                  <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => { if (confirm('رفض هذا الحساب؟')) setStatus(c, 'rejected') }}>رفض</button>
+                </>)}
               </div>
             </div>
           ))}
