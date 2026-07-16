@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 5000, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({ model, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }),
       });
       if (!res.ok) continue;
       const data = await res.json();
