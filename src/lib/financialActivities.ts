@@ -28,6 +28,8 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'vat_due', label: 'ضريبة القيمة المضافة المستحقة', group: 'liabilities' },
   { key: 'eos_provision', label: 'مخصص نهاية الخدمة', hint: 'مكافآت نهاية خدمة الموظفين', group: 'liabilities' },
   { key: 'capital', label: 'رأس المال', group: 'equity' },
+  { key: 'opening_capital', label: 'رأس المال أول المدة', hint: 'رأس المال المسجّل في بداية السنة', group: 'equity' },
+  { key: 'opening_retained_earnings', label: 'الأرباح المرحّلة أول المدة', hint: 'رصيد الأرباح المتراكمة من دفاتر السنة السابقة — يُدخل ولا يُحسب بالطرح', group: 'equity' },
 ]
 
 export const ACTIVITIES: ActivityDef[] = [
