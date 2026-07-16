@@ -88,7 +88,15 @@ export default function AdminServicesPage() {
     const cur = inputsData[r.id]
     if (!cur) return
     setBusy(r.id)
-    await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: r.id, company_id: r.company_id, activity_kind: cur.activity_kind, inputs: cur.inputs }) })
+    const years: Record<string, Record<string,string>> = { '1': {}, '2': {} }
+    for (const k in cur.inputs) {
+      const v = cur.inputs[k]
+      if (k.endsWith('__y1')) years['1'][k.slice(0,-4)] = v
+      else if (k.endsWith('__y2')) years['2'][k.slice(0,-4)] = v
+      else { years['1'][k] = v; years['2'][k] = v }
+    }
+    const payload = { multi_year: true, years }
+    await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: r.id, company_id: r.company_id, activity_kind: cur.activity_kind, inputs: payload }) })
     setBusy('')
     alert('✅ حُفظت الأرقام — الآن اضغط «جهّز الخدمة» لتوليد القوائم')
   }
