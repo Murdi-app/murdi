@@ -30,6 +30,17 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'capital', label: 'رأس المال', group: 'equity' },
   { key: 'opening_capital', label: 'رأس المال أول المدة', hint: 'رأس المال المسجّل في بداية السنة', group: 'equity' },
   { key: 'opening_retained_earnings', label: 'الأرباح المرحّلة أول المدة', hint: 'رصيد الأرباح المتراكمة من دفاتر السنة السابقة — يُدخل ولا يُحسب بالطرح', group: 'equity' },
+  { key: 'is_first_year', label: 'هل هذه أول سنة تُعدّ لها قوائم؟', hint: 'لو لا، تُطلب الأرصدة الافتتاحية للمقارنة', group: 'equity' },
+  { key: 'opening_cash', label: 'النقد أول المدة', hint: 'رصيد النقد في بداية السنة (للمقارنة والتدفقات)', group: 'assets' },
+  { key: 'opening_ar', label: 'الذمم المدينة أول المدة', hint: 'أرصدة العملاء في بداية السنة', group: 'assets' },
+  { key: 'opening_inventory', label: 'المخزون أول المدة', hint: 'قيمة المخزون في بداية السنة', group: 'assets' },
+  { key: 'opening_ap', label: 'الذمم الدائنة أول المدة', hint: 'أرصدة الموردين في بداية السنة', group: 'liabilities' },
+  { key: 'purchases', label: 'المشتريات خلال السنة', hint: 'مكوّن لاشتقاق تكلفة البضاعة بدل إدخالها رقما واحداً', group: 'income' },
+  { key: 'close_inventory', label: 'المخزون آخر المدة', hint: 'يجب أن يطابق المخزون في قائمة المركز المالي', group: 'income' },
+  { key: 'employee_count', label: 'عدد الموظفين', hint: 'لو أكبر من صفر يلزم مخصص نهاية خدمة موجب', group: 'liabilities' },
+  { key: 'monthly_wage_bill', label: 'إجمالي الرواتب الشهرية', hint: 'لتقدير حركة مخصص نهاية الخدمة', group: 'liabilities' },
+  { key: 'eos_opening', label: 'مخصص نهاية الخدمة أول المدة', hint: 'رصيد موجب فقط — لا يُقبل سالب', group: 'liabilities' },
+  { key: 'distributions', label: 'التوزيعات/المسحوبات خلال السنة', hint: 'مسحوبات المالك أو توزيعات الأرباح', group: 'equity' },
 ]
 
 export const ACTIVITIES: ActivityDef[] = [
