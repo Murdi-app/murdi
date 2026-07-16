@@ -281,7 +281,10 @@ export default function AdminServicesPage() {
                                 {gf.map(f => (
                                   <div key={f.key}>
                                     <div style={{ color:'#6B8A80', fontSize:11.5, marginBottom:3 }}>{f.label}{f.hint && <span style={{ color:'#B0C4BC' }}> · {f.hint}</span>}</div>
-                                    <input type="number" value={cur.inputs[f.key] ?? ''} onChange={e => setVal(f.key, e.target.value)} placeholder="0" style={inp} />
+                                    <div style={{ display:'flex', gap:6 }}>
+                                      <input type="number" value={cur.inputs[f.key + '__y1'] ?? ''} onChange={e => setVal(f.key + '__y1', e.target.value)} placeholder="سنة ١" style={inp} />
+                                      <input type="number" value={cur.inputs[f.key + '__y2'] ?? ''} onChange={e => setVal(f.key + '__y2', e.target.value)} placeholder="سنة ٢" style={inp} />
+                                    </div>
                                   </div>
                                 ))}
                               </div>
