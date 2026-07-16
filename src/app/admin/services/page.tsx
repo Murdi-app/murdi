@@ -310,6 +310,18 @@ export default function AdminServicesPage() {
                           )
                         })}
 
+{(() => {
+                          const allKeys = flds.map(f => f.key)
+                          const filled = allKeys.filter(k => (cur.inputs[k + '__y1'] && cur.inputs[k + '__y1'] !== '') || (cur.inputs[k] && cur.inputs[k] !== '')).length
+                          const pct = allKeys.length ? Math.round(filled / allKeys.length * 100) : 0
+                          const col = pct >= 80 ? '#2E9E7B' : pct >= 50 ? '#C9A84C' : '#C0564B'
+                          return (
+                            <div style={{ marginBottom:12 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, fontWeight:700, color:col, marginBottom:4 }}><span>نسبة اكتمال المدخلات (سنة ١)</span><span>{pct}%</span></div>
+                              <div style={{ height:8, background:'#EAF2EE', borderRadius:20, overflow:'hidden' }}><div style={{ width:pct+'%', height:'100%', background:col }} /></div>
+                            </div>
+                          )
+                        })()}
                         <button onClick={() => saveInputs(r)} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginTop:6 }}>{busy === r.id ? 'جارٍ الحفظ...' : '💾 احفظ الأرقام'}</button>
                         <div style={{ color:'#9DB3AB', fontSize:11.5, marginTop:8, lineHeight:1.7 }}>اترك أي حقل فارغاً إن لم ينطبق. بعد الحفظ، اضغط «جهّز الخدمة» لتوليد القوائم من هذي الأرقام.</div>
                       </div>
