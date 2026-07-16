@@ -87,6 +87,9 @@ export default function AdminServicesPage() {
   async function saveInputs(r: any) {
     const cur = inputsData[r.id]
     if (!cur) return
+    for (const k in cur.inputs) {
+      if (Number(cur.inputs[k]) < 0) { alert('قيمة سالبة غير مسموحة في: ' + k + ' — صحّحها قبل الحفظ'); return }
+    }
     setBusy(r.id)
     const link: Record<string,string> = { cash_in_banks:'opening_cash', accounts_receivable:'opening_ar', inventory:'opening_inventory', accounts_payable:'opening_ap', fixed_assets:'opening_fixed_assets', eos_provision:'eos_opening' }
     for (const endK in link) {
