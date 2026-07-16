@@ -22,6 +22,7 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'operating_expenses', label: 'المصروفات التشغيلية', hint: 'رواتب، إيجارات، مصاريف إدارية وبيعية', group: 'income' },
   { key: 'cash_in_banks', label: 'النقد في البنوك', hint: 'الرصيد بنهاية السنة', group: 'assets' },
   { key: 'accounts_receivable', label: 'الذمم المدينة', hint: 'مستحقات على العملاء الآجلين', group: 'assets' },
+  { key: 'doubtful_debt', label: 'مخصص الديون المشكوك فيها', hint: 'يُطرح من الذمم المدينة لإظهار صافيها', group: 'assets' },
   { key: 'fixed_assets', label: 'الأصول الثابتة', hint: 'المعدات والأجهزة بالتكلفة', group: 'assets' },
   { key: 'accounts_payable', label: 'الذمم الدائنة', hint: 'مستحقات للموردين', group: 'liabilities' },
   { key: 'zakat_due', label: 'الزكاة المستحقة', hint: 'مخصص الزكاة', group: 'liabilities' },
