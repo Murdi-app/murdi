@@ -88,6 +88,12 @@ export default function AdminServicesPage() {
     const cur = inputsData[r.id]
     if (!cur) return
     setBusy(r.id)
+    const link: Record<string,string> = { cash_in_banks:'opening_cash', accounts_receivable:'opening_ar', inventory:'opening_inventory', accounts_payable:'opening_ap', fixed_assets:'opening_fixed_assets', eos_provision:'eos_opening' }
+    for (const endK in link) {
+      const openK = link[endK]
+      const y1end = cur.inputs[endK + '__y1']
+      if (y1end && !cur.inputs[openK + '__y2']) cur.inputs[openK + '__y2'] = y1end
+    }
     const years: Record<string, Record<string,string>> = { '1': {}, '2': {} }
     for (const k in cur.inputs) {
       const v = cur.inputs[k]
