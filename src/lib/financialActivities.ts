@@ -30,7 +30,6 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'capital', label: 'رأس المال', group: 'equity' },
   { key: 'opening_capital', label: 'رأس المال أول المدة', hint: 'رأس المال المسجّل في بداية السنة', group: 'equity' },
   { key: 'opening_retained_earnings', label: 'الأرباح المرحّلة أول المدة', hint: 'رصيد الأرباح المتراكمة من دفاتر السنة السابقة — يُدخل ولا يُحسب بالطرح', group: 'equity' },
-  { key: 'is_first_year', label: 'هل هذه أول سنة تُعدّ لها قوائم؟', hint: 'لو لا، تُطلب الأرصدة الافتتاحية للمقارنة', group: 'equity' },
   { key: 'opening_cash', label: 'النقد أول المدة', hint: 'رصيد النقد في بداية السنة (للمقارنة والتدفقات)', group: 'assets' },
   { key: 'opening_ar', label: 'الذمم المدينة أول المدة', hint: 'أرصدة العملاء في بداية السنة', group: 'assets' },
   { key: 'opening_inventory', label: 'المخزون أول المدة', hint: 'قيمة المخزون في بداية السنة', group: 'assets' },
