@@ -6,6 +6,7 @@ import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
+import { buildPdfHtml } from '@/lib/pdfTemplate'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
@@ -358,6 +359,7 @@ export default function AdminServicesPage() {
               <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
                 <input value={e.price} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, price: ev.target.value } }))} placeholder="السعر (ر.س)" type="number" style={{ width:140, border:'1.5px solid #EAF2EE', borderRadius:30, padding:'9px 16px', fontFamily:'Cairo', fontSize:13 }} />
                 <button onClick={() => save(r.id, e.deliverable, e.price)} disabled={busy === r.id} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>حفظ مسودّة</button>
+                <button onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildPdfHtml(r.service_title, e.deliverable)); w.document.close() } }} disabled={!e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📄 تصدير PDF</button>
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'priced')} disabled={busy === r.id || !e.price} title={!e.price ? 'حدّد السعر أولاً' : ''} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>💰 أصدر للدفع</button>
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📤 إصدار مباشر</button>
                 {r.status === 'paid' && <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#1E7A5A', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>🔓 سلّم المحتوى</button>}
