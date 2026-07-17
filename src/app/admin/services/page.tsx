@@ -322,6 +322,23 @@ export default function AdminServicesPage() {
                             </div>
                           )
                         })()}
+                        <div style={{ marginBottom:12, background:'#F0F7F4', border:'1.5px solid #D8E8E0', borderRadius:10, padding:'12px 14px' }}>
+                          <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:8 }}>❓ أسئلة توجيهية — اختر إجابة العميل</div>
+                          {[
+                            { q:'مصدر فرق حقوق الملكية (حساب المالك)؟', opts:['إيداع شخصي من المالك → يُسجّل حساب مالك جاري','أرباح سنوات سابقة غير مسجّلة → تُضاف للأرباح المرحّلة','قرض/تمويل غير مُدرج → يُسجّل التزام','غير معروف → يحتاج مراجعة محاسب'] },
+                            { q:'هل ضمن المصروفات بنود شخصية للمالك؟', opts:['نعم، سيارة/مصاريف عائلية → تُفصل فيرتفع الربح','لا، كلها مصاريف تشغيلية فعلية'] },
+                            { q:'المبيعات النقدية موثّقة بفواتير؟', opts:['نعم، كلها مفوترة','لا، جزء غير موثّق → يُسجّل فيرتفع الإيراد'] },
+                            { q:'المخزون الختامي مبني على؟', opts:['جرد فعلي موثّق','تقدير تقريبي → يحتاج جرد'] },
+                          ].map((item, qi) => (
+                            <div key={qi} style={{ marginBottom:8 }}>
+                              <div style={{ color:'#3A5A50', fontSize:11.5, fontWeight:700, marginBottom:4 }}>{item.q}</div>
+                              <select onChange={e => { if(e.target.value) setVal('advisor_notes', ((cur.inputs['advisor_notes']||'') + '\n• ' + item.q + ' ' + e.target.value)) }} defaultValue="" style={{ width:'100%', border:'1.5px solid #D8E8E0', borderRadius:8, padding:'7px 10px', fontFamily:'Cairo', fontSize:12, background:'#fff' }}>
+                                <option value="">— اختر —</option>
+                                {item.opts.map((o,oi) => <option key={oi} value={o}>{o}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
                         <div style={{ marginBottom:12 }}>
                           <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:6 }}>📝 ملاحظات المستشار (إجابات العميل على الأسئلة)</div>
                           <textarea value={cur.inputs['advisor_notes'] ?? ''} onChange={e => setVal('advisor_notes', e.target.value)} placeholder="مثال: فرق حقوق الملكية 3 مليون = إيداع شخصي من المالك سنة سابقة. المصروفات تشمل 200 ألف سيارة خاصة." style={{ width:'100%', minHeight:70, border:'1.5px solid #D8E8E0', borderRadius:8, padding:'8px 10px', fontFamily:'Cairo', fontSize:12.5, lineHeight:1.8, background:'#fff' }} />
