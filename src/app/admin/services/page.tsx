@@ -322,6 +322,10 @@ export default function AdminServicesPage() {
                             </div>
                           )
                         })()}
+                        <div style={{ marginBottom:12 }}>
+                          <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:6 }}>📝 ملاحظات المستشار (إجابات العميل على الأسئلة)</div>
+                          <textarea value={cur.inputs['advisor_notes'] ?? ''} onChange={e => setVal('advisor_notes', e.target.value)} placeholder="مثال: فرق حقوق الملكية 3 مليون = إيداع شخصي من المالك سنة سابقة. المصروفات تشمل 200 ألف سيارة خاصة." style={{ width:'100%', minHeight:70, border:'1.5px solid #D8E8E0', borderRadius:8, padding:'8px 10px', fontFamily:'Cairo', fontSize:12.5, lineHeight:1.8, background:'#fff' }} />
+                        </div>
                         <button onClick={() => saveInputs(r)} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginTop:6 }}>{busy === r.id ? 'جارٍ الحفظ...' : '💾 احفظ الأرقام'}</button>
                         <div style={{ color:'#9DB3AB', fontSize:11.5, marginTop:8, lineHeight:1.7 }}>اترك أي حقل فارغاً إن لم ينطبق. بعد الحفظ، اضغط «جهّز الخدمة» لتوليد القوائم من هذي الأرقام.</div>
                       </div>
