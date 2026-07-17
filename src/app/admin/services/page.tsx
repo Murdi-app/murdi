@@ -278,7 +278,7 @@ export default function AdminServicesPage() {
                   {inputsOpen[r.id] && inputsData[r.id] && (() => {
                     const cur = inputsData[r.id]
                     const setKind = (k: string) => setInputsData(p => ({ ...p, [r.id]: { ...cur, activity_kind: k } }))
-                    const setVal = (k: string, v: string) => setInputsData(p => ({ ...p, [r.id]: { ...cur, inputs: { ...cur.inputs, [k]: v } } }))
+                    const setVal = (k: string, v: string) => setInputsData(p => { const c = p[r.id] || cur; return { ...p, [r.id]: { ...c, inputs: { ...c.inputs, [k]: v } } } })
                     const flds = fieldsFor(cur.activity_kind)
                     const groups: Record<string, string> = { income: '📈 الدخل والتكاليف', assets: '🏦 الأصول', liabilities: '📉 الالتزامات', equity: '💼 حقوق الملكية' }
                     const inp: React.CSSProperties = { width:'100%', border:'1.5px solid #D8E8E0', borderRadius:8, padding:'8px 10px', fontFamily:'Cairo', fontSize:12.5, background:'#fff' }
