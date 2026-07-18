@@ -301,7 +301,14 @@ export default function AdminServicesPage() {
                                     <div style={{ color:'#6B8A80', fontSize:11.5, marginBottom:3 }}>{f.label}{f.hint && <span style={{ color:'#B0C4BC' }}> · {f.hint}</span>}</div>
                                     <div style={{ display:'flex', gap:6 }}>
                                       <input type="number" value={cur.inputs[f.key + '__y1'] ?? ''} onChange={e => setVal(f.key + '__y1', e.target.value)} placeholder="سنة ١" style={inp} />
-                                      <input type="number" value={cur.inputs[f.key + '__y2'] ?? ''} onChange={e => setVal(f.key + '__y2', e.target.value)} placeholder="سنة ٢" style={inp} />
+                                      {(() => {
+                                        const carry: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision' }
+                                        if (carry[f.key]) {
+                                          const v = cur.inputs[carry[f.key] + '__y1'] ?? ''
+                                          return <input type="number" value={v} readOnly title="يُنقل تلقائياً من ختام السنة الأولى" placeholder="من ختام سنة ١" style={{ ...inp, background:'#EFF5F2', color:'#6B8A80', cursor:'not-allowed' }} />
+                                        }
+                                        return <input type="number" value={cur.inputs[f.key + '__y2'] ?? ''} onChange={e => setVal(f.key + '__y2', e.target.value)} placeholder="سنة ٢" style={inp} />
+                                      })()}
                                     </div>
                                   </div>
                                 ))}
