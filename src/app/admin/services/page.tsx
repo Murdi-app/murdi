@@ -307,6 +307,18 @@ export default function AdminServicesPage() {
                                           const v = cur.inputs[carry[f.key] + '__y1'] ?? ''
                                           return <input type="number" value={v} readOnly title="يُنقل تلقائياً من ختام السنة الأولى" placeholder="من ختام سنة ١" style={{ ...inp, background:'#EFF5F2', color:'#6B8A80', cursor:'not-allowed' }} />
                                         }
+                                        if (f.key === 'opening_retained_earnings') {
+                                          const orе = Number(cur.inputs['opening_retained_earnings__y1'] || 0)
+                                          const rev = Number(cur.inputs['annual_revenue__y1'] || 0)
+                                          const cogs = Number(cur.inputs['cost_of_sales__y1'] || 0)
+                                          const opex = Number(cur.inputs['operating_expenses__y1'] || 0)
+                                          const dep = Number(cur.inputs['depreciation__y1'] || 0)
+                                          const zak = Number(cur.inputs['zakat_due__y1'] || 0)
+                                          const dist = Number(cur.inputs['distributions__y1'] || 0)
+                                          const net = rev - cogs - opex - dep - zak
+                                          const closing = orе + net - dist
+                                          return <input type="number" value={closing || ''} readOnly title="يُحسب تلقائياً: أرباح مرحّلة سنة ١ + صافي ربح سنة ١ − توزيعات سنة ١" placeholder="محسوب من سنة ١" style={{ ...inp, background:'#EFF5F2', color:'#6B8A80', cursor:'not-allowed' }} />
+                                        }
                                         return <input type="number" value={cur.inputs[f.key + '__y2'] ?? ''} onChange={e => setVal(f.key + '__y2', e.target.value)} placeholder="سنة ٢" style={inp} />
                                       })()}
                                     </div>
