@@ -98,6 +98,24 @@ export default function AdminServicesPage() {
       const y1end = cur.inputs[endK + '__y1']
       if (y1end && !cur.inputs[openK + '__y2']) cur.inputs[openK + '__y2'] = y1end
     }
+    // احسب القيم المقفولة واكتبها قبل الحفظ (النقل التلقائي بين السنتين)
+    const carrySave: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision' }
+    for (const openK in carrySave) {
+      const src = cur.inputs[carrySave[openK] + '__y1']
+      if (src !== undefined && src !== '') cur.inputs[openK + '__y2'] = src
+    }
+    const _ore = Number(cur.inputs['opening_retained_earnings__y1'] || 0)
+    const _rev = Number(cur.inputs['annual_revenue__y1'] || 0)
+    const _oInv = Number(cur.inputs['opening_inventory__y1'] || 0)
+    const _pur = Number(cur.inputs['purchases__y1'] || 0)
+    const _cInv = Number(cur.inputs['close_inventory__y1'] || 0)
+    const _cogs = _oInv + _pur - _cInv
+    const _opex = Number(cur.inputs['operating_expenses__y1'] || 0)
+    const _dep = Number(cur.inputs['depreciation__y1'] || 0)
+    const _zak = Number(cur.inputs['zakat_due__y1'] || 0)
+    const _dist = Number(cur.inputs['distributions__y1'] || 0)
+    const _net = _rev - _cogs - _opex - _dep - _zak
+    cur.inputs['opening_retained_earnings__y2'] = String(_ore + _net - _dist)
     const years: Record<string, Record<string,string>> = { '1': {}, '2': {} }
     for (const k in cur.inputs) {
       const v = cur.inputs[k]
