@@ -310,7 +310,10 @@ export default function AdminServicesPage() {
                                         if (f.key === 'opening_retained_earnings') {
                                           const orе = Number(cur.inputs['opening_retained_earnings__y1'] || 0)
                                           const rev = Number(cur.inputs['annual_revenue__y1'] || 0)
-                                          const cogs = Number(cur.inputs['cost_of_sales__y1'] || 0)
+                                          const openInv = Number(cur.inputs['opening_inventory__y1'] || 0)
+                                          const purch = Number(cur.inputs['purchases__y1'] || 0)
+                                          const closeInv = Number(cur.inputs['close_inventory__y1'] || 0)
+                                          const cogs = openInv + purch - closeInv
                                           const opex = Number(cur.inputs['operating_expenses__y1'] || 0)
                                           const dep = Number(cur.inputs['depreciation__y1'] || 0)
                                           const zak = Number(cur.inputs['zakat_due__y1'] || 0)
