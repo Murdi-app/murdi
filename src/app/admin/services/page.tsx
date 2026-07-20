@@ -400,6 +400,28 @@ export default function AdminServicesPage() {
                           <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:6 }}>📝 ملاحظات المستشار (إجابات العميل على الأسئلة)</div>
                           <textarea value={cur.inputs['advisor_notes'] ?? ''} onChange={e => setVal('advisor_notes', e.target.value)} placeholder="مثال: فرق حقوق الملكية 3 مليون = إيداع شخصي من المالك سنة سابقة. المصروفات تشمل 200 ألف سيارة خاصة." style={{ width:'100%', minHeight:70, border:'1.5px solid #D8E8E0', borderRadius:8, padding:'8px 10px', fontFamily:'Cairo', fontSize:12.5, lineHeight:1.8, background:'#fff' }} />
                         </div>
+                        <div style={{ marginTop:12, marginBottom:6, padding:'10px 12px', background:'#FBF7EC', border:'1px solid #E8D9A8', borderRadius:8 }}>
+                          <div style={{ fontFamily:'Cairo', fontSize:12.5, fontWeight:900, color:'#8A6D1A', marginBottom:6 }}>تصنيف فرق حقوق الملكية (إن ظهر فرق كبير يحتاج مراجعة)</div>
+                          <div style={{ fontFamily:'Cairo', fontSize:11.5, color:'#6B5A2A', marginBottom:8 }}>اسأل العميل عن مصدر الفرق، ثم اختر الإجابة — تُضاف تلقائياً للملاحظات ويصنّفها النظام في بندها الصحيح.</div>
+                          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                            <select onChange={e => { if(e.target.value){ setVal('advisor_notes', ((cur.inputs['advisor_notes']||'') + '\n' + e.target.value)); e.target.value=''; } }} defaultValue="" style={{ flex:1, minWidth:200, border:'1.5px solid #D8E8E0', borderRadius:8, padding:'7px 10px', fontFamily:'Cairo', fontSize:12, background:'#fff' }}>
+                              <option value="" disabled>مصدر فرق السنة الأولى...</option>
+                              <option value="gap_y1=owner_deposit">إيداع شخصي من المالك ← حساب مالك جاري</option>
+                              <option value="gap_y1=prior_profit">أرباح سنوات سابقة غير مسحوبة ← أرباح مرحّلة</option>
+                              <option value="gap_y1=loan">قرض أو تمويل خارجي ← التزام</option>
+                              <option value="gap_y1=unlisted_assets">أصول مملوكة غير مُدرجة ← أصول</option>
+                              <option value="gap_y1=unsure">غير متأكد ← يُترك للمراجعة</option>
+                            </select>
+                            <select onChange={e => { if(e.target.value){ setVal('advisor_notes', ((cur.inputs['advisor_notes']||'') + '\n' + e.target.value)); e.target.value=''; } }} defaultValue="" style={{ flex:1, minWidth:200, border:'1.5px solid #D8E8E0', borderRadius:8, padding:'7px 10px', fontFamily:'Cairo', fontSize:12, background:'#fff' }}>
+                              <option value="" disabled>مصدر فرق السنة الثانية...</option>
+                              <option value="gap_y2=owner_deposit">إيداع شخصي من المالك ← حساب مالك جاري</option>
+                              <option value="gap_y2=prior_profit">أرباح سنوات سابقة غير مسحوبة ← أرباح مرحّلة</option>
+                              <option value="gap_y2=loan">قرض أو تمويل خارجي ← التزام</option>
+                              <option value="gap_y2=unlisted_assets">أصول مملوكة غير مُدرجة ← أصول</option>
+                              <option value="gap_y2=unsure">غير متأكد ← يُترك للمراجعة</option>
+                            </select>
+                          </div>
+                        </div>
                         <button onClick={() => saveInputs(r)} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginTop:6 }}>{busy === r.id ? 'جارٍ الحفظ...' : '💾 احفظ الأرقام'}</button>
                         <div style={{ color:'#9DB3AB', fontSize:11.5, marginTop:8, lineHeight:1.7 }}>اترك أي حقل فارغاً إن لم ينطبق. بعد الحفظ، اضغط «جهّز الخدمة» لتوليد القوائم من هذي الأرقام.</div>
                       </div>
