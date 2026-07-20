@@ -77,22 +77,26 @@ export default function AdminServicesPage() {
   }
 
   async function openInputs(r: any) {
-    setInputsOpen(p => ({ ...p, [r.id]: !p[r.id] }))
-    if (inputsData[r.id]) return
+    const willOpen = !inputsOpen[r.id]
+    setInputsOpen(p => ({ ...p, [r.id]: willOpen }))
+    if (!willOpen) return
     const res = await fetch('/api/admin/service-inputs?service_request_id=' + r.id)
     const d = await res.json().catch(() => ({}))
     const rec = d.record
     // فكّ البيانات الملفوفة (multi_year/years) لحقول مسطّحة __y1/__y2 ليقرأها النموذج
-    let flat: Record<string,string> = {}
+    const kind = rec?.activity_kind || 'trade'
+    const valid = new Set<string>(fieldsFor(kind).map((f: any) => f.key))
+    const flat: Record<string,string> = {}
     const raw = rec?.inputs || {}
     if (raw && raw.multi_year && raw.years) {
-      for (const k in (raw.years['1'] || {})) flat[k + '__y1'] = raw.years['1'][k]
-      for (const k in (raw.years['2'] || {})) flat[k + '__y2'] = raw.years['2'][k]
-      if (raw.advisor_notes) flat['advisor_notes'] = raw.advisor_notes
+      for (const k in (raw.years['1'] || {})) if (valid.has(k)) flat[k + '__y1'] = raw.years['1'][k]
+      for (const k in (raw.years['2'] || {})) if (valid.has(k)) flat[k + '__y2'] = raw.years['2'][k]
     } else {
-      flat = raw
+      for (const k in raw) if (valid.has(k)) flat[k + '__y1'] = raw[k]
     }
-    setInputsData(p => ({ ...p, [r.id]: { activity_kind: rec?.activity_kind || 'trade', inputs: flat } }))
+    if (raw.advisor_notes) flat['advisor_notes'] = raw.advisor_notes
+    else if (raw.years && raw.years['1'] && raw.years['1'].advisor_notes) flat['advisor_notes'] = raw.years['1'].advisor_notes
+    setInputsData(p => ({ ...p, [r.id]: { activity_kind: kind, inputs: flat } }))
   }
 
   async function saveInputs(r: any) {
@@ -126,14 +130,17 @@ export default function AdminServicesPage() {
     const _dist = Number(cur.inputs['distributions__y1'] || 0)
     const _net = _rev - _cogs - _opex - _dep - _zak
     cur.inputs['opening_retained_earnings__y2'] = String(_ore + _net - _dist)
+    const valid = new Set<string>(fieldsFor(cur.activity_kind).map((f: any) => f.key))
     const years: Record<string, Record<string,string>> = { '1': {}, '2': {} }
     for (const k in cur.inputs) {
+      if (k === 'advisor_notes') continue
       const v = cur.inputs[k]
-      if (k.endsWith('__y1')) years['1'][k.slice(0,-4)] = v
-      else if (k.endsWith('__y2')) years['2'][k.slice(0,-4)] = v
-      else { years['1'][k] = v; years['2'][k] = v }
+      if (k.endsWith('__y1')) { const b = k.slice(0,-4); if (valid.has(b)) years['1'][b] = v }
+      else if (k.endsWith('__y2')) { const b = k.slice(0,-4); if (valid.has(b)) years['2'][b] = v }
+      else if (valid.has(k)) { years['1'][k] = v; years['2'][k] = v }
     }
-    const payload = { multi_year: true, years }
+    const payload: any = { multi_year: true, years }
+    if (cur.inputs['advisor_notes']) payload.advisor_notes = cur.inputs['advisor_notes']
     await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: r.id, company_id: r.company_id, activity_kind: cur.activity_kind, inputs: payload }) })
     setBusy('')
     alert('✅ حُفظت الأرقام — الآن اضغط «جهّز الخدمة» لتوليد القوائم')
