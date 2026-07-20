@@ -40,6 +40,8 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'employee_count', label: 'عدد الموظفين', hint: 'لو أكبر من صفر يلزم مخصص نهاية خدمة موجب', group: 'liabilities' },
   { key: 'monthly_wage_bill', label: 'إجمالي الرواتب الشهرية', hint: 'لتقدير حركة مخصص نهاية الخدمة', group: 'liabilities' },
   { key: 'eos_opening', label: 'مخصص نهاية الخدمة أول المدة', hint: 'رصيد موجب فقط — لا يُقبل سالب', group: 'liabilities' },
+  { key: 'opening_vat', label: 'ضريبة القيمة المضافة أول المدة', hint: 'رصيد الضريبة المستحقة في بداية السنة (لحساب التغيّر في التدفقات)', group: 'liabilities' },
+  { key: 'opening_zakat', label: 'الزكاة المستحقة أول المدة', hint: 'رصيد الزكاة المستحقة في بداية السنة (لحساب التغيّر في التدفقات)', group: 'liabilities' },
   { key: 'distributions', label: 'التوزيعات/المسحوبات خلال السنة', hint: 'مسحوبات المالك أو توزيعات الأرباح', group: 'equity' },
   { key: 'opening_fixed_assets', label: 'الأصول الثابتة أول المدة', hint: 'صافي قيمة الأصول الثابتة في بداية السنة', group: 'assets' },
   { key: 'depreciation', label: 'مصروف الإهلاك السنوي', hint: 'إهلاك الأصول الثابتة المحمّل على السنة — يُغلق النشاط الاستثماري', group: 'assets' },

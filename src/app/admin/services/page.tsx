@@ -113,7 +113,7 @@ export default function AdminServicesPage() {
       if (y1end && !cur.inputs[openK + '__y2']) cur.inputs[openK + '__y2'] = y1end
     }
     // احسب القيم المقفولة واكتبها قبل الحفظ (النقل التلقائي بين السنتين)
-    const carrySave: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision' }
+    const carrySave: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision', opening_vat:'vat_due', opening_zakat:'zakat_due' }
     for (const openK in carrySave) {
       const src = cur.inputs[carrySave[openK] + '__y1']
       if (src !== undefined && src !== '') cur.inputs[openK + '__y2'] = src
@@ -337,7 +337,7 @@ export default function AdminServicesPage() {
                                     <div style={{ display:'flex', gap:6 }}>
                                       <input type="number" value={cur.inputs[f.key + '__y1'] ?? ''} onChange={e => setVal(f.key + '__y1', e.target.value)} placeholder="سنة ١" style={inp} />
                                       {(() => {
-                                        const carry: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision' }
+                                        const carry: Record<string,string> = { opening_cash:'cash_in_banks', opening_ar:'accounts_receivable', opening_inventory:'inventory', opening_ap:'accounts_payable', opening_fixed_assets:'fixed_assets', eos_opening:'eos_provision', opening_vat:'vat_due', opening_zakat:'zakat_due' }
                                         if (carry[f.key]) {
                                           const v = cur.inputs[carry[f.key] + '__y1'] ?? ''
                                           return <input type="number" value={v} readOnly title="يُنقل تلقائياً من ختام السنة الأولى" placeholder="من ختام سنة ١" style={{ ...inp, background:'#EFF5F2', color:'#6B8A80', cursor:'not-allowed' }} />
