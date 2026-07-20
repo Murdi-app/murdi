@@ -1,5 +1,22 @@
 // قالب تصدير القوائم المالية PDF بترويسة مُرضي
 export function buildPdfHtml(title: string, body: string): string {
+  // تنظيف قبل التحويل: احذف الحقول التقنية الخام، وحوّل ماركداون المتبقي أينما ظهر
+  body = (body||'')
+    .replace(/\[\[TABLES\]\]/g, '')
+    .replace(/\([a-zA-Z_]+\s*=\s*(?:true|false)\)/g, '')
+    .replace(/[a-zA-Z_]+\s*=\s*(?:true|false)/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(^|\s)###\s+/g, '$1')
+    .replace(/(^|\s)##\s+/g, '$1')
+    .replace(/\s*---\s*/g, ' ')
+  // تنظيف قبل التحويل: احذف الحقول التقنية الخام، وحوّل ماركداون المتبقي أينما ظهر
+  body = (body||'')
+    .replace(/\([a-zA-Z_]+\s*=\s*(?:true|false)\)/g, '')
+    .replace(/[a-zA-Z_]+\s*=\s*(?:true|false)/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(^|\s)###\s+/g, '$1')
+    .replace(/(^|\s)##\s+/g, '$1')
+    .replace(/\s*---\s*/g, ' ')
   // نحوّل Markdown البسيط لـHTML، ونترك وسوم HTML (الجداول) كما هي دون تهريب
   const lines = body.split('\n')
   let html = ''
