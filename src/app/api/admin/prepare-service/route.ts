@@ -60,7 +60,14 @@ export async function POST(req: Request) {
   let computedResolved = true;
   if (si && (si.inputs as any)?.multi_year && (si.inputs as any)?.years) {
     try {
-      const built = buildComputedStatements((si.inputs as any).years);
+      // استخراج رمز تصنيف الفرق من ملاحظات المستشار (مثل gap_y1=owner_deposit) وحقنه قبل الحساب
+      const _years = JSON.parse(JSON.stringify((si.inputs as any).years));
+      const _notes = String((si.inputs as any).advisor_notes || (_years['1'] && _years['1'].advisor_notes) || '');
+      const _m1 = _notes.match(/gap_y1\s*=\s*(owner_deposit|prior_profit|loan|unlisted_assets|unsure)/);
+      const _m2 = _notes.match(/gap_y2\s*=\s*(owner_deposit|prior_profit|loan|unlisted_assets|unsure)/);
+      if (_m1 && _years['1']) _years['1'].gap_classification = _m1[1];
+      if (_m2 && _years['2']) _years['2'].gap_classification = _m2[1];
+      const built = buildComputedStatements(_years);
       computedTablesHtml = renderStatementsHtml(built);
       computedResolved = built.fullyResolved;
     } catch (e) { computedTablesHtml = ''; }
