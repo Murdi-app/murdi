@@ -82,7 +82,17 @@ export default function AdminServicesPage() {
     const res = await fetch('/api/admin/service-inputs?service_request_id=' + r.id)
     const d = await res.json().catch(() => ({}))
     const rec = d.record
-    setInputsData(p => ({ ...p, [r.id]: { activity_kind: rec?.activity_kind || 'trade', inputs: rec?.inputs || {} } }))
+    // فكّ البيانات الملفوفة (multi_year/years) لحقول مسطّحة __y1/__y2 ليقرأها النموذج
+    let flat: Record<string,string> = {}
+    const raw = rec?.inputs || {}
+    if (raw && raw.multi_year && raw.years) {
+      for (const k in (raw.years['1'] || {})) flat[k + '__y1'] = raw.years['1'][k]
+      for (const k in (raw.years['2'] || {})) flat[k + '__y2'] = raw.years['2'][k]
+      if (raw.advisor_notes) flat['advisor_notes'] = raw.advisor_notes
+    } else {
+      flat = raw
+    }
+    setInputsData(p => ({ ...p, [r.id]: { activity_kind: rec?.activity_kind || 'trade', inputs: flat } }))
   }
 
   async function saveInputs(r: any) {
