@@ -28,9 +28,9 @@ export function computeIncomeStatement(y: YearInputs): IncomeStatement {
   const oInv = n(y.opening_inventory)
   const pur = n(y.purchases)
   const cInv = n(y.close_inventory)
-  const hasComponents = (y.purchases !== undefined && y.purchases !== '')
-    || (y.opening_inventory !== undefined && y.opening_inventory !== '')
-    || (y.close_inventory !== undefined && y.close_inventory !== '')
+  const cogsProvided = (y.cogs !== undefined && y.cogs !== '' && n(y.cogs) !== 0)
+  const hasComponents = !cogsProvided
+    && (y.purchases !== undefined && y.purchases !== '')
   const computedCogs = oInv + pur - cInv
   const inputCogs = n(y.cogs)
 
@@ -91,11 +91,13 @@ export interface BalanceSheet {
   cash: number
   accountsReceivableNet: number
   inventory: number
+  wip: number
   totalCurrentAssets: number
   fixedAssets: number
   ownerReceivable: number       // حساب المالك حين يكون مديناً (يظهر في الأصول)
   totalAssets: number
   accountsPayable: number
+  advancesReceived: number
   vatDue: number
   zakatDue: number
   eosProvision: number
@@ -116,16 +118,18 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
   const doubtful = n(y.doubtful_debt)
   const accountsReceivableNet = arGross - doubtful
   const inventory = n(y.close_inventory) || n(y.inventory)
+  const wip = n(y.wip)
   const fixedAssets = n(y.fixed_assets)
 
   const accountsPayable = n(y.accounts_payable)
+  const advancesReceived = n(y.advances_received)
   const vatDue = n(y.vat_due)
   const zakatDue = n(y.zakat_due)
   const eosProvision = n(y.eos_provision)
-  const totalLiabilities = accountsPayable + vatDue + zakatDue + eosProvision
+  const totalLiabilities = accountsPayable + advancesReceived + vatDue + zakatDue + eosProvision
 
   const equityBeforeOwner = eq.capital + eq.closingRetainedEarnings
-  const assetsBeforeOwner = cash + accountsReceivableNet + inventory + fixedAssets
+  const assetsBeforeOwner = cash + accountsReceivableNet + inventory + wip + fixedAssets
 
   // البند الموازِن = الأصول − (الالتزامات + حقوق الملكية قبل المالك)
   const ownerRaw = assetsBeforeOwner - (totalLiabilities + equityBeforeOwner)
@@ -149,7 +153,7 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
     ownerReceivable = -ownerRaw
   }
 
-  const totalCurrentAssets = cash + accountsReceivableNet + inventory
+  const totalCurrentAssets = cash + accountsReceivableNet + inventory + wip
   const totalAssets = assetsBeforeOwner + ownerReceivable
   const totalEquity = equityBeforeOwner + ownerCurrentAccount
   const balanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.5
@@ -167,8 +171,8 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
   }
 
   return {
-    cash, accountsReceivableNet, inventory, totalCurrentAssets, fixedAssets,
-    ownerReceivable, totalAssets, accountsPayable, vatDue, zakatDue, eosProvision,
+    cash, accountsReceivableNet, inventory, wip, totalCurrentAssets, fixedAssets,
+    ownerReceivable, totalAssets, accountsPayable, advancesReceived, vatDue, zakatDue, eosProvision,
     totalLiabilities, capital: eq.capital, closingRetainedEarnings: eq.closingRetainedEarnings,
     ownerCurrentAccount, totalEquity, balanced, ownerFlag, ownerAmountRaw: ownerRaw, ownerNote,
   }
@@ -179,7 +183,9 @@ export interface CashFlow {
   depreciation: number
   changeAR: number
   changeInventory: number
+  changeWIP: number
   changeAP: number
+  changeAdvances: number
   changeVAT: number
   changeZakat: number
   changeEOS: number
@@ -209,17 +215,21 @@ export function computeCashFlow(
   const openEOS  = prevBS ? prevBS.eosProvision         : n(y.eos_opening)
   const openCash = prevBS ? prevBS.cash                 : n(y.opening_cash)
   const openFA   = prevBS ? prevBS.fixedAssets          : n(y.opening_fixed_assets)
+  const openWIP  = prevBS ? prevBS.wip                  : n(y.opening_wip)
+  const openAdv  = prevBS ? prevBS.advancesReceived     : n(y.opening_advances)
 
   // تغيّرات رأس المال العامل (زيادة أصل تُنقص النقد؛ زيادة التزام تزيده)
   const changeAR        = -(bs.accountsReceivableNet - openAR)
   const changeInventory = -(bs.inventory - openInv)
+  const changeWIP       = -(bs.wip - openWIP)
   const changeAP        =  (bs.accountsPayable - openAP)
+  const changeAdvances  =  (bs.advancesReceived - openAdv)
   const changeVAT       =  (bs.vatDue - openVAT)
   const changeZakat     =  (bs.zakatDue - openZak)
   const changeEOS       =  (bs.eosProvision - openEOS)
 
   const operatingCash = is.netProfit + is.depreciation
-    + changeAR + changeInventory + changeAP + changeVAT + changeZakat + changeEOS
+    + changeAR + changeInventory + changeWIP + changeAP + changeAdvances + changeVAT + changeZakat + changeEOS
 
   // الاستثماري: صافي الحركة في الأصول الثابتة = (الختامي − الافتتاحي + الإهلاك) بإشارة سالبة (شراء)
   const investingCash = -((bs.fixedAssets - openFA) + is.depreciation)
@@ -236,7 +246,7 @@ export function computeCashFlow(
 
   return {
     netProfit: is.netProfit, depreciation: is.depreciation,
-    changeAR, changeInventory, changeAP, changeVAT, changeZakat, changeEOS,
+    changeAR, changeInventory, changeWIP, changeAP, changeAdvances, changeVAT, changeZakat, changeEOS,
     operatingCash, investingCash, financingDistributions, ownerAccountMovement,
     financingCash, netCashChange, openingCash: openCash,
     closingCashComputed, closingCashBook, reconciliationDiff,
@@ -372,12 +382,14 @@ export function renderBalanceTable(a: BalanceSheet, b: BalanceSheet): string {
     row('النقد وما في حكمه (البنوك)', money(a.cash), money(b.cash)),
     row('الذمم المدينة (صافي)', money(a.accountsReceivableNet), money(b.accountsReceivableNet)),
     row('المخزون', money(a.inventory), money(b.inventory)),
+    (a.wip || b.wip) ? row('أعمال تحت التنفيذ', money(a.wip), money(b.wip)) : '',
     (a.ownerReceivable || b.ownerReceivable) ? row('حساب المالك الجاري (مدين)', money(a.ownerReceivable), money(b.ownerReceivable)) : '',
     row('الأصول الثابتة (صافي)', money(a.fixedAssets), money(b.fixedAssets)),
     row('إجمالي الأصول', money(a.totalAssets), money(b.totalAssets), true),
   ].join('')
   const liab = [
     row('الذمم الدائنة (موردون)', money(a.accountsPayable), money(b.accountsPayable)),
+    (a.advancesReceived || b.advancesReceived) ? row('دفعات مقدمة من العملاء', money(a.advancesReceived), money(b.advancesReceived)) : '',
     row('ضريبة القيمة المضافة المستحقة', money(a.vatDue), money(b.vatDue)),
     row('الزكاة المستحقة', money(a.zakatDue), money(b.zakatDue)),
     row('مخصص نهاية الخدمة', money(a.eosProvision), money(b.eosProvision)),
@@ -403,7 +415,9 @@ export function renderCashFlowTable(a: CashFlow, b: CashFlow): string {
     + row('(+) الإهلاك (غير نقدي)', money(a.depreciation), money(b.depreciation))
     + row('التغيّر في الذمم المدينة', money(a.changeAR), money(b.changeAR))
     + row('التغيّر في المخزون', money(a.changeInventory), money(b.changeInventory))
+    + (a.changeWIP || b.changeWIP ? row('التغيّر في أعمال تحت التنفيذ', money(a.changeWIP), money(b.changeWIP)) : '')
     + row('التغيّر في الذمم الدائنة', money(a.changeAP), money(b.changeAP))
+    + (a.changeAdvances || b.changeAdvances ? row('التغيّر في الدفعات المقدمة', money(a.changeAdvances), money(b.changeAdvances)) : '')
     + row('التغيّر في ضريبة القيمة المضافة', money(a.changeVAT), money(b.changeVAT))
     + row('التغيّر في الزكاة المستحقة', money(a.changeZakat), money(b.changeZakat))
     + row('التغيّر في مخصص نهاية الخدمة', money(a.changeEOS), money(b.changeEOS))
