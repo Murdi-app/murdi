@@ -25,6 +25,8 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'doubtful_debt', label: 'مخصص الديون المشكوك فيها', hint: 'يُطرح من الذمم المدينة لإظهار صافيها', group: 'assets' },
   { key: 'fixed_assets', label: 'الأصول الثابتة', hint: 'المعدات والأجهزة بالتكلفة', group: 'assets' },
   { key: 'accounts_payable', label: 'الذمم الدائنة', hint: 'مستحقات للموردين', group: 'liabilities' },
+  { key: 'loans', label: 'القروض والتمويل', hint: 'رصيد القروض والتمويل البنكي بنهاية السنة', group: 'liabilities' },
+  { key: 'opening_loans', label: 'القروض والتمويل أول المدة', hint: 'رصيد القروض في بداية السنة الأولى', group: 'liabilities' },
   { key: 'zakat_due', label: 'الزكاة المستحقة', hint: 'مخصص الزكاة', group: 'liabilities' },
   { key: 'vat_due', label: 'ضريبة القيمة المضافة المستحقة', group: 'liabilities' },
   { key: 'eos_provision', label: 'مخصص نهاية الخدمة', hint: 'مكافآت نهاية خدمة الموظفين', group: 'liabilities' },
