@@ -92,12 +92,14 @@ export interface BalanceSheet {
   accountsReceivableNet: number
   inventory: number
   wip: number
+  activityAssets: number
   totalCurrentAssets: number
   fixedAssets: number
   ownerReceivable: number       // حساب المالك حين يكون مديناً (يظهر في الأصول)
   totalAssets: number
   accountsPayable: number
   advancesReceived: number
+  deferredRevenue: number
   loans: number
   vatDue: number
   zakatDue: number
@@ -125,13 +127,15 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
   const accountsPayable = n(y.accounts_payable)
   const advancesReceived = n(y.advances_received)
   const loans = n(y.loans)
+  const activityAssets = n(y.fleet_value) + n(y.medical_equipment) + n(y.property_inventory) + n(y.bio_assets)
+  const deferredRevenue = n(y.deferred_revenue)
   const vatDue = n(y.vat_due)
   const zakatDue = n(y.zakat_due)
   const eosProvision = n(y.eos_provision)
-  const totalLiabilities = accountsPayable + advancesReceived + loans + vatDue + zakatDue + eosProvision
+  const totalLiabilities = accountsPayable + advancesReceived + loans + deferredRevenue + vatDue + zakatDue + eosProvision
 
   const equityBeforeOwner = eq.capital + eq.closingRetainedEarnings
-  const assetsBeforeOwner = cash + accountsReceivableNet + inventory + wip + fixedAssets
+  const assetsBeforeOwner = cash + accountsReceivableNet + inventory + wip + activityAssets + fixedAssets
 
   // البند الموازِن = الأصول − (الالتزامات + حقوق الملكية قبل المالك)
   const ownerRaw = assetsBeforeOwner - (totalLiabilities + equityBeforeOwner)
@@ -155,7 +159,7 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
     ownerReceivable = -ownerRaw
   }
 
-  const totalCurrentAssets = cash + accountsReceivableNet + inventory + wip
+  const totalCurrentAssets = cash + accountsReceivableNet + inventory + wip + activityAssets
   const totalAssets = assetsBeforeOwner + ownerReceivable
   const totalEquity = equityBeforeOwner + ownerCurrentAccount
   const balanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.5
@@ -173,8 +177,8 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
   }
 
   return {
-    cash, accountsReceivableNet, inventory, wip, totalCurrentAssets, fixedAssets,
-    ownerReceivable, totalAssets, accountsPayable, advancesReceived, vatDue, zakatDue, eosProvision,
+    cash, accountsReceivableNet, inventory, wip, activityAssets, totalCurrentAssets, fixedAssets,
+    ownerReceivable, totalAssets, accountsPayable, advancesReceived, deferredRevenue, vatDue, zakatDue, eosProvision,
     loans, totalLiabilities, capital: eq.capital, closingRetainedEarnings: eq.closingRetainedEarnings,
     ownerCurrentAccount, totalEquity, balanced, ownerFlag, ownerAmountRaw: ownerRaw, ownerNote,
   }
@@ -185,6 +189,8 @@ export interface CashFlow {
   depreciation: number
   changeAR: number
   changeInventory: number
+  changeActAssets: number
+  changeDeferred: number
   changeWIP: number
   changeAP: number
   changeAdvances: number
@@ -221,6 +227,8 @@ export function computeCashFlow(
   const openWIP  = prevBS ? prevBS.wip                  : n(y.opening_wip)
   const openAdv  = prevBS ? prevBS.advancesReceived     : n(y.opening_advances)
   const openLoans= prevBS ? prevBS.loans                : n(y.opening_loans)
+  const openActAssets = prevBS ? prevBS.activityAssets  : n(y.opening_activity_assets)
+  const openDeferred  = prevBS ? prevBS.deferredRevenue : n(y.opening_deferred_revenue)
 
   // تغيّرات رأس المال العامل (زيادة أصل تُنقص النقد؛ زيادة التزام تزيده)
   const changeAR        = -(bs.accountsReceivableNet - openAR)
@@ -229,12 +237,14 @@ export function computeCashFlow(
   const changeAP        =  (bs.accountsPayable - openAP)
   const changeAdvances  =  (bs.advancesReceived - openAdv)
   const changeLoans     =  (bs.loans - openLoans)
+  const changeActAssets = -(bs.activityAssets - openActAssets)
+  const changeDeferred  =  (bs.deferredRevenue - openDeferred)
   const changeVAT       =  (bs.vatDue - openVAT)
   const changeZakat     =  (bs.zakatDue - openZak)
   const changeEOS       =  (bs.eosProvision - openEOS)
 
   const operatingCash = is.netProfit + is.depreciation
-    + changeAR + changeInventory + changeWIP + changeAP + changeAdvances + changeVAT + changeZakat + changeEOS
+    + changeAR + changeInventory + changeWIP + changeActAssets + changeAP + changeAdvances + changeDeferred + changeVAT + changeZakat + changeEOS
 
   // الاستثماري: صافي الحركة في الأصول الثابتة = (الختامي − الافتتاحي + الإهلاك) بإشارة سالبة (شراء)
   const investingCash = -((bs.fixedAssets - openFA) + is.depreciation)
@@ -251,7 +261,7 @@ export function computeCashFlow(
 
   return {
     netProfit: is.netProfit, depreciation: is.depreciation,
-    changeAR, changeInventory, changeWIP, changeAP, changeAdvances, changeVAT, changeZakat, changeEOS,
+    changeAR, changeInventory, changeWIP, changeActAssets, changeAP, changeAdvances, changeDeferred, changeVAT, changeZakat, changeEOS,
     operatingCash, investingCash, financingDistributions, ownerAccountMovement, changeLoans,
     financingCash, netCashChange, openingCash: openCash,
     closingCashComputed, closingCashBook, reconciliationDiff,
@@ -388,6 +398,7 @@ export function renderBalanceTable(a: BalanceSheet, b: BalanceSheet): string {
     row('الذمم المدينة (صافي)', money(a.accountsReceivableNet), money(b.accountsReceivableNet)),
     row('المخزون', money(a.inventory), money(b.inventory)),
     (a.wip || b.wip) ? row('أعمال تحت التنفيذ', money(a.wip), money(b.wip)) : '',
+    (a.activityAssets || b.activityAssets) ? row('أصول تشغيلية للنشاط', money(a.activityAssets), money(b.activityAssets)) : '',
     (a.ownerReceivable || b.ownerReceivable) ? row('حساب المالك الجاري (مدين)', money(a.ownerReceivable), money(b.ownerReceivable)) : '',
     row('الأصول الثابتة (صافي)', money(a.fixedAssets), money(b.fixedAssets)),
     row('إجمالي الأصول', money(a.totalAssets), money(b.totalAssets), true),
@@ -396,6 +407,7 @@ export function renderBalanceTable(a: BalanceSheet, b: BalanceSheet): string {
     row('الذمم الدائنة (موردون)', money(a.accountsPayable), money(b.accountsPayable)),
     (a.advancesReceived || b.advancesReceived) ? row('دفعات مقدمة من العملاء', money(a.advancesReceived), money(b.advancesReceived)) : '',
     (a.loans || b.loans) ? row('القروض والتمويل', money(a.loans), money(b.loans)) : '',
+    (a.deferredRevenue || b.deferredRevenue) ? row('إيراد مؤجل', money(a.deferredRevenue), money(b.deferredRevenue)) : '',
     row('ضريبة القيمة المضافة المستحقة', money(a.vatDue), money(b.vatDue)),
     row('الزكاة المستحقة', money(a.zakatDue), money(b.zakatDue)),
     row('مخصص نهاية الخدمة', money(a.eosProvision), money(b.eosProvision)),
@@ -422,6 +434,8 @@ export function renderCashFlowTable(a: CashFlow, b: CashFlow): string {
     + row('التغيّر في الذمم المدينة', money(a.changeAR), money(b.changeAR))
     + row('التغيّر في المخزون', money(a.changeInventory), money(b.changeInventory))
     + (a.changeWIP || b.changeWIP ? row('التغيّر في أعمال تحت التنفيذ', money(a.changeWIP), money(b.changeWIP)) : '')
+    + (a.changeActAssets || b.changeActAssets ? row('التغيّر في أصول النشاط التشغيلية', money(a.changeActAssets), money(b.changeActAssets)) : '')
+    + (a.changeDeferred || b.changeDeferred ? row('التغيّر في الإيراد المؤجل', money(a.changeDeferred), money(b.changeDeferred)) : '')
     + row('التغيّر في الذمم الدائنة', money(a.changeAP), money(b.changeAP))
     + (a.changeAdvances || b.changeAdvances ? row('التغيّر في الدفعات المقدمة', money(a.changeAdvances), money(b.changeAdvances)) : '')
     + row('التغيّر في ضريبة القيمة المضافة', money(a.changeVAT), money(b.changeVAT))
