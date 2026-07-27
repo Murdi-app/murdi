@@ -27,6 +27,8 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'accounts_payable', label: 'الذمم الدائنة', hint: 'مستحقات للموردين', group: 'liabilities' },
   { key: 'loans', label: 'القروض والتمويل', hint: 'رصيد القروض والتمويل البنكي بنهاية السنة', group: 'liabilities' },
   { key: 'opening_loans', label: 'القروض والتمويل أول المدة', hint: 'رصيد القروض في بداية السنة الأولى', group: 'liabilities' },
+  { key: 'opening_activity_assets', label: 'أصول النشاط التشغيلية أول المدة', hint: 'قيمة أصول النشاط (أسطول/أجهزة/مخزون عقاري/بيولوجية) في بداية السنة الأولى', group: 'assets' },
+  { key: 'opening_deferred_revenue', label: 'الإيراد المؤجل أول المدة', hint: 'رصيد الإيراد المؤجل في بداية السنة الأولى', group: 'liabilities' },
   { key: 'zakat_due', label: 'الزكاة المستحقة', hint: 'مخصص الزكاة', group: 'liabilities' },
   { key: 'vat_due', label: 'ضريبة القيمة المضافة المستحقة', group: 'liabilities' },
   { key: 'eos_provision', label: 'مخصص نهاية الخدمة', hint: 'مكافآت نهاية خدمة الموظفين', group: 'liabilities' },
