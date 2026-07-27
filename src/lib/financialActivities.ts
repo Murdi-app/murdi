@@ -44,6 +44,8 @@ export const COMMON_FIELDS: FieldDef[] = [
   { key: 'opening_zakat', label: 'الزكاة المستحقة أول المدة', hint: 'رصيد الزكاة المستحقة في بداية السنة (لحساب التغيّر في التدفقات)', group: 'liabilities' },
   { key: 'distributions', label: 'التوزيعات/المسحوبات خلال السنة', hint: 'مسحوبات المالك أو توزيعات الأرباح', group: 'equity' },
   { key: 'opening_fixed_assets', label: 'الأصول الثابتة أول المدة', hint: 'صافي قيمة الأصول الثابتة في بداية السنة', group: 'assets' },
+  { key: 'opening_wip', label: 'أعمال تحت التنفيذ أول المدة', hint: 'قيمة المشاريع الجارية في بداية السنة الأولى', group: 'assets' },
+  { key: 'opening_advances', label: 'دفعات مقدمة من العملاء أول المدة', hint: 'الدفعات المقبوضة عن مشاريع في بداية السنة الأولى', group: 'liabilities' },
   { key: 'depreciation', label: 'مصروف الإهلاك السنوي', hint: 'إهلاك الأصول الثابتة المحمّل على السنة — يُغلق النشاط الاستثماري', group: 'assets' },
 ]
 
