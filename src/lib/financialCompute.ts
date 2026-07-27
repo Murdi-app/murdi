@@ -98,6 +98,7 @@ export interface BalanceSheet {
   totalAssets: number
   accountsPayable: number
   advancesReceived: number
+  loans: number
   vatDue: number
   zakatDue: number
   eosProvision: number
@@ -123,10 +124,11 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
 
   const accountsPayable = n(y.accounts_payable)
   const advancesReceived = n(y.advances_received)
+  const loans = n(y.loans)
   const vatDue = n(y.vat_due)
   const zakatDue = n(y.zakat_due)
   const eosProvision = n(y.eos_provision)
-  const totalLiabilities = accountsPayable + advancesReceived + vatDue + zakatDue + eosProvision
+  const totalLiabilities = accountsPayable + advancesReceived + loans + vatDue + zakatDue + eosProvision
 
   const equityBeforeOwner = eq.capital + eq.closingRetainedEarnings
   const assetsBeforeOwner = cash + accountsReceivableNet + inventory + wip + fixedAssets
@@ -173,7 +175,7 @@ export function computeBalanceSheet(y: YearInputs, eq: EquityChanges): BalanceSh
   return {
     cash, accountsReceivableNet, inventory, wip, totalCurrentAssets, fixedAssets,
     ownerReceivable, totalAssets, accountsPayable, advancesReceived, vatDue, zakatDue, eosProvision,
-    totalLiabilities, capital: eq.capital, closingRetainedEarnings: eq.closingRetainedEarnings,
+    loans, totalLiabilities, capital: eq.capital, closingRetainedEarnings: eq.closingRetainedEarnings,
     ownerCurrentAccount, totalEquity, balanced, ownerFlag, ownerAmountRaw: ownerRaw, ownerNote,
   }
 }
@@ -193,6 +195,7 @@ export interface CashFlow {
   investingCash: number
   financingDistributions: number
   ownerAccountMovement: number
+  changeLoans: number
   financingCash: number
   netCashChange: number
   openingCash: number
@@ -217,6 +220,7 @@ export function computeCashFlow(
   const openFA   = prevBS ? prevBS.fixedAssets          : n(y.opening_fixed_assets)
   const openWIP  = prevBS ? prevBS.wip                  : n(y.opening_wip)
   const openAdv  = prevBS ? prevBS.advancesReceived     : n(y.opening_advances)
+  const openLoans= prevBS ? prevBS.loans                : n(y.opening_loans)
 
   // تغيّرات رأس المال العامل (زيادة أصل تُنقص النقد؛ زيادة التزام تزيده)
   const changeAR        = -(bs.accountsReceivableNet - openAR)
@@ -224,6 +228,7 @@ export function computeCashFlow(
   const changeWIP       = -(bs.wip - openWIP)
   const changeAP        =  (bs.accountsPayable - openAP)
   const changeAdvances  =  (bs.advancesReceived - openAdv)
+  const changeLoans     =  (bs.loans - openLoans)
   const changeVAT       =  (bs.vatDue - openVAT)
   const changeZakat     =  (bs.zakatDue - openZak)
   const changeEOS       =  (bs.eosProvision - openEOS)
@@ -237,7 +242,7 @@ export function computeCashFlow(
   // التمويلي: توزيعات (سالب) + حركة حساب المالك
   const financingDistributions = -eq.distributions
   const ownerAccountMovement = ownerMovement
-  const financingCash = financingDistributions + ownerAccountMovement
+  const financingCash = financingDistributions + ownerAccountMovement + changeLoans
 
   const netCashChange = operatingCash + investingCash + financingCash
   const closingCashComputed = openCash + netCashChange
@@ -247,7 +252,7 @@ export function computeCashFlow(
   return {
     netProfit: is.netProfit, depreciation: is.depreciation,
     changeAR, changeInventory, changeWIP, changeAP, changeAdvances, changeVAT, changeZakat, changeEOS,
-    operatingCash, investingCash, financingDistributions, ownerAccountMovement,
+    operatingCash, investingCash, financingDistributions, ownerAccountMovement, changeLoans,
     financingCash, netCashChange, openingCash: openCash,
     closingCashComputed, closingCashBook, reconciliationDiff,
   }
@@ -390,6 +395,7 @@ export function renderBalanceTable(a: BalanceSheet, b: BalanceSheet): string {
   const liab = [
     row('الذمم الدائنة (موردون)', money(a.accountsPayable), money(b.accountsPayable)),
     (a.advancesReceived || b.advancesReceived) ? row('دفعات مقدمة من العملاء', money(a.advancesReceived), money(b.advancesReceived)) : '',
+    (a.loans || b.loans) ? row('القروض والتمويل', money(a.loans), money(b.loans)) : '',
     row('ضريبة القيمة المضافة المستحقة', money(a.vatDue), money(b.vatDue)),
     row('الزكاة المستحقة', money(a.zakatDue), money(b.zakatDue)),
     row('مخصص نهاية الخدمة', money(a.eosProvision), money(b.eosProvision)),
@@ -428,6 +434,7 @@ export function renderCashFlowTable(a: CashFlow, b: CashFlow): string {
     + sec('الأنشطة التمويلية')
     + row('التوزيعات/المسحوبات', money(a.financingDistributions), money(b.financingDistributions))
     + row('حركة حساب المالك الجاري', money(a.ownerAccountMovement), money(b.ownerAccountMovement))
+    + (a.changeLoans || b.changeLoans ? row('التغيّر في القروض والتمويل', money(a.changeLoans), money(b.changeLoans)) : '')
     + row('صافي النقد من التمويل', money(a.financingCash), money(b.financingCash), true)
     + sec('مطابقة النقد')
     + row('صافي التغيّر في النقد', money(a.netCashChange), money(b.netCashChange))
