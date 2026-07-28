@@ -68,7 +68,7 @@ export async function generateFileContent(
   const prompt = (isIntl
     ? 'You are an expert preparing a professional ' + docType + ' at Holol Almurdi Financial Consulting (Murdi). Write the entire content in formal institutional ENGLISH. '
       + 'Address it to ' + targetAudience + '. Use the same 6-section JSON structure and rules described below, but write every section in professional English, no Arabic. '
-      + 'Keep the exact same JSON keys.\\n\\n'
+      + 'Keep the exact same JSON keys. Also provide companyNameEn (establishment name in English/transliteration), cityEn (English city e.g. Riyadh), sectorEn (English sector e.g. Trade).\\n\\n'
     : '')
     + 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
     + 'اكتب محتوى ' + docType + ' متكامل ومقنع موجّه إلى ' + targetAudience + '.\\n\\n'
@@ -91,7 +91,7 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' }, companyNameEn: { type: 'string' }, cityEn: { type: 'string' }, sectorEn: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
@@ -119,6 +119,10 @@ export function buildFileHTML(
 ): string {
   const isInv = track === 'investment';
   const intl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
+  const cAny = content as unknown as Record<string, unknown>;
+  const nameOut = intl && cAny.companyNameEn ? String(cAny.companyNameEn) : client.companyName;
+  const cityOut = intl && cAny.cityEn ? String(cAny.cityEn) : (client.city || '');
+  const sectorOut = intl && cAny.sectorEn ? String(cAny.sectorEn) : (client.sector || '');
   const dirAttr = intl ? 'ltr' : 'rtl';
   const langAttr = intl ? 'en' : 'ar';
   const title = intl
@@ -134,8 +138,8 @@ export function buildFileHTML(
     '<div class="sec"><h2>' + t + '</h2><p>' + String(body).replace(/\\n/g, '<br>') + '</p></div>';
 
   const facts: ([string, string] | null)[] = [
-    client.sector ? [L.sector, client.sector] as [string, string] : null,
-    client.city ? [L.city, client.city] as [string, string] : null,
+    sectorOut ? [L.sector, sectorOut] as [string, string] : null,
+    cityOut ? [L.city, cityOut] as [string, string] : null,
     client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
     client.readinessScore ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
@@ -143,7 +147,7 @@ export function buildFileHTML(
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
 
   return '<!DOCTYPE html><html dir="' + dirAttr + '" lang="' + langAttr + '"><head><meta charset="utf-8">'
-    + '<title>' + title + ' — ' + client.companyName + '</title>'
+    + '<title>' + title + ' — ' + nameOut + '</title>'
     + '<style>'
     + '@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap");'
     + '*{margin:0;padding:0;box-sizing:border-box;font-family:Cairo,Arial,sans-serif}'
@@ -170,7 +174,7 @@ export function buildFileHTML(
     + '<div class="cover"><div class="brand">' + L.brand + '</div>'
     + '<div class="line"></div>'
     + '<h1>' + title + '</h1>'
-    + '<div class="company">' + client.companyName + '</div>'
+    + '<div class="company">' + nameOut + '</div>'
     + '<div class="date">' + today + '</div></div>'
     + '<div class="content">'
     + (factsHTML ? '<div class="facts">' + factsHTML + '</div>' : '')
@@ -181,6 +185,6 @@ export function buildFileHTML(
     + section(L.strengths, content.strengths)
     + section(L.closing, content.closing)
     + '<div class="footer"><b>حلول المرضي للاستشارات المالية</b><br>'
-    + 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>'
+    + (intl ? 'Prepared by Holol Almurdi Financial Consulting per the methodology of Dr. Abdulhakim Almurdi. All rights reserved.</div>' : 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>')
     + '</div></div></body></html>';
 }
