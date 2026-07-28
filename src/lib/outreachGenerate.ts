@@ -166,7 +166,7 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
     },
     body: JSON.stringify({
       model: MODEL_WRITER,
-      max_tokens: 800,
+      max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -184,10 +184,14 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
   const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
   const m = clean.match(/\{[\s\S]*\}/);
   if (!m) {
-    throw new Error('تعذّر تحليل رد التوليد');
+    throw new Error('تعذّر تحليل رد التوليد — لا يوجد JSON. أول 200 حرف: ' + clean.slice(0, 200));
   }
-
-  const parsed = JSON.parse(m[0]);
+  let parsed;
+  try {
+    parsed = JSON.parse(m[0]);
+  } catch (e) {
+    throw new Error('فشل JSON.parse: ' + (e instanceof Error ? e.message : String(e)) + ' — المقتطف: ' + m[0].slice(0, 200));
+  }
   return {
     subject: String(parsed.subject || 'استفسار بخصوص أحد عملائنا').trim(),
     body: String(parsed.body || '').trim(),
