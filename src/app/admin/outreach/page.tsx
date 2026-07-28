@@ -7,6 +7,7 @@ type Msg = {
   id: string; entity_name: string; entity_email: string | null;
   entity_language: string; track: string; subject: string;
   message_body: string; status: string; error_note: string | null;
+  reply_status?: string | null; followup_stage?: number | null;
   alt_contact: string | null; contact_method: string | null;
 };
 
@@ -327,18 +328,37 @@ export default function OutreachPage() {
                       style={{ padding:'8px 16px', borderRadius:8, background:C.ink, color:'#fff', fontWeight:900, border:'none', fontSize:12.5, marginBottom:8, cursor:'pointer' }}>📋 انسخ الرسالة للتقديم أونلاين</button>
                   )}
                   <div style={{ fontSize:13, color:'#333', whiteSpace:'pre-wrap', lineHeight:1.7, background:C.bg, padding:12, borderRadius:8, marginBottom:10 }}>{m.message_body}</div>
-                  {m.status !== 'مُرسلة' && (
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                      {m.status !== 'معتمدة' && (
-                        <button onClick={() => act(m.id, 'approve')}
-                          style={{ padding:'8px 18px', borderRadius:8, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>✅ اعتمد</button>
-                      )}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                    {m.status !== 'مُرسلة' && m.status !== 'معتمدة' && (
+                      <button onClick={() => act(m.id, 'approve')}
+                        style={{ padding:'8px 18px', borderRadius:8, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>✅ اعتمد</button>
+                    )}
+                    {m.status === 'معتمدة' && (
+                      <button onClick={() => act(m.id, 'contacted')}
+                        style={{ padding:'8px 18px', borderRadius:8, background:'#2E5E8A', color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>📤 سجّلت التواصل</button>
+                    )}
+                    {m.status === 'مُرسلة' && m.reply_status === 'awaiting' && (<>
+                      <span style={{ fontSize:12.5, fontWeight:900, color:'#9A7B2E' }}>⏳ بانتظار رد الجهة</span>
+                      <button onClick={() => act(m.id, 'reply', { reply_status: 'replied' })}
+                        style={{ padding:'8px 16px', borderRadius:8, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>💬 ردّت</button>
+                      <button onClick={() => act(m.id, 'reply', { reply_status: 'declined' })}
+                        style={{ padding:'8px 16px', borderRadius:8, background:'#FDECEA', color:'#C0392B', fontWeight:900, border:'none', fontSize:13 }}>❌ اعتذرت</button>
+                    </>)}
+                    {m.status === 'مُرسلة' && m.reply_status === 'replied' && (
+                      <span style={{ fontSize:12.5, fontWeight:900, color:C.green }}>💬 ردّت الجهة</span>
+                    )}
+                    {m.status === 'مُرسلة' && m.reply_status === 'declined' && (
+                      <span style={{ fontSize:12.5, fontWeight:900, color:'#C0392B' }}>❌ اعتذرت الجهة</span>
+                    )}
+                    {m.status !== 'مُرسلة' && (
                       <button onClick={() => { setEditId(m.id); setEditBody(m.message_body); setEditEmail(m.entity_email||''); }}
                         style={{ padding:'8px 18px', borderRadius:8, background:C.mint, color:C.ink, fontWeight:900, border:'none', fontSize:13 }}>✏️ عدّل</button>
+                    )}
+                    {m.status !== 'مُرسلة' && (
                       <button onClick={() => act(m.id, 'reject')}
                         style={{ padding:'8px 18px', borderRadius:8, background:'#FDECEA', color:'#C0392B', fontWeight:900, border:'none', fontSize:13 }}>❌ تجاهل</button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </>
               )}
             </div>
