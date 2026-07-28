@@ -109,7 +109,8 @@ export default function GoalPage() {
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
     );
-    const path = companyId + '/' + contractId + '_' + Date.now() + '_' + file.name;
+    const safeName = (file.name || 'file.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_');
+    const path = companyId + '/' + contractId + '_' + Date.now() + '_' + safeName;
     const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
     if (upErr) { alert('تعذّر رفع الملف: ' + (upErr.message || JSON.stringify(upErr))); return; }
     const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
