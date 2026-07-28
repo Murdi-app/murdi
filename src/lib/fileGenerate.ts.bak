@@ -26,9 +26,6 @@ export interface GeneratedFile {
   theRequest: string;
   strengths: string;
   closing: string;
-  companyNameEn?: string;
-  cityEn?: string;
-  sectorEn?: string;
 }
 
 export async function generateFileContent(
@@ -58,7 +55,6 @@ export async function generateFileContent(
     client.liabilities ? 'إجمالي الالتزامات: ' + num(client.liabilities) : '',
     client.valuationEstimate ? 'التقييم التقديري: ' + client.valuationEstimate : '',
     client.readinessScore ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
-    client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
   ].filter(Boolean).join('\\n');
 
   const reqLine = isIntl
@@ -72,7 +68,7 @@ export async function generateFileContent(
   const prompt = (isIntl
     ? 'You are an expert preparing a professional ' + docType + ' at Holol Almurdi Financial Consulting (Murdi). Write the entire content in formal institutional ENGLISH. '
       + 'Address it to ' + targetAudience + '. Use the same 6-section JSON structure and rules described below, but write every section in professional English, no Arabic. '
-      + 'Keep the exact same JSON keys. Also provide companyNameEn (establishment name in English/transliteration), cityEn (English city e.g. Riyadh), sectorEn (English sector e.g. Trade).\\n\\n'
+      + 'Keep the exact same JSON keys.\\n\\n'
     : '')
     + 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
     + 'اكتب محتوى ' + docType + ' متكامل ومقنع موجّه إلى ' + targetAudience + '.\\n\\n'
@@ -86,8 +82,6 @@ export async function generateFileContent(
     + '6. closing: خاتمة مهنية تدعو للتواصل ودراسة الملف.\\n\\n'
     + 'ضوابط: لا تختلق أرقاماً، لا ضمانات، لا ذكر لأي ذكاء اصطناعي، أسلوب عربي مؤسسي، المحتوى منسوب لحلول المرضي.\\n\\n'
     + 'أرجع JSON نقي فقط بدون أي نص قبله أو بعده:\\n'
-    + 'IMPORTANT: do not compare this client to other clients, no ranking claims, no invented facts beyond the figures given. '
-    + 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. '
     + '{"executiveSummary":"...","companyOverview":"...","financialPosition":"...","theRequest":"...","strengths":"...","closing":"..."}';
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -97,15 +91,22 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' }, companyNameEn: { type: 'string' }, cityEn: { type: 'string' }, sectorEn: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing','companyNameEn','cityEn','sectorEn'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
 
   const data = await res.json();
-  const toolUse = (data.content || []).find((b: { type: string; input?: unknown }) => b.type === 'tool_use') as { input?: Record<string, unknown> } | undefined;
-  if (!toolUse || !toolUse.input) throw new Error('no tool output stop=' + (data.stop_reason || '?'));
-  const parsed = toolUse.input;
+  const text = (data.content || [])
+    .filter((b: { type: string }) => b.type === 'text')
+    .map((b: { text: string }) => b.text)
+    .join('\\n');
+
+  const clean = text.replace(/```json|```/g, '').trim();
+  const mt = clean.match(/\\{[\\s\\S]*\\}/);
+  if (!mt) throw new Error('تعذّر تحليل محتوى الملف');
+
+  const parsed = JSON.parse(mt[0]);
   return {
     executiveSummary: String(parsed.executiveSummary || '').trim(),
     companyOverview: String(parsed.companyOverview || '').trim(),
@@ -113,74 +114,18 @@ export async function generateFileContent(
     theRequest: String(parsed.theRequest || '').trim(),
     strengths: String(parsed.strengths || '').trim(),
     closing: String(parsed.closing || '').trim(),
-    companyNameEn: parsed.companyNameEn ? String(parsed.companyNameEn).trim() : undefined,
-    cityEn: parsed.cityEn ? String(parsed.cityEn).trim() : undefined,
-    sectorEn: parsed.sectorEn ? String(parsed.sectorEn).trim() : undefined,
   };
 }
 
 // ─── قالب الملف الاحترافي (HTML جاهز للطباعة/حفظ PDF) ───────────
-
-const FIN_DICT: Record<string, string> = {
-  'البند': 'Item', 'السنة الأولى (ريال)': 'Year 1 (SAR)', 'السنة الثانية (ريال)': 'Year 2 (SAR)',
-  'الإيرادات': 'Revenue', 'تكلفة النشاط (البضاعة/الخدمة)': 'Cost of Sales', 'مجمل الربح': 'Gross Profit',
-  'المصروفات التشغيلية': 'Operating Expenses', 'مصروف الإهلاك': 'Depreciation Expense',
-  'الربح التشغيلي': 'Operating Profit', 'الزكاة': 'Zakat', 'صافي الربح': 'Net Profit',
-  'النقد وما في حكمه (البنوك)': 'Cash and Cash Equivalents', 'الذمم المدينة (صافي)': 'Accounts Receivable (Net)',
-  'مخصص الديون المشكوك فيها': 'Allowance for Doubtful Debts', 'المخزون': 'Inventory',
-  'أعمال تحت التنفيذ': 'Work in Progress', 'أصول تشغيلية للنشاط': 'Operating Assets',
-  'الأصول الثابتة (صافي)': 'Fixed Assets (Net)', 'إجمالي الأصول': 'Total Assets',
-  'الذمم الدائنة (موردون)': 'Accounts Payable', 'القروض والتمويل': 'Loans and Financing',
-  'دفعات مقدمة من العملاء': 'Customer Advances', 'إيراد مؤجل': 'Deferred Revenue',
-  'ضريبة القيمة المضافة المستحقة': 'VAT Payable', 'الزكاة المستحقة': 'Zakat Payable',
-  'مخصص نهاية الخدمة': 'End of Service Provision', 'إجمالي الالتزامات': 'Total Liabilities',
-  'رأس المال': 'Capital', 'الأرباح المرحّلة (ختامية)': 'Retained Earnings (Closing)',
-  'الأرباح المرحّلة — الختامية': 'Retained Earnings — Closing', 'الأرباح المرحّلة — الافتتاحية': 'Retained Earnings — Opening',
-  'حساب المالك الجاري': "Owner's Current Account", 'حساب المالك الجاري (دائن)': "Owner's Current Account (Credit)",
-  'حساب المالك الجاري (مدين)': "Owner's Current Account (Debit)", 'حركة حساب المالك الجاري': "Movement in Owner's Current Account",
-  'إجمالي حقوق الملكية': 'Total Equity', 'إجمالي الالتزامات وحقوق الملكية': 'Total Liabilities and Equity',
-  '(+) الإهلاك (غير نقدي)': '(+) Depreciation (Non-Cash)', '(+) صافي ربح السنة': '(+) Net Profit for the Year',
-  '(−) التوزيعات': '(−) Distributions', 'التوزيعات/المسحوبات': 'Distributions / Drawings',
-  'التغيّر في الذمم المدينة': 'Change in Accounts Receivable', 'التغيّر في المخزون': 'Change in Inventory',
-  'التغيّر في الذمم الدائنة': 'Change in Accounts Payable', 'التغيّر في أعمال تحت التنفيذ': 'Change in Work in Progress',
-  'التغيّر في الدفعات المقدمة': 'Change in Customer Advances', 'التغيّر في الإيراد المؤجل': 'Change in Deferred Revenue',
-  'التغيّر في ضريبة القيمة المضافة': 'Change in VAT', 'التغيّر في الزكاة المستحقة': 'Change in Zakat Payable',
-  'التغيّر في مخصص نهاية الخدمة': 'Change in End of Service Provision',
-  'التغيّر في أصول النشاط التشغيلية': 'Change in Operating Assets', 'التغيّر في القروض والتمويل': 'Change in Loans and Financing',
-  'صافي النقد من التشغيل': 'Net Cash from Operations', 'صافي الحركة في الأصول الثابتة': 'Net Movement in Fixed Assets',
-  'صافي النقد من الاستثمار': 'Net Cash from Investing', 'صافي النقد من التمويل': 'Net Cash from Financing',
-  'صافي التغيّر في النقد': 'Net Change in Cash', 'النقد الافتتاحي': 'Opening Cash',
-  'النقد الختامي (محسوب)': 'Closing Cash (Computed)', 'النقد الختامي بالدفاتر': 'Closing Cash per Books',
-  'فرق للمطابقة': 'Reconciliation Difference',
-};
-
-export function extractStatementTables(raw: string, toEnglish: boolean): string {
-  if (!raw) return '';
-  const tables = raw.match(/<table[\s\S]*?<\/table>/g);
-  if (!tables || tables.length === 0) return '';
-  let html = tables.join('');
-  if (toEnglish) {
-    for (const [ar, en] of Object.entries(FIN_DICT)) {
-      html = html.split('>' + ar + '<').join('>' + en + '<');
-    }
-    html = html.replace(/dir="rtl"/g, 'dir="ltr"').replace(/text-align:right/g, 'text-align:left');
-  }
-  return html;
-}
-
 export function buildFileHTML(
   client: FileClientData,
   content: GeneratedFile,
   track: 'funding' | 'investment',
-  region?: string,
-  statementsRaw?: string
+  region?: string
 ): string {
   const isInv = track === 'investment';
   const intl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
-  const cAny = content as unknown as Record<string, unknown>;
-  const nameOut = intl && cAny.companyNameEn ? String(cAny.companyNameEn) : client.companyName;
-  const cityOut = intl && cAny.cityEn ? String(cAny.cityEn) : (client.city || '');
-  const sectorOut = intl && cAny.sectorEn ? String(cAny.sectorEn) : (client.sector || '');
   const dirAttr = intl ? 'ltr' : 'rtl';
   const langAttr = intl ? 'en' : 'ar';
   const title = intl
@@ -196,8 +141,8 @@ export function buildFileHTML(
     '<div class="sec"><h2>' + t + '</h2><p>' + String(body).replace(/\\n/g, '<br>') + '</p></div>';
 
   const facts: ([string, string] | null)[] = [
-    sectorOut ? [L.sector, sectorOut] as [string, string] : null,
-    cityOut ? [L.city, cityOut] as [string, string] : null,
+    client.sector ? [L.sector, client.sector] as [string, string] : null,
+    client.city ? [L.city, client.city] as [string, string] : null,
     client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
     client.readinessScore ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
@@ -205,7 +150,7 @@ export function buildFileHTML(
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
 
   return '<!DOCTYPE html><html dir="' + dirAttr + '" lang="' + langAttr + '"><head><meta charset="utf-8">'
-    + '<title>' + title + ' — ' + nameOut + '</title>'
+    + '<title>' + title + ' — ' + client.companyName + '</title>'
     + '<style>'
     + '@import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap");'
     + '*{margin:0;padding:0;box-sizing:border-box;font-family:Cairo,Arial,sans-serif}'
@@ -232,7 +177,7 @@ export function buildFileHTML(
     + '<div class="cover"><div class="brand">' + L.brand + '</div>'
     + '<div class="line"></div>'
     + '<h1>' + title + '</h1>'
-    + '<div class="company">' + nameOut + '</div>'
+    + '<div class="company">' + client.companyName + '</div>'
     + '<div class="date">' + today + '</div></div>'
     + '<div class="content">'
     + (factsHTML ? '<div class="facts">' + factsHTML + '</div>' : '')
@@ -242,8 +187,7 @@ export function buildFileHTML(
     + section(L.req, content.theRequest)
     + section(L.strengths, content.strengths)
     + section(L.closing, content.closing)
-    + (() => { const t = extractStatementTables(statementsRaw || '', intl); return t ? '<div class="sec"><h2>' + (intl ? 'Financial Statements' : 'القوائم المالية') + '</h2>' + t + '</div>' : ''; })()
-    + '<div class="footer"><b>' + L.brand + '</b><br>'
-    + (intl ? 'Prepared by Holol Almurdi Financial Consulting per the methodology of Dr. Abdulhakim Almurdi. All rights reserved.</div>' : 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>')
+    + '<div class="footer"><b>حلول المرضي للاستشارات المالية</b><br>'
+    + 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>'
     + '</div></div></body></html>';
 }

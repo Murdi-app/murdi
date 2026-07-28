@@ -33,6 +33,18 @@ export async function POST(req: Request) {
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
 
+  // القوائم المالية المُنجزة (إن وُجدت)
+  let statementsHtml = '';
+  try {
+    const { data: srv } = await admin.from('service_requests')
+      .select('admin_deliverable, service_title, status, updated_at')
+      .eq('company_id', companyId)
+      .not('admin_deliverable', 'is', null)
+      .order('updated_at', { ascending: false });
+    const fin = (srv || []).find((x) => String(x.service_title || '').includes('قوائم'));
+    if (fin && fin.admin_deliverable) statementsHtml = String(fin.admin_deliverable);
+  } catch {}
+
   // بيانات الشركة
   const { data: company } = await admin
     .from('companies')
@@ -94,7 +106,7 @@ export async function POST(req: Request) {
 
   try {
     const content = await generateFileContent(client, track as 'funding' | 'investment', region);
-    const html = buildFileHTML(client, content, track as 'funding' | 'investment', region);
+    const html = buildFileHTML(client, content, track as 'funding' | 'investment', region, statementsHtml);
     return NextResponse.json({ ok: true, html });
   } catch (e) {
     return NextResponse.json({ error: 'تعذر التوليد: ' + String(e).slice(0, 120) }, { status: 500 });
