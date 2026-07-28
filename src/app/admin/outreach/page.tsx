@@ -168,13 +168,12 @@ export default function OutreachPage() {
       if (action === 'update') return { ...m, message_body: String(extra.message_body ?? m.message_body), entity_email: (extra.entity_email as string) ?? m.entity_email };
       return m;
     }));
-    if (action === 'update') setEditId('');
     const r = await fetch('/api/admin/outreach/manage', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action, ...extra }),
     });
     const d = await r.json();
-    if (d.ok) flash('✓ تم');
+    if (d.ok) { flash('✓ تم'); if (action === 'update') setEditId(''); }
     else { setMsgs(prev); flash(d.error || 'خطأ'); }
   };
 
