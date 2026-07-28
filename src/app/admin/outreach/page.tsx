@@ -48,6 +48,11 @@ export default function OutreachPage() {
   }, []);
   useEffect(() => {
     if (!companyId) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('company_id') !== companyId) {
+      u.searchParams.set('company_id', companyId);
+      window.history.replaceState(null, '', u.toString());
+    }
     fetch('/api/admin/outreach/manage?company_id=' + companyId)
       .then(r => r.json()).then(d => { if (d.ok) setMsgs(d.messages); }).catch(() => {});
   }, [companyId]);
