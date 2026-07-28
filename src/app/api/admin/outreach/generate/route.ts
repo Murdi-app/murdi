@@ -88,7 +88,7 @@ export async function POST(req: Request) {
   if (offset === 0) await admin.from('outreach_messages').delete().eq('company_id', companyId).eq('status', 'مسودة');
 
   // ٤) نولّد رسالة لكل جهة (نعالجها بدفعات صغيرة لتجنّب الضغط)
-  const results: { provider: string; ok: boolean; confidence?: string }[] = [];
+  const results: { provider: string; ok: boolean; confidence?: string; error?: string }[] = [];
   const BATCH = 3;
   for (let i = 0; i < matches.length; i += BATCH) {
     const slice = matches.slice(i, i + BATCH);
@@ -120,8 +120,8 @@ export async function POST(req: Request) {
             : null,
         });
         results.push({ provider: entity.provider, ok: true, confidence: gen.emailConfidence });
-      } catch {
-        results.push({ provider: entity.provider, ok: false });
+      } catch (e) {
+        results.push({ provider: entity.provider, ok: false, error: e instanceof Error ? e.message : String(e) });
       }
     }));
   }
