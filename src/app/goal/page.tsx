@@ -349,7 +349,7 @@ export default function GoalPage() {
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">🏦 الدفع عبر تحويل بنكي</button>
                             </div>
                           )}
-                          {req.status === 'delivered' && req.deliverable && (
+                          {(req.status === 'delivered' || req.status === 'completed') && req.deliverable && (
                             <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + ((it as any).display || it.title) + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
                           )}
                         </div>
