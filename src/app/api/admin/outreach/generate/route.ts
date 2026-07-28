@@ -28,10 +28,12 @@ export async function POST(req: Request) {
 
   let companyId = '';
   let track = '';
+  let offset = 0;
   try {
     const body = await req.json();
     companyId = String(body.company_id || '');
     track = String(body.track || '');
+    offset = Number(body.offset) || 0;
   } catch {
     return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
   }
@@ -72,16 +74,18 @@ export async function POST(req: Request) {
   };
 
   // ٢) الجهات المطابقة (نفلتر حسب المسار إن طُلب)
-  let q = admin.from('match_results').select('*').eq('company_id', companyId);
+  const PAGE = 10;
+  let q = admin.from('match_results').select('*', { count: 'exact' }).eq('company_id', companyId);
   if (track) q = q.eq('track', track);
-  const { data: matches, error: mErr } = await q;
+  q = q.order('fit', { ascending: false }).range(offset, offset + PAGE - 1);
+  const { data: matches, error: mErr, count: totalCount } = await q;
   if (mErr) return NextResponse.json({ error: 'تعذّر جلب الجهات' }, { status: 500 });
   if (!matches || matches.length === 0) {
     return NextResponse.json({ error: 'لا توجد جهات مطابقة لهذا العميل' }, { status: 404 });
   }
 
   // ٣) نتجنّب التكرار: نحذف المسودات السابقة لنفس العميل (نبدأ نظيف)
-  await admin.from('outreach_messages').delete().eq('company_id', companyId).eq('status', 'مسودة');
+  if (offset === 0) await admin.from('outreach_messages').delete().eq('company_id', companyId).eq('status', 'مسودة');
 
   // ٤) نولّد رسالة لكل جهة (نعالجها بدفعات صغيرة لتجنّب الضغط)
   const results: { provider: string; ok: boolean; confidence?: string }[] = [];
@@ -123,11 +127,17 @@ export async function POST(req: Request) {
   }
 
   const okCount = results.filter(r => r.ok).length;
+  const grandTotal = totalCount || matches.length;
+  const processedSoFar = offset + matches.length;
+  const remaining = Math.max(0, grandTotal - processedSoFar);
   return NextResponse.json({
     ok: true,
-    total: matches.length,
-    generated: okCount,
-    failed: matches.length - okCount,
+    total: grandTotal,
+    batchGenerated: okCount,
+    batchFailed: matches.length - okCount,
+    processedSoFar,
+    remaining,
+    nextOffset: remaining > 0 ? processedSoFar : null,
     results,
   });
 }
