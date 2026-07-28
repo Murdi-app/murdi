@@ -100,7 +100,8 @@ export default function OutreachPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL as string,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
       );
-      const path = companyId.trim() + '/outreach_' + lang + '_' + Date.now() + '_' + file.name;
+      const safeName = (file.name || 'file.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_');
+      const path = companyId.trim() + '/outreach_' + lang + '_' + Date.now() + '_' + safeName;
       const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
       if (upErr) { flash('تعذّر الرفع: ' + upErr.message); setUploading(false); return; }
       const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
