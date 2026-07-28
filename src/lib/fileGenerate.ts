@@ -91,27 +91,15 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
 
   const data = await res.json();
-  const text = (data.content || [])
-    .filter((b: { type: string }) => b.type === 'text')
-    .map((b: { text: string }) => b.text)
-    .join('\\n');
-
-  const clean = text.replace(/```json|```/g, '').trim();
-  const mt = clean.match(/\\{[\\s\\S]*\\}/);
-  if (!mt) throw new Error('NO_JSON len=' + text.length + ' head=' + clean.slice(0, 300));
-
-  let parsed;
-  try {
-    parsed = JSON.parse(mt[0]);
-  } catch (e) {
-    throw new Error('JSON.parse fail: ' + (e instanceof Error ? e.message : String(e)) + ' | ' + mt[0].slice(0, 200));
-  }
+  const toolUse = (data.content || []).find((b: { type: string; input?: unknown }) => b.type === 'tool_use') as { input?: Record<string, unknown> } | undefined;
+  if (!toolUse || !toolUse.input) throw new Error('no tool output stop=' + (data.stop_reason || '?'));
+  const parsed = toolUse.input;
   return {
     executiveSummary: String(parsed.executiveSummary || '').trim(),
     companyOverview: String(parsed.companyOverview || '').trim(),
