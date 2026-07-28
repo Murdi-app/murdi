@@ -196,6 +196,7 @@ export default function AdminServicesPage() {
       // نولّد نسختين: عربية (محلي) + إنجليزية (دولي). احفظ كل واحدة PDF وارفعها في قسم المخاطبة.
       const regions = ['محلي', 'دولي']
       let okCount = 0
+      let lastErr = ''
       for (const region of regions) {
         const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region }) })
         const d = await res.json()
@@ -209,9 +210,11 @@ export default function AdminServicesPage() {
           const w = window.open('', '_blank')
           if (w) { w.document.write(d.html); w.document.close() }
           okCount++
+        } else if (!d.ok) {
+          lastErr = d.error || ('HTTP ' + res.status)
         }
       }
-      if (okCount === 0) alert('تعذّر توليد الملفات')
+      if (okCount === 0) alert('تعذّر توليد الملفات: ' + (lastErr || 'سبب غير معروف'))
     } catch {
       alert('تعذّر الاتصال بالخادم')
     }
