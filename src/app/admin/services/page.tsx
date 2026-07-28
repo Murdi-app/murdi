@@ -207,14 +207,23 @@ export default function AdminServicesPage() {
           return
         }
         if (d.ok && d.html) {
-          const w = window.open('', '_blank')
-          if (w) { w.document.write(d.html); w.document.close() }
+          const blob = new Blob([d.html], { type: 'text/html;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const w = window.open(url, '_blank')
+          if (!w) {
+            const a = document.createElement('a')
+            a.href = url; a.target = '_blank'; a.rel = 'noopener'
+            a.textContent = 'افتح ملف ' + region
+            a.style.cssText = 'display:block;margin:8px 0;color:#1A3D34;font-weight:900;text-decoration:underline'
+            document.body.appendChild(a)
+          }
           okCount++
         } else if (!d.ok) {
           lastErr = d.error || ('HTTP ' + res.status)
         }
       }
-      if (okCount === 0) alert('تعذّر توليد الملفات: ' + (lastErr || 'سبب غير معروف'))
+      if (okCount > 0) alert('✅ تم توليد ' + okCount + ' ملف بنجاح. إن لم يفتح تلقائياً، اسمح بالنوافذ المنبثقة من murdi.sa أو استخدم الرابط أسفل الصفحة، ثم احفظه PDF وارفعه في قسم المخاطبة.')
+      else alert('تعذّر توليد الملفات: ' + (lastErr || 'سبب غير معروف'))
     } catch {
       alert('تعذّر الاتصال بالخادم')
     }
