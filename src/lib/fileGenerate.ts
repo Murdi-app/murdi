@@ -91,7 +91,7 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
@@ -104,7 +104,7 @@ export async function generateFileContent(
 
   const clean = text.replace(/```json|```/g, '').trim();
   const mt = clean.match(/\\{[\\s\\S]*\\}/);
-  if (!mt) throw new Error('تعذّر تحليل محتوى الملف');
+  if (!mt) throw new Error('NO_JSON len=' + text.length + ' head=' + clean.slice(0, 300));
 
   let parsed;
   try {
