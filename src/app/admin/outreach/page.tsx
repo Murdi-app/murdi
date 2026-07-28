@@ -158,13 +158,24 @@ export default function OutreachPage() {
   };
 
   const act = async (id: string, action: string, extra: Record<string, unknown> = {}) => {
+    const prev = msgs;
+    setMsgs(cur => cur.map(m => {
+      if (m.id !== id) return m;
+      if (action === 'approve') return { ...m, status: 'معتمدة' };
+      if (action === 'reject') return { ...m, status: 'مرفوضة' };
+      if (action === 'contacted') return { ...m, status: 'مُرسلة', reply_status: 'awaiting' };
+      if (action === 'reply') return { ...m, reply_status: String(extra.reply_status || '') };
+      if (action === 'update') return { ...m, message_body: String(extra.message_body ?? m.message_body), entity_email: (extra.entity_email as string) ?? m.entity_email };
+      return m;
+    }));
+    if (action === 'update') setEditId('');
     const r = await fetch('/api/admin/outreach/manage', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action, ...extra }),
     });
     const d = await r.json();
-    if (d.ok) { flash('✓ تم'); load(companyId.trim()); if (action === 'update') setEditId(''); }
-    else flash(d.error || 'خطأ');
+    if (d.ok) flash('✓ تم');
+    else { setMsgs(prev); flash(d.error || 'خطأ'); }
   };
 
   const send = async () => {
