@@ -91,7 +91,7 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' }, companyNameEn: { type: 'string' }, cityEn: { type: 'string' }, sectorEn: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 8000, tools: [{ name: 'build_file', description: 'file content', input_schema: { type: 'object', properties: { executiveSummary: { type: 'string' }, companyOverview: { type: 'string' }, financialPosition: { type: 'string' }, theRequest: { type: 'string' }, strengths: { type: 'string' }, closing: { type: 'string' }, companyNameEn: { type: 'string' }, cityEn: { type: 'string' }, sectorEn: { type: 'string' } }, required: ['executiveSummary','companyOverview','financialPosition','theRequest','strengths','closing','companyNameEn','cityEn','sectorEn'] } }], tool_choice: { type: 'tool', name: 'build_file' }, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
@@ -184,7 +184,7 @@ export function buildFileHTML(
     + section(L.req, content.theRequest)
     + section(L.strengths, content.strengths)
     + section(L.closing, content.closing)
-    + '<div class="footer"><b>حلول المرضي للاستشارات المالية</b><br>'
+    + '<div class="footer"><b>' + L.brand + '</b><br>'
     + (intl ? 'Prepared by Holol Almurdi Financial Consulting per the methodology of Dr. Abdulhakim Almurdi. All rights reserved.</div>' : 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>')
     + '</div></div></body></html>';
 }
