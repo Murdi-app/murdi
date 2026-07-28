@@ -28,7 +28,8 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
   let companyId = '', track = 'funding', region = '';
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = b.track === 'investment' ? 'investment' : 'funding'; region = String(b.region || ''); }
+  let fundingAmount: number | undefined;
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = b.track === 'investment' ? 'investment' : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
 
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
     sector: company.sector || undefined,
     city: company.city || undefined,
     goal: company.goal || undefined,
+    fundingAmount,
     revenue: dn.revenue ?? undefined,
     liabilities: dn.remaining ?? undefined,
     readinessScore: rr?.readiness_score ?? undefined,
