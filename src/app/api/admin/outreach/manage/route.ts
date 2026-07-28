@@ -72,6 +72,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === 'contacted') {
+    const { error } = await admin.from('outreach_messages')
+      .update({ status: 'مُرسلة', reply_status: 'awaiting', last_sent_at: new Date().toISOString(), next_followup_at: new Date(Date.now() + 5*24*60*60*1000).toISOString(), updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) return NextResponse.json({ error: 'تعذّر تسجيل التواصل' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === 'reply') {
+    const rs = String((body as Record<string, unknown>).reply_status || '');
+    if (!['replied', 'declined', 'closed', 'awaiting'].includes(rs)) return NextResponse.json({ error: 'حالة رد غير صالحة' }, { status: 400 });
+    const { error } = await admin.from('outreach_messages')
+      .update({ reply_status: rs, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) return NextResponse.json({ error: 'تعذّر تحديث الرد' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === 'update') {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (typeof body.subject === 'string') patch.subject = body.subject;
