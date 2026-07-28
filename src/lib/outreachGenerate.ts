@@ -136,6 +136,7 @@ ${client.goal ? 'الهدف: ' + client.goal : ''}
 ═══ الجهة المستهدفة ═══
 اسم الجهة: ${entity.provider}
 المنتج/الخدمة: ${entity.product}
+طبيعة الجهة: ${entityContext}
 ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''}
 
 ═══ ضوابط الكتابة (مهمة) ═══
