@@ -152,6 +152,10 @@ const FIN_DICT: Record<string, string> = {
   'صافي التغيّر في النقد': 'Net Change in Cash', 'النقد الافتتاحي': 'Opening Cash',
   'النقد الختامي (محسوب)': 'Closing Cash (Computed)', 'النقد الختامي بالدفاتر': 'Closing Cash per Books',
   'فرق للمطابقة': 'Reconciliation Difference',
+  'الأنشطة التشغيلية': 'Operating Activities',
+  'الأنشطة الاستثمارية': 'Investing Activities',
+  'الأنشطة التمويلية': 'Financing Activities',
+  'مطابقة النقد': 'Cash Reconciliation',
 };
 
 export function extractStatementTables(raw: string, toEnglish: boolean): string {
