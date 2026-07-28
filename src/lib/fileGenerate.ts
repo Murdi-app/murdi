@@ -85,6 +85,8 @@ export async function generateFileContent(
     + '6. closing: خاتمة مهنية تدعو للتواصل ودراسة الملف.\\n\\n'
     + 'ضوابط: لا تختلق أرقاماً، لا ضمانات، لا ذكر لأي ذكاء اصطناعي، أسلوب عربي مؤسسي، المحتوى منسوب لحلول المرضي.\\n\\n'
     + 'أرجع JSON نقي فقط بدون أي نص قبله أو بعده:\\n'
+    + 'IMPORTANT: do not compare this client to other clients, no ranking claims, no invented facts beyond the figures given. '
+    + 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. '
     + '{"executiveSummary":"...","companyOverview":"...","financialPosition":"...","theRequest":"...","strengths":"...","closing":"..."}';
 
   const res = await fetch(ANTHROPIC_URL, {
