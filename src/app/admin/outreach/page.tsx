@@ -48,6 +48,8 @@ export default function OutreachPage() {
   }
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [progress, setProgress] = useState('');
   const [note, setNote] = useState('');
   const [editId, setEditId] = useState('');
   const [editBody, setEditBody] = useState('');
@@ -117,16 +119,22 @@ export default function OutreachPage() {
     else flash(d.error || 'خطأ');
   };
 
-  const generate = async () => {
+  const generate = async (offset = 0) => {
     if (!companyId.trim()) { flash('أدخل معرّف العميل'); return; }
-    setBusy(true); flash('جارٍ التوليد... قد يستغرق دقيقة');
+    setBusy(true);
+    flash(offset === 0 ? 'جارٍ توليد أفضل ١٠ جهات...' : 'جارٍ توليد الدفعة التالية...');
     const r = await fetch('/api/admin/outreach/generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ company_id: companyId.trim() }),
+      body: JSON.stringify({ company_id: companyId.trim(), offset }),
     });
     const d = await r.json();
     setBusy(false);
-    if (d.ok) { flash('✓ تم توليد ' + d.generated + ' رسالة من ' + d.total); load(companyId.trim()); }
+    if (d.ok) {
+      setNextOffset(d.nextOffset);
+      setProgress('تم توليد ' + d.processedSoFar + ' من ' + d.total + (d.remaining > 0 ? ' — المتبقّي ' + d.remaining : ' (اكتمل)'));
+      flash('✓ تمت هذه الدفعة (' + d.batchGenerated + ' رسالة)' + (d.batchFailed ? ' — فشل ' + d.batchFailed : ''));
+      load(companyId.trim());
+    }
     else flash(d.error || 'خطأ في التوليد');
   };
 
@@ -204,15 +212,22 @@ export default function OutreachPage() {
             <input value={companyId} onChange={e => setCompanyId(e.target.value)}
               placeholder="الصق معرّف الشركة"
               style={{ flex:1, minWidth:220, padding:'10px 14px', borderRadius:10, border:'2px solid '+C.mint, fontSize:14 }} />
-            <button onClick={generate} disabled={busy}
+            <button onClick={() => generate(0)} disabled={busy}
               style={{ padding:'10px 20px', borderRadius:10, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
-              {busy ? 'جارٍ...' : '⚙️ جهّز الرسائل'}
+              {busy ? 'جارٍ...' : '⚙️ جهّز أفضل ١٠'}
             </button>
+            {nextOffset !== null && (
+              <button onClick={() => generate(nextOffset)} disabled={busy}
+                style={{ padding:'10px 20px', borderRadius:10, background:C.gold||'#C9A24B', color:'#1A3D34', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
+                {busy ? 'جارٍ...' : '⏭️ توليد الـ١٠ التالية'}
+              </button>
+            )}
             <button onClick={() => load(companyId.trim())} disabled={!companyId.trim()}
               style={{ padding:'10px 16px', borderRadius:10, background:C.mint, color:C.ink, fontWeight:900, border:'none', fontSize:14 }}>
               🔄 تحديث
             </button>
           </div>
+          {progress && <div style={{ marginTop:10, fontSize:13, fontWeight:800, color:C.green }}>{progress}</div>}
         </div>
 
         {note && <div style={{ background:C.ink, color:'#fff', padding:'10px 16px', borderRadius:10, marginBottom:16, fontSize:13, fontWeight:700 }}>{note}</div>}
