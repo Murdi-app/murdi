@@ -191,6 +191,10 @@ export default function OutreachPage() {
     s === 'معتمدة' ? C.green : s === 'مُرسلة' ? '#2980B9' : s === 'مرفوضة' ? '#C0392B' : C.gray;
 
   const approvedCount = msgs.filter(m => m.status === 'معتمدة').length;
+  const sentCount = msgs.filter(m => m.status === 'مُرسلة').length;
+  const awaitingCount = msgs.filter(m => m.status === 'مُرسلة' && m.reply_status === 'awaiting').length;
+  const repliedCount = msgs.filter(m => m.reply_status === 'replied').length;
+  const declinedCount = msgs.filter(m => m.reply_status === 'declined').length;
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh' }}>
@@ -299,7 +303,7 @@ export default function OutreachPage() {
         {msgs.length > 0 && (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
             <span style={{ color:C.gray, fontSize:13, fontWeight:700 }}>
-              {msgs.length} رسالة · {approvedCount} معتمدة
+              {msgs.length} رسالة · {approvedCount} معتمدة · {sentCount} تم التواصل · <span style={{ color:'#9A7B2E' }}>{awaitingCount} بانتظار الرد</span> · <span style={{ color:C.green }}>{repliedCount} ردّت</span> · <span style={{ color:'#C0392B' }}>{declinedCount} اعتذرت</span>
             </span>
             <button onClick={send} disabled={busy || approvedCount===0}
               style={{ padding:'12px 24px', borderRadius:12, background:approvedCount>0?C.ink:C.gray, color:'#fff', fontWeight:900, border:'none', fontSize:15, opacity:(busy||approvedCount===0)?0.5:1 }}>
