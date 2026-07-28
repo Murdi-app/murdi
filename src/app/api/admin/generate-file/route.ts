@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateFileContent, buildFileHTML, type FileClientData } from '@/lib/fileGenerate';
+import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
@@ -37,12 +38,15 @@ export async function POST(req: Request) {
   let statementsHtml = '';
   try {
     const { data: srv } = await admin.from('service_requests')
-      .select('admin_deliverable, service_title, status, updated_at')
+      .select('id, admin_deliverable, service_title, status, updated_at')
       .eq('company_id', companyId)
-      .not('admin_deliverable', 'is', null)
       .order('updated_at', { ascending: false });
     const fin = (srv || []).find((x) => String(x.service_title || '').includes('قوائم'));
-    if (fin && fin.admin_deliverable) statementsHtml = String(fin.admin_deliverable);
+    if (fin) {
+      const { data: si } = await admin.from('service_inputs').select('*').eq('service_request_id', fin.id).maybeSingle();
+      const yrs = si?.inputs?.years;
+      if (yrs) statementsHtml = renderStatementsHtml(buildComputedStatements(yrs));
+    }
   } catch {}
 
   // بيانات الشركة
