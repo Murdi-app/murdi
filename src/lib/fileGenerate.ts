@@ -26,6 +26,9 @@ export interface GeneratedFile {
   theRequest: string;
   strengths: string;
   closing: string;
+  companyNameEn?: string;
+  cityEn?: string;
+  sectorEn?: string;
 }
 
 export async function generateFileContent(
@@ -107,6 +110,9 @@ export async function generateFileContent(
     theRequest: String(parsed.theRequest || '').trim(),
     strengths: String(parsed.strengths || '').trim(),
     closing: String(parsed.closing || '').trim(),
+    companyNameEn: parsed.companyNameEn ? String(parsed.companyNameEn).trim() : undefined,
+    cityEn: parsed.cityEn ? String(parsed.cityEn).trim() : undefined,
+    sectorEn: parsed.sectorEn ? String(parsed.sectorEn).trim() : undefined,
   };
 }
 
