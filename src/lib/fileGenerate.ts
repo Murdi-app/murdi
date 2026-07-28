@@ -91,7 +91,7 @@ export async function generateFileContent(
       'x-api-key': process.env.ANTHROPIC_API_KEY as string,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }),
   });
 
   if (!res.ok) throw new Error('تعذّر توليد الملف (HTTP ' + res.status + ')');
@@ -106,7 +106,12 @@ export async function generateFileContent(
   const mt = clean.match(/\\{[\\s\\S]*\\}/);
   if (!mt) throw new Error('تعذّر تحليل محتوى الملف');
 
-  const parsed = JSON.parse(mt[0]);
+  let parsed;
+  try {
+    parsed = JSON.parse(mt[0]);
+  } catch (e) {
+    throw new Error('JSON.parse fail: ' + (e instanceof Error ? e.message : String(e)) + ' | ' + mt[0].slice(0, 200));
+  }
   return {
     executiveSummary: String(parsed.executiveSummary || '').trim(),
     companyOverview: String(parsed.companyOverview || '').trim(),
