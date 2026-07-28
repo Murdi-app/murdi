@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   try { const b = await req.json(); companyId = String(b.company_id || ''); fileUrl = String(b.file_url || ''); fileName = String(b.file_name || ''); lang = String(b.lang || ''); }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId || !fileUrl) return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
-  const row: Record<string, unknown> = { company_id: companyId, uploaded_at: new Date().toISOString() };
+  const row: Record<string, unknown> = { company_id: companyId, uploaded_at: new Date().toISOString(), file_url: fileUrl, file_name: fileName };
   if (lang === 'en') { row.file_url_en = fileUrl; row.file_name_en = fileName; }
   else { row.file_url_ar = fileUrl; row.file_name_ar = fileName; }
   const { error } = await admin.from('outreach_attachments').upsert(row, { onConflict: 'company_id' });
