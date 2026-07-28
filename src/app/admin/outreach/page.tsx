@@ -218,7 +218,7 @@ export default function OutreachPage() {
             </button>
             {nextOffset !== null && (
               <button onClick={() => generate(nextOffset)} disabled={busy}
-                style={{ padding:'10px 20px', borderRadius:10, background:C.gold||'#C9A24B', color:'#1A3D34', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
+                style={{ padding:'10px 20px', borderRadius:10, background:'#C9A24B', color:'#1A3D34', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
                 {busy ? 'جارٍ...' : '⏭️ توليد الـ١٠ التالية'}
               </button>
             )}
