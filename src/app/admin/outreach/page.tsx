@@ -15,6 +15,8 @@ const C = { ink:'#1A3D34', green:'#2E9E7B', gray:'#6B8A80', mint:'#E8F5EF', bg:'
 
 export default function OutreachPage() {
   const [companyId, setCompanyId] = useState('');
+  const [companies, setCompanies] = useState<{ id: string; company_name: string | null; cr_number: string | null }[]>([]);
+  const [coQuery, setCoQuery] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [dueList, setDueList] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -47,6 +49,11 @@ export default function OutreachPage() {
     const p = new URLSearchParams(window.location.search).get('company_id');
     if (p && !companyId) setCompanyId(p);
   }, []);
+  useEffect(() => {
+    const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
+    sb.from('companies').select('id, company_name, cr_number').order('company_name').then(({ data }) => { if (data) setCompanies(data); });
+  }, []);
+
   useEffect(() => {
     if (!companyId) return;
     const u = new URL(window.location.href);
@@ -218,6 +225,25 @@ export default function OutreachPage() {
 
         {/* شريط التوليد */}
         <div style={{ background:C.card, border:'2px solid '+C.mint, borderRadius:16, padding:16, marginBottom:20 }}>
+          <label style={{ fontSize:12, fontWeight:900, color:C.gray }}>اختر العميل بالاسم</label>
+          <input value={coQuery} onChange={e => setCoQuery(e.target.value)} placeholder="🔍 ابحث باسم الشركة أو السجل التجاري…"
+            style={{ width:'100%', marginTop:6, marginBottom:8, padding:'10px 14px', borderRadius:10, border:'2px solid '+C.mint, fontSize:14 }} />
+          {coQuery.trim() && (
+            <div style={{ marginBottom:10, maxHeight:220, overflowY:'auto', border:'1px solid '+C.mint, borderRadius:10 }}>
+              {companies.filter(c => (c.company_name || '').toLowerCase().includes(coQuery.trim().toLowerCase()) || (c.cr_number || '').includes(coQuery.trim())).slice(0, 8).map(c => (
+                <div key={c.id} onClick={() => { setCompanyId(c.id); setCoQuery(''); }}
+                  style={{ padding:'9px 14px', cursor:'pointer', borderBottom:'1px solid '+C.bg, fontSize:13.5, color:C.ink, fontWeight:700 }}>
+                  {c.company_name || 'بدون اسم'} <span style={{ color:C.gray, fontWeight:400, fontSize:12 }}>· {c.cr_number || '—'}</span>
+                </div>
+              ))}
+              {companies.filter(c => (c.company_name || '').toLowerCase().includes(coQuery.trim().toLowerCase()) || (c.cr_number || '').includes(coQuery.trim())).length === 0 && (
+                <div style={{ padding:'9px 14px', color:C.gray, fontSize:13 }}>لا توجد نتائج</div>
+              )}
+            </div>
+          )}
+          {companyId && (
+            <div style={{ marginBottom:8, fontSize:13, fontWeight:900, color:C.green }}>✓ {companies.find(c => c.id === companyId)?.company_name || 'عميل محدد'}</div>
+          )}
           <label style={{ fontSize:12, fontWeight:900, color:C.gray }}>معرّف العميل (company_id)</label>
           <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
             <input value={companyId} onChange={e => setCompanyId(e.target.value)}
