@@ -1,243 +1,646 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useEffect, useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from 'next/navigation'
+import AdminNav from '@/components/AdminNav'
 
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
+const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
+const isNew = (d: string) => d ? (Date.now() - new Date(d).getTime()) < 48*60*60*1000 : false
+const NewBadge = () => <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginRight:6 }}>جديد</span>
 
-const NAVY = '#13302A'
-const GOLD = '#C9A24B'
-const LIGHT = '#9DB3AB'
-
-type Q = { q: string; opts: { t: string; v: number }[] }
-
-const QUESTIONS: Q[] = [
-  { q: 'منشأتك تعمل منذ كم؟', opts: [
-    { t: 'أقل من سنة', v: 4 }, { t: '1–3 سنوات', v: 8 },
-    { t: '3–7 سنوات', v: 11 }, { t: 'أكثر من 7 سنوات', v: 13 } ] },
-  { q: 'هل لديك قوائم مالية حديثة؟', opts: [
-    { t: 'لا يوجد', v: 2 }, { t: 'تقريبية/داخلية', v: 7 },
-    { t: 'مدققة لسنة', v: 11 }, { t: 'مدققة 3 سنوات', v: 13 } ] },
-  { q: 'كيف هو نمو إيراداتك؟', opts: [
-    { t: 'متذبذب/متراجع', v: 3 }, { t: 'مستقر', v: 8 },
-    { t: 'نمو جيد', v: 11 }, { t: 'نمو قوي ومستمر', v: 13 } ] },
-  { q: 'هل أرباحك منتظمة؟', opts: [
-    { t: 'خسارة حالياً', v: 2 }, { t: 'تعادل تقريباً', v: 7 },
-    { t: 'ربح بسيط', v: 10 }, { t: 'ربح جيد ومستقر', v: 12 } ] },
-  { q: 'وضوح فصل الشركة عن مالكها مالياً؟', opts: [
-    { t: 'مختلط تماماً', v: 2 }, { t: 'جزئي', v: 6 },
-    { t: 'منفصل غالباً', v: 9 }, { t: 'منفصل تماماً', v: 12 } ] },
-  { q: 'هل لديك حوكمة أو هيكل إداري واضح؟', opts: [
-    { t: 'لا', v: 2 }, { t: 'بدائي', v: 6 },
-    { t: 'منظّم', v: 9 }, { t: 'حوكمة كاملة', v: 11 } ] },
-  { q: 'مستوى الديون مقارنة بحجم نشاطك؟', opts: [
-    { t: 'مرتفع جداً', v: 3 }, { t: 'متوسط', v: 7 },
-    { t: 'منخفض', v: 10 }, { t: 'شبه معدوم', v: 12 } ] },
-  { q: 'ما هدفك الأساسي الآن؟', opts: [
-    { t: 'تمويل', v: 8 }, { t: 'استثمار/شريك', v: 8 },
-    { t: 'طرح مستقبلي', v: 8 }, { t: 'ما زلت أستكشف', v: 6 } ] },
-]
-
-const MAX = QUESTIONS.reduce((s, q) => s + Math.max(...q.opts.map(o => o.v)), 0)
-const TRACK = ['تمويل', 'استثمار', 'طرح', 'استكشاف']
-
-function verdict(pct: number) {
-  if (pct >= 75) return { label: 'جاهزية عالية', color: '#2E9E7B' }
-  if (pct >= 50) return { label: 'جاهزية متوسطة', color: GOLD }
-  return { label: 'تحتاج تجهيزاً', color: '#C0564B' }
+interface Company {
+  id: string
+  company_name: string | null
+  cr_number: string | null
+  owner_name: string | null
+  phone: string | null
+  city: string | null
+  sector: string | null
+  goal: string | null
+  account_status: string
+  payment_status: string | null
+  receipt_path: string | null
+  payment_confirmed_at: string | null
+  is_locked: boolean
+  created_at: string
+  subscription_start?: string
+  subscription_end?: string
 }
 
-// النقاط الثلاث تُبنى من أضعف وأقوى إجابة فعلياً
-function insights(ans: number[]) {
-  const labels = ['عمر النشاط', 'القوائم المالية', 'نمو الإيرادات', 'انتظام الأرباح', 'الفصل المالي', 'الحوكمة', 'مستوى الديون', 'الهدف']
-  const ratios = ans.map((v, i) => ({ i, r: v / Math.max(...QUESTIONS[i].opts.map(o => o.v)) }))
-  const sorted = [...ratios].sort((a, b) => a.r - b.r)
-  const weakest = sorted[0]
-  const strongest = sorted[sorted.length - 1]
-  const second = sorted[1]
-  return {
-    strength: labels[strongest.i],
-    weak: labels[weakest.i],
-    opportunity: labels[second.i],
+const STATUS_LABEL: Record<string, string> = {
+  pending_payment: 'بانتظار الدفع',
+  pending_approval: 'بانتظار المراجعة',
+  active: 'مفعّل',
+  rejected: 'مرفوض',
+  suspended: 'موقوف',
+  expired: 'منتهي',
+}
+
+export default function ApprovalsPage() {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [authorized, setAuthorized] = useState(false)
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [consultations, setConsultations] = useState<any[]>([])
+  const [questions, setQuestions] = useState<any[]>([])
+  const [edits, setEdits] = useState<any[]>([])
+  const [profiles, setProfiles] = useState<any[]>([])
+  const [openProfile, setOpenProfile] = useState<string | null>(null)
+  const [matchesByCompany, setMatchesByCompany] = useState<Record<string, any[]>>({})
+  const loadMatches = async (companyId: string) => {
+    if (!companyId || matchesByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/matches?company_id=' + companyId); if (r.ok) { const d = await r.json(); setMatchesByCompany(prev => ({ ...prev, [companyId]: d.matches || [] })) } } catch {}
   }
-}
 
-export default function TestPage() {
-  const [stage, setStage] = useState<'welcome' | 'name' | 'phone' | 'q' | 'analyzing' | 'result'>('welcome')
-  const [qIndex, setQIndex] = useState(0)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [ans, setAns] = useState<number[]>([])
-  const [rowId, setRowId] = useState<string | null>(null)
-  const [adSrc, setAdSrc] = useState('')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [contractsByCompany, setContractsByCompany] = useState<Record<string, any[]>>({})
+  const loadContracts = async (companyId: string) => {
+    if (!companyId || contractsByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/contracts?company_id=' + companyId); if (r.ok) { const d = await r.json(); setContractsByCompany(prev => ({ ...prev, [companyId]: d.contracts || [] })) } } catch {}
+  }
 
-  useEffect(() => {
+  const [chatByCompany, setChatByCompany] = useState<Record<string, { role: string; content: string }[]>>({})
+  const [chatInput, setChatInput] = useState<Record<string, string>>({})
+  const [chatBusy, setChatBusy] = useState<string | null>(null)
+  const loadChat = async (companyId: string) => {
+    if (!companyId || chatByCompany[companyId]) return
+    try { const r = await fetch('/api/admin/research-chat?company_id=' + companyId); if (r.ok) { const d = await r.json(); setChatByCompany(prev => ({ ...prev, [companyId]: d.messages || [] })) } } catch {}
+  }
+  const sendChat = async (companyId: string) => {
+    const msg = (chatInput[companyId] || '').trim()
+    if (!msg || chatBusy) return
+    setChatBusy(companyId)
+    setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'admin', content: msg }] }))
+    setChatInput(prev => ({ ...prev, [companyId]: '' }))
     try {
-      const p = new URLSearchParams(window.location.search).get('src')
-      if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
-      else { const stored = sessionStorage.getItem('murdi_src'); if (stored) setAdSrc(stored) }
-    } catch { /* تجاهل */ }
-  }, [])
-
-  const score = ans.reduce((s, v) => s + v, 0)
-  const pct = ans.length === QUESTIONS.length ? Math.round((score / MAX) * 100) : 0
-
-  // شريط التقدم: اسم + جوال + 8 أسئلة = 10 خطوات
-  const totalSteps = 2 + QUESTIONS.length
-  let stepDone = 0
-  if (stage === 'phone') stepDone = 1
-  else if (stage === 'q') stepDone = 2 + qIndex
-  else if (stage === 'analyzing' || stage === 'result') stepDone = totalSteps
-  const progress = Math.round((stepDone / totalSteps) * 100)
-
-  // حفظ فوري بعد الجوال — يرجع id
-  const saveInitial = async () => {
-    setErr('')
-    if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
-    setBusy(true)
-    try {
-      const { data, error } = await sb.from('mini_assessments').insert({
-        full_name: name.trim(), phone: phone.trim(),
-        answers: [], score: 0, src: adSrc || null, completed: false,
-      }).select('id').single()
-      if (error) throw error
-      setRowId(data.id)
-      setStage('q')
+      const r = await fetch('/api/admin/research-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, message: msg }) })
+      const d = await r.json()
+      setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'murdi', content: d.answer || 'تعذّر الرد.' }] }))
     } catch {
-      // حتى لو فشل الحفظ، نكمل التجربة حتى لا نخسر العميل
-      setStage('q')
-    } finally { setBusy(false) }
+      setChatByCompany(prev => ({ ...prev, [companyId]: [...(prev[companyId] || []), { role: 'murdi', content: 'تعذّر الاتصال. حاول مرة أخرى.' }] }))
+    }
+    setChatBusy(null)
   }
 
-  // تحديث الصف مع كل إجابة
-  const pick = async (v: number) => {
-    const nextAns = [...ans, v]
-    setAns(nextAns)
-    if (rowId) {
-      const done = nextAns.length === QUESTIONS.length
-      const t = done ? (TRACK[[8, 8, 8, 6].indexOf(nextAns[7])] || '') : ''
-      const p = done ? Math.round((nextAns.reduce((s, x) => s + x, 0) / MAX) * 100) : 0
-      sb.from('mini_assessments').update({ answers: nextAns, score: p, track: t, completed: done }).eq('id', rowId).then(() => {})
-    }
-    if (nextAns.length < QUESTIONS.length) {
-      setQIndex(qIndex + 1)
-    } else {
-      setStage('analyzing')
-      setTimeout(() => setStage('result'), 2200)
-    }
+  useEffect(() => { init() }, [])
+
+  async function init() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/auth/login'); return }
+    if (user.email !== ADMIN_EMAIL) { setAuthorized(false); setLoading(false); return }
+    setAuthorized(true)
+    await loadCompanies()
+    await loadConsultations()
+    await loadQA()
+    setLoading(false)
   }
 
-  const v = verdict(pct)
-  const ins = ans.length === QUESTIONS.length ? insights(ans) : null
+  async function loadQA() {
+    try {
+      const res = await fetch('/api/questions')
+      const data = await res.json()
+      setQuestions(data.questions || [])
+      setEdits(data.edits || [])
+    } catch {}
+  }
+
+  async function generateAnswer(id: string) {
+    setBusy(id)
+    await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await loadQA()
+    setBusy(null)
+  }
+
+  async function qaAction(id: string, type: string) {
+    setBusy(id)
+    await fetch('/api/questions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, type }) })
+    await loadQA()
+    setBusy(null)
+  }
+
+  async function loadConsultations() {
+    try {
+      try {
+        const pRes = await fetch('/api/admin/profiles')
+        if (pRes.ok) { const pData = await pRes.json(); setProfiles(pData.profiles || []) }
+      } catch {}
+      const res = await fetch('/api/consultation')
+      const data = await res.json()
+      setConsultations(data.consultations || [])
+    } catch {}
+  }
+
+  async function releaseConsultation(id: string) {
+    setBusy(id)
+    await fetch('/api/consultation', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await loadConsultations()
+    setBusy(null)
+  }
+
+  async function loadCompanies() {
+    const { data } = await supabase
+      .from('companies')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (data) setCompanies(data as Company[])
+  }
+
+  async function viewReceipt(c: Company) {
+    if (!c.receipt_path) return
+    const { data, error } = await supabase.storage
+      .from('receipts')
+      .createSignedUrl(c.receipt_path, 300)
+    if (error || !data?.signedUrl) { alert('تعذر فتح الإيصال'); return }
+    window.open(data.signedUrl, '_blank')
+  }
+
+  async function confirmPayment(c: Company) {
+    setBusy(c.id)
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('companies').update({
+      payment_status: 'paid',
+      payment_confirmed_at: new Date().toISOString(),
+      payment_confirmed_by: user?.email || 'admin',
+    }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
+  }
+
+  async function approve(c: Company) {
+    setBusy(c.id)
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('companies').update({
+      account_status: 'active',
+      subscription_active: true,
+      is_locked: true,
+      locked_at: new Date().toISOString(),
+      approved_by: user?.id,
+      approved_at: new Date().toISOString(),
+      subscription_start: new Date().toISOString(),
+      subscription_end: new Date(Date.now() + 120*24*60*60*1000).toISOString(),
+    }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
+  }
+
+  async function renew(c: Company) {
+    setBusy(c.id)
+    const cur = c.subscription_end ? new Date(c.subscription_end) : new Date()
+    const base = cur > new Date() ? cur : new Date()
+    const newEnd = new Date(base.getTime() + 120*24*60*60*1000)
+    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active', subscription_active: true, subscription_until: newEnd.toISOString() }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
+  }
+
+  async function setStatus(c: Company, status: string) {
+    setBusy(c.id)
+    await supabase.from('companies').update({ account_status: status, subscription_active: status === 'active' }).eq('id', c.id)
+    await loadCompanies()
+    setBusy(null)
+  }
+
+  if (loading) return (
+    <div style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ color:'#2E9E7B', fontFamily:'Cairo,sans-serif', fontSize:18 }}>جاري التحميل...</div>
+    </div>
+  )
+
+  if (!authorized) return (
+    <div style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12, fontFamily:'Cairo,sans-serif' }}>
+      <div style={{ fontSize:40 }}>🔒</div>
+      <div style={{ color:'#1A3D34', fontSize:18, fontWeight:700 }}>غير مصرّح</div>
+      <div style={{ color:'#6B8A80', fontSize:14 }}>هذه الصفحة مخصصة لإدارة Murdi فقط</div>
+    </div>
+  )
+
+  const q = search.trim().toLowerCase()
+  const matchSearch = (c: Company) => !q || [c.company_name, c.cr_number, c.phone, c.owner_name, c.city, c.sector].some(v => (v || '').toLowerCase().includes(q))
+  const filtered = companies.filter(matchSearch)
+  const pending = filtered.filter(c => c.account_status === 'pending_approval')
+  const others = filtered.filter(c => c.account_status !== 'pending_approval')
 
   return (
-    <div style={{ minHeight: '100vh', background: NAVY, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 18px', fontFamily: 'system-ui, -apple-system, Arial', direction: 'rtl' }}>
-      <div style={{ width: '100%', maxWidth: 460 }}>
-
-        {/* الشعار */}
-        <div style={{ textAlign: 'center', marginBottom: 22 }}>
-          <span style={{ color: GOLD, fontSize: 22, fontWeight: 900, letterSpacing: 1 }}>مُرضي</span>
-        </div>
-
-        {/* شريط التقدم */}
-        {stage !== 'welcome' && (
-          <div style={{ marginBottom: 26 }}>
-            <div style={{ height: 8, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: progress + '%', background: GOLD, borderRadius: 99, transition: 'width 0.4s ease' }} />
-            </div>
-            <div style={{ textAlign: 'left', color: LIGHT, fontSize: 12, marginTop: 6 }}>{progress}%</div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; }
+        .ap-wrapper { min-height:100vh; background:#FBFCFB; padding:40px 16px; font-family:'Cairo',sans-serif; direction:rtl; }
+        .ap-inner { max-width:920px; margin:0 auto; }
+        .ap-head { font-family:'Amiri',serif; font-size:28px; color:#1A3D34; font-weight:700; margin-bottom:4px; }
+        .ap-sub { color:#6B8A80; font-size:14px; margin-bottom:32px; }
+        .ap-section-title { font-size:15px; color:#1A3D34; font-weight:700; margin:28px 0 14px; display:flex; align-items:center; gap:8px; }
+        .ap-count { background:#2E9E7B; color:#fff; font-size:12px; padding:2px 10px; border-radius:20px; }
+        .ap-card { background:#fff; border:1.5px solid #EAF1EE; border-radius:16px; padding:22px 24px; margin-bottom:14px; box-shadow:0 2px 12px rgba(26,61,52,0.04); }
+        .ap-card-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+        .ap-name { font-family:'Amiri',serif; font-size:19px; color:#1A3D34; font-weight:700; }
+        .ap-badge { font-size:12px; padding:4px 14px; border-radius:20px; font-weight:600; }
+        .ap-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:16px; }
+        .ap-field { font-size:13px; }
+        .ap-field-label { color:#A3BAB2; margin-bottom:2px; }
+        .ap-field-val { color:#1A3D34; font-weight:600; }
+        .ap-actions { display:flex; gap:10px; flex-wrap:wrap; padding-top:14px; border-top:1px solid #F0F5F3; }
+        .ap-btn { border:none; padding:10px 22px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; }
+        .ap-btn-approve { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; }
+        .ap-btn-reject { background:#FBEDED; color:#D96A6A; }
+        .ap-btn-receipt { background:#E8F5EF; color:#2E9E7B; }
+        .ap-btn-pay { background:#FBF5E8; color:#9A7B2E; }
+        .ap-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .ap-lock { font-size:12px; color:#2E9E7B; }
+        .ap-empty { color:#A3BAB2; font-size:14px; text-align:center; padding:30px; }
+      `}</style>
+      <div className="ap-wrapper">
+        <div className="ap-inner">
+          <AdminNav />
+          <div className="ap-head">لوحة الموافقات</div>
+          <div className="ap-sub">مراجعة طلبات التسجيل وتفعيل الحسابات</div>
+          <div style={{ marginBottom:24 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="🔍 ابحث بالاسم، السجل التجاري، الجوال، المالك، المدينة، أو القطاع..."
+              style={{ width:'100%', border:'1.5px solid #EAF1EE', borderRadius:30, padding:'13px 22px', fontFamily:'Cairo,sans-serif', fontSize:14, color:'#1A3D34', outline:'none', background:'#fff', boxShadow:'0 2px 12px rgba(26,61,52,0.04)' }}
+            />
+            {search.trim() && (
+              <div style={{ color:'#6B8A80', fontSize:13, marginTop:8, paddingRight:8 }}>
+                نتائج البحث: {filtered.length} من {companies.length} عميل
+              </div>
+            )}
           </div>
-        )}
 
-        {/* شاشة الترحيب */}
-        {stage === 'welcome' && (
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>اختبار جاهزية رأس المال</h1>
-            <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>هل شركتك جاهزة للحصول على تمويل أو استثمار؟</p>
-            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>اختبار مجاني — 60 ثانية، بلا تسجيل</p>
-            <button onClick={() => setStage('name')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
+          <div className="ap-section-title">
+            طلبات بانتظار المراجعة <span className="ap-count">{pending.length}</span>
           </div>
-        )}
 
-        {/* السؤال: اسم الشركة */}
-        {stage === 'name' && (
-          <div>
-            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 22px', textAlign: 'center' }}>ما اسم شركتك؟</h2>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسم المنشأة"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
-            <button onClick={() => { if (name.trim().length < 2) { setErr('فضلاً اكتب اسم شركتك'); return } setErr(''); setStage('phone') }}
-              style={{ width: '100%', marginTop: 16, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer' }}>التالي ←</button>
-            {err && <div style={{ color: '#F3B0A8', fontSize: 14, marginTop: 12, textAlign: 'center' }}>{err}</div>}
-          </div>
-        )}
+          {pending.length === 0 && <div className="ap-empty">لا توجد طلبات جديدة</div>}
 
-        {/* السؤال: الجوال */}
-        {stage === 'phone' && (
-          <div>
-            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 10px', textAlign: 'center' }}>رقم جوالك</h2>
-            <p style={{ color: LIGHT, fontSize: 13, textAlign: 'center', margin: '0 0 22px' }}>ليصلك تحليل جاهزيتك ويتواصل معك مستشار مُرضي</p>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" inputMode="tel"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
-            <button onClick={saveInitial} disabled={busy}
-              style={{ width: '100%', marginTop: 16, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'لحظة…' : 'ابدأ الاختبار ←'}</button>
-            {err && <div style={{ color: '#F3B0A8', fontSize: 14, marginTop: 12, textAlign: 'center' }}>{err}</div>}
-          </div>
-        )}
-
-        {/* الأسئلة التشخيصية */}
-        {stage === 'q' && (
-          <div>
-            <div style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>سؤال {qIndex + 1} من {QUESTIONS.length}</div>
-            <h2 style={{ color: '#fff', fontSize: 21, fontWeight: 800, margin: '0 0 24px', textAlign: 'center', lineHeight: 1.5 }}>{QUESTIONS[qIndex].q}</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {QUESTIONS[qIndex].opts.map((o, i) => (
-                <button key={i} onClick={() => pick(o.v)}
-                  style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '2px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '15px 18px', fontSize: 16, fontWeight: 600, cursor: 'pointer', textAlign: 'right', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.background = 'rgba(201,162,75,0.12)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}>
-                  {o.t}
+          {pending.map(c => (
+            <div className="ap-card" key={c.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">{isNew(c.created_at) && <NewBadge />}{c.company_name || 'بدون اسم'}</span>
+                <span className="ap-badge" style={{ background:'#FBF5E8', color:'#D9A441' }}>بانتظار المراجعة</span>
+              </div>
+              <div className="ap-grid">
+                <div className="ap-field"><div className="ap-field-label">السجل التجاري</div><div className="ap-field-val">{c.cr_number || '—'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">المالك</div><div className="ap-field-val">{c.owner_name || '—'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{c.phone || '—'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">المدينة</div><div className="ap-field-val">{c.city || '—'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{c.sector || '—'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">الدفع</div><div className="ap-field-val">{c.payment_status === 'paid' ? 'مؤكد ✓' : 'لم يُؤكد بعد'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">الإيصال</div><div className="ap-field-val">{c.receipt_path ? 'مرفوع 📎' : 'غير مرفوع'}</div></div>
+                <div className="ap-field"><div className="ap-field-label">تاريخ الطلب</div><div className="ap-field-val">{fmtDate(c.created_at)}</div></div>
+              </div>
+              <div className="ap-actions">
+                {c.receipt_path && (
+                  <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>
+                    📎 عرض الإيصال
+                  </button>
+                )}
+                {c.payment_status !== 'paid' && (
+                  <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => confirmPayment(c)}>
+                    {busy === c.id ? 'جار...' : '💰 تأكيد استلام الدفع'}
+                  </button>
+                )}
+                <button className="ap-btn ap-btn-approve" disabled={busy === c.id || c.payment_status !== 'paid'} onClick={() => approve(c)}
+                  title={c.payment_status !== 'paid' ? 'أكّد استلام الدفع أولاً' : ''}>
+                  {busy === c.id ? 'جارٍ...' : '✓ موافقة وتفعيل'}
                 </button>
-              ))}
+                <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => setStatus(c, 'rejected')}>
+                  رفض
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          ))}
 
-        {/* شاشة التحليل */}
-        {stage === 'analyzing' && (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div style={{ width: 54, height: 54, border: '4px solid rgba(201,162,75,0.25)', borderTopColor: GOLD, borderRadius: '50%', margin: '0 auto 24px', animation: 'murdispin 0.8s linear infinite' }} />
-            <p style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>جارٍ تحليل بيانات شركتك…</p>
-            <style>{'@keyframes murdispin{to{transform:rotate(360deg)}}'}</style>
-          </div>
-        )}
+          <div className="ap-section-title">جميع الشركات <span className="ap-count" style={{ background:'#A3BAB2' }}>{others.length}</span></div>
 
-        {/* النتيجة */}
-        {stage === 'result' && ins && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ color: LIGHT, fontSize: 14, margin: '0 0 6px' }}>النتيجة الأولية لجاهزية</p>
-            <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: '0 0 18px' }}>{name}</p>
-            <div style={{ fontSize: 64, fontWeight: 900, color: v.color, lineHeight: 1 }}>{pct}<span style={{ fontSize: 24, color: LIGHT }}> / 100</span></div>
-            <div style={{ display: 'inline-block', background: v.color, color: '#fff', borderRadius: 99, padding: '7px 22px', fontSize: 15, fontWeight: 800, margin: '16px 0 26px' }}>{v.label}</div>
-
-            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 26 }}>
-              <div style={{ background: 'rgba(46,158,123,0.12)', border: '1px solid rgba(46,158,123,0.3)', borderRadius: 12, padding: '13px 16px', color: '#fff', fontSize: 15 }}>✔️ <b>نقطة قوة:</b> {ins.strength}</div>
-              <div style={{ background: 'rgba(201,162,75,0.12)', border: '1px solid rgba(201,162,75,0.3)', borderRadius: 12, padding: '13px 16px', color: '#fff', fontSize: 15 }}>⚠️ <b>تحتاج تحسين:</b> {ins.weak}</div>
-              <div style={{ background: 'rgba(157,179,171,0.12)', border: '1px solid rgba(157,179,171,0.3)', borderRadius: 12, padding: '13px 16px', color: '#fff', fontSize: 15 }}>🚀 <b>فرصة للاستغلال:</b> {ins.opportunity}</div>
+          {others.map(c => (
+            <div className="ap-card" key={c.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
+                <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
+              </div>
+              {c.account_status === 'pending_payment' && (
+                <div className="ap-grid">
+                  <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{c.phone || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">المالك</div><div className="ap-field-val">{c.owner_name || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">السجل التجاري</div><div className="ap-field-val">{c.cr_number || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">المدينة</div><div className="ap-field-val">{c.city || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{c.sector || '—'}</div></div>
+                  <div className="ap-field"><div className="ap-field-label">الإيصال</div><div className="ap-field-val">{c.receipt_path ? 'مرفوع 📎' : 'غير مرفوع'}</div></div>
+                </div>
+              )}
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:12 }}>
+                <span style={{ color:'#9DB3AB', fontSize:12, fontWeight:600 }}>📅 سجّل: {fmtDate(c.created_at)}</span>
+                {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#D96A6A' : days <= 14 ? '#D9A441' : '#2E9E7B'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>⏳ الاشتراك: {fmtDate(c.subscription_end)} ({days < 0 ? 'منتهٍ' : days + ' يوم'})</span> })()}
+              </div>
+              <div className="ap-actions">
+                {c.receipt_path && (
+                  <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>📎 عرض الإيصال</button>
+                )}
+                {c.account_status === 'active' && (
+                  <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => setStatus(c, 'suspended')}>إيقاف</button>
+                )}
+                {c.account_status === 'suspended' && (
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => setStatus(c, 'active')}>إعادة تفعيل</button>
+                )}
+                {c.account_status === 'active' && (
+                  <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => renew(c)}>{busy === c.id ? 'جارٍ...' : '🔄 تجديد ٤ أشهر'}</button>
+                )}
+                {c.account_status === 'pending_payment' && (<>
+                  {c.phone && <a className="ap-btn ap-btn-receipt" href={'https://wa.me/' + c.phone.replace(/[^0-9]/g, '').replace(/^0/, '966')} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>💬 واتساب</a>}
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => { if (confirm('تفعيل حساب ' + c.company_name + '؟ سيتمكّن من التقييم فوراً.')) renew(c) }}>{busy === c.id ? 'جارٍ...' : '✓ تفعيل الحساب'}</button>
+                  <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => { if (confirm('رفض هذا الحساب؟')) setStatus(c, 'rejected') }}>رفض</button>
+                </>)}
+              </div>
             </div>
+          ))}
+          <div className="ap-section-title">📂 ملفات العملاء (التقييمات) <span className="ap-count" style={{ background:'#1A3D34' }}>{profiles.length}</span></div>
+          {profiles.length === 0 && <div className="ap-empty">لا توجد ملفات تقييم بعد</div>}
+          {profiles.map((pr, idx) => {
+            const TA: Record<string,string> = { funding: 'تمويل', investment: 'استثمار', ipo: 'طرح' };
+            const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+            const isOpen = openProfile === pr.company?.id + '-' + idx;
+            const defaulted = pr.repayment_status === 'default';
+            return (
+              <div className="ap-card" key={pr.company?.id + '-' + idx}>
+                <div className="ap-card-top" style={{ cursor:'pointer' }} onClick={() => { const willOpen = !isOpen; setOpenProfile(willOpen ? pr.company?.id + '-' + idx : null); if (willOpen && pr.company?.id) { loadMatches(pr.company.id); loadChat(pr.company.id); loadContracts(pr.company.id); } }}>
+                  <span className="ap-name">{isNew(pr.assessed_at) && <NewBadge />}📊 {pr.company?.company_name || 'شركة'} 
+                    <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B', marginRight:8 }}>{TA[pr.assessment_type] || pr.assessment_type}</span>
+                    {defaulted && <span className="ap-badge" style={{ background:'#FBECEC', color:'#C0564B', marginRight:6 }}>متعثر</span>}
+                  </span>
+                  <span className="ap-badge" style={{ background: pr.score >= 65 ? '#E8F5EF' : '#FBF5E8', color: pr.score >= 65 ? '#2E9E7B' : '#9A7B2E' }}>درجة {pr.score ?? '—'} {isOpen ? '▲' : '▼'}</span>
+                </div>
+                {pr.assessed_at && <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginTop:6 }}>📅 تاريخ التقييم: {fmtDate(pr.assessed_at)}</div>}
+                {isOpen && (
+                  <div>
+                    <div className="ap-grid">
+                      <div className="ap-field"><div className="ap-field-label">السجل</div><div className="ap-field-val">{pr.company?.cr_number || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الجوال</div><div className="ap-field-val">{pr.company?.phone || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">القطاع</div><div className="ap-field-val">{pr.company?.sector || '—'}</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الإيرادات</div><div className="ap-field-val">{fmt(pr.rev)} ر.س</div></div>
+                      <div className="ap-field"><div className="ap-field-label">صافي الربح</div><div className="ap-field-val">{fmt(pr.profit)} ر.س</div></div>
+                      <div className="ap-field"><div className="ap-field-label">الحكم</div><div className="ap-field-val">{pr.verdict || '—'}</div></div>
+                      {pr.months_to_ready != null && <div className="ap-field"><div className="ap-field-label">المدة للجاهزية</div><div className="ap-field-val">{pr.months_to_ready} شهراً</div></div>}
+                      <div className="ap-field"><div className="ap-field-label">القيمة التقديرية</div><div className="ap-field-val">{pr.val_basis === 'profit' ? fmt(pr.val_lo) + ' — ' + fmt(pr.val_hi) + ' ر.س' : 'تحتاج ربحية'}</div></div>
+                      {pr.has_debt === 'yes' && <div className="ap-field"><div className="ap-field-label">دين متبقٍ</div><div className="ap-field-val">{fmt(pr.remaining_debt)} ر.س</div></div>}
+                    </div>
+                    {pr.val_note && (
+                      <div style={{ marginTop:8, background:'#FBF8EE', borderRadius:'8px', padding:'10px 14px', color:'#7A6420', fontSize:12.5, fontWeight:600, lineHeight:1.8 }}>💰 أساس التقييم: {pr.val_note}</div>
+                    )}
+                    {pr.obstacles?.length > 0 && (
+                      <div style={{ marginTop:18, background:'#FBF5E8', borderRight:'4px solid #C9A84C', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#9A7B2E', fontSize:14, fontWeight:800, marginBottom:12 }}>⚠️ أبرز العوائق</div>
+                        <ul style={{ paddingRight:20, margin:0, color:'#5C4A1F', fontSize:13.5, lineHeight:2.1 }}>
+                          {pr.obstacles.map((o: string, i: number) => <li key={i} style={{ marginBottom:10 }}>{o}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {pr.plan?.length > 0 && (
+                      <div style={{ marginTop:14, background:'#F0F7F4', borderRight:'4px solid #2E9E7B', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#1A6B4F', fontSize:14, fontWeight:800, marginBottom:12 }}>🗺️ خطة التحسين / خارطة الطريق</div>
+                        <ol style={{ paddingRight:20, margin:0, color:'#1A3D34', fontSize:13.5, lineHeight:2.1, fontWeight:600 }}>
+                          {pr.plan.map((x: string, i: number) => <li key={i} style={{ marginBottom:12 }}>{x}</li>)}
+                        </ol>
+                      </div>
+                    )}
+                    {pr.eligibility && (
+                      <div style={{ marginTop:14, background:'#EEF3F1', borderRight:'4px solid #1A3D34', borderRadius:'10px', padding:'16px 18px' }}>
+                        <div style={{ color:'#1A3D34', fontSize:14, fontWeight:800, marginBottom:12 }}>🏛️ تحليل الأهلية (نمو / الرئيسي)</div>
+                        <div style={{ color:'#3A4D47', fontSize:13.5, lineHeight:2.1, whiteSpace:'pre-wrap' }}>{pr.eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}</div>
+                      </div>
+                    )}
+                    {(() => {
+                      const ms = matchesByCompany[pr.company?.id] || [];
+                      if (ms.length === 0) return null;
+                      const byRegion = (rg: string) => ms.filter((m: any) => (m.region || 'السعودية') === rg);
+                      const regionBlock = (label: string, color: string, list: any[]) => list.length === 0 ? null : (
+                        <div style={{ marginBottom:14 }}>
+                          <div style={{ color, fontSize:13, fontWeight:900, margin:'10px 0 8px' }}>{label} <span style={{ background:color, color:'#fff', borderRadius:10, padding:'1px 8px', fontSize:11 }}>{list.length}</span></div>
+                          <div style={{ overflowX:'auto' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                              <thead><tr style={{ background:'#F0F5F3' }}>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الجهة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المنتج</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المتطلبات</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الملاءمة</th>
+                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المصدر</th>
+                              </tr></thead>
+                              <tbody>
+                                {list.map((m: any, i: number) => (
+                                  <tr key={i}>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', fontWeight:700, color:'#1A3D34' }}>{m.provider}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#3A4D47' }}>{m.product}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.requirements}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.fit}</td>
+                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8' }}>{m.source ? <a href={m.source} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B' }}>↗️</a> : '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                      const TRACK_META: Record<string, { ar: string; color: string; icon: string }> = {
+                        funding: { ar: 'التمويل', color: '#2E9E7B', icon: '💰' },
+                        investment: { ar: 'الاستثمار', color: '#3B5BA5', icon: '📈' },
+                        ipo: { ar: 'الطرح العام', color: '#A53B3B', icon: '🏛️' },
+                      };
+                      const byTrack = (tk: string) => ms.filter((m: any) => (m.track || 'funding') === tk);
+                      const trackBlock = (tk: string) => {
+                        const tl = byTrack(tk);
+                        if (tl.length === 0) return null;
+                        const meta = TRACK_META[tk] || TRACK_META.funding;
+                        const inRegion = (rg: string) => tl.filter((m: any) => (m.region || 'السعودية') === rg);
+                        return (
+                          <div key={tk} style={{ marginBottom:18, paddingBottom:14, borderBottom:'1px solid #EEF4F1' }}>
+                            <div style={{ color:meta.color, fontSize:13.5, fontWeight:900, margin:'4px 0 10px', display:'flex', alignItems:'center', gap:6 }}>
+                              <span>{meta.icon} مسار {meta.ar}</span>
+                              <span style={{ background:meta.color, color:'#fff', borderRadius:10, padding:'1px 9px', fontSize:11 }}>{tl.length}</span>
+                            </div>
+                            {regionBlock('🇸🇦 السعودية', '#2E9E7B', inRegion('السعودية'))}
+                            {regionBlock('🌙 الخليج', '#3B5BA5', inRegion('الخليج'))}
+                            {regionBlock('🌍 دولي', '#A53B3B', inRegion('دولي'))}
+                          </div>
+                        );
+                      };
+                      return (
+                        <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:10, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span>
+                            {ms.length > 0 && <a href={'/admin/matches-print?company_id=' + pr.company?.id} target="_blank" style={{ background:'#13302A', color:'#fff', borderRadius:8, padding:'5px 14px', fontSize:12.5, fontWeight:700, textDecoration:'none' }}>🖨️ طباعة PDF للعميل</a>}
+                          </div>
+                          {trackBlock('funding')}
+                          {trackBlock('investment')}
+                          {trackBlock('ipo')}
+                          {pr.company?.id && ms.length > 0 && (() => {
+                            const cts = contractsByCompany[pr.company.id] || []
+                            const active = cts.find((c: any) => c.status === 'issued' || c.status === 'signed' || c.status === 'completed')
+                            if (!active) return (
+                              <div style={{ marginTop:12, background:'#FBF5E8', border:'2px solid #E8D9A8', borderRadius:10, padding:'14px 16px' }}>
+                                <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:13.5, marginBottom:6 }}>🔒 المخاطبة مقفلة — لا يوجد عقد تجهيز ملف</div>
+                                <div style={{ color:'#8A6D1A', fontSize:12.5, lineHeight:1.9 }}>مخاطبة الجهات بملف غير مجهّز تعني رفضاً شبه مؤكد، والرفض يُسجّل ضد العميل. أصدر عقد «تجهيز الملف والتفاوض» من صفحة الخدمات أولاً.</div>
+                                <a href="/admin/services" target="_blank" style={{ display:'inline-block', marginTop:10, background:'#9A7B2E', color:'#fff', borderRadius:8, padding:'7px 16px', fontSize:12.5, fontWeight:900, textDecoration:'none' }}>📄 اذهب إلى الخدمات والعقود</a>
+                              </div>
+                            )
+                            return (
+                              <button onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id, '_blank')}
+                                style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background:'#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
+                                📨 خاطب هذه الجهات نيابة عن العميل
+                              </button>
+                            )
+                          })()}
+                        </div>
+                      );
+                    })()}
 
-            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px', color: LIGHT, fontSize: 14, lineHeight: 1.8 }}>
-              هذه لمحة أولية. سيقوم مستشار مُرضي بمراجعة نتيجتك وإرسال التوصيات المناسبة لرفع جاهزية شركتك نحو رأس المال.
+                    {/* مساعد البحث مُرضي — محادثة خاصة بالأدمن */}
+                    {pr.company?.id && (() => {
+                      const cid = pr.company.id;
+                      const msgs = chatByCompany[cid] || [];
+                      return (
+                        <div style={{ marginTop:18, background:'#F7F9FB', border:'2px solid #E1E9F2', borderRadius:12, padding:'16px 18px' }}>
+                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:4 }}>💬 استشر مُرضي حول هذه الجهات</div>
+                          <div style={{ color:'#6B8A80', fontSize:12, marginBottom:12 }}>محادثة خاصة بك — اسأل عن تفاصيل أي جهة، منتجاتها، مقرّها، طريقة التواصل، أو اطلب جهات إضافية. مُرضي يبحث لك بدقّة.</div>
+                          <div style={{ maxHeight:340, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, marginBottom:12 }}>
+                            {msgs.length === 0 && <div style={{ color:'#9DB3AB', fontSize:12.5, textAlign:'center', padding:'14px 0' }}>لا توجد رسائل بعد. ابدأ بسؤال مثل: «فصّل لي أول جهة تمويل — منتجاتها وكيف أتواصل معها».</div>}
+                            {msgs.map((m, i) => (
+                              <div key={i} style={{ alignSelf: m.role === 'admin' ? 'flex-start' : 'flex-end', maxWidth:'88%', background: m.role === 'admin' ? '#1A3D34' : '#fff', color: m.role === 'admin' ? '#fff' : '#1A3D34', border: m.role === 'admin' ? 'none' : '1px solid #E1E9F2', borderRadius:12, padding:'10px 14px', fontSize:13, lineHeight:1.9, whiteSpace:'pre-wrap' }}>
+                                {m.role === 'murdi' && <div style={{ color:'#3B5BA5', fontSize:11, fontWeight:900, marginBottom:4 }}>مُرضي</div>}
+                                {m.content}
+                              </div>
+                            ))}
+                            {chatBusy === cid && <div style={{ alignSelf:'flex-end', color:'#3B5BA5', fontSize:12.5, fontWeight:700 }}>مُرضي يبحث الآن…</div>}
+                          </div>
+                          <div style={{ display:'flex', gap:8 }}>
+                            <input value={chatInput[cid] || ''} onChange={(e) => setChatInput(prev => ({ ...prev, [cid]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(cid); } }}
+                              placeholder="اكتب سؤالك لمُرضي…" disabled={chatBusy === cid}
+                              style={{ flex:1, padding:'11px 14px', borderRadius:10, border:'1.5px solid #E1E9F2', fontFamily:'Cairo', fontSize:13, outline:'none' }} />
+                            <button onClick={() => sendChat(cid)} disabled={chatBusy === cid || !(chatInput[cid] || '').trim()}
+                              style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'0 22px', borderRadius:10, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', opacity: chatBusy === cid ? 0.5 : 1 }}>إرسال</button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="ap-section-title">الاستشارات الخاصة <span className="ap-count" style={{ background:'#C9A84C' }}>{consultations.filter(c => c.status === 'ready').length}</span></div>
+
+          {consultations.length === 0 && <div className="ap-empty">لا توجد استشارات بعد</div>}
+
+          {consultations.map(c => (
+            <div className="ap-card" key={c.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">{isNew(c.created_at) && <NewBadge />}🎓 {c.companies?.company_name || 'شركة'}
+                  {(() => {
+                    const T: Record<string, { ar: string; bg: string; fg: string }> = {
+                      funding: { ar: 'تمويل', bg: '#E8F5EF', fg: '#2E9E7B' },
+                      investment: { ar: 'استثمار', bg: '#EAF0FB', fg: '#3B5BA5' },
+                      ipo: { ar: 'طرح عام', bg: '#FBF0F0', fg: '#A53B3B' },
+                    };
+                    const t = T[c.assessment_type as string] || T.funding;
+                    return <span style={{ marginRight: 8, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 900, background: t.bg, color: t.fg }}>{t.ar}</span>;
+                  })()}
+                </span>
+                <span className="ap-badge" style={{ background: c.status === 'released' ? '#E8F5EF' : c.status === 'ready' ? '#FBF5E8' : '#F0F0F0', color: c.status === 'released' ? '#2E9E7B' : c.status === 'ready' ? '#9A7B2E' : '#888' }}>
+                  {c.status === 'released' ? 'صادرة ✓' : c.status === 'ready' ? 'جاهزة — بانتظار إصدارك' : c.status === 'analyzing' ? 'قيد التوليد' : 'فشل التوليد'}
+                </span>
+              </div>
+              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:10 }}>📅 أُنشئت: {fmtDate(c.created_at || c.generated_at)}{c.released_at ? '  •  📤 صدرت: ' + fmtDate(c.released_at) : ''}</div>
+              {c.content && (
+                <div style={{ maxHeight: 180, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 12 }}>
+                  {c.content}{c.content.length > 1500 ? '...' : ''}
+                </div>
+              )}
+              <div className="ap-actions">
+                {c.status === 'ready' && (
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => releaseConsultation(c.id)}>
+                    {busy === c.id ? 'جارٍ...' : '📤 إصدار للعميل'}
+                  </button>
+                )}
+              </div>
             </div>
-            <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginTop: 20 }}>مُرضي — منصة جاهزية رأس المال</p>
-          </div>
-        )}
+          ))}
 
+          <div className="ap-section-title">أسئلة العملاء <span className="ap-count" style={{ background:'#2E9E7B' }}>{questions.filter(q => q.status !== 'released').length}</span></div>
+
+          {questions.length === 0 && <div className="ap-empty">لا توجد أسئلة بعد</div>}
+
+          {questions.map(q => (
+            <div className="ap-card" key={q.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">{isNew(q.created_at) && <NewBadge />}💬 {q.companies?.company_name || 'شركة'}</span>
+                <span className="ap-badge" style={{ background: q.status === 'released' ? '#E8F5EF' : '#FBF5E8', color: q.status === 'released' ? '#2E9E7B' : '#9A7B2E' }}>
+                  {q.status === 'released' ? 'صادر ✓' : q.status === 'answered' ? 'جواب جاهز — بانتظار إصدارك' : 'بانتظار الجواب'}
+                </span>
+              </div>
+              <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:8 }}>📅 أرسل: {fmtDate(q.created_at)}</div>
+              <p style={{ fontSize: 14, color:'#1A3D34', fontWeight: 700, marginBottom: 10 }}>س: {q.question}</p>
+              {q.answer && (
+                <div style={{ maxHeight: 450, overflowY: 'auto', background:'#FBFCFB', borderRadius: 12, padding: 14, fontSize: 13, color:'#1A3D34', whiteSpace:'pre-wrap', marginBottom: 6 }}>
+                  {q.answer}
+                </div>
+              )}
+              {q.answered_at && <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginBottom:12 }}>📅 رُدّ: {fmtDate(q.answered_at)}</div>}
+              <div className="ap-actions">
+                {q.status === 'pending' && (
+                  <button className="ap-btn ap-btn-approve" disabled={busy === q.id} onClick={() => generateAnswer(q.id)}>
+                    {busy === q.id ? 'جارٍ التوليد...' : '🧠 توليد جواب ذكي'}
+                  </button>
+                )}
+                {q.status === 'answered' && (
+                  <>
+                    <button className="ap-btn ap-btn-approve" disabled={busy === q.id} onClick={() => qaAction(q.id, 'release_answer')}>
+                      {busy === q.id ? 'جارٍ...' : '📤 إصدار الجواب'}
+                    </button>
+                    <button className="ap-btn ap-btn-receipt" disabled={busy === q.id} onClick={() => generateAnswer(q.id)}>
+                      🔄 إعادة التوليد
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div className="ap-section-title">طلبات تعديل البيانات <span className="ap-count" style={{ background:'#C9A84C' }}>{edits.filter(e => e.status === 'pending').length}</span></div>
+
+          {edits.length === 0 && <div className="ap-empty">لا توجد طلبات تعديل</div>}
+
+          {edits.map(e => (
+            <div className="ap-card" key={e.id}>
+              <div className="ap-card-top">
+                <span className="ap-name">🛠️ {e.companies?.company_name || 'شركة'}</span>
+                <span className="ap-badge" style={{ background:'#FBF5E8', color:'#9A7B2E' }}>
+                  {e.status === 'pending' ? 'بانتظار قرارك' : e.status === 'approved' ? 'معتمد — بانتظار إدخال العميل' : e.status === 'used' ? 'استُخدم ✓' : 'مرفوض'}
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color:'#6B8A80', fontWeight: 700, marginBottom: 12 }}>السبب: {e.reason || '—'}</p>
+              {e.status === 'pending' && (
+                <div className="ap-actions">
+                  <button className="ap-btn ap-btn-approve" disabled={busy === e.id} onClick={() => qaAction(e.id, 'approve_edit')}>
+                    ✓ اعتماد وفتح الإدخال
+                  </button>
+                  <button className="ap-btn ap-btn-reject" disabled={busy === e.id} onClick={() => qaAction(e.id, 'reject_edit')}>
+                    رفض
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+        </div>
       </div>
-    </div>
+    </>
   )
 }
