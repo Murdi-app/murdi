@@ -42,10 +42,15 @@ export default function OutreachPage() {
     } catch { setFuMsg('❌ خطأ'); }
   }
   // قراءة العميل تلقائياً من الرابط (?company_id=...)
-  if (typeof window !== 'undefined' && !companyId) {
+  useEffect(() => {
     const p = new URLSearchParams(window.location.search).get('company_id');
-    if (p) { setCompanyId(p); setTimeout(() => { const cid = p; fetch('/api/admin/outreach/manage?company_id=' + cid).then(r => r.json()).then(d => { if (d.ok) setMsgs(d.messages); }); }, 100); }
-  }
+    if (p && !companyId) setCompanyId(p);
+  }, []);
+  useEffect(() => {
+    if (!companyId) return;
+    fetch('/api/admin/outreach/manage?company_id=' + companyId)
+      .then(r => r.json()).then(d => { if (d.ok) setMsgs(d.messages); }).catch(() => {});
+  }, [companyId]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
