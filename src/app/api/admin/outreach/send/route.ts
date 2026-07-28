@@ -65,6 +65,11 @@ export async function POST(req: Request) {
     attEn = await loadAtt(att.file_url_en, att.file_name_en);
   }
 
+  // حماية: لا نرسل بدون ملف مرفق (اتفاق: الإرسال لا يتم إلا بملف)
+  if (!attAr && !attEn) {
+    return NextResponse.json({ error: 'ارفع ملف المخاطبة (PDF) أولاً قبل الإرسال — الإرسال بدون ملف غير مسموح' }, { status: 400 });
+  }
+
   let sent = 0;
   let skipped = 0;
 
