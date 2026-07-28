@@ -58,6 +58,7 @@ export async function generateFileContent(
     client.liabilities ? 'إجمالي الالتزامات: ' + num(client.liabilities) : '',
     client.valuationEstimate ? 'التقييم التقديري: ' + client.valuationEstimate : '',
     client.readinessScore ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
+    client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
   ].filter(Boolean).join('\\n');
 
   const reqLine = isIntl

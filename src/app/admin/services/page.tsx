@@ -29,6 +29,7 @@ export default function AdminServicesPage() {
   const [loading, setLoading] = useState(true)
   const [reqs, setReqs] = useState<any[]>([])
   const [busy, setBusy] = useState('')
+  const [fundAmt, setFundAmt] = useState<Record<string, string>>({})
   const [edits, setEdits] = useState<Record<string, { deliverable: string; price: string }>>({})
   const [contracts, setContracts] = useState<Record<string, any>>({})
   const [cEdits, setCEdits] = useState<Record<string, any>>({})
@@ -198,7 +199,7 @@ export default function AdminServicesPage() {
       let okCount = 0
       let lastErr = ''
       for (const region of regions) {
-        const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region }) })
+        const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region, funding_amount: Number(fundAmt[r.id] || 0) }) })
         const d = await res.json()
         if (res.status === 422) {
           setIntegrity(p => ({ ...p, [r.id]: d }))
@@ -512,7 +513,7 @@ export default function AdminServicesPage() {
                 const c = contracts[r.id]
                 return (<>
                 <div style={{ marginTop:16 }}>
-                  <button onClick={() => generateFile(r)} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ التوليد...' : '📄 جهّز الملف الاحترافي'}</button>
+                  <input type="number" value={fundAmt[r.id] || ''} onChange={e => setFundAmt(p => ({ ...p, [r.id]: e.target.value }))} placeholder="المبلغ المطلوب (ر.س)" style={{ padding:'9px 14px', borderRadius:20, border:'1.5px solid #D9E5DF', fontFamily:'Cairo', fontSize:12.5, width:170, marginLeft:8 }} /><button onClick={() => generateFile(r)} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ التوليد...' : '📄 جهّز الملف الاحترافي'}</button>
                 </div>
                 {(() => {
                 if (!c) {
