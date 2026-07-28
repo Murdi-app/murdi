@@ -54,7 +54,7 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
 ابحث في الموقع الرسمي. رتّب أولوياتك:
 1. بريد مؤكّد من الموقع الرسمي.
 2. إن لم تجد بريدا مؤكّداً، اقترح بريداً محتملاً منطقياً (info@ أو contact@ نطاق الجهة) وصنّفه "غير مؤكّد".
-قاعدة إلزامية: ما لم يكن البريد "مؤكّداً" من الموقع الرسمي، يجب عليك دائماً توفير طريقة تواصل بديلة واحدة على الأقل في alt_contact (رابط نموذج تواصل، أو رقم هاتف/واتساب، أو حساب لينكدإن رسمي). لا تترك alt_contact فارغاً إلا إذا كان البريد مؤكّداً ١٠٠٪. أرجع JSON نقي فقط:
+قاعدة إلزامية قصوى: alt_contact لا يجوز أن يكون فارغاً أبداً في أي حالة. حتى لو لم تجد بريداً، يجب أن ترجع في alt_contact طريقة تواصل رسمية واحدة على الأقل — وبالأولوية: رابط صفحة/بوابة التقديم أو نموذج التواصل الرسمي من موقع الجهة، ثم رقم هاتف رسمي، ثم حساب لينكدإن رسمي. كثير من جهات التمويل والاستثمار تستقبل الطلبات عبر بوابة أو نموذج أونلاين فقط بدون بريد معلن — في هذه الحالة رابط البوابة هو الطريق الصحيح وليس بديلاً ثانوياً. ابحث تحديداً عن صفحات مثل: تقديم طلب تمويل، اتصل بنا، خدمات الشركات، Trade Finance، apply/contact-us. اجعل alt_contact نصاً كاملاً يحوي الرابط (أو الرقم) صريحا. أرجع JSON نقي فقط:
 {
   "email": "البريد المؤكّد أو المحتمل أو null",
   "confidence": "مؤكّد" إن كان من الموقع الرسمي، أو "غير مؤكّد" إن كان اقتراحاً منطقياً، أو "غير متوفّر" إن لم تجد,
@@ -75,7 +75,7 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 400,
+        max_tokens: 1200,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -94,10 +94,14 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
     const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
     const m = clean.match(/\{[\s\S]*\}/);
     if (!m) {
-      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر التحليل', altContact: null, contactMethod: 'إيميل' };
+      return { email: null, confidence: 'غير متوفّر', source: 'تعذّر التحليل — لا JSON: ' + clean.slice(0, 150), altContact: null, contactMethod: 'إيميل' };
     }
-
-    const parsed = JSON.parse(m[0]);
+    let parsed;
+    try {
+      parsed = JSON.parse(m[0]);
+    } catch {
+      return { email: null, confidence: 'غير متوفّر', source: 'فشل JSON.parse: ' + m[0].slice(0, 150), altContact: null, contactMethod: 'إيميل' };
+    }
     const email = parsed.email && String(parsed.email).includes('@') ? String(parsed.email).trim() : null;
     const confidence: GeneratedMessage['emailConfidence'] =
       email === null ? 'غير متوفّر'
