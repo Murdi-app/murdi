@@ -45,8 +45,27 @@ export async function POST(req: Request) {
     .single();
   if (cErr || !company) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
 
+  // جلب الإيراد الفعلي من financial_data ودرجة الجاهزية من readiness_results
+  const { data: fd } = await admin
+    .from('financial_data')
+    .select('annual_revenue')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { data: rr } = await admin
+    .from('readiness_results')
+    .select('readiness_score, verdict')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const client: ClientInput = {
     companyName: company.company_name || '',
+    revenue: fd?.annual_revenue ? Number(fd.annual_revenue) : undefined,
+    readinessScore: rr?.readiness_score ? Number(rr.readiness_score) : undefined,
+    verdict: rr?.verdict || undefined,
     sector: company.sector || undefined,
     city: company.city || undefined,
     goal: company.goal || undefined,
