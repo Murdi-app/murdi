@@ -65,6 +65,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (action === 'undo') {
+    const { error } = await admin.from('outreach_messages')
+      .update({ status: 'مسودة', updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) return NextResponse.json({ error: 'تعذّر التراجع' }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === 'reject') {
     const { error } = await admin.from('outreach_messages')
       .update({ status: 'مرفوضة', updated_at: new Date().toISOString() }).eq('id', id);

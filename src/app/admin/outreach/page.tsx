@@ -162,6 +162,7 @@ export default function OutreachPage() {
     setMsgs(cur => cur.map(m => {
       if (m.id !== id) return m;
       if (action === 'approve') return { ...m, status: 'معتمدة' };
+      if (action === 'undo') return { ...m, status: 'مسودة' };
       if (action === 'reject') return { ...m, status: 'مرفوضة' };
       if (action === 'contacted') return { ...m, status: 'مُرسلة', reply_status: 'awaiting' };
       if (action === 'reply') return { ...m, reply_status: String(extra.reply_status || '') };
@@ -370,6 +371,10 @@ export default function OutreachPage() {
                   )}
                   <div style={{ fontSize:13, color:'#333', whiteSpace:'pre-wrap', lineHeight:1.7, background:C.bg, padding:12, borderRadius:8, marginBottom:10 }}>{m.message_body}</div>
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                    {m.status === 'معتمدة' && (
+                      <button onClick={() => act(m.id, 'undo')}
+                        style={{ padding:'8px 16px', borderRadius:8, background:C.mint, color:C.ink, fontWeight:900, border:'none', fontSize:12.5 }}>↩︎ تراجع</button>
+                    )}
                     {m.status !== 'مُرسلة' && m.status !== 'معتمدة' && (
                       <button onClick={() => act(m.id, 'approve')}
                         style={{ padding:'8px 18px', borderRadius:8, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>✅ اعتمد</button>
