@@ -111,7 +111,7 @@ export default function GoalPage() {
     );
     const path = companyId + '/' + contractId + '_' + Date.now() + '_' + file.name;
     const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
-    if (upErr) { alert('تعذّر رفع الملف، حاول مرة أخرى'); return; }
+    if (upErr) { alert('تعذّر رفع الملف: ' + (upErr.message || JSON.stringify(upErr))); return; }
     const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
     await supabase.from('contracts').update({ signed_file_url: pub.publicUrl, status: 'signed', signed_at: new Date().toISOString() }).eq('id', contractId);
     setClientContracts((prev) => ({ ...prev, [contractType]: { ...prev[contractType], status: 'signed', signedUrl: pub.publicUrl } }));
