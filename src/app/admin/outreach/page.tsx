@@ -312,6 +312,10 @@ export default function OutreachPage() {
               ) : (
                 <>
                   <div style={{ fontSize:13, fontWeight:700, color:C.ink, marginBottom:4 }}>{m.subject}</div>
+                  {!(m.entity_email && (!m.error_note || m.error_note.includes('مؤكّد'))) && (
+                    <button onClick={() => { navigator.clipboard.writeText((m.subject ? m.subject + '\n\n' : '') + m.message_body); alert('تم نسخ الرسالة — الصقها في نموذج التقديم لدى الجهة'); }}
+                      style={{ padding:'8px 16px', borderRadius:8, background:C.ink, color:'#fff', fontWeight:900, border:'none', fontSize:12.5, marginBottom:8, cursor:'pointer' }}>📋 انسخ الرسالة للتقديم أونلاين</button>
+                  )}
                   <div style={{ fontSize:13, color:'#333', whiteSpace:'pre-wrap', lineHeight:1.7, background:C.bg, padding:12, borderRadius:8, marginBottom:10 }}>{m.message_body}</div>
                   {m.status !== 'مُرسلة' && (
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
