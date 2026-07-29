@@ -72,7 +72,7 @@ export async function generateFileContent(
   const prompt = (isIntl
     ? 'You are an expert preparing a professional ' + docType + ' at Holol Almurdi Financial Consulting (Murdi). Write the entire content in formal institutional ENGLISH. '
       + 'Address it to ' + targetAudience + '. Use the same 6-section JSON structure and rules described below, but write every section in professional English, no Arabic. '
-      + 'Keep the exact same JSON keys. Also provide companyNameEn (establishment name in English/transliteration), cityEn (English city e.g. Riyadh), sectorEn (English sector e.g. Trade).\\n\\n'
+      + 'Keep the exact same JSON keys. For companyNameEn/cityEn/sectorEn: translate ONLY if the Arabic value is a real, meaningful name; if a field is empty, numeric, or meaningless (e.g. 2, 222, a dash), copy it verbatim and never invent a substitute. Also provide companyNameEn (establishment name in English/transliteration), cityEn (English city e.g. Riyadh), sectorEn (English sector e.g. Trade).\\n\\n'
     : '')
     + 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
     + 'اكتب محتوى ' + docType + ' متكامل ومقنع موجّه إلى ' + targetAudience + '.\\n\\n'
