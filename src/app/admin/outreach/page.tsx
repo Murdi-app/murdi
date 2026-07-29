@@ -397,7 +397,7 @@ export default function OutreachPage() {
                       <span style={{ fontSize:12.5, fontWeight:900, color:'#C0392B' }}>❌ اعتذرت الجهة</span>
                     )}
                     {m.status !== 'مُرسلة' && (
-                      <button onClick={() => { setEditId(m.id); setEditBody(m.message_body); setEditEmail(m.entity_email||''); }}
+                      <button onClick={(e) => { const y = window.scrollY; setEditId(m.id); setEditBody(m.message_body); setEditEmail(m.entity_email||''); requestAnimationFrame(() => window.scrollTo(0, y)); }}
                         style={{ padding:'8px 18px', borderRadius:8, background:C.mint, color:C.ink, fontWeight:900, border:'none', fontSize:13 }}>✏️ عدّل</button>
                     )}
                     {m.status !== 'مُرسلة' && (
