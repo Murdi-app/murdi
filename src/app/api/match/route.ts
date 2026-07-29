@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
   project: 'تمويل مشاريع وعقود',
 };
 
-export async function POST() {
+export async function POST(req: Request) {
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -31,7 +31,20 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser();
   if (user === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
-  const { data: company } = await supabase
+  let overrideId = '';
+  try { const b = await req.json(); overrideId = String((b || {}).company_id || ''); } catch {}
+  const isAdmin = user.email === 'hololalmurdi.fs@gmail.com';
+  const asAdmin = isAdmin && overrideId.length > 0;
+  const db = asAdmin
+    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string)
+    : supabase;
+
+  const { data: company } = asAdmin
+    ? await db.from('companies')
+        .select('id, company_name, cr_number, city, sector, account_status, phone')
+        .eq('id', overrideId)
+        .single()
+    : await db
     .from('companies')
     .select('id, company_name, cr_number, city, sector, account_status, phone')
     .eq('user_id', user.id)
@@ -41,7 +54,7 @@ export async function POST() {
     return NextResponse.json({ error: 'الحساب غير مفعّل' }, { status: 403 });
   }
 
-  const { data: fd } = await supabase
+  const { data: fd } = await db
     .from('financial_data')
     .select('*')
     .eq('company_id', company.id)
@@ -49,7 +62,7 @@ export async function POST() {
     .limit(1)
     .single();
 
-  const { data: rr } = await supabase
+  const { data: rr } = await db
     .from('readiness_results')
     .select('readiness_score, verdict')
     .eq('company_id', company.id)
