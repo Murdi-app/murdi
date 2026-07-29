@@ -48,6 +48,8 @@ export default function ApprovalsPage() {
   const [authorized, setAuthorized] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
   const [search, setSearch] = useState('')
+  const [openSec, setOpenSec] = useState<Record<string, boolean>>({ pending: true })
+  const [secQ, setSecQ] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [consultations, setConsultations] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
@@ -227,6 +229,29 @@ export default function ApprovalsPage() {
   const pending = filtered.filter(c => c.account_status === 'pending_approval')
   const others = filtered.filter(c => c.account_status !== 'pending_approval')
 
+  const secText = (id: string) => (secQ[id] || '').trim().toLowerCase()
+  const hit = (id: string, vals: (string | null | undefined)[]) => { const t = secText(id); return !t || vals.some(v => (v || '').toLowerCase().includes(t)) }
+  const secBar = (id: string, label: string, count: number, color: string) => (
+    <div>
+      <div onClick={() => setOpenSec(p => ({ ...p, [id]: !p[id] }))}
+        style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8, margin:'22px 0 0', padding:'14px 18px', background:'#fff', border:'1.5px solid #EAF1EE', borderRadius:14, cursor:'pointer', boxShadow:'0 2px 12px rgba(26,61,52,0.04)', userSelect:'none' }}>
+        <span style={{ fontSize:15, color:'#1A3D34', fontWeight:800, display:'flex', alignItems:'center', gap:8 }}>{label} <span className="ap-count" style={{ background:color }}>{count}</span></span>
+        <span style={{ color:'#2E9E7B', fontSize:12, fontWeight:900 }}>{openSec[id] ? '▲' : '▼'}</span>
+      </div>
+      {openSec[id] && (
+        <input value={secQ[id] || ''} onChange={e => setSecQ(p => ({ ...p, [id]: e.target.value }))} placeholder="🔍 ابحث داخل هذا القسم…"
+          style={{ width:'100%', border:'1.5px solid #EAF1EE', borderRadius:12, padding:'11px 16px', margin:'10px 0 4px', fontFamily:'Cairo,sans-serif', fontSize:13.5, color:'#1A3D34', outline:'none' }} />
+      )}
+    </div>
+  )
+
+  const shownPending = openSec['pending'] ? pending.filter(c => hit('pending', [c.company_name, c.cr_number, c.phone, c.owner_name, c.city, c.sector])) : []
+  const shownOthers = openSec['companies'] ? others.filter(c => hit('companies', [c.company_name, c.cr_number, c.phone, c.owner_name, c.city, c.sector])) : []
+  const shownProfiles = openSec['profiles'] ? profiles.filter(pr => hit('profiles', [pr.company?.company_name, pr.company?.cr_number, pr.company?.phone, pr.company?.sector])) : []
+  const shownConsultations = openSec['consult'] ? consultations.filter(c => hit('consult', [c.companies?.company_name])) : []
+  const shownQuestions = openSec['questions'] ? questions.filter(q => hit('questions', [q.companies?.company_name, q.question])) : []
+  const shownEdits = openSec['edits'] ? edits.filter(e => hit('edits', [e.companies?.company_name, e.reason])) : []
+
   return (
     <>
       <style>{`
@@ -275,13 +300,11 @@ export default function ApprovalsPage() {
             )}
           </div>
 
-          <div className="ap-section-title">
-            طلبات بانتظار المراجعة <span className="ap-count">{pending.length}</span>
-          </div>
+          {secBar('pending', 'طلبات بانتظار المراجعة', pending.length, '#2E9E7B')}
 
           {pending.length === 0 && <div className="ap-empty">لا توجد طلبات جديدة</div>}
 
-          {pending.map(c => (
+          {shownPending.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
                 <span className="ap-name">{isNew(c.created_at) && <NewBadge />}{c.company_name || 'بدون اسم'}</span>
@@ -319,9 +342,9 @@ export default function ApprovalsPage() {
             </div>
           ))}
 
-          <div className="ap-section-title">جميع الشركات <span className="ap-count" style={{ background:'#A3BAB2' }}>{others.length}</span></div>
+          {secBar('companies', 'جميع الشركات', others.length, '#A3BAB2')}
 
-          {others.map(c => (
+          {shownOthers.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
@@ -362,9 +385,9 @@ export default function ApprovalsPage() {
               </div>
             </div>
           ))}
-          <div className="ap-section-title">📂 ملفات العملاء (التقييمات) <span className="ap-count" style={{ background:'#1A3D34' }}>{profiles.length}</span></div>
+          {secBar('profiles', '📂 ملفات العملاء (التقييمات)', profiles.length, '#1A3D34')}
           {profiles.length === 0 && <div className="ap-empty">لا توجد ملفات تقييم بعد</div>}
-          {profiles.map((pr, idx) => {
+          {shownProfiles.map((pr, idx) => {
             const TA: Record<string,string> = { funding: 'تمويل', investment: 'استثمار', ipo: 'طرح' };
             const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
             const isOpen = openProfile === pr.company?.id + '-' + idx;
@@ -535,11 +558,11 @@ export default function ApprovalsPage() {
             );
           })}
 
-          <div className="ap-section-title">الاستشارات الخاصة <span className="ap-count" style={{ background:'#C9A84C' }}>{consultations.filter(c => c.status === 'ready').length}</span></div>
+          {secBar('consult', 'الاستشارات الخاصة', consultations.filter(c => c.status === 'ready').length, '#C9A84C')}
 
           {consultations.length === 0 && <div className="ap-empty">لا توجد استشارات بعد</div>}
 
-          {consultations.map(c => (
+          {shownConsultations.map(c => (
             <div className="ap-card" key={c.id}>
               <div className="ap-card-top">
                 <span className="ap-name">{isNew(c.created_at) && <NewBadge />}🎓 {c.companies?.company_name || 'شركة'}
@@ -573,11 +596,11 @@ export default function ApprovalsPage() {
             </div>
           ))}
 
-          <div className="ap-section-title">أسئلة العملاء <span className="ap-count" style={{ background:'#2E9E7B' }}>{questions.filter(q => q.status !== 'released').length}</span></div>
+          {secBar('questions', 'أسئلة العملاء', questions.filter(q => q.status !== 'released').length, '#2E9E7B')}
 
           {questions.length === 0 && <div className="ap-empty">لا توجد أسئلة بعد</div>}
 
-          {questions.map(q => (
+          {shownQuestions.map(q => (
             <div className="ap-card" key={q.id}>
               <div className="ap-card-top">
                 <span className="ap-name">{isNew(q.created_at) && <NewBadge />}💬 {q.companies?.company_name || 'شركة'}</span>
@@ -613,11 +636,11 @@ export default function ApprovalsPage() {
             </div>
           ))}
 
-          <div className="ap-section-title">طلبات تعديل البيانات <span className="ap-count" style={{ background:'#C9A84C' }}>{edits.filter(e => e.status === 'pending').length}</span></div>
+          {secBar('edits', 'طلبات تعديل البيانات', edits.filter(e => e.status === 'pending').length, '#C9A84C')}
 
           {edits.length === 0 && <div className="ap-empty">لا توجد طلبات تعديل</div>}
 
-          {edits.map(e => (
+          {shownEdits.map(e => (
             <div className="ap-card" key={e.id}>
               <div className="ap-card-top">
                 <span className="ap-name">🛠️ {e.companies?.company_name || 'شركة'}</span>
