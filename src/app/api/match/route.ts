@@ -113,40 +113,62 @@ export async function POST(req: Request) {
       + '{"offers":[{"region":"السعودية أو الخليج أو دولي","provider":"اسم الجهة","product":"اسم المنتج","requirements":"الشروط المعلنة باختصار","verdict":"متأهل أو متأهل بشرط","gaps":["فجوة"],"amountRange":"المبلغ المتوقع","timeline":"زمن الدراسة","saudiPrecedent":"السابقة مع الرابط والسنة أو null","legalPath":"المسار القانوني أو null","source":"رابط المصدر"}]}\n'
       + 'ابحث براحتك وأرجع كل العروض المناسبة فعلاً عبر الطبقات الثلاث دون التقيّد بعدد معيّن — وازِن التغطية بين السعودية والخارج بالتساوي. رتب داخل كل طبقة من الأنسب للأقل، ولا تُدرج عرضاً غير مناسب لمجرد زيادة العدد.';
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY as string,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 6000,
-        messages: [{ role: 'user', content: prompt }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 30 }],
-      }),
-    });
-
-    if (!aiRes.ok) { webSearchError = 'HTTP ' + aiRes.status + ': ' + (await aiRes.text()).slice(0, 300); }
-    if (aiRes.ok) {
-      const aiData = await aiRes.json();
-      const text = (aiData.content || [])
-        .filter((b: { type: string }) => b.type === 'text')
-        .map((b: { text: string }) => b.text)
+    const askMarket = async (pmt: string): Promise<WebOffer[]> => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 8000,
+          messages: [{ role: 'user', content: pmt }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 25 }],
+        }),
+      });
+      if (!r.ok) { webSearchError += ' | HTTP ' + r.status; return []; }
+      const d = await r.json();
+      const txt = (d.content || [])
+        .filter((blk: { type: string }) => blk.type === 'text')
+        .map((blk: { text: string }) => blk.text)
         .join('');
-      if (!text || text.length < 10) { webSearchError = 'رد فاضي من API. أول 300 حرف من الاستجابة: ' + JSON.stringify(aiData).slice(0, 300); }
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      const jsonStart = cleaned.indexOf('{');
-      const jsonEnd = cleaned.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd > jsonStart) {
-        const parsed = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
-        if (Array.isArray(parsed.offers)) {
-          webOffers = parsed.offers;
-          webSearchOk = true;
-        }
-      }
-    }
+      const cleaned = txt.replace(/```json|```/g, '').trim();
+      const j0 = cleaned.indexOf('{');
+      const j1 = cleaned.lastIndexOf('}');
+      if (j0 === -1 || j1 <= j0) return [];
+      try {
+        const parsed = JSON.parse(cleaned.slice(j0, j1 + 1));
+        return Array.isArray(parsed.offers) ? parsed.offers : [];
+      } catch { return []; }
+    };
+
+    const SCOPES = [
+      'اقتصر على البنوك السعودية المرخّصة من البنك المركزي السعودي فقط.',
+      'اقتصر على شركات التمويل ومنصات التمويل الجماعي المرخّصة من البنك المركزي السعودي فقط — لا بنوك.',
+      'اقتصر على البنوك الأجنبية التي لها فروع مرخّصة من البنك المركزي السعودي وتعمل داخل المملكة. مسارها القانوني ثابت ولا يحتاج بحثاً — ابحث فقط عن منتجاتها: Standard Chartered، Citi، JP Morgan، Deutsche Bank، BNP Paribas، QNB، Emirates NBD، FAB، NBK، Mashreq، ICBC، Bank of China، GIB، وغيرها إن وجدت.',
+      'اقتصر على البنوك والمؤسسات الخليجية التي تموّل عابراً للحدود شركات سعودية.',
+      'اقتصر على المؤسسات التنموية ومتعددة الأطراف: ITFC، ICD، IsDB، أبيكورب، برنامج تمويل التجارة العربية، IFC، صندوق أوبك، وما شابهها.',
+      'اقتصر على وكالات ائتمان التصدير التي تموّل المشتري السعودي أو تضمن المورّد: UKEF، Allianz Trade، SACE، Coface، Atradius، US EXIM، Sinosure، K-SURE، NEXI، EDC، Bpifrance.',
+      'اقتصر على منصات تمويل الفواتير والتجارة العابرة للحدود: Incomlend، Stenn، Drip Capital، Modifi، Velotrade، Tradeteq، Marco، وما شابهها.',
+      'اقتصر على صناديق الدين الخاص والاستثمار الإقليمية النشطة في السعودية: إنفستكورب، جلف كابيتال، NBK Capital Partners، أركابيتا، شعاع كابيتال، رويا بارتنرز، وما شابهها.',
+    ];
+
+    const results = await Promise.all(SCOPES.map(sc => askMarket(
+      prompt + '\n\nنطاق هذا الطلب حصراً: ' + sc +
+      '\nاستثمر كل ميزانية البحث داخل هذا النطاق وحده، وأرجع كل جهة مؤهلة تجدها فيه دون سقف عددي. ' +
+      'لا تُدرج جهة خارج النطاق، ولا تحش القائمة: إن لم تجد إلا جهتين مؤهلتين فأرجع جهتين. القاعدة السابعة تبقى إلزامية.'
+    )));
+
+    const seen = new Set<string>();
+    webOffers = results.flat().filter(o => {
+      const k = (o.provider || '') + '|' + (o.product || '');
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    webSearchOk = webOffers.length > 0;
   } catch (err) {
     webSearchError = err instanceof Error ? err.message : String(err);
   }
