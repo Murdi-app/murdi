@@ -204,6 +204,35 @@ export async function POST(req: Request) {
 
   const totalCount = webOffers.length + dbMatches.length;
 
+  // تجميع الفجوات عبر كل الجهات
+  const GAP_RULES: [RegExp, string][] = [
+    [/مدقق|معتمد|قوائم مالي/, 'قوائم مالية مدققة أو معتمدة'],
+    [/كفال|ضمان|رهن/, 'كفالة أو ضمان'],
+    [/سجل تجاري|تجديد|ساري/, 'تجديد السجل التجاري'],
+    [/حساب بنكي|كشف حساب|كشوفات/, 'حساب بنكي نشط وكشوفات'],
+    [/عمر|سنوات|سنتين|تشغيلي/, 'عمر تشغيلي أطول'],
+    [/زكا|ضريب/, 'الالتزام الزكوي والضريبي'],
+    [/فاتور|فواتير|عقود|مستخلص/, 'فواتير أو عقود موثقة'],
+    [/ائتمان|سمة|تصنيف/, 'السجل الائتماني'],
+  ];
+  const gapCount = new Map<string, number>();
+  for (const o of webOffers) {
+    const here = new Set<string>();
+    for (const g of (o.gaps || [])) {
+      const r = GAP_RULES.find(([re]) => re.test(String(g)));
+      const label = r ? r[1] : String(g).slice(0, 40);
+      if (here.has(label)) continue;
+      here.add(label);
+      gapCount.set(label, (gapCount.get(label) || 0) + 1);
+    }
+  }
+  const gapBox = gapCount.size === 0 ? '' :
+    '<div style="margin-top:18px;background:#FBF5E8;border:2px solid #E8D9A8;border-radius:10px;padding:14px 16px">'
+    + '<div style="color:#9A7B2E;font-weight:900;font-size:14px;margin-bottom:8px">🔑 أكثر ما يقفل الأبواب (من ' + webOffers.length + ' جهة)</div>'
+    + [...gapCount.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8).map(([lbl, n]) =>
+        '<div style="font-size:13px;color:#5C4A1F;padding:3px 0">• <b>' + lbl + '</b> — تشترطها ' + n + ' جهة</div>').join('')
+    + '<div style="font-size:12px;color:#8A6D1A;margin-top:8px">عالج الأعلى تكراراً قبل المخاطبة — كل فجوة تُغلق تفتح عدة أبواب دفعة واحدة.</div></div>';
+
   // ====== ما يراه العميل: العدد والأنواع بدون أسماء ======
   const clientMatches = [
     ...webOffers.map((o) => ({
@@ -252,6 +281,7 @@ export async function POST(req: Request) {
         + '<p><b>المطلوب:</b> ' + typeLabel + ' | <b>عروض السوق:</b> ' + webOffers.length + ' | <b>شبكة مُرضي:</b> ' + dbMatches.length + ' مطابقة</p>'
         + (webOffers.length === 0 && !webSearchOk ? '<p style="color:#A33">⚠️ تعذر بحث السوق: ' + (webSearchError || 'تحقق من ANTHROPIC_API_KEY في Vercel') + '</p>' : '')
         + '<hr/>'
+        + gapBox
         + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">المنطقة</th><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
         + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
         + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
