@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
-import { runScopedMatch } from '@/lib/matchEngine';
+import { runScopedMatch, saveMatchResults } from '@/lib/matchEngine';
 
 const TYPE_LABELS: Record<string, string> = {
   cash: 'تمويل نقدي',
@@ -97,6 +97,7 @@ export async function POST(req: Request) {
   const webOffers = _m.offers;
   const webSearchOk = _m.ok;
   const webSearchError = _m.error;
+  const _save = await saveMatchResults(company.id, isInvest ? 'investment' : 'funding', webOffers);
 
   // ====== الطبقة 2: مطابقة قاعدة جهاتك الخاصة ======
   type DbMatch = { product: Record<string, unknown>; fit: number };
@@ -218,6 +219,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     match_count: totalCount,
+    saved: _save.saved,
+    save_error: _save.error,
     matches: clientMatches,
   });
 }

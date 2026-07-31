@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // محرك المطابقة المشترك
 
+import { createClient } from '@supabase/supabase-js';
+
 type Rec = Record<string, any>;
 
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
@@ -136,4 +138,41 @@ export async function runScopedMatch(args: {
     webSearchError = err instanceof Error ? err.message : String(err);
   }
   return { offers: webOffers, ok: webSearchOk, error: webSearchError };
+}
+
+export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[]) {
+  if (!companyId || !offers.length) return { saved: 0, error: 'no offers' };
+  try {
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    );
+    await admin.from('match_results')
+      .update({ status: 'superseded' })
+      .eq('company_id', companyId)
+      .eq('track', track);
+    const rows = offers.map((o) => ({
+      company_id: companyId,
+      track,
+      region: o.region || null,
+      provider: o.provider,
+      product: o.product,
+      requirements: o.requirements,
+      fit: o.verdict || null,
+      fit_score: String(o.verdict || '').includes('\u0628\u0634\u0631\u0637') ? 70 : 90,
+      source: o.source || null,
+      verdict: o.verdict || null,
+      gaps: o.gaps || [],
+      amount_range: o.amountRange || null,
+      timeline: o.timeline || null,
+      saudi_precedent: o.saudiPrecedent || null,
+      legal_path: o.legalPath || null,
+      status: 'new',
+    }));
+    const { error } = await admin.from('match_results').insert(rows);
+    if (error) return { saved: 0, error: error.message };
+    return { saved: rows.length, error: '' };
+  } catch (e) {
+    return { saved: 0, error: e instanceof Error ? e.message : String(e) };
+  }
 }
