@@ -284,13 +284,13 @@ export async function POST(req: Request) {
       reasons: ['الشروط المعلنة تتطابق مع ملف شركتك'],
       next_step: 'فريق مُرضي سيتولى التواصل وتجهيز ملفك',
     })),
-    ...dbMatches.slice(0, 5).map((m) => ({
+    ...dbMatches.slice(0, 0).map((m) => ({
       funding_type: TYPE_LABELS[(m.product.funding_types as string[] || [])[0]] || 'منتج تمويلي',
       fit_percent: m.fit,
       reasons: ['ضمن شبكة جهات مُرضي المعتمدة'],
       next_step: 'فريق مُرضي سيتولى التواصل وتجهيز ملفك',
     })),
-  ].slice(0, 20);
+  ].slice(0, 80);
 
   // ====== الإيميل السري للأدمن: الأسماء والتفاصيل كاملة ======
   try {
@@ -306,7 +306,7 @@ export async function POST(req: Request) {
       + '<td style="padding:8px;border:1px solid #ddd"><b>' + (o.verdict || '—') + '</b>' + ((o.gaps && o.gaps.length) ? '<br><span style="color:#9A7B2E;font-size:11px">ينقص: ' + o.gaps.join('، ') + '</span>' : '') + (o.amountRange ? '<br><span style="font-size:11px">المبلغ: ' + o.amountRange + '</span>' : '') + (o.timeline ? '<br><span style="font-size:11px">المدة: ' + o.timeline + '</span>' : '') + (o.saudiPrecedent ? '<br><span style="color:#2E9E7B;font-size:11px">سابقة: ' + o.saudiPrecedent + '</span>' : '') + (o.legalPath ? '<br><span style="color:#3B5BA5;font-size:11px">المسار: ' + o.legalPath + '</span>' : '') + '</td>'
       + '<td style="padding:8px;border:1px solid #ddd"><a href="' + o.source + '">المصدر</a></td></tr>'
     ).join('');
-    const dbRows = dbMatches.slice(0, 5).map((m) =>
+    const dbRows = dbMatches.slice(0, 0).map((m) =>
       '<tr><td style="padding:8px;border:1px solid #ddd"><b>' + (m.product.provider_name || m.product.product_name || '—') + '</b></td>'
       + '<td style="padding:8px;border:1px solid #ddd">' + (m.product.product_name || '—') + '</td>'
       + '<td style="padding:8px;border:1px solid #ddd">ملاءمة ' + m.fit + '%</td></tr>'
