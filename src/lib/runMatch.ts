@@ -527,7 +527,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#3B5BA5' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
+    const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#9A7B2E' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
     const regionOrder = (r?: string) => { const x = r || ''; return x.includes('خليج') ? 1 : x.includes('دولي') ? 2 : 0; };
     const sortedOffers = [...webOffers].sort((a, b) => regionOrder(a.region) - regionOrder(b.region));
     const webRows = sortedOffers.map((o) =>

@@ -133,7 +133,7 @@ export default function RegisterPage() {
         .rg-label { display:block; color:#1A3D34; font-size:14px; font-weight:600; margin-bottom:7px; }
         .rg-input { width:100%; background:#FBFCFB; border:1.5px solid #EAF1EE; border-radius:12px; padding:13px 16px; font-family:'Cairo',sans-serif; font-size:15px; color:#1A3D34; outline:none; direction:rtl; text-align:right; }
         .rg-input:focus { border-color:#2E9E7B; background:#fff; }
-        .rg-btn { width:100%; background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; border:none; padding:15px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px rgba(46,158,123,0.28); margin-top:8px; }
+        .rg-btn { width:100%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; border:none; padding:15px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px rgba(46,158,123,0.28); margin-top:8px; }
         .rg-btn:disabled { opacity:0.45; cursor:not-allowed; }
         .rg-fee-box { background:#E8F5EF; border-radius:16px; padding:22px; text-align:center; margin-bottom:22px; }
         .rg-fee-label { color:#6B8A80; font-size:13px; margin-bottom:4px; }

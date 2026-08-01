@@ -5,7 +5,7 @@ export const metadata = {
 };
 
 const NAVY = '#13302A';
-const GOLD = '#C9A24B';
+const GOLD = '#C9A84C';
 
 const sectors = [
   { name: 'التجزئة والتجارة', score: 38 },
@@ -27,11 +27,11 @@ export default function CheckPage() {
           <h1 style={{ color: '#fff', fontSize: 30, lineHeight: 1.6, margin: '18px 0 12px' }}>
             جهة التمويل ما ترفض شركتك، والمستثمر ما يعتذر،<br />لأن نشاطك ضعيف — بل لأنها <span style={{ color: GOLD }}>غير جاهزة</span>
           </h1>
-          <p style={{ color: '#cfd6e4', fontSize: 16.5, lineHeight: 1.9, margin: '0 0 26px' }}>
+          <p style={{ color: '#d8e8e0', fontSize: 16.5, lineHeight: 1.9, margin: '0 0 26px' }}>
             وفق مؤشر مُرضي لجاهزية رأس المال، متوسط جاهزية الشركات السعودية:
           </p>
-          <div style={{ color: GOLD, fontSize: 66, fontWeight: 800, lineHeight: 1 }}>43<span style={{ fontSize: 26, color: '#cfd6e4' }}> / 100</span></div>
-          <p style={{ color: '#cfd6e4', fontSize: 15, marginTop: 10 }}>أي أن أكثر من نصف الشركات لو تقدّمت اليوم للتمويل أو الاستثمار… تُرفض.</p>
+          <div style={{ color: GOLD, fontSize: 66, fontWeight: 800, lineHeight: 1 }}>43<span style={{ fontSize: 26, color: '#d8e8e0' }}> / 100</span></div>
+          <p style={{ color: '#d8e8e0', fontSize: 15, marginTop: 10 }}>أي أن أكثر من نصف الشركات لو تقدّمت اليوم للتمويل أو الاستثمار… تُرفض.</p>
           <a href="/#mini-assessment" style={{ display: 'inline-block', marginTop: 26, background: GOLD, color: NAVY, fontWeight: 800, fontSize: 17, padding: '15px 40px', borderRadius: 99, textDecoration: 'none' }}>قِس جاهزية شركتك الآن — مجاناً ←</a>
           <p style={{ color: '#8fa39a', fontSize: 13, marginTop: 12 }}>دقيقتان · ثماني أسئلة · بلا تسجيل</p>
         </div>
@@ -62,7 +62,7 @@ export default function CheckPage() {
       <section style={{ background: NAVY, padding: '42px 20px', textAlign: 'center' }}>
         <div style={{ maxWidth: 700, margin: '0 auto' }}>
           <h2 style={{ color: '#fff', fontSize: 23, lineHeight: 1.6, marginBottom: 12 }}>سكورك مجرد البداية — الجاهزية الكاملة رحلة نرافقك فيها</h2>
-          <p style={{ color: '#cfd6e4', fontSize: 15.5, lineHeight: 1.9, marginBottom: 24 }}>
+          <p style={{ color: '#d8e8e0', fontSize: 15.5, lineHeight: 1.9, marginBottom: 24 }}>
             في منصة مُرضي: تقييم شامل لمسارك (تمويل، استثمار، أو طرح)، خطة تحسين عملية،
             ملف احترافي بلغتين، ومخاطبة الجهات المناسبة — بمنهجية د. عبدالحكيم المرضي وخبرة 15 عاماً في السوق السعودي.
           </p>

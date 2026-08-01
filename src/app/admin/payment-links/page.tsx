@@ -35,7 +35,7 @@ export default function PaymentLinksPage() {
   };
 
   const statusColor = (s: string) =>
-    s === "مدفوع" ? C.green : s === "أُرسل" ? "#2980B9" : "#C9A84C";
+    s === "مدفوع" ? C.green : s === "أُرسل" ? "#2E9E7B" : "#C9A84C";
 
   const fmt = (d: string) => new Date(d).toLocaleString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -70,7 +70,7 @@ export default function PaymentLinksPage() {
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {r.status !== "أُرسل" && r.status !== "مدفوع" && (
-                  <button onClick={() => act(r.id, "أُرسل")} style={{ background: "#2980B9", color: "#fff", border: "none", padding: "8px 18px", borderRadius: 8, fontWeight: 900, fontSize: 13, cursor: "pointer", fontFamily: "Cairo" }}>📤 علّم: أرسلت الرابط</button>
+                  <button onClick={() => act(r.id, "أُرسل")} style={{ background: "#2E9E7B", color: "#fff", border: "none", padding: "8px 18px", borderRadius: 8, fontWeight: 900, fontSize: 13, cursor: "pointer", fontFamily: "Cairo" }}>📤 علّم: أرسلت الرابط</button>
                 )}
                 {r.status !== "مدفوع" && (
                   <button onClick={() => act(r.id, "مدفوع")} style={{ background: C.green, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 8, fontWeight: 900, fontSize: 13, cursor: "pointer", fontFamily: "Cairo" }}>✅ علّم: مدفوع</button>

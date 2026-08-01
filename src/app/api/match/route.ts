@@ -166,7 +166,7 @@ export async function POST(req: Request) {
   // ====== الإيميل السري للأدمن: الأسماء والتفاصيل كاملة ======
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#3B5BA5' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
+    const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#9A7B2E' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
     const regionOrder = (r?: string) => { const x = r || ''; return x.includes('خليج') ? 1 : x.includes('دولي') ? 2 : 0; };
     const sortedOffers = [...webOffers].sort((a, b) => regionOrder(a.region) - regionOrder(b.region));
     const webRows = sortedOffers.map((o) =>
@@ -174,7 +174,7 @@ export async function POST(req: Request) {
       + '<td style="padding:8px;border:1px solid #ddd"><b>' + o.provider + '</b></td>'
       + '<td style="padding:8px;border:1px solid #ddd">' + o.product + '</td>'
       + '<td style="padding:8px;border:1px solid #ddd">' + o.requirements + '</td>'
-      + '<td style="padding:8px;border:1px solid #ddd"><b>' + (o.verdict || '—') + '</b>' + ((o.gaps && o.gaps.length) ? '<br><span style="color:#9A7B2E;font-size:11px">ينقص: ' + o.gaps.join('، ') + '</span>' : '') + (o.amountRange ? '<br><span style="font-size:11px">المبلغ: ' + o.amountRange + '</span>' : '') + (o.timeline ? '<br><span style="font-size:11px">المدة: ' + o.timeline + '</span>' : '') + (o.saudiPrecedent ? '<br><span style="color:#2E9E7B;font-size:11px">سابقة: ' + o.saudiPrecedent + '</span>' : '') + (o.legalPath ? '<br><span style="color:#3B5BA5;font-size:11px">المسار: ' + o.legalPath + '</span>' : '') + '</td>'
+      + '<td style="padding:8px;border:1px solid #ddd"><b>' + (o.verdict || '—') + '</b>' + ((o.gaps && o.gaps.length) ? '<br><span style="color:#9A7B2E;font-size:11px">ينقص: ' + o.gaps.join('، ') + '</span>' : '') + (o.amountRange ? '<br><span style="font-size:11px">المبلغ: ' + o.amountRange + '</span>' : '') + (o.timeline ? '<br><span style="font-size:11px">المدة: ' + o.timeline + '</span>' : '') + (o.saudiPrecedent ? '<br><span style="color:#2E9E7B;font-size:11px">سابقة: ' + o.saudiPrecedent + '</span>' : '') + (o.legalPath ? '<br><span style="color:#9A7B2E;font-size:11px">المسار: ' + o.legalPath + '</span>' : '') + '</td>'
       + '<td style="padding:8px;border:1px solid #ddd"><a href="' + o.source + '">المصدر</a></td></tr>'
     ).join('');
     const dbRows = dbMatches.slice(0, 0).map((m) =>

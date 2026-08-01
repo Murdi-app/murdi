@@ -48,11 +48,11 @@ function PrintInner() {
 
       <button className="no-print" onClick={() => window.print()} style={{ position: 'fixed', top: 14, left: 14, background: '#13302A', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>🖨️ حفظ PDF (Cmd+P)</button>
       {mode === 'call_list' && (
-        <button className="no-print" onClick={markAllDistributed} disabled={marked} style={{ position: 'fixed', top: 60, left: 14, background: marked ? '#2E9E7B' : '#5B3A8E', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>{marked ? '✓ وُزّعت' : '✓ تعليم القائمة كموزَّعة'}</button>
+        <button className="no-print" onClick={markAllDistributed} disabled={marked} style={{ position: 'fixed', top: 60, left: 14, background: marked ? '#2E9E7B' : '#6B5B2E', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>{marked ? '✓ وُزّعت' : '✓ تعليم القائمة كموزَّعة'}</button>
       )}
 
-      <div style={{ textAlign: 'center', borderBottom: '3px solid #C9A24B', paddingBottom: 14, marginBottom: 22 }}>
-        <div style={{ color: '#C9A24B', fontWeight: 800, fontSize: 20, letterSpacing: 1 }}>مُرضي</div>
+      <div style={{ textAlign: 'center', borderBottom: '3px solid #C9A84C', paddingBottom: 14, marginBottom: 22 }}>
+        <div style={{ color: '#C9A84C', fontWeight: 800, fontSize: 20, letterSpacing: 1 }}>مُرضي</div>
         <h1 style={{ color: '#13302A', fontSize: 21, margin: '6px 0 4px' }}>{mode === 'call_list' ? 'قائمة الاتصال اليومية' : 'قائمة صيد العملاء'}</h1>
         <div style={{ color: '#777', fontSize: 13 }}>حلول المرضي للاستشارات المالية · {new Date().toLocaleDateString('ar-SA')} · {leads.length} منشأة</div>
       </div>
@@ -70,7 +70,7 @@ function PrintInner() {
           </div>
           {l.signal && <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.8, marginBottom: 7 }}>ℹ️ {l.signal}</div>}
           {mode === 'call_list' && l.call_script && (
-            <div style={{ background: '#f6f3fb', border: '1px solid #e0d5f0', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+            <div style={{ background: '#fbf8ee', border: '1px solid #e8d9a8', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
               <strong>📞 سكربت المكالمة:</strong>{'\n'}{l.call_script}
             </div>
           )}

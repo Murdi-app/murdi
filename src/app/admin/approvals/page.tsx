@@ -273,7 +273,7 @@ export default function ApprovalsPage() {
         .ap-field-val { color:#1A3D34; font-weight:600; }
         .ap-actions { display:flex; gap:10px; flex-wrap:wrap; padding-top:14px; border-top:1px solid #F0F5F3; }
         .ap-btn { border:none; padding:10px 22px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer; }
-        .ap-btn-approve { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; }
+        .ap-btn-approve { background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; }
         .ap-btn-reject { background:#FBEDED; color:#D96A6A; }
         .ap-btn-receipt { background:#E8F5EF; color:#2E9E7B; }
         .ap-btn-pay { background:#FBF5E8; color:#9A7B2E; }
@@ -473,7 +473,7 @@ export default function ApprovalsPage() {
                       );
                       const TRACK_META: Record<string, { ar: string; color: string; icon: string }> = {
                         funding: { ar: 'التمويل', color: '#2E9E7B', icon: '💰' },
-                        investment: { ar: 'الاستثمار', color: '#3B5BA5', icon: '📈' },
+                        investment: { ar: 'الاستثمار', color: '#9A7B2E', icon: '📈' },
                         ipo: { ar: 'الطرح العام', color: '#A53B3B', icon: '🏛️' },
                       };
                       const byTrack = (tk: string) => ms.filter((m: any) => (m.track || 'funding') === tk);
@@ -489,7 +489,7 @@ export default function ApprovalsPage() {
                               <span style={{ background:meta.color, color:'#fff', borderRadius:10, padding:'1px 9px', fontSize:11 }}>{tl.length}</span>
                             </div>
                             {regionBlock('🇸🇦 السعودية', '#2E9E7B', inRegion('السعودية'))}
-                            {regionBlock('🌙 الخليج', '#3B5BA5', inRegion('الخليج'))}
+                            {regionBlock('🌙 الخليج', '#9A7B2E', inRegion('الخليج'))}
                             {regionBlock('🌍 دولي', '#A53B3B', inRegion('دولي'))}
                           </div>
                         );
@@ -528,24 +528,24 @@ export default function ApprovalsPage() {
                       const cid = pr.company.id;
                       const msgs = chatByCompany[cid] || [];
                       return (
-                        <div style={{ marginTop:18, background:'#F7F9FB', border:'2px solid #E1E9F2', borderRadius:12, padding:'16px 18px' }}>
+                        <div style={{ marginTop:18, background:'#F7FAF9', border:'2px solid #E3EDE8', borderRadius:12, padding:'16px 18px' }}>
                           <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:4 }}>💬 استشر مُرضي حول هذه الجهات</div>
                           <div style={{ color:'#6B8A80', fontSize:12, marginBottom:12 }}>محادثة خاصة بك — اسأل عن تفاصيل أي جهة، منتجاتها، مقرّها، طريقة التواصل، أو اطلب جهات إضافية. مُرضي يبحث لك بدقّة.</div>
                           <div style={{ maxHeight:340, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, marginBottom:12 }}>
                             {msgs.length === 0 && <div style={{ color:'#9DB3AB', fontSize:12.5, textAlign:'center', padding:'14px 0' }}>لا توجد رسائل بعد. ابدأ بسؤال مثل: «فصّل لي أول جهة تمويل — منتجاتها وكيف أتواصل معها».</div>}
                             {msgs.map((m, i) => (
-                              <div key={i} style={{ alignSelf: m.role === 'admin' ? 'flex-start' : 'flex-end', maxWidth:'88%', background: m.role === 'admin' ? '#1A3D34' : '#fff', color: m.role === 'admin' ? '#fff' : '#1A3D34', border: m.role === 'admin' ? 'none' : '1px solid #E1E9F2', borderRadius:12, padding:'10px 14px', fontSize:13, lineHeight:1.9, whiteSpace:'pre-wrap' }}>
-                                {m.role === 'murdi' && <div style={{ color:'#3B5BA5', fontSize:11, fontWeight:900, marginBottom:4 }}>مُرضي</div>}
+                              <div key={i} style={{ alignSelf: m.role === 'admin' ? 'flex-start' : 'flex-end', maxWidth:'88%', background: m.role === 'admin' ? '#1A3D34' : '#fff', color: m.role === 'admin' ? '#fff' : '#1A3D34', border: m.role === 'admin' ? 'none' : '1px solid #E3EDE8', borderRadius:12, padding:'10px 14px', fontSize:13, lineHeight:1.9, whiteSpace:'pre-wrap' }}>
+                                {m.role === 'murdi' && <div style={{ color:'#9A7B2E', fontSize:11, fontWeight:900, marginBottom:4 }}>مُرضي</div>}
                                 {m.content}
                               </div>
                             ))}
-                            {chatBusy === cid && <div style={{ alignSelf:'flex-end', color:'#3B5BA5', fontSize:12.5, fontWeight:700 }}>مُرضي يبحث الآن…</div>}
+                            {chatBusy === cid && <div style={{ alignSelf:'flex-end', color:'#9A7B2E', fontSize:12.5, fontWeight:700 }}>مُرضي يبحث الآن…</div>}
                           </div>
                           <div style={{ display:'flex', gap:8 }}>
                             <input value={chatInput[cid] || ''} onChange={(e) => setChatInput(prev => ({ ...prev, [cid]: e.target.value }))}
                               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(cid); } }}
                               placeholder="اكتب سؤالك لمُرضي…" disabled={chatBusy === cid}
-                              style={{ flex:1, padding:'11px 14px', borderRadius:10, border:'1.5px solid #E1E9F2', fontFamily:'Cairo', fontSize:13, outline:'none' }} />
+                              style={{ flex:1, padding:'11px 14px', borderRadius:10, border:'1.5px solid #E3EDE8', fontFamily:'Cairo', fontSize:13, outline:'none' }} />
                             <button onClick={() => sendChat(cid)} disabled={chatBusy === cid || !(chatInput[cid] || '').trim()}
                               style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'0 22px', borderRadius:10, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', opacity: chatBusy === cid ? 0.5 : 1 }}>إرسال</button>
                           </div>
@@ -569,7 +569,7 @@ export default function ApprovalsPage() {
                   {(() => {
                     const T: Record<string, { ar: string; bg: string; fg: string }> = {
                       funding: { ar: 'تمويل', bg: '#E8F5EF', fg: '#2E9E7B' },
-                      investment: { ar: 'استثمار', bg: '#EAF0FB', fg: '#3B5BA5' },
+                      investment: { ar: 'استثمار', bg: '#EAF7F0', fg: '#9A7B2E' },
                       ipo: { ar: 'طرح عام', bg: '#FBF0F0', fg: '#A53B3B' },
                     };
                     const t = T[c.assessment_type as string] || T.funding;

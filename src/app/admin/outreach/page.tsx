@@ -195,12 +195,12 @@ export default function OutreachPage() {
 
   const badge = (m: Msg) => {
     if (m.entity_email && (!m.error_note || m.error_note.includes('مؤكّد'))) return { t:'🟢 إيميل مؤكّد', c:C.green };
-    if (m.entity_email) return { t:'🟡 إيميل غير مؤكّد', c:'#C8A84B' };
+    if (m.entity_email) return { t:'🟡 إيميل غير مؤكّد', c:'#C9A84C' };
     return { t:'🔴 لا يوجد إيميل', c:'#C0392B' };
   };
 
   const statusColor = (s: string) =>
-    s === 'معتمدة' ? C.green : s === 'مُرسلة' ? '#2980B9' : s === 'مرفوضة' ? '#C0392B' : C.gray;
+    s === 'معتمدة' ? C.green : s === 'مُرسلة' ? '#2E9E7B' : s === 'مرفوضة' ? '#C0392B' : C.gray;
 
   const approvedCount = msgs.filter(m => m.status === 'معتمدة').length;
   const sentCount = msgs.filter(m => m.status === 'مُرسلة').length;
@@ -212,7 +212,7 @@ export default function OutreachPage() {
     <div style={{ background:C.bg, minHeight:'100vh' }}>
 
       {dueList.length > 0 && (
-        <div style={{ maxWidth: 1000, margin: '14px auto 0', background: '#FFF8E7', border: '2px solid #C9A24B', borderRadius: 14, padding: '14px 18px' }}>
+        <div style={{ maxWidth: 1000, margin: '14px auto 0', background: '#FFF8E7', border: '2px solid #C9A84C', borderRadius: 14, padding: '14px 18px' }}>
           <div style={{ fontWeight: 900, color: '#7a5a12', fontSize: 15, marginBottom: 10 }}>⏰ متابعات مستحقة اليوم ({dueList.length})</div>
           {fuMsg && <div style={{ fontSize: 13, color: '#1A3D34', marginBottom: 8 }}>{fuMsg}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -223,7 +223,7 @@ export default function OutreachPage() {
                   <span style={{ color: '#888', marginRight: 8 }}> · {(f.followup_stage || 0) === 0 ? 'تستحق المتابعة الأولى' : 'تستحق المتابعة الأخيرة'}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button onClick={() => sendFollowup(f)} style={{ background: '#C9A24B', color: '#1A3D34', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>✉️ إرسال المتابعة</button>
+                  <button onClick={() => sendFollowup(f)} style={{ background: '#C9A84C', color: '#1A3D34', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>✉️ إرسال المتابعة</button>
                   <button onClick={() => setReply(f, 'replied')} style={{ background: '#2E9E7B', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>✅ ردّت</button>
                   <button onClick={() => setReply(f, 'closed')} style={{ background: '#eee', color: '#555', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, cursor: 'pointer' }}>إقفال</button>
                 </div>
@@ -271,7 +271,7 @@ export default function OutreachPage() {
             </button>
             {nextOffset !== null && (
               <button onClick={() => generate(nextOffset)} disabled={busy}
-                style={{ padding:'10px 20px', borderRadius:10, background:'#C9A24B', color:'#1A3D34', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
+                style={{ padding:'10px 20px', borderRadius:10, background:'#C9A84C', color:'#1A3D34', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
                 {busy ? 'جارٍ...' : '⏭️ توليد الـ١٠ التالية'}
               </button>
             )}
@@ -381,7 +381,7 @@ export default function OutreachPage() {
                     )}
                     {m.status === 'معتمدة' && (
                       <button onClick={() => act(m.id, 'contacted')}
-                        style={{ padding:'8px 18px', borderRadius:8, background:'#2E5E8A', color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>📤 سجّلت التواصل</button>
+                        style={{ padding:'8px 18px', borderRadius:8, background:'#1E7A5A', color:'#fff', fontWeight:900, border:'none', fontSize:13 }}>📤 سجّلت التواصل</button>
                     )}
                     {m.status === 'مُرسلة' && m.reply_status === 'awaiting' && (<>
                       <span style={{ fontSize:12.5, fontWeight:900, color:'#9A7B2E' }}>⏳ بانتظار رد الجهة</span>

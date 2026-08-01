@@ -15,11 +15,11 @@ const isNew = (d: string) => d ? (Date.now() - new Date(d).getTime()) < 48*60*60
 
 const STAT: Record<string, { t: string; bg: string; fg: string }> = {
   submitted: { t: 'بانتظار التجهيز', bg: '#FBF5E8', fg: '#9A7B2E' },
-  in_progress: { t: 'تم التجهيز — بانتظار الإصدار', bg: '#EAF0FB', fg: '#3B5BA5' },
+  in_progress: { t: 'تم التجهيز — بانتظار الإصدار', bg: '#EAF7F0', fg: '#9A7B2E' },
   priced: { t: 'مُسعّرة — بانتظار دفع العميل', bg: '#FBF3DC', fg: '#B8860B' },
   paid: { t: 'مدفوعة — بانتظار التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
   delivered: { t: 'صادرة للعميل', bg: '#EAF7F0', fg: '#1E7A5A' },
-  in_follow_up: { t: 'قيد المتابعة مع الجهات', bg: '#EAF0FB', fg: '#3B5BA5' },
+  in_follow_up: { t: 'قيد المتابعة مع الجهات', bg: '#EAF7F0', fg: '#9A7B2E' },
   completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
   rejected: { t: 'مرفوضة', bg: '#FBEEEC', fg: '#C0564B' },
 }
@@ -327,7 +327,7 @@ export default function AdminServicesPage() {
               </div>
 
               {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
-                <div style={{ background:'#EAF0FB', border:'1.5px solid #B9CCEC', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#3B5BA5', fontWeight:900, fontSize:12.5 }}>
+                <div style={{ background:'#EAF7F0', border:'1.5px solid #D8E8E0', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:12.5 }}>
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
                 </div>
               )}

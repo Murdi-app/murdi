@@ -81,7 +81,7 @@ export default function Home() {
         .lp-sub { color:#5B7068; font-size:17px; line-height:2; max-width:680px; margin:0 auto 16px; }
         .lp-clarify { display:inline-block; background:#EAF7F0; color:#1E7A5A; font-size:13.5px; font-weight:700; padding:7px 16px; border-radius:30px; margin-bottom:16px; border:1px solid #C5E8D8; }
         .lp-global { display:inline-flex; align-items:center; gap:8px; background:#FBF3DC; color:#9A7B2E; padding:9px 22px; border-radius:30px; font-size:14px; font-weight:800; margin-bottom:26px; }
-        .lp-cta { background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; border:none; padding:17px 52px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:17px; font-weight:900; cursor:pointer; box-shadow:0 10px 28px rgba(46,158,123,0.32); transition:transform .15s; display:block; margin:0 auto; }
+        .lp-cta { background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; border:none; padding:17px 52px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:17px; font-weight:900; cursor:pointer; box-shadow:0 10px 28px rgba(46,158,123,0.32); transition:transform .15s; display:block; margin:0 auto; }
         .lp-cta:hover { transform:translateY(-2px); }
         .lp-cta-sub { color:#A3BAB2; font-size:12.5px; margin-top:12px; }
         .lp-section { max-width:1100px; margin:0 auto; padding:56px 20px; }
@@ -97,7 +97,7 @@ export default function Home() {
         .lp-path-detail { color:#6B8A80; font-size:13px; line-height:1.85; }
         .lp-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
         .lp-step { text-align:center; padding:10px; }
-        .lp-step-n { width:52px; height:52px; line-height:52px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#7DD3B0); color:#fff; font-size:22px; font-weight:900; margin:0 auto 16px; }
+        .lp-step-n { width:52px; height:52px; line-height:52px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; font-size:22px; font-weight:900; margin:0 auto 16px; }
         .lp-step-t { font-size:17px; font-weight:900; color:#1A3D34; margin-bottom:7px; }
         .lp-step-d { color:#6B8A80; font-size:13.5px; line-height:1.75; }
         .lp-companion-wrap { background:linear-gradient(135deg,#F0F7F4,#E8F5EF); }
@@ -116,10 +116,10 @@ export default function Home() {
         .lp-why-d { color:#5B7068; font-size:14px; line-height:1.8; }
         .lp-advisor-wrap { background:#1A3D34; }
         .lp-advisor { max-width:900px; margin:0 auto; padding:56px 20px; display:flex; gap:32px; align-items:center; flex-wrap:wrap; justify-content:center; }
-        .lp-advisor-photo { width:130px; height:130px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#7DD3B0); display:flex; align-items:center; justify-content:center; font-size:54px; flex-shrink:0; }
+        .lp-advisor-photo { width:130px; height:130px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); display:flex; align-items:center; justify-content:center; font-size:54px; flex-shrink:0; }
         .lp-advisor-body { flex:1; min-width:280px; }
         .lp-advisor-name { color:#fff; font-size:25px; font-weight:900; margin-bottom:6px; }
-        .lp-advisor-title { color:#7DD3B0; font-size:15px; font-weight:700; margin-bottom:14px; }
+        .lp-advisor-title { color:#2E9E7B; font-size:15px; font-weight:700; margin-bottom:14px; }
         .lp-advisor-desc { color:#C5D8D1; font-size:14.5px; line-height:2; margin-bottom:14px; }
         .lp-advisor-lic { display:inline-block; background:rgba(255,255,255,0.1); color:#fff; padding:8px 18px; border-radius:30px; font-size:13px; font-weight:700; }
         .lp-tst { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
@@ -252,8 +252,8 @@ export default function Home() {
         </section>
 
         <div style={{maxWidth:760,margin:'0 auto 14px',background:'#13302A',borderRadius:14,padding:'16px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
-          <span style={{color:'#fff',fontSize:15,lineHeight:1.8}}>مؤشر مُرضي: متوسط جاهزية الشركات السعودية <strong style={{color:'#C9A24B',fontSize:20}}>43/100</strong></span>
-          <a href="/readiness-index" style={{color:'#C9A24B',fontWeight:700,textDecoration:'none',fontSize:14,whiteSpace:'nowrap'}}>اقرأ التقرير الكامل ←</a>
+          <span style={{color:'#fff',fontSize:15,lineHeight:1.8}}>مؤشر مُرضي: متوسط جاهزية الشركات السعودية <strong style={{color:'#C9A84C',fontSize:20}}>43/100</strong></span>
+          <a href="/readiness-index" style={{color:'#C9A84C',fontWeight:700,textDecoration:'none',fontSize:14,whiteSpace:'nowrap'}}>اقرأ التقرير الكامل ←</a>
         </div>
         <div id="mini-assessment"><MiniAssessment /></div>
 

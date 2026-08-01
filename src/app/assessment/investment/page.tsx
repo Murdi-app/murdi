@@ -298,8 +298,8 @@ export default function InvestmentAssessment() {
                 <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
               </div>
 
-              <div className="bg-[#F5F8FB] rounded-2xl p-5 border-2 border-[#E1E9F2] space-y-5">
-                <p className="font-black text-[#3B5BA5] text-sm">🎯 ماذا تطلب من المستثمر؟ (يساعدنا نرشّح لك المستثمر الأنسب لصفقتك تحديداً)</p>
+              <div className="bg-[#F7FAF9] rounded-2xl p-5 border-2 border-[#E3EDE8] space-y-5">
+                <p className="font-black text-[#9A7B2E] text-sm">🎯 ماذا تطلب من المستثمر؟ (يساعدنا نرشّح لك المستثمر الأنسب لصفقتك تحديداً)</p>
                 <div>
                   <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
                   <input type="number" inputMode="numeric" value={roundSize} onChange={(e) => setRoundSize(e.target.value)}

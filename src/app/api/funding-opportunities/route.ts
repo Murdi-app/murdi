@@ -62,15 +62,15 @@ export async function POST(req: NextRequest) {
           from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
           to: ADMIN_EMAIL,
           subject: `🏦 فرصة تمويلية — ${companyName}`,
-          html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#0B1C3D;color:white;">
-            <h2 style="color:#F5C842;">🏦 تحليل تمويلي جديد</h2>
+          html: `<div dir="rtl" style="font-family:Arial;padding:20px;background:#1A3D34;color:white;">
+            <h2 style="color:#C9A84C;">🏦 تحليل تمويلي جديد</h2>
             <p><strong>الشركة:</strong> ${companyName}</p>
             <p><strong>Murdi Score:</strong> ${murdiScore}/85</p>
             <p><strong>الإيرادات السنوية:</strong> ${annualRevenue.toLocaleString('ar-SA')} ريال</p>
             <p><strong>حالة الديون:</strong> ${debt_status}</p>
-            <hr style="border-color:#F5C842;">
-            <h3 style="color:#F5C842;">📋 التفاصيل السرية:</h3>
-            <p style="background:#112244;padding:15px;border-radius:8px;">${parsed.secretDetails}</p>
+            <hr style="border-color:#C9A84C;">
+            <h3 style="color:#C9A84C;">📋 التفاصيل السرية:</h3>
+            <p style="background:#13302A;padding:15px;border-radius:8px;">${parsed.secretDetails}</p>
             <p><strong>عدد المنتجات المؤهلة:</strong> ${parsed.qualifiedCount}</p>
             <p><strong>العائق الرئيسي:</strong> ${parsed.mainBarrier}</p>
           </div>`
