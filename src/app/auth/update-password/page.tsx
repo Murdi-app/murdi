@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -13,6 +13,17 @@ export default function UpdatePasswordPage() {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const h = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const c = q.get('error_code') || h.get('error_code') || q.get('e')
+    if (!c) return
+    setError(c === 'otp_expired' || c === 'nocode'
+      ? '\u0627\u0646\u062a\u0647\u062a \u0635\u0644\u0627\u062d\u064a\u0629 \u0627\u0644\u0631\u0627\u0628\u0637 \u0623\u0648 \u0627\u0633\u062a\u064f\u062e\u062f\u0645 \u0645\u0646 \u0642\u0628\u0644 \u2014 \u0627\u0637\u0644\u0628 \u0631\u0627\u0628\u0637\u0627\u064b \u062c\u062f\u064a\u062f\u0627\u064b.'
+      : '\u062a\u0639\u0630\u0631 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u0627\u0644\u0631\u0627\u0628\u0637 \u2014 \u0627\u0637\u0644\u0628 \u0631\u0627\u0628\u0637\u0627\u064b \u062c\u062f\u064a\u062f\u0627\u064b.')
+  }, [])
+
+
   async function handleUpdate() {
     if (!password) { setError('أدخل كلمة المرور'); return }
     if (password.length < 6) { setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل'); return }
@@ -24,7 +35,7 @@ export default function UpdatePasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setError('تعذر تحديث كلمة المرور. حاول مرة أخرى.')
+      setError('تعذر التحديث: ' + error.message)
     } else {
       setDone(true)
       setTimeout(() => router.push('/goal'), 2000)
