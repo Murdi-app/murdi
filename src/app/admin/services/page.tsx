@@ -331,7 +331,7 @@ export default function AdminServicesPage() {
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
                 </div>
               )}
-              {(!COMMISSION_SERVICES[r.service_title] || r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض') && (<>
+              {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed')) && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               {r.service_title === 'إعداد القوائم المالية المعتمدة' && (
