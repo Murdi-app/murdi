@@ -57,8 +57,8 @@ function MatchesPrintInner() {
 
       <button className="no-print" onClick={() => window.print()} style={{ position: 'fixed', top: 14, left: 14, background: '#13302A', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>🖨️ حفظ PDF (Cmd+P)</button>
 
-      <div style={{ textAlign: 'center', borderBottom: '3px solid #C9A24B', paddingBottom: 14, marginBottom: 8 }}>
-        <div style={{ color: '#C9A24B', fontWeight: 800, fontSize: 20, letterSpacing: 1 }}>مُرضي</div>
+      <div style={{ textAlign: 'center', borderBottom: '3px solid #C9A84C', paddingBottom: 14, marginBottom: 8 }}>
+        <div style={{ color: '#C9A84C', fontWeight: 800, fontSize: 20, letterSpacing: 1 }}>مُرضي</div>
         <h1 style={{ color: '#13302A', fontSize: 21, margin: '6px 0 4px' }}>الجهات المرشحة{track ? ' — مسار ' + (TRACK_AR[track] || track) : ''}</h1>
         <div style={{ color: '#555', fontSize: 14, fontWeight: 700 }}>{companyName}</div>
         <div style={{ color: '#777', fontSize: 12.5, marginTop: 3 }}>حلول المرضي للاستشارات المالية · {new Date().toLocaleDateString('ar-SA')} · {matches.length} جهة</div>
@@ -75,7 +75,7 @@ function MatchesPrintInner() {
         if (group.length === 0) return null;
         return (
           <div key={tr} style={{ marginBottom: 22 }}>
-            <h2 style={{ color: '#13302A', fontSize: 16.5, borderBottom: '2px solid #C9A24B', paddingBottom: 6, marginBottom: 12 }}>مسار {TRACK_AR[tr]} ({group.length} جهة)</h2>
+            <h2 style={{ color: '#13302A', fontSize: 16.5, borderBottom: '2px solid #C9A84C', paddingBottom: 6, marginBottom: 12 }}>مسار {TRACK_AR[tr]} ({group.length} جهة)</h2>
             {group.map((m, i) => {
               const provider = String(m.provider || 'جهة');
               const product = String(m.product || '');
@@ -86,7 +86,7 @@ function MatchesPrintInner() {
                 <div key={m.id} style={{ border: '1px solid #ddd', borderRadius: 10, padding: '13px 16px', marginBottom: 12, pageBreakInside: 'avoid' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
                     <strong style={{ color: '#13302A', fontSize: 15.5 }}>{i + 1}) {provider}</strong>
-                    {fit > 0 && <span style={{ color: '#C9A24B', fontWeight: 800, fontSize: 13.5 }}>الملاءمة: {fit}%</span>}
+                    {fit > 0 && <span style={{ color: '#C9A84C', fontWeight: 800, fontSize: 13.5 }}>الملاءمة: {fit}%</span>}
                   </div>
                   <div style={{ fontSize: 13, color: '#13302A', fontWeight: 700, margin: '6px 0 3px' }}>{[product, region].filter(Boolean).join(' · ')}</div>
                   {req && <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.9 }}>{req}</div>}

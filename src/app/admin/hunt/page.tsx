@@ -15,7 +15,7 @@ type Lead = {
 
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
   funding_reserves: { ar: 'التمويل — مراتع وعملاء كشفوا حاجتهم', icon: '🎯', color: '#2E9E7B' },
-  investment_reserves: { ar: 'الاستثمار — مراتع وعملاء كشفوا رغبتهم', icon: '🎯', color: '#3B5BA5' },
+  investment_reserves: { ar: 'الاستثمار — مراتع وعملاء كشفوا رغبتهم', icon: '🎯', color: '#9A7B2E' },
   ipo_early_intent: { ar: 'الطرح — رغبة مبكّرة (قابل للتجهيز)', icon: '🌑', color: '#A53B3B' },
 };
 
@@ -201,7 +201,7 @@ export default function HuntPage() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
                     {l.contact_phone && <a href={'tel:' + l.contact_phone} style={{ background: '#F0F7F4', color: '#1E7A5A', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>📞 {l.contact_phone}</a>}
                     {l.contact_email && <a href={'mailto:' + l.contact_email} style={{ background: '#F0F7F4', color: '#1E7A5A', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>✉️ {l.contact_email}</a>}
-                    {l.contact_social && <a href={l.contact_social.startsWith('http') ? l.contact_social : '#'} target="_blank" rel="noopener noreferrer" style={{ background: '#EAF0FB', color: '#3B5BA5', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>🔗 {l.contact_social}</a>}
+                    {l.contact_social && <a href={l.contact_social.startsWith('http') ? l.contact_social : '#'} target="_blank" rel="noopener noreferrer" style={{ background: '#EAF7F0', color: '#9A7B2E', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>🔗 {l.contact_social}</a>}
                     {l.source && <a href={l.source} target="_blank" rel="noopener noreferrer" style={{ color: '#9DB3AB', fontSize: 12, padding: '6px 0', textDecoration: 'none' }}>↗️ المصدر</a>}
                   </div>
                   {!l.contact_phone && !l.contact_email && !l.contact_social && !isScout && <div style={{ color: '#C0564B', fontSize: 12, marginTop: 6 }}>⚠️ بلا بيانات تواصل — يحتاج بحثاً يدوياً</div>}

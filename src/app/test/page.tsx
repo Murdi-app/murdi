@@ -9,7 +9,7 @@ const sb = createClient(
 )
 
 const NAVY = '#13302A'
-const GOLD = '#C9A24B'
+const GOLD = '#C9A84C'
 const LIGHT = '#9DB3AB'
 
 type Q = { q: string; opts: { t: string; v: number }[] }

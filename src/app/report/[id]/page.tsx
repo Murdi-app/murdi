@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 
-const C = { navy:'#0B1C3D', navyLight:'#112244', border:'#1E3A6E', gold:'#F5C842', white:'#fff', gray:'#8899BB' }
+const C = { navy:'#1A3D34', navyLight:'#13302A', border:'#2A5A4E', gold:'#C9A84C', white:'#fff', gray:'#9DB3AB' }
 const fmt = (n: number) => n?.toLocaleString('ar-SA') + ' ر.س'
 
 export default function SharedReport() {
@@ -52,7 +52,7 @@ export default function SharedReport() {
     <div style={{minHeight:'100vh',background:C.navy,fontFamily:'system-ui',direction:'rtl'}}>
       <div style={{background:C.navyLight,padding:'16px 24px',borderBottom:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:34,height:34,borderRadius:9,background:`linear-gradient(135deg,${C.gold},#F5C842)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{width:34,height:34,borderRadius:9,background:`linear-gradient(135deg,${C.gold},#C9A84C)`,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M3 16.5 L8 11 L12 14 L20 5.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M15 5.5 L20 5.5 L20 10.5" stroke={C.navy} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>

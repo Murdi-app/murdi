@@ -1,7 +1,7 @@
 export const metadata = { title: 'مؤشر مُرضي لجاهزية رأس المال' };
 
 const NAVY = '#13302A';
-const GOLD = '#C9A24B';
+const GOLD = '#C9A84C';
 
 const sectors = [
   { name: 'التجزئة والتجارة', score: 38, note: 'ضعف فصل الذمة المالية وغياب القوائم المدققة' },
@@ -28,9 +28,9 @@ export default function ReadinessIndex() {
         </p>
 
         <div style={{ background: NAVY, borderRadius: 16, padding: '36px 28px', textAlign: 'center', marginBottom: 40 }}>
-          <p style={{ color: '#cfd6e4', fontSize: 16, marginBottom: 6 }}>متوسط الجاهزية العام للمنشآت السعودية</p>
-          <div style={{ color: GOLD, fontSize: 64, fontWeight: 800 }}>{overall}<span style={{ fontSize: 26, color: '#cfd6e4' }}> / 100</span></div>
-          <p style={{ color: '#cfd6e4', fontSize: 15, marginTop: 6 }}>أي أن أغلب المنشآت تقف اليوم خارج دائرة التأهل لرأس المال</p>
+          <p style={{ color: '#d8e8e0', fontSize: 16, marginBottom: 6 }}>متوسط الجاهزية العام للمنشآت السعودية</p>
+          <div style={{ color: GOLD, fontSize: 64, fontWeight: 800 }}>{overall}<span style={{ fontSize: 26, color: '#d8e8e0' }}> / 100</span></div>
+          <p style={{ color: '#d8e8e0', fontSize: 15, marginTop: 6 }}>أي أن أغلب المنشآت تقف اليوم خارج دائرة التأهل لرأس المال</p>
         </div>
 
         <h2 style={{ color: NAVY, fontSize: 24, marginBottom: 20 }}>الجاهزية حسب القطاع</h2>
@@ -60,7 +60,7 @@ export default function ReadinessIndex() {
 
         <div style={{ textAlign: 'center', background: NAVY, borderRadius: 16, padding: '34px 24px' }}>
           <h3 style={{ color: '#fff', fontSize: 22, marginBottom: 10 }}>وأنت؟ كم جاهزية منشأتك؟</h3>
-          <p style={{ color: '#cfd6e4', fontSize: 15, marginBottom: 20 }}>اعرف سكورك الآن في دقيقتين — مجاناً وبلا تسجيل</p>
+          <p style={{ color: '#d8e8e0', fontSize: 15, marginBottom: 20 }}>اعرف سكورك الآن في دقيقتين — مجاناً وبلا تسجيل</p>
           <a href="/#mini-assessment" style={{ background: GOLD, color: NAVY, fontWeight: 800, padding: '13px 34px', borderRadius: 99, textDecoration: 'none', fontSize: 16, display: 'inline-block' }}>قِس جاهزيتك الآن</a>
         </div>
 

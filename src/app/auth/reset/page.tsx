@@ -41,26 +41,26 @@ export default function ResetPage() {
  }
 
  return (
-   <div style={{ minHeight:'100vh', background:'#0B1C3D', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Cairo,sans-serif', direction:'rtl' }}>
-     <div style={{ background:'#112244', borderRadius:16, padding:'48px 40px', width:'100%', maxWidth:420, boxShadow:'0 8px 40px rgba(0,0,0,0.4)' }}>
+   <div style={{ minHeight:'100vh', background:'#1A3D34', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'Cairo,sans-serif', direction:'rtl' }}>
+     <div style={{ background:'#13302A', borderRadius:16, padding:'48px 40px', width:'100%', maxWidth:420, boxShadow:'0 8px 40px rgba(0,0,0,0.4)' }}>
        
        <div style={{ textAlign:'center', marginBottom:32 }}>
-         <div style={{ fontSize:28, fontWeight:900, color:'#F5C842', letterSpacing:2, marginBottom:8 }}>MURDI</div>
-         <div style={{ color:'#8899BB', fontSize:14 }}>استعادة كلمة المرور</div>
+         <div style={{ fontSize:28, fontWeight:900, color:'#C9A84C', letterSpacing:2, marginBottom:8 }}>MURDI</div>
+         <div style={{ color:'#9DB3AB', fontSize:14 }}>استعادة كلمة المرور</div>
        </div>
 
        {sent ? (
          <div style={{ textAlign:'center' }}>
            <div style={{ fontSize:48, marginBottom:16 }}>📧</div>
            <div style={{ color:'#4ade80', fontSize:18, fontWeight:700, marginBottom:8 }}>تم الإرسال!</div>
-           <div style={{ color:'#8899BB', fontSize:14, lineHeight:1.8, marginBottom:24 }}>
+           <div style={{ color:'#9DB3AB', fontSize:14, lineHeight:1.8, marginBottom:24 }}>
              تم إرسال رابط استعادة كلمة المرور إلى<br/>
-             <span style={{ color:'#F5C842' }}>{email}</span><br/>
+             <span style={{ color:'#C9A84C' }}>{email}</span><br/>
              تحقق من بريدك الوارد
            </div>
            <button
              onClick={() => router.push('/auth/login')}
-             style={{ background:'transparent', color:'#F5C842', border:'1px solid #F5C842', padding:'10px 28px', borderRadius:40, fontFamily:'Cairo,sans-serif', fontSize:14, cursor:'pointer' }}
+             style={{ background:'transparent', color:'#C9A84C', border:'1px solid #C9A84C', padding:'10px 28px', borderRadius:40, fontFamily:'Cairo,sans-serif', fontSize:14, cursor:'pointer' }}
            >
              العودة لتسجيل الدخول
            </button>
@@ -68,14 +68,14 @@ export default function ResetPage() {
        ) : (
          <>
            <div style={{ marginBottom:20 }}>
-             <div style={{ color:'#8899BB', fontSize:13, marginBottom:8 }}>البريد الإلكتروني</div>
+             <div style={{ color:'#9DB3AB', fontSize:13, marginBottom:8 }}>البريد الإلكتروني</div>
              <input
                type="email"
                value={email}
                onChange={e => setEmail(e.target.value)}
                onKeyDown={e => e.key === 'Enter' && handleReset()}
                placeholder="example@email.com"
-               style={{ width:'100%', background:'#1a3060', border:'1px solid #1E3A6E', borderRadius:8, padding:'12px 16px', color:'white', fontFamily:'Cairo,sans-serif', fontSize:14, outline:'none', direction:'ltr' }}
+               style={{ width:'100%', background:'#22493F', border:'1px solid #2A5A4E', borderRadius:8, padding:'12px 16px', color:'white', fontFamily:'Cairo,sans-serif', fontSize:14, outline:'none', direction:'ltr' }}
              />
            </div>
 
@@ -84,7 +84,7 @@ export default function ResetPage() {
            <button
              onClick={handleReset}
              disabled={loading}
-             style={{ width:'100%', background:'linear-gradient(135deg,#B8963E,#F5C842)', color:'#0B1C3D', border:'none', padding:'14px', borderRadius:40, fontFamily:'Cairo,sans-serif', fontSize:15, fontWeight:700, cursor:'pointer', marginBottom:16, opacity: loading ? 0.7 : 1 }}
+             style={{ width:'100%', background:'linear-gradient(135deg,#B8963E,#C9A84C)', color:'#1A3D34', border:'none', padding:'14px', borderRadius:40, fontFamily:'Cairo,sans-serif', fontSize:15, fontWeight:700, cursor:'pointer', marginBottom:16, opacity: loading ? 0.7 : 1 }}
            >
              {loading ? 'جاري الإرسال...' : 'إرسال رابط الاستعادة'}
            </button>
@@ -92,7 +92,7 @@ export default function ResetPage() {
            <div style={{ textAlign:'center' }}>
              <button
                onClick={() => router.push('/auth/login')}
-               style={{ background:'transparent', color:'#8899BB', border:'none', fontFamily:'Cairo,sans-serif', fontSize:13, cursor:'pointer' }}
+               style={{ background:'transparent', color:'#9DB3AB', border:'none', fontFamily:'Cairo,sans-serif', fontSize:13, cursor:'pointer' }}
              >
                العودة لتسجيل الدخول
              </button>

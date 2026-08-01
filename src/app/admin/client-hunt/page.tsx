@@ -201,10 +201,10 @@ export default function ClientHuntPage() {
           <button onClick={runHunt} disabled={running} style={{ background: '#13302A', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>
             {running ? '⏳ جاري الصيد…' : '🔍 جولة صيد جديدة'}
           </button>
-          <button onClick={runCallHunt} disabled={running} style={{ background: '#5B3A8E', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>
+          <button onClick={runCallHunt} disabled={running} style={{ background: '#6B5B2E', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>
             {running ? '⏳ جاري الصيد…' : '📞 جولة قائمة الاتصال (للموظفات)'}
           </button>
-          <button onClick={sendBatch} disabled={sending} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 800, cursor: 'pointer', opacity: sending ? 0.6 : 1 }}>
+          <button onClick={sendBatch} disabled={sending} style={{ background: '#C9A84C', color: '#13302A', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 800, cursor: 'pointer', opacity: sending ? 0.6 : 1 }}>
             {sending ? '⏳ جاري الإرسال…' : '✉️ إرسال دفعة الإيميل اليومية'}
           </button>
         </div>
@@ -212,9 +212,9 @@ export default function ClientHuntPage() {
         {selected.size > 0 && (
           <div style={{ position: 'sticky', top: 8, zIndex: 5, background: '#13302A', borderRadius: 12, padding: '11px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', boxShadow: '0 3px 10px rgba(0,0,0,0.18)' }}>
             <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>محدد: {selected.size}</span>
-            <button onClick={sendSelected} disabled={sending} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>✉️ إرسال إيميل للمحدد</button>
+            <button onClick={sendSelected} disabled={sending} style={{ background: '#C9A84C', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>✉️ إرسال إيميل للمحدد</button>
             <button onClick={excludeSelected} style={{ background: '#A53B3B', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>🚫 استبعاد</button>
-            <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', color: '#cfd6e4', border: '1px solid #3d5449', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>إلغاء التحديد</button>
+            <button onClick={() => setSelected(new Set())} style={{ background: 'transparent', color: '#d8e8e0', border: '1px solid #3d5449', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>إلغاء التحديد</button>
           </div>
         )}
 
@@ -229,17 +229,17 @@ export default function ClientHuntPage() {
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button onClick={() => setView('all')} style={{ background: view === 'all' ? '#13302A' : '#e8e6df', color: view === 'all' ? '#fff' : '#555', border: 'none', borderRadius: 99, padding: '8px 18px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>الكل</button>
-          <button onClick={() => setView('call_list')} style={{ background: view === 'call_list' ? '#5B3A8E' : '#e8e6df', color: view === 'call_list' ? '#fff' : '#555', border: 'none', borderRadius: 99, padding: '8px 18px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>📞 قائمة الاتصال</button>
+          <button onClick={() => setView('call_list')} style={{ background: view === 'call_list' ? '#6B5B2E' : '#e8e6df', color: view === 'call_list' ? '#fff' : '#555', border: 'none', borderRadius: 99, padding: '8px 18px', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>📞 قائمة الاتصال</button>
         </div>
 
         {view === 'call_list' && (() => {
           const avail = leads.filter((l) => l.status === 'call_list');
           return avail.length > 0 ? (
-            <div style={{ background: '#5B3A8E', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ background: '#6B5B2E', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ color: '#fff', fontSize: 14, fontWeight: 700 }}>متاح للتوزيع: {avail.length}</span>
-              <button onClick={() => copyForEmployee(avail)} style={{ background: '#C9A24B', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>📥 تنزيل قائمة موظفة (٢٥)</button>
-              <a href="/admin/client-hunt/print?mode=call_list" target="_blank" style={{ background: '#fff', color: '#5B3A8E', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>🖨️ طباعة PDF</a>
-              <button onClick={() => markDistributed(avail)} style={{ background: 'transparent', color: '#e8dff5', border: '1px solid #7c5bb0', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✓ تعليمها كموزَّعة</button>
+              <button onClick={() => copyForEmployee(avail)} style={{ background: '#C9A84C', color: '#13302A', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>📥 تنزيل قائمة موظفة (٢٥)</button>
+              <a href="/admin/client-hunt/print?mode=call_list" target="_blank" style={{ background: '#fff', color: '#6B5B2E', borderRadius: 8, padding: '8px 16px', fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>🖨️ طباعة PDF</a>
+              <button onClick={() => markDistributed(avail)} style={{ background: 'transparent', color: '#fbf5e8', border: '1px solid #9a7b2e', borderRadius: 8, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>✓ تعليمها كموزَّعة</button>
             </div>
           ) : <div style={{ textAlign: 'center', color: '#999', padding: 20, marginBottom: 10 }}>لا توجد منشآت متاحة — شغّل جولة قائمة الاتصال</div>;
         })()}
@@ -260,7 +260,7 @@ export default function ClientHuntPage() {
                   {l.status === 'new' && <input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSelect(l.id)} style={{ width: 18, height: 18, accentColor: '#13302A', cursor: 'pointer' }} />}
                   <strong style={{ color: '#13302A', fontSize: 16 }}>{l.company_name}</strong>
                 </label>
-                <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' || l.status === 'distributed' ? '#2E9E7B' : l.status === 'call_list' ? '#5B3A8E' : '#999', fontWeight: 700 }}>
+                <span style={{ fontSize: 12.5, color: l.status === 'emailed' || l.status === 'whatsapped' || l.status === 'distributed' ? '#2E9E7B' : l.status === 'call_list' ? '#6B5B2E' : '#999', fontWeight: 700 }}>
                   {l.status === 'emailed' ? '✓ أُرسل إيميل' : l.status === 'whatsapped' ? '✓ أُرسل واتساب' : l.status === 'excluded' ? '🚫 مستبعدة' : l.status === 'distributed' ? '✓ وُزّعت على موظفة' : l.status === 'call_list' ? '📞 متاحة للتوزيع' : 'جديدة'} · {l.hunt_date}
                 </span>
               </div>
@@ -271,7 +271,7 @@ export default function ClientHuntPage() {
               </div>
               {l.signal && <p style={{ fontSize: 13.5, color: '#444', lineHeight: 1.8, marginBottom: 8 }}>{l.signal}</p>}
               {l.call_script && (
-                <div style={{ background: '#f3eefb', border: '1px solid #d9cbf0', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#3a2960', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}><strong>📞 سكربت المكالمة:</strong>{'\n'}{l.call_script}</div>
+                <div style={{ background: '#fbf8ee', border: '1px solid #e8d9a8', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#5c4a1f', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}><strong>📞 سكربت المكالمة:</strong>{'\n'}{l.call_script}</div>
               )}
               {l.message && (
                 <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: '#333', lineHeight: 1.9, marginBottom: 10, whiteSpace: 'pre-wrap' }}>{l.message}</div>

@@ -193,7 +193,7 @@ export default function FundingResult() {
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
         </div>
 
-        <div className="bg-gradient-to-l from-[#2E9E7B] to-[#7DD3B0] rounded-3xl p-7 text-white shadow-lg">
+        <div className="bg-gradient-to-l from-[#2E9E7B] to-[#2E9E7B] rounded-3xl p-7 text-white shadow-lg">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl">🔍</span>
             <h2 className="font-black text-lg">مُرضي حلّل ملفك وفق منهجية د. عبدالحكيم المرضي</h2>
