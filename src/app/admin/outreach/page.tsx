@@ -144,7 +144,7 @@ export default function OutreachPage() {
     flash(offset === 0 ? 'جارٍ توليد أفضل ١٠ جهات...' : 'جارٍ توليد الدفعة التالية...');
     const r = await fetch('/api/admin/outreach/generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ company_id: companyId.trim(), offset }),
+      body: JSON.stringify({ company_id: companyId.trim(), offset, track: new URLSearchParams(window.location.search).get('track') || undefined }),
     });
     const d = await r.json();
     setBusy(false);

@@ -504,8 +504,9 @@ export default function ApprovalsPage() {
                           {trackBlock('ipo')}
                           {pr.company?.id && ms.length > 0 && (() => {
                             const cts = contractsByCompany[pr.company.id] || []
-                            const active = cts.find((c: any) => c.status === 'issued' || c.status === 'signed' || c.status === 'completed')
-                            if (!active) return (
+                            const isAct = (c: any) => c.status === 'issued' || c.status === 'signed' || c.status === 'completed'
+                            const trks: string[] = Array.from(new Set(cts.filter(isAct).map((c: any) => c.contract_type === 'investment' ? 'investment' : 'funding')))
+                            if (trks.length === 0) return (
                               <div style={{ marginTop:12, background:'#FBF5E8', border:'2px solid #E8D9A8', borderRadius:10, padding:'14px 16px' }}>
                                 <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:13.5, marginBottom:6 }}>🔒 المخاطبة مقفلة — لا يوجد عقد تجهيز ملف</div>
                                 <div style={{ color:'#8A6D1A', fontSize:12.5, lineHeight:1.9 }}>مخاطبة الجهات بملف غير مجهّز تعني رفضاً شبه مؤكد، والرفض يُسجّل ضد العميل. أصدر عقد «تجهيز الملف والتفاوض» من صفحة الخدمات أولاً.</div>
@@ -513,10 +514,12 @@ export default function ApprovalsPage() {
                               </div>
                             )
                             return (
-                              <button onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id, '_blank')}
-                                style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background:'#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
-                                📨 خاطب هذه الجهات نيابة عن العميل
+                              <>{trks.map((t) => (
+                              <button key={t} onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id + '&track=' + t, '_blank')}
+                                style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background: t === 'investment' ? '#9A7B2E' : '#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
+                                {t === 'investment' ? '💼 خاطب المستثمرين نيابة عن العميل' : '🏦 خاطب الممولين نيابة عن العميل'}
                               </button>
+                              ))}</>
                             )
                           })()}
                         </div>
