@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { runInvestmentMatch } from '@/lib/runMatch';
+import { runAutoMatch } from '@/lib/matchEngine';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
@@ -245,7 +245,7 @@ export async function POST(req: Request) {
 
   // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري للأدمن) — استدعاء داخلي متين بلا شبكة
   try {
-    await runInvestmentMatch(company.id, score);
+    await runAutoMatch(company.id, 'investment');
   } catch {}
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict });
