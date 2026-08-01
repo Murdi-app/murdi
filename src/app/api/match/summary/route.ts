@@ -28,15 +28,17 @@ export async function GET(req: Request) {
   );
   const { data: rows, count } = await admin
     .from('match_results')
-    .select('region', { count: 'exact' })
+    .select('region, fit_score', { count: 'exact' })
     .eq('company_id', company.id)
-    .eq('track', track);
+    .eq('track', track)
+    .or('status.is.null,status.neq.superseded')
+    .order('fit_score', { ascending: false, nullsFirst: false });
 
   // للعميل: العدد فقط + بطاقات عامة (بلا أسماء الجهات — تبقى سرية لك في الأدمن)
   const total = count || (rows?.length ?? 0);
   const matches = Array.from({ length: Math.min(total, 6) }).map((_, i) => ({
     funding_type: 'فرصة مطابقة',
-    fit_percent: 92 - i * 3,
+    fit_percent: Number(((rows || []) as Array<Record<string, unknown>>)[i]?.fit_score) || 90,
     reasons: ['الشروط المعلنة تتطابق مع ملف شركتك'],
     next_step: 'فريق مُرضي سيتولى التواصل وتجهيز ملفك',
   }));

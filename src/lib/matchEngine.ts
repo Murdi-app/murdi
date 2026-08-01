@@ -5,15 +5,28 @@ import { createClient } from '@supabase/supabase-js';
 
 type Rec = Record<string, any>;
 
+export const TYPE_LABELS: Record<string, string> = {
+  cash: 'تمويل نقدي',
+  working_capital: 'رأس مال عامل',
+  revenue: 'تمويل الإيرادات',
+  pos: 'تمويل نقاط البيع',
+  invoices: 'تمويل الفواتير والمستخلصات',
+  assets: 'تمويل أصول ومعدات',
+  vehicles: 'تمويل مركبات وأساطيل',
+  real_estate: 'عقاري تجاري',
+  lc: 'اعتمادات وخطابات ضمان',
+  project: 'تمويل مشاريع وعقود',
+};
+
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 
 export   type WebOffer = { region?: string; provider: string; product: string; requirements: string; source: string; verdict?: string; gaps?: string[]; amountRange?: string; timeline?: string; saudiPrecedent?: string | null; legalPath?: string | null };
 
 export async function runScopedMatch(args: {
   company: Rec; fd: Rec; typeLabel: string; rev: number;
-  years: number; debtDesc: string; isInvest: boolean;
+  years: number; debtDesc: string; isInvest: boolean; budget?: 'light' | 'full';
 }): Promise<{ offers: WebOffer[]; ok: boolean; error: string }> {
-  const { company, fd, typeLabel, rev, years, debtDesc, isInvest } = args;
+  const { company, fd, typeLabel, rev, years, debtDesc, isInvest, budget } = args;
   let webOffers: WebOffer[] = [];
   let webSearchOk = false;
   let webSearchError = '';
@@ -58,7 +71,7 @@ export async function runScopedMatch(args: {
           model: 'claude-sonnet-4-6',
           max_tokens: 8000,
           messages: [{ role: 'user', content: pmt }],
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 25 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: budget === 'light' ? 8 : 25 }],
         }),
       });
       if (!r.ok) { webSearchError += ' | HTTP ' + r.status; return []; }
@@ -99,7 +112,7 @@ export async function runScopedMatch(args: {
       'اقتصر على المستثمرين الاستراتيجيين عالمياً في قطاع العميل — منافس أو مورّد أو موزّع يبحث عن موطئ قدم في السوق السعودي.',
       'اقتصر على صناديق الدين المرن والميزانين وventure debt التي تستثمر في الشركات الخاصة بالمنطقة.',
     ];
-    const SCOPES = isInvest ? INVEST_SCOPES : FUND_SCOPES;
+    const SCOPES = (isInvest ? INVEST_SCOPES : FUND_SCOPES).slice(0, budget === 'light' ? 2 : 99);
 
     const investPrompt = 'أنت محلل استثمار خبير في السوق السعودي والخليجي والعالمي. مهمتك إيجاد مستثمرين مناسبين فعلاً لهذه الشركة السعودية.\n\n'
       + 'ملف الشركة:\n'
@@ -175,4 +188,29 @@ export async function saveMatchResults(companyId: string, track: string, offers:
   } catch (e) {
     return { saved: 0, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export async function runAutoMatch(companyId: string, track: 'funding' | 'investment'): Promise<void> {
+  try {
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+      process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    );
+    const { data: company } = await admin.from('companies').select('*').eq('id', companyId).single();
+    if (!company) return;
+    const { data: fd } = await admin.from('financial_data').select('*')
+      .eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
+    if (!fd) return;
+    const isInvest = track === 'investment';
+    const rev = Number(fd.annual_revenue) || 0;
+    const years = Number(fd.years_operating) || 0;
+    const typeLabel = fd.funding_type === 'other'
+      ? (fd.funding_type_other || '\u0623\u062e\u0631\u0649')
+      : (TYPE_LABELS[fd.funding_type as string] || fd.funding_type || '\u062a\u0645\u0648\u064a\u0644');
+    const debtDesc = fd.has_debt
+      ? '\u064a\u0648\u062c\u062f \u062a\u0645\u0648\u064a\u0644 \u0642\u0627\u0626\u0645'
+      : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
+    const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full' });
+    if (r.offers.length) await saveMatchResults(companyId, track, r.offers);
+  } catch {}
 }

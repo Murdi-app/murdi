@@ -4,20 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
-import { runScopedMatch, saveMatchResults } from '@/lib/matchEngine';
+import { runScopedMatch, saveMatchResults, TYPE_LABELS } from '@/lib/matchEngine';
 
-const TYPE_LABELS: Record<string, string> = {
-  cash: 'تمويل نقدي',
-  working_capital: 'رأس مال عامل',
-  revenue: 'تمويل الإيرادات',
-  pos: 'تمويل نقاط البيع',
-  invoices: 'تمويل الفواتير والمستخلصات',
-  assets: 'تمويل أصول ومعدات',
-  vehicles: 'تمويل مركبات وأساطيل',
-  real_estate: 'عقاري تجاري',
-  lc: 'اعتمادات وخطابات ضمان',
-  project: 'تمويل مشاريع وعقود',
-};
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
