@@ -199,7 +199,7 @@ export async function POST(req: Request) {
         + (webRows ? '<h3 style="margin-top:18px">🌐 عروض السوق (بحث مباشر)</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#1A3D34;color:#fff"><th style="padding:8px;border:1px solid #ddd">المنطقة</th><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">المتطلبات</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th><th style="padding:8px;border:1px solid #ddd">المصدر</th></tr>' + webRows + '</table>' : '')
         + (dbRows ? '<h3 style="margin-top:18px">🔒 شبكة مُرضي المعتمدة</h3><table style="border-collapse:collapse;width:100%;font-size:13px"><tr style="background:#C9A84C;color:#1A3D34"><th style="padding:8px;border:1px solid #ddd">الجهة</th><th style="padding:8px;border:1px solid #ddd">المنتج</th><th style="padding:8px;border:1px solid #ddd">الملاءمة</th></tr>' + dbRows + '</table>' : '')
         + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح الملف الكامل في الأدمن</a></p>'
-        + suggestionBox(suggestService({ ...fd }, 'funding', Number(rr?.readiness_score) || 0))
+        + suggestionBox(suggestService({ ...fd }, isInvest ? 'investment' : 'funding', Number(rr?.readiness_score) || 0))
         + '</div>',
     });
   } catch {}

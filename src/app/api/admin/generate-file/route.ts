@@ -109,6 +109,13 @@ export async function POST(req: Request) {
   };
 
   try {
+    try {
+      const _adm = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+      const { data: _fd } = await _adm.from('financial_data').select('assessment_type')
+        .eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
+      const at = String(_fd?.assessment_type || '');
+      if (at === 'investment' || at === 'funding') track = at;
+    } catch {}
     const content = await generateFileContent(client, track as 'funding' | 'investment', region);
     const html = buildFileHTML(client, content, track as 'funding' | 'investment', region, statementsHtml);
     return NextResponse.json({ ok: true, html });
