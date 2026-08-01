@@ -2,6 +2,7 @@
 // محرك المطابقة المشترك
 
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
 type Rec = Record<string, any>;
 
@@ -216,6 +217,44 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
       ? '\u064a\u0648\u062c\u062f \u062a\u0645\u0648\u064a\u0644 \u0642\u0627\u0626\u0645'
       : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
     const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full' });
-    if (r.offers.length) await saveMatchResults(companyId, track, r.offers);
+    if (!r.offers.length) return;
+    await saveMatchResults(companyId, track, r.offers);
+    try {
+      const { data: rr } = await admin.from('readiness_results')
+        .select('readiness_score, verdict').eq('company_id', companyId)
+        .order('created_at', { ascending: false }).limit(1).single();
+      const has = (re: RegExp) => r.offers.filter((o) => re.test(String(o.region || ''))).length;
+      const gulf = has(/خليج/);
+      const intl = has(/دولي/);
+      const saudi = r.offers.length - gulf - intl;
+      const bad = /غير مؤهل|مستبعد|غير متاح/;
+      const ok = r.offers.filter((o) => !bad.test(String(o.verdict || ''))).length;
+      const cond = r.offers.filter((o) => String(o.verdict || '').includes('بشرط')).length;
+      const label = track === 'investment' ? 'استثمار' : 'تمويل';
+      const box = (t: string, v: number, c: string) =>
+        '<td style="padding:14px;text-align:center;border:1px solid #E3E8E6;background:' + c + '">'
+        + '<div style="font-size:26px;font-weight:900;color:#1A3D34">' + v + '</div>'
+        + '<div style="font-size:12px;color:#5C6B66">' + t + '</div></td>';
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
+        from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
+        to: 'hololalmurdi.fs@gmail.com',
+        subject: 'مطابقة ' + label + ' — ' + company.company_name + ' (' + r.offers.length + ' فرصة)',
+        html: '<div dir="rtl" style="font-family:Arial">'
+          + '<h2 style="color:#1A3D34">مطابقة ' + label + ' جديدة</h2>'
+          + '<p><b>الشركة:</b> ' + company.company_name + ' — سجل: ' + (company.cr_number || '—') + '</p>'
+          + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
+          + '<table style="border-collapse:collapse;width:100%;margin-top:12px"><tr>'
+          + box('إجمالي الفرص', r.offers.length, '#F7FAF9')
+          + box('متأهلة', ok, '#EAF6F1')
+          + box('بشرط', cond, '#FBF5E8')
+          + '</tr><tr>'
+          + box('سعودية', saudi, '#F7FAF9')
+          + box('خليجية', gulf, '#F7FAF9')
+          + box('دولية', intl, '#F7FAF9')
+          + '</tr></table>'
+          + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح أسماء الجهات في الأدمن</a></p>'
+          + '</div>',
+      });
+    } catch {}
   } catch {}
 }
