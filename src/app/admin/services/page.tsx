@@ -26,7 +26,9 @@ const STAT: Record<string, { t: string; bg: string; fg: string }> = {
 
 export default function AdminServicesPage() {
   const router = useRouter()
+const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (ر.س)'},{k:'branch_cost',t:'تكلفة افتتاح الفرع (ر.س)'},{k:'payback',t:'استرداد رأس مال الفرع (شهر)'},{k:'branches_now',t:'عدد الفروع الحالية'},{k:'branches_target',t:'الفروع المستهدفة من الجولة'},{k:'headcount',t:'عدد الموظفين'},{k:'equity_offered',t:'الحصة المعروضة (%)'},{k:'pre_money',t:'التقييم قبل الجولة (ر.س)'},{k:'target_return',t:'مضاعف العائد المستهدف وأفقه'}]
   const [loading, setLoading] = useState(true)
+  const [pitchIn, setPitchIn] = useState<Record<string, Record<string, string>>>({})
   const [reqs, setReqs] = useState<any[]>([])
   const [busy, setBusy] = useState('')
   const [fundAmt, setFundAmt] = useState<Record<string, string>>({})
@@ -166,7 +168,7 @@ export default function AdminServicesPage() {
 
   async function prepare(id: string) {
     setBusy(id)
-    const res = await fetch('/api/admin/prepare-service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id }) })
+    const res = await fetch('/api/admin/prepare-service', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id, pitch_inputs: pitchIn[id] || {} }) })
     if (res.status === 422) {
       const d = await res.json()
       setIntegrity(p => ({ ...p, [id]: d }))
@@ -343,6 +345,18 @@ export default function AdminServicesPage() {
               {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
                 <div style={{ background:'#EAF7F0', border:'1.5px solid #D8E8E0', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:12.5 }}>
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
+                </div>
+              )}
+              {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
+                <div style={{ background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
+                  <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>📊 أرقام العرض — تُدرج حرفياً وتمنع أي فراغ في الشرائح</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:8 }}>
+                    {PITCH_FIELDS.map((f) => (
+                      <input key={f.k} placeholder={f.t} value={(pitchIn[r.id] || {})[f.k] || ''}
+                        onChange={(e) => setPitchIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), [f.k]: e.target.value } }))}
+                        style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8D9A8', fontFamily:'Cairo', fontSize:12.5 }} />
+                    ))}
+                  </div>
                 </div>
               )}
               {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed')) && (<>
