@@ -312,7 +312,7 @@ export default function InvestmentResult() {
             <p className="text-[#6B8A80] text-xs font-bold mb-4">رصد فريق مُرضي جهات استثمارية نشطة في قطاع شركتك — تُفتح لك عند رفع جاهزيتك</p>
             <div className="bg-[#E8F5EF] rounded-xl p-4 text-center mb-3">
               <p className="text-3xl mb-1">🎯</p>
-              <p className="text-[#1A3D34] font-black">3 جهات استثمارية محتملة في قطاعك</p>
+              <p className="text-[#1A3D34] font-black">{matchCount > 0 ? matchCount : 3} جهة استثمارية محتملة في قطاعك</p>
               <p className="text-[#6B8A80] text-xs font-bold mt-1">تظهر تفاصيلها فور وصول جاهزيتك إلى المستوى المطلوب</p>
             </div>
             <div className="relative">
