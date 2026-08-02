@@ -245,7 +245,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
           + '<p><b>الجوال:</b> ' + (company.phone || '—') + ' | <b>الجاهزية:</b> ' + (rr?.readiness_score ?? '—') + ' — ' + (rr?.verdict ?? '') + '</p>'
           + '<table style="border-collapse:collapse;width:100%;margin-top:12px"><tr>'
           + box('إجمالي الفرص', r.offers.length, '#F7FAF9')
-          + box('متأهلة', ok, '#EAF6F1')
+          + box('متأهلة', ok - cond, '#EAF6F1')
           + box('بشرط', cond, '#FBF5E8')
           + '</tr><tr>'
           + box('سعودية', saudi, '#F7FAF9')
