@@ -228,17 +228,38 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
         }
       }
       if (okCount > 0) {
-        const go = confirm('✅ تم توليد ' + okCount + ' ملف وفُتحت للمراجعة. راجعها الآن — إن كانت جاهزة اضغط «موافق» لتحويلها PDF ورفعها تلقائياً لقسم المخاطبة.')
-        if (go) {
+        document.getElementById('murdi-pdf-bar')?.remove()
+        const bar = document.createElement('div')
+        bar.id = 'murdi-pdf-bar'
+        bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1A3D34;color:#fff;font-family:Cairo,sans-serif;font-size:14px;font-weight:900;padding:14px 20px;display:flex;gap:14px;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.3)'
+        const msg = document.createElement('span')
+        msg.textContent = 'تم توليد ' + okCount + ' ملف وفُتحت للمراجعة. راجعها ثم حوّلها.'
+        const btn = document.createElement('button')
+        btn.textContent = '📎 حوّل PDF وارفع للمخاطبة'
+        btn.style.cssText = 'background:#C9A84C;color:#1A3D34;border:none;padding:9px 22px;border-radius:30px;font-family:Cairo;font-weight:900;font-size:13px;cursor:pointer'
+        const close = document.createElement('button')
+        close.textContent = '✕'
+        close.style.cssText = 'background:transparent;color:#9DB3AB;border:none;font-size:16px;cursor:pointer'
+        close.onclick = () => bar.remove()
+        btn.onclick = async () => {
+          btn.disabled = true; msg.textContent = 'جارٍ التحويل والرفع…'
           let up = 0, upErr = ''
           for (const m of made) {
             const lang = m.region === 'دولي' ? 'en' : 'ar'
-            const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, html: m.html, lang, name: 'murdi-' + track }) })
-            const pd = await pr.json()
-            if (pd.ok) up++; else upErr = pd.error || ('HTTP ' + pr.status)
+            try {
+              const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, html: m.html, lang, name: 'murdi-' + track }) })
+              const txt = await pr.text()
+              let pd: { ok?: boolean; error?: string } = {}
+              try { pd = JSON.parse(txt) } catch { pd = { error: txt.slice(0, 300) } }
+              if (pd.ok) up++; else upErr = pd.error || ('HTTP ' + pr.status)
+            } catch (e) { upErr = String(e) }
           }
-          alert(up > 0 ? ('📎 تم رفع ' + up + ' ملف PDF وربطها بالمخاطبة.' + (upErr ? ' — تنبيه: ' + upErr : '')) : ('تعذر الرفع: ' + upErr))
+          msg.textContent = up > 0 ? ('تم رفع ' + up + ' ملف PDF وربطها بالمخاطبة.' + (upErr ? ' — تنبيه: ' + upErr : '')) : ('تعذر الرفع: ' + upErr)
+          console.log('FILE-PDF RESULT', { up, upErr })
+          btn.disabled = false
         }
+        bar.appendChild(msg); bar.appendChild(btn); bar.appendChild(close)
+        document.body.appendChild(bar)
       }
       else alert('تعذّر توليد الملفات: ' + (lastErr || 'سبب غير معروف'))
     } catch {
