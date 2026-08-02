@@ -247,6 +247,19 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     setBusy('')
   }
 
+  async function showDeck(id: string, text: string) {
+    const wins = [window.open('', '_blank'), window.open('', '_blank')]
+    if (!wins[0] || !wins[1]) { wins.forEach(w => { if (w) w.close() }); alert('المتصفح يمنع النوافذ المنبثقة — اسمح بها لهذا الموقع ثم أعد المحاولة'); return }
+    wins.forEach(w => { if (w) w.document.write('<!doctype html><meta charset="utf-8"><body style="font-family:Cairo,sans-serif;padding:40px;color:#1A3D34">جارٍ التجهيز…</body>') })
+    setBusy(id)
+    const res = await fetch('/api/admin/pitch-render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id, text }) })
+    const d = await res.json()
+    setBusy('')
+    if (!d.ok) { wins.forEach(w => { if (w) w.close() }); alert(d.error || 'تعذّر بناء الشرائح'); return }
+    const htmls: string[] = [d.deckHtml, d.notesHtml]
+    wins.forEach((w, i) => { if (w) { w.document.open(); w.document.write(htmls[i]); w.document.close() } })
+  }
+
   async function save(id: string, deliverable: string, price: string, status?: string) {
     setBusy(id)
     await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status }) })
@@ -529,6 +542,10 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
               <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
                 <input value={e.price} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, price: ev.target.value } }))} placeholder="السعر (ر.س)" type="number" style={{ width:140, border:'1.5px solid #EAF2EE', borderRadius:30, padding:'9px 16px', fontFamily:'Cairo', fontSize:13 }} />
                 <button onClick={() => save(r.id, e.deliverable, e.price)} disabled={busy === r.id} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>حفظ مسودّة</button>
+                {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && (
+                  <button onClick={() => showDeck(r.id, e.deliverable)} disabled={busy === r.id}
+                    style={{ background:'#1A3D34', color:'#C9A84C', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>🎞️ اعرض الشرائح</button>
+                )}
                 <button onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(buildPdfHtml(r.service_title, injectTables(r.id, e.deliverable))); w.document.close() } }} disabled={!e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📄 تصدير PDF</button>
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'priced')} disabled={busy === r.id || !e.price} title={!e.price ? 'حدّد السعر أولاً' : ''} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>💰 أصدر للدفع</button>
                 <button onClick={() => save(r.id, e.deliverable, e.price, 'delivered')} disabled={busy === r.id || !e.deliverable} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'9px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>📤 إصدار مباشر</button>
