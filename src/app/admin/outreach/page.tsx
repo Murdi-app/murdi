@@ -234,7 +234,17 @@ export default function OutreachPage() {
       )}
       <AdminNav />
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px', direction:'rtl' }}>
-        <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, marginBottom:6 }}>📨 مخاطبة الجهات</h1>
+        {(() => {
+          const tr = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('track') : null
+          if (tr === 'investment') return <h1 style={{ fontSize:24, fontWeight:900, color:'#9A7B2E', marginBottom:6 }}>💼 مخاطبة المستثمرين</h1>
+          if (tr === 'funding') return <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, marginBottom:6 }}>🏦 مخاطبة الممولين</h1>
+          return (<>
+            <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, marginBottom:6 }}>📨 مخاطبة الجهات</h1>
+            <div style={{ background:'#FBF5E8', border:'2px solid #EAD9A8', color:'#8A6D1A', borderRadius:12, padding:'10px 14px', fontSize:12.5, fontWeight:900, marginBottom:12 }}>
+              لم يُحدَّد المسار — ادخل من صفحة الاعتمادات عبر «خاطب الممولين» أو «خاطب المستثمرين» ليُصفّى حسب مساره.
+            </div>
+          </>)
+        })()}
         <p style={{ color:C.gray, fontSize:13, marginBottom:20 }}>
           توليد رسائل مخصصة لكل جهة مطابقة، مراجعتها، ثم إرسالها بعد الاعتماد.
         </p>
