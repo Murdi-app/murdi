@@ -10,7 +10,6 @@ const LINKS = [
   { href: '/admin/client-hunt', label: '🪝 صيد العملاء' },
   { href: '/admin/payments', label: '💳 المدفوعات' },
   { href: '/admin/leads', label: '📋 العملاء المحتملون' },
-  { href: '/admin/outreach', label: '📨 مخاطبة الجهات' },
 ]
 
 export default function AdminNav() {
