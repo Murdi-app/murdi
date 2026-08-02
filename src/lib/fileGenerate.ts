@@ -57,7 +57,7 @@ export async function generateFileContent(
     client.assets ? 'إجمالي الأصول: ' + num(client.assets) : '',
     client.liabilities ? 'إجمالي الالتزامات: ' + num(client.liabilities) : '',
     client.valuationEstimate ? 'التقييم التقديري: ' + client.valuationEstimate : '',
-    client.readinessScore ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
+    (!isInvestment && client.readinessScore) ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
     client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
   ].filter(Boolean).join('\\n');
 
@@ -68,6 +68,8 @@ export async function generateFileContent(
     : (isInvestment
         ? 'theRequest: عرض الاستثمار — المبلغ المطلوب وأوجه استخدامه والقيمة المعروضة للمستثمر'
         : 'theRequest: طلب التمويل — المبلغ والغرض والقدرة على السداد');
+
+  const INVEST_RULES = 'قواعد إلزامية لمسار الاستثمار: (1) ممنوع منعاً باتاً ذكر درجة الجاهزية أو أي تقييم داخلي للمنصة، وممنوع أي إشارة إلى نقص في الجاهزية أو الحوكمة أو التوثيق. (2) ممنوع لغة الإقراض بالكامل: لا سداد، ولا خدمة دين، ولا جدارة ائتمانية، ولا قدرة على السداد، ولا وصف المبلغ بأنه تمويل يُسترد — المستثمر يشتري حصة ولا يُسدَّد له. (3) في theRequest اذكر صراحةً الحصة المعروضة والتقييم قبل الجولة إن وردا في البيانات، مع أوجه استخدام رأس المال بالتفصيل. (4) ممنوع إدراج الوعي بالجاهزية أو الرغبة في التحسين أو أي إقرار بنقص ضمن نقاط القوة — نقاط القوة إنجازات محققة فقط. (5) الالتزامات تُذكر مرة واحدة كحقيقة عابرة: لا تُجعل عنواناً ولا أبرز ميزة، ولا تُحسب نسبتها إلى الإيراد. (6) صافي الربح إن وُجد هو الرقم الأبرز، وابدأ به الملخص التنفيذي. ';
 
   const prompt = (isIntl
     ? 'You are an expert preparing a professional ' + docType + ' at Holol Almurdi Financial Consulting (Murdi). Write the entire content in formal institutional ENGLISH. '
@@ -87,6 +89,7 @@ export async function generateFileContent(
     + 'ضوابط: لا تختلق أرقاماً، لا ضمانات، لا ذكر لأي ذكاء اصطناعي، أسلوب عربي مؤسسي، المحتوى منسوب لحلول المرضي.\\n\\n'
     + 'أرجع JSON نقي فقط بدون أي نص قبله أو بعده:\\n'
     + 'IMPORTANT: do not compare this client to other clients, no ranking claims, no invented facts beyond the figures given. '
+    + (isInvestment ? INVEST_RULES : '')
     + 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. '
     + '{"executiveSummary":"...","companyOverview":"...","financialPosition":"...","theRequest":"...","strengths":"...","closing":"..."}';
 
@@ -203,7 +206,7 @@ export function buildFileHTML(
     sectorOut ? [L.sector, sectorOut] as [string, string] : null,
     cityOut ? [L.city, cityOut] as [string, string] : null,
     client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
-    client.readinessScore ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
+    (!isInv && client.readinessScore) ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
 
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
