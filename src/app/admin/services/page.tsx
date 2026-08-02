@@ -372,7 +372,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   </div>
                 </div>
               )}
-              {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed')) && (<>
+              {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               {r.service_title === 'إعداد القوائم المالية المعتمدة' && (
@@ -554,7 +554,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 {r.status !== 'completed' && r.status !== 'rejected' && r.status !== 'delivered' && <button onClick={() => { if (confirm('هل أنت متأكد من رفض هذه الخدمة؟')) save(r.id, e.deliverable, e.price, 'rejected') }} disabled={busy === r.id} style={{ background:'transparent', color:'#C0564B', border:'1.5px solid #F0D5D1', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>✕ رفض الخدمة</button>}
               </div>
               </>)}
-              {COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || r.status === 'delivered' || r.status === 'completed') && (() => {
+              {COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || !!r.delivered_at) && (() => {
                 const c = contracts[r.id]
                 return (<>
                 <div style={{ marginTop:16 }}>
