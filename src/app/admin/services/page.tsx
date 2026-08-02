@@ -198,6 +198,7 @@ export default function AdminServicesPage() {
       const regions = ['محلي', 'دولي']
       let okCount = 0
       let lastErr = ''
+      const made: { region: string; html: string }[] = []
       for (const region of regions) {
         const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, track, region, funding_amount: Number(fundAmt[r.id] || 0) }) })
         const d = await res.json()
@@ -208,6 +209,7 @@ export default function AdminServicesPage() {
           return
         }
         if (d.ok && d.html) {
+          made.push({ region, html: d.html })
           const blob = new Blob([d.html], { type: 'text/html;charset=utf-8' })
           const url = URL.createObjectURL(blob)
           const w = window.open(url, '_blank')
@@ -223,7 +225,19 @@ export default function AdminServicesPage() {
           lastErr = d.error || ('HTTP ' + res.status)
         }
       }
-      if (okCount > 0) alert('✅ تم توليد ' + okCount + ' ملف بنجاح. إن لم يفتح تلقائياً، اسمح بالنوافذ المنبثقة من murdi.sa أو استخدم الرابط أسفل الصفحة، ثم احفظه PDF وارفعه في قسم المخاطبة.')
+      if (okCount > 0) {
+        const go = confirm('✅ تم توليد ' + okCount + ' ملف وفُتحت للمراجعة. راجعها الآن — إن كانت جاهزة اضغط «موافق» لتحويلها PDF ورفعها تلقائياً لقسم المخاطبة.')
+        if (go) {
+          let up = 0, upErr = ''
+          for (const m of made) {
+            const lang = m.region === 'دولي' ? 'en' : 'ar'
+            const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, html: m.html, lang, name: 'murdi-' + track }) })
+            const pd = await pr.json()
+            if (pd.ok) up++; else upErr = pd.error || ('HTTP ' + pr.status)
+          }
+          alert(up > 0 ? ('📎 تم رفع ' + up + ' ملف PDF وربطها بالمخاطبة.' + (upErr ? ' — تنبيه: ' + upErr : '')) : ('تعذر الرفع: ' + upErr))
+        }
+      }
       else alert('تعذّر توليد الملفات: ' + (lastErr || 'سبب غير معروف'))
     } catch {
       alert('تعذّر الاتصال بالخادم')
