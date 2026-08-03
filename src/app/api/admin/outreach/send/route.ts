@@ -47,6 +47,8 @@ export async function POST(req: Request) {
   type Att = { filename: string; content: string };
   let attAr: Att | null = null;
   let attEn: Att | null = null;
+  let deckAr: Att | null = null;
+  let deckEn: Att | null = null;
   const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).single();
   const loadAtt = async (fileUrl?: string, fileName?: string): Promise<Att | null> => {
     if (!fileUrl) return null;
@@ -63,6 +65,8 @@ export async function POST(req: Request) {
     // الأعمدة الجديدة، مع دعم القديم (file_url) كنسخة عربية احتياطية
     attAr = await loadAtt(att.file_url_ar || att.file_url, att.file_name_ar || att.file_name);
     attEn = await loadAtt(att.file_url_en, att.file_name_en);
+    deckAr = await loadAtt(att.deck_url_ar, att.deck_name_ar);
+    deckEn = await loadAtt(att.deck_url_en, att.deck_name_en);
   }
 
   // حماية: لا نرسل بدون ملف مرفق (اتفاق: الإرسال لا يتم إلا بملف)
@@ -96,7 +100,16 @@ export async function POST(req: Request) {
         to: String(m.entity_email).trim(),
         subject: m.subject || 'استفسار',
         html,
-        attachments: (m.entity_language === 'إنجليزي' ? (attEn || attAr) : (attAr || attEn)) ? [ (m.entity_language === 'إنجليزي' ? (attEn || attAr) : (attAr || attEn)) as { filename: string; content: string } ] : undefined,
+        attachments: (() => {
+          const isEn = m.entity_language === 'إنجليزي';
+          const list: Att[] = [];
+          const main = isEn ? (attEn || attAr) : (attAr || attEn);
+          if (main) list.push(main);
+          // الشرائح: الإنجليزية تُرسل للجميع، والعربية للجهات المحلية فقط
+          if (deckEn) list.push(deckEn);
+          else if (!isEn && deckAr) list.push(deckAr);
+          return list.length ? (list as { filename: string; content: string }[]) : undefined;
+        })(),
       });
 
       await admin.from('outreach_messages')
