@@ -281,6 +281,33 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     wins.forEach((w, i) => { if (w) { w.document.open(); w.document.write(htmls[i]); w.document.close() } })
   }
 
+  async function exportDeck(id: string, text: string, companyId: string) {
+    setBusy('dl' + id)
+    try {
+      const res = await fetch('/api/admin/pitch-render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id, text }) })
+      const d = await res.json()
+      if (!d.ok) { alert(d.error || 'تعذّر بناء الشرائح'); setBusy(''); return }
+      let msg = ''
+      if (d.deckHtml) {
+        const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: d.deckHtml, lang: 'ar', name: 'murdi-deck', landscape: true, kind: 'deck' }) })
+        const pd = await pr.json().catch(() => ({}))
+        msg += pd.ok ? 'تم رفع الشرائح للمخاطبة. ' : ('تعذّر رفع الشرائح: ' + (pd.error || pr.status) + ' ')
+      }
+      if (d.notesHtml) {
+        const nr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: d.notesHtml, lang: 'ar', name: 'murdi-notes', landscape: false, download: true }) })
+        if (nr.ok) {
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(await nr.blob())
+          a.download = 'murdi-notes.pdf'
+          a.click()
+          msg += 'ونُزّلت ملاحظات المستشار لك وحدك.'
+        }
+      }
+      alert(msg || 'لم يُنتَج شيء')
+    } catch (e) { alert('خطأ: ' + String(e)) }
+    setBusy('')
+  }
+
   async function savePitchNums(id: string, companyId: string) {
     setBusy('pn' + id)
     const res = await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: id, company_id: companyId, activity_kind: 'pitch', inputs: { pitch: pitchIn[id] || {} } }) })
@@ -599,7 +626,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 const c = contracts[r.id]
                 return (<>
                 <div style={{ marginTop:16 }}>
-                  <input type="number" value={fundAmt[r.id] || ''} onChange={e => setFundAmt(p => ({ ...p, [r.id]: e.target.value }))} placeholder="المبلغ المطلوب (ر.س)" style={{ padding:'9px 14px', borderRadius:20, border:'1.5px solid #D9E5DF', fontFamily:'Cairo', fontSize:12.5, width:170, marginLeft:8 }} /><button onClick={() => generateFile(r)} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ التوليد...' : '📄 جهّز الملف الاحترافي'}</button>
+                  <input type="number" value={fundAmt[r.id] || ''} onChange={e => setFundAmt(p => ({ ...p, [r.id]: e.target.value }))} placeholder="المبلغ المطلوب (ر.س)" style={{ padding:'9px 14px', borderRadius:20, border:'1.5px solid #D9E5DF', fontFamily:'Cairo', fontSize:12.5, width:170, marginLeft:8 }} /><button onClick={() => generateFile(r)} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>{busy === r.id ? 'جارٍ التوليد...' : '📄 جهّز الملف الاحترافي'}</button>{r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && (<button onClick={() => exportDeck(r.id, e.deliverable, r.company_id)} disabled={busy === 'dl' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginInlineStart:8 }}>{busy === 'dl' + r.id ? 'جارٍ التصدير...' : '📎 صدّر الشرائح وارفعها'}</button>)}
                 </div>
                 {(() => {
                 if (!c) {
