@@ -17,6 +17,7 @@ export interface FileClientData {
   valuationEstimate?: string;
   fundingAmount?: number;
   fundingType?: string;
+  pitchNums?: Record<string, string>;
 }
 
 export interface GeneratedFile {
@@ -61,6 +62,15 @@ export async function generateFileContent(
     client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
   ].filter(Boolean).join('\\n');
 
+  const PITCH_LBL: Record<string, string> = { branch_revenue: 'متوسط إيراد الفرع الواحد (ر.س/سنة)', branch_cost: 'الكلفة الرأسمالية لافتتاح الفرع (ر.س — لمرة واحدة)', payback: 'فترة استرداد كلفة الفرع (شهر)', branches_now: 'عدد الفروع العاملة اليوم', branches_target: 'عدد الفروع المستهدفة من الجولة', headcount: 'عدد الموظفين', equity_offered: 'الحصة المعروضة (%)', pre_money: 'التقييم قبل الجولة (ر.س)', target_return: 'مضاعف العائد المستهدف وأفقه' };
+
+  const pn = client.pitchNums || {};
+  const pnLines = Object.entries(pn).filter(([, v]) => String(v || '').trim() !== '')
+    .map(([k, v]) => '- ' + (PITCH_LBL[k] || k) + ': ' + v).join('\\n');
+  const pnBlock = pnLines
+    ? '\\n\\nأرقام مؤكَّدة من المستشار — استخدمها حرفياً ولا تقرّبها ولا تجتهد في تقديرها، وهي نفسها الواردة في العرض التقديمي المقدَّم للمستثمر:\\n' + pnLines
+    : '';
+
   const reqLine = isIntl
     ? (isInvestment
         ? 'theRequest: the investment offer — amount sought, use of funds, and value offered to the investor'
@@ -78,7 +88,7 @@ export async function generateFileContent(
     : '')
     + 'أنت خبير في إعداد ' + docType + ' احترافي في حلول المرضي للاستشارات المالية (منصة مُرضي).\\n'
     + 'اكتب محتوى ' + docType + ' متكامل ومقنع موجّه إلى ' + targetAudience + '.\\n\\n'
-    + 'بيانات الشركة والوضع المالي:\\n' + lines + '\\n\\n'
+    + 'بيانات الشركة والوضع المالي:\\n' + lines + pnBlock + '\\n\\n'
     + 'اكتب ٦ أقسام احترافية، كل قسم فقرات متماسكة (لا نقاط مختصرة):\\n'
     + '1. executiveSummary: ملخص تنفيذي موجز وقوي (٣-٤ أسطر).\\n'
     + '2. companyOverview: نبذة عن الشركة ونشاطها وموقعها (٤-٥ أسطر).\\n'

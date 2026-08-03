@@ -102,11 +102,20 @@ export async function POST(req: Request) {
     goal: company.goal || undefined,
     fundingAmount,
     revenue: dn.revenue ?? undefined,
+    profit: (effective as { net_profit?: number }).net_profit ?? undefined,
     liabilities: dn.remaining ?? undefined,
     readinessScore: rr?.readiness_score ?? undefined,
     verdict: rr?.verdict ?? undefined,
     valuationEstimate: rr?.valuation_estimate ?? undefined,
   };
+
+  try {
+    const { data: pin } = await admin.from('service_inputs')
+      .select('inputs, updated_at').eq('company_id', companyId).eq('activity_kind', 'pitch')
+      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const pv = (pin?.inputs as { pitch?: Record<string, string> } | null)?.pitch;
+    if (pv && typeof pv === 'object') client.pitchNums = pv;
+  } catch {}
 
   try {
     try {
