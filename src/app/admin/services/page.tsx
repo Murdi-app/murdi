@@ -293,6 +293,14 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
         const pd = await pr.json().catch(() => ({}))
         msg += pd.ok ? 'تم رفع الشرائح للمخاطبة. ' : ('تعذّر رفع الشرائح: ' + (pd.error || pr.status) + ' ')
       }
+      const er = await fetch('/api/admin/pitch-render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id, text, lang: 'en' }) })
+      const ed = await er.json().catch(() => ({}))
+      if (ed.ok && ed.deckHtml) {
+        const pr2 = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: ed.deckHtml, lang: 'en', name: 'murdi-deck', landscape: true, kind: 'deck' }) })
+        const pd2 = await pr2.json().catch(() => ({}))
+        msg += pd2.ok ? 'ورُفعت النسخة الإنجليزية. ' : ('تعذّر رفع الإنجليزية: ' + (pd2.error || pr2.status) + ' ')
+      } else { msg += 'تعذّرت الترجمة الإنجليزية: ' + (ed.error || er.status) + ' ' }
+
       if (d.notesHtml) {
         const nr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: d.notesHtml, lang: 'ar', name: 'murdi-notes', landscape: false, download: true }) })
         if (nr.ok) {
