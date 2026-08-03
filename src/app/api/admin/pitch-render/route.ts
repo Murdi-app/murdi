@@ -39,6 +39,7 @@ export async function POST(req: Request) {
   const co = (sr.companies as unknown as { company_name?: string } | null)?.company_name || 'الشركة';
 
   let body = raw;
+  let coEn = '';
   if (lang === 'en') {
     const tp = 'Translate the following Arabic investor pitch deck into professional institutional English.\n\n'
       + 'STRICT RULES:\n'
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
       + '3) Keep the separator lines and everything after them (the advisor notes section) in ARABIC, untranslated — that section is internal.\n'
       + '4) Do not add, drop, merge or reorder any slide, bullet or figure. Numbers stay identical.\n'
       + '5) Write the English of an investment banker: concrete, tight, no marketing filler.\n'
-      + '6) Output only the translated document, no preamble.\n\n'
+      + '6) Start your output with a single line: COMPANY_EN: <the company name in English or transliteration>, then a blank line, then the translated document. Nothing else before it.\n\n'
       + raw;
     for (const model of ['claude-opus-4-8', 'claude-sonnet-4-6']) {
       try {
@@ -59,7 +60,12 @@ export async function POST(req: Request) {
         if (!r.ok) continue;
         const d = await r.json();
         const out = (d?.content || []).map((x: { text?: string }) => x.text || '').join('').trim();
-        if (out && out.includes('[[SLIDE]]')) { body = out; break; }
+        if (out && out.includes('[[SLIDE]]')) {
+          const m = out.match(/^COMPANY_EN:\s*(.+)$/m);
+          if (m) { coEn = m[1].trim(); }
+          body = out.replace(/^COMPANY_EN:.*$/m, '').trim();
+          break;
+        }
       } catch {}
     }
     if (body === raw) return NextResponse.json({ error: 'تعذّرت الترجمة — أعد المحاولة' }, { status: 502 });
@@ -67,7 +73,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    deckHtml: buildDeckHTML(body, co, subtitle || (lang === 'en' ? 'Investment Offering' : 'عرض استثماري'), lang),
+    deckHtml: buildDeckHTML(body, (lang === 'en' && coEn) ? coEn : co, subtitle || (lang === 'en' ? 'Investment Offering' : 'عرض استثماري'), lang),
     notesHtml: lang === 'en' ? '' : buildNotesHTML(raw, co, 'ar'),
   });
 }
