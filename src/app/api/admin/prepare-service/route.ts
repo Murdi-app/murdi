@@ -22,7 +22,11 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { requestId } = body;
   const pitchIn: Record<string, string> = (body && body.pitch_inputs) || {};
+  const ARITH = 'قاعدة حسابية ملزمة: عدد الفروع الجديدة هو عدد الفروع التي تفتحها الجولة، وإجمالي الشبكة بعد الجولة = الفروع الحالية + الفروع الجديدة. '
+    + 'وكلفة الجولة = عدد الفروع الجديدة × كلفة افتتاح الفرع، ويجب أن تساوي المبلغ المطلوب؛ فإن اختلفا فسّر أوجه استخدام الفرق صراحةً ولا تتجاهله. '
+    + 'ممنوع الخلط بين العدد الجديد والإجمالي في أي شريحة أو عنوان.';
   const pitchLines = Object.entries(pitchIn).filter(([, v]) => String(v || '').trim() !== '').map(([k, v]) => '- ' + k + ': ' + v).join('\n');
+  const pitchBlock = pitchLines ? pitchLines + '\n' + ARITH : '';
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
       + 'أرقامها الفعلية: ' + JSON.stringify(effective) + '\n'
       + 'خدمات أنجزتها الشركة عبر مُرضي: ' + (doneSrv.length ? doneSrv.join('، ') : 'لا يوجد') + '\n'
       + 'خدمات قيد التنفيذ: ' + (openSrv.length ? openSrv.join('، ') : 'لا يوجد') + '\n\n'
-      + (pitchLines ? ('أرقام حدّدها المستشار — استخدمها حرفياً ولا تكتب [يُستكمل] لأي منها:\n' + pitchLines + '\n\n') : '')
+      + (pitchLines ? ('أرقام حدّدها المستشار — استخدمها حرفياً ولا تكتب [يُستكمل] لأي منها:\n' + pitchBlock + '\n\n') : '')
       + 'تنبيه محاسبي إلزامي: تكلفة افتتاح الفرع رقم رأسمالي لمرة واحدة (تجهيز وموقع ومخزون افتتاحي)، وليست كلفة تشغيلية سنوية. سمِّها «الكلفة الرأسمالية لافتتاح الفرع» ولا تسمِّها تشغيلية إطلاقاً، وفترة الاسترداد تقاس عليها هي.\n\n'
       + 'قواعد إلزامية:\n'
       + '1) الجمهور مستثمر مؤسسي. ممنوع منعاً باتاً مخاطبة صاحب الشركة داخل العرض — لا «أستاذي الكريم» ولا «ملاحظتي» ولا «أنصحك» ولا «سنجهّز». اكتب بضمير الشركة: نحقق، نستهدف، لدينا.\n'
