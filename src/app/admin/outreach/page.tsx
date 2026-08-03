@@ -74,6 +74,8 @@ export default function OutreachPage() {
   const [editEmail, setEditEmail] = useState('');
   const [attAr, setAttAr] = useState<{ file_url: string; file_name: string } | null>(null);
   const [attEn, setAttEn] = useState<{ file_url: string; file_name: string } | null>(null);
+  const [deckAr, setDeckAr] = useState<{ file_url: string; file_name: string } | null>(null);
+  const [deckEn, setDeckEn] = useState<{ file_url: string; file_name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 3000); };
@@ -87,7 +89,9 @@ export default function OutreachPage() {
         const a = d.attachment;
         setAttAr(a.file_url_ar ? { file_url: a.file_url_ar, file_name: a.file_name_ar || 'النسخة العربية' } : null);
         setAttEn(a.file_url_en ? { file_url: a.file_url_en, file_name: a.file_name_en || 'English version' } : null);
-      } else { setAttAr(null); setAttEn(null); }
+        setDeckAr(a.deck_url_ar ? { file_url: a.deck_url_ar, file_name: a.deck_name_ar || 'الشرائح — عربي' } : null);
+        setDeckEn(a.deck_url_en ? { file_url: a.deck_url_en, file_name: a.deck_name_en || 'Deck — English' } : null);
+      } else { setAttAr(null); setAttEn(null); setDeckAr(null); setDeckEn(null); }
     } catch {}
   };
 
@@ -301,6 +305,13 @@ export default function OutreachPage() {
             <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:14, marginBottom:4 }}>📎 ملفات المخاطبة</div>
             <p style={{ color:'#8A6D1A', fontSize:12, marginBottom:12, lineHeight:1.7 }}>جهّز الملف من «الخدمات» (يفتح نسختين)، احفظ كلّا منهما PDF وارفعها هنا. النظام يرسل لكل جهة النسخة المناسبة للغتها تلقائياً.</p>
 
+            {(deckAr || deckEn) && (
+              <div style={{ marginTop:4, marginBottom:10, padding:'10px 14px', background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10 }}>
+                <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:6 }}>🎞️ الشرائح — تُرفق تلقائياً (تُحدَّث من زر «صدّر الشرائح» في الخدمات)</div>
+                {deckAr && <div style={{ fontSize:12.5, marginBottom:3 }}>📊 {deckAr.file_name} — <a href={deckAr.file_url} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(للجهات المحلية)</span></div>}
+                {deckEn && <div style={{ fontSize:12.5 }}>📊 {deckEn.file_name} — <a href={deckEn.file_url} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(لكل الجهات)</span></div>}
+              </div>
+            )}
             {([['ar','📄 النسخة العربية (للجهات المحلية/الخليجية)', attAr],['en','📄 English version (for international entities)', attEn]] as const).map(([lang, label, att]) => (
               <div key={lang} style={{ background:'#fff', border:'1.5px solid #E8D9A8', borderRadius:10, padding:12, marginBottom:10 }}>
                 <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:12.5, marginBottom:8 }}>{label}</div>
