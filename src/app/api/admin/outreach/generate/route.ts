@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   // جلب الإيراد الفعلي من financial_data ودرجة الجاهزية من readiness_results
   const { data: fd } = await admin
     .from('financial_data')
-    .select('annual_revenue')
+    .select('annual_revenue, net_profit')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -71,7 +71,24 @@ export async function POST(req: Request) {
     sector: company.sector || undefined,
     city: company.city || undefined,
     goal: company.goal || undefined,
+    profit: fd?.net_profit ? Number(fd.net_profit) : undefined,
   };
+
+  // أرقام العرض المحفوظة من خدمة العرض الاستثماري
+  try {
+    const { data: pin } = await admin.from('service_inputs')
+      .select('inputs').eq('company_id', companyId).eq('activity_kind', 'pitch')
+      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const pv = (pin?.inputs as { pitch?: Record<string, string> } | null)?.pitch;
+    if (pv) {
+      if (pv.equity_offered) client.equityOffered = String(pv.equity_offered);
+      if (pv.pre_money) client.preMoney = Number(pv.pre_money).toLocaleString('en-US');
+    }
+    const { data: srv } = await admin.from('service_requests')
+      .select('price').eq('company_id', companyId).not('price', 'is', null)
+      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    if (srv?.price) client.roundSize = Number(srv.price);
+  } catch {}
 
   // ٢) الجهات المطابقة (نفلتر حسب المسار إن طُلب)
   const PAGE = 10;
