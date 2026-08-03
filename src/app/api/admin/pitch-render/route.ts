@@ -38,9 +38,36 @@ export async function POST(req: Request) {
   if (!raw) return NextResponse.json({ error: 'لا يوجد محتوى — جهّز الخدمة أولاً' }, { status: 400 });
   const co = (sr.companies as unknown as { company_name?: string } | null)?.company_name || 'الشركة';
 
+  let body = raw;
+  if (lang === 'en') {
+    const tp = 'Translate the following Arabic investor pitch deck into professional institutional English.\n\n'
+      + 'STRICT RULES:\n'
+      + '1) Keep every [[SLIDE]] marker exactly as it is, on its own line, in the same positions.\n'
+      + '2) Translate the line starting with «الرقم المحوري:» as a line starting exactly with "Key figure:".\n'
+      + '3) Keep the separator lines and everything after them (the advisor notes section) in ARABIC, untranslated — that section is internal.\n'
+      + '4) Do not add, drop, merge or reorder any slide, bullet or figure. Numbers stay identical.\n'
+      + '5) Write the English of an investment banker: concrete, tight, no marketing filler.\n'
+      + '6) Output only the translated document, no preamble.\n\n'
+      + raw;
+    for (const model of ['claude-opus-4-8', 'claude-sonnet-4-6']) {
+      try {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model, max_tokens: 8000, messages: [{ role: 'user', content: tp }] }),
+        });
+        if (!r.ok) continue;
+        const d = await r.json();
+        const out = (d?.content || []).map((x: { text?: string }) => x.text || '').join('').trim();
+        if (out && out.includes('[[SLIDE]]')) { body = out; break; }
+      } catch {}
+    }
+    if (body === raw) return NextResponse.json({ error: 'تعذّرت الترجمة — أعد المحاولة' }, { status: 502 });
+  }
+
   return NextResponse.json({
     ok: true,
-    deckHtml: buildDeckHTML(raw, co, subtitle || 'عرض استثماري', lang),
-    notesHtml: buildNotesHTML(raw, co, lang),
+    deckHtml: buildDeckHTML(body, co, subtitle || (lang === 'en' ? 'Investment Offering' : 'عرض استثماري'), lang),
+    notesHtml: lang === 'en' ? '' : buildNotesHTML(raw, co, 'ar'),
   });
 }
