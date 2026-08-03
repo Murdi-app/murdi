@@ -48,7 +48,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
   async function load() {
     const res = await fetch('/api/admin/service-requests')
-    if (res.ok) { const d = await res.json(); setReqs(d.requests || []) }
+    if (res.ok) { const d = await res.json(); setReqs(d.requests || []); loadPitchNums((d.requests || []).filter((x: { service_title?: string }) => String(x.service_title || '').includes('\u0627\u0644\u0645\u0633\u062a\u062b\u0645\u0631')).map((x: { id: string }) => x.id)) }
     const cr = await fetch('/api/admin/contracts')
     if (cr.ok) { const cd = await cr.json(); const map: Record<string, any> = {}; for (const c of (cd.contracts || [])) { if (c.service_request_id && !map[c.service_request_id]) map[c.service_request_id] = c; } setContracts(map); }
     setLoading(false)
@@ -281,6 +281,25 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     wins.forEach((w, i) => { if (w) { w.document.open(); w.document.write(htmls[i]); w.document.close() } })
   }
 
+  async function savePitchNums(id: string, companyId: string) {
+    setBusy('pn' + id)
+    const res = await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: id, company_id: companyId, activity_kind: 'pitch', inputs: { pitch: pitchIn[id] || {} } }) })
+    const d = await res.json()
+    setBusy('')
+    alert(d.ok ? 'تم حفظ أرقام العرض.' : ('تعذّر الحفظ: ' + (d.error || '')))
+  }
+
+  async function loadPitchNums(ids: string[]) {
+    for (const id of ids) {
+      try {
+        const res = await fetch('/api/admin/service-inputs?service_request_id=' + id)
+        const d = await res.json()
+        const pv = d?.record?.inputs?.pitch
+        if (pv && typeof pv === 'object') setPitchIn((prev) => ({ ...prev, [id]: { ...(pv as Record<string, string>), ...(prev[id] || {}) } }))
+      } catch {}
+    }
+  }
+
   async function save(id: string, deliverable: string, price: string, status?: string) {
     setBusy(id)
     await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status }) })
@@ -381,7 +400,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
                 </div>
               )}
-              {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
+              {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && (
                 <div style={{ background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
                   <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>📊 أرقام العرض — تُدرج حرفياً وتمنع أي فراغ في الشرائح</div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:8 }}>
@@ -391,6 +410,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                         style={{ padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8D9A8', fontFamily:'Cairo', fontSize:12.5 }} />
                     ))}
                   </div>
+                  <button onClick={() => savePitchNums(r.id, r.company_id)} disabled={busy === 'pn' + r.id} style={{ marginTop:10, background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'pn' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ أرقام العرض'}</button>
                 </div>
               )}
               {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
