@@ -32,6 +32,20 @@ export async function POST(req: Request) {
   if (!sr) return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
 
   const companyId = sr.company_id;
+
+  // حفظ أرقام العرض حتى لا تضيع بعد التوليد — يقرأها الملف الاحترافي لاحقاً
+  if (Object.keys(pitchIn).length > 0) {
+    try {
+      await admin.from('service_inputs').upsert({
+        service_request_id: requestId,
+        company_id: companyId,
+        activity_kind: 'pitch',
+        inputs: { pitch: pitchIn },
+        updated_by: ADMIN_EMAIL,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'service_request_id' });
+    } catch {}
+  }
   const { data: fd } = await admin.from('financial_data').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: rr } = await admin.from('readiness_results').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
