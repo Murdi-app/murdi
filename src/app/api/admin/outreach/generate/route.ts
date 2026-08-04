@@ -83,6 +83,7 @@ export async function POST(req: Request) {
     if (pv) {
       if (pv.equity_offered) client.equityOffered = String(pv.equity_offered);
       if (pv.pre_money) client.preMoney = Number(pv.pre_money).toLocaleString('en-US');
+      if (pv.round_size) client.roundSize = Number(pv.round_size);
     }
     const { data: srv } = await admin.from('service_requests')
       .select('price').eq('company_id', companyId).not('price', 'is', null)
