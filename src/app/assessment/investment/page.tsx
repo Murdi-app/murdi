@@ -350,21 +350,9 @@ export default function InvestmentAssessment() {
                       placeholder="مثال: 1200000"
                       className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right" />
                   </div>
-                  <div>
-                    <label className="block font-black text-[#1A3D34] mb-3">كم عدد جهات التمويل؟</label>
-                    <Choice items={DEBT_SOURCES} value={financingSources} onChange={setFinancingSources} />
-                  </div>
-                  <div>
-                    <label className="block font-black text-[#1A3D34] mb-3">نوع التمويل</label>
-                    <Choice items={FINANCING_TYPE} value={financingType} onChange={setFinancingType} cols={2} />
-                    {financingType === 'other' && (
-                      <input type="text" value={customFinancingType} onChange={(e) => setCustomFinancingType(e.target.value)}
-                        placeholder="اكتب نوع التمويل بالتحديد..." className={inputCls + ' mt-3'} />
-                    )}
-                  </div>
-                  {financingSources === 'multi' && (
+                  {(
                     <div>
-                      <label className="block font-black text-[#1A3D34] mb-2">فصّل جهات التمويل (المبلغ من كل جهة، اسمها، والقسط الشهري)</label>
+                      <label className="block font-black text-[#1A3D34] mb-2">تفاصيل الالتزامات القائمة (المبلغ من كل جهة، اسمها، والقسط الشهري)</label>
                       <textarea value={debtDetails} onChange={(e) => setDebtDetails(e.target.value)} rows={4}
                         placeholder={'مثال:\nبنك الراجحي — 800,000 ريال — قسط 25,000 شهرياً\nشركة تمويل — 400,000 ريال — قسط 12,000 شهرياً'}
                         className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right leading-relaxed" />
