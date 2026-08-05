@@ -192,9 +192,21 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const inst = String(o.instrument || '');
         if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
         const v = String(o.verdict || '');
-        if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(v)) return 0;
-        if (v.includes('\u0628\u0634\u0631\u0637')) return 70;
-        return 90;
+        if (/غير مؤهل|مستبعد|غير متاح/.test(v)) return 0;
+        const prob = v.includes('بشرط') ? 0.3 : 0.6;
+        const txt = String(o.amountRange || '');
+        const nums = (txt.match(/[\d.,]+/g) || []).map(x => Number(x.replace(/,/g, ''))).filter(n => n > 0);
+        let mid = nums.length > 1 ? (nums[0] + nums[1]) / 2 : (nums[0] || 0);
+        if (/مليار/.test(txt)) mid *= 1000000000;
+        else if (/مليون/.test(txt)) mid *= 1000000;
+        if (/دولار|USD/i.test(txt)) mid *= 3.75;
+        if (!mid) return prob >= 0.6 ? 40 : 20;
+        const tl = String(o.timeline || '');
+        const rng = tl.match(/(\d+)\s*[-–—]\s*(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
+        const one = tl.match(/(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
+        const months = rng ? (Number(rng[1]) + Number(rng[2])) / 2 : (one ? Number(one[1]) : 12);
+        const ev = prob * (mid / 1000000) / Math.max(1, months) * 10;
+        return Math.max(1, Math.min(100, Math.round(ev)));
       })(),
       instrument: o.instrument || null,
       engagement: o.engagement || null,
