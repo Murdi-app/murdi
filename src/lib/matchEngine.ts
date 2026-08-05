@@ -21,7 +21,7 @@ export const TYPE_LABELS: Record<string, string> = {
 
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 
-export   type WebOffer = { region?: string; provider: string; product: string; requirements: string; source: string; verdict?: string; gaps?: string[]; amountRange?: string; timeline?: string; saudiPrecedent?: string | null; legalPath?: string | null };
+export   type WebOffer = { region?: string; provider: string; product: string; requirements: string; source: string; verdict?: string; instrument?: string; engagement?: string; gaps?: string[]; amountRange?: string; timeline?: string; saudiPrecedent?: string | null; legalPath?: string | null };
 
 export async function runScopedMatch(args: {
   company: Rec; fd: Rec; typeLabel: string; rev: number;
@@ -105,7 +105,7 @@ export async function runScopedMatch(args: {
     const INVEST_SCOPES = [
       'اقتصر على صناديق الملكية الخاصة وصناديق النمو المرخّصة من هيئة السوق المالية السعودية.',
       'اقتصر على المكاتب العائلية والمجموعات القابضة السعودية التي تستثمر في المنشآت الخاصة.',
-      'اقتصر على منصات الاستثمار الجماعي في الأسهم المرخّصة من هيئة السوق المالية السعودية.',
+      'اقتصر على منصات التمويل الجماعي بالأسهم المرخّصة من هيئة السوق المالية فقط التي تطرح حصص ملكية. استبعد تماماً منصات التمويل الجماعي بالدين المرخّصة من البنك المركزي مثل Lendo وتمويلي وفرص — أداتها قرض يُسدّد لا حصة ملكية.',
       'اقتصر على صناديق النمو والملكية الخاصة الخليجية (الإمارات، الكويت، قطر، البحرين، عُمان).',
       'اقتصر على المكاتب العائلية الخليجية والكيانات الاستثمارية المرتبطة بالصناديق السيادية.',
       'اقتصر على الصناديق الأوروبية والأمريكية التي لها تفويض استثماري في الشرق الأوسط وشمال أفريقيا.',
@@ -130,7 +130,7 @@ export async function runScopedMatch(args: {
       + '3) للمستثمرين الخارجيين: لا تُدرج جهة إلا بسابقة استثمار موثّقة في السعودية أو الخليج مع الرابط والسنة، أو تفويض استثماري معلن يشمل السعودية أو الشرق الأوسط. وإلا استبعدها.\n'
       + '4) أصدر لكل مستثمر حكماً صريحاً: متأهل أو متأهل بشرط، أو استبعده. لا تحش القائمة.\n\n'
       + 'أرجع JSON فقط بدون أي نص آخر وبدون markdown:\n'
-      + '{"offers":[{"region":"السعودية أو الخليج أو دولي","provider":"اسم المستثمر أو الصندوق","product":"نوع الاستثمار: حصة نمو أو ملكية خاصة أو استراتيجي أو دين مرن","requirements":"معايير المستثمر: المرحلة وحجم التذكرة والأطروحة القطاعية والتفويض الجغرافي وشهية الحصة والسيطرة","verdict":"متأهل أو متأهل بشرط","gaps":["ما ينقص الشركة للتأهل"],"amountRange":"حجم التذكرة المتوقع","timeline":"أفق إتمام الصفقة والخروج","saudiPrecedent":"سابقة استثمار في السعودية أو الخليج مع الرابط والسنة أو null","legalPath":"آلية الاستثمار: حصة مباشرة أو عبر صندوق أو دين قابل للتحويل أو null","source":"رابط المصدر"}]}';
+      + '{"offers":[{"region":"السعودية أو الخليج أو دولي","provider":"اسم المستثمر أو الصندوق","product":"نوع الاستثمار: حصة نمو أو ملكية خاصة أو استراتيجي أو دين مرن","requirements":"معايير المستثمر: المرحلة وحجم التذكرة والأطروحة القطاعية والتفويض الجغرافي وشهية الحصة والسيطرة","verdict":"متأهل أو متأهل بشرط","gaps":["ما ينقص الشركة للتأهل"],"amountRange":"حجم التذكرة المتوقع","timeline":"أفق إتمام الصفقة والخروج","saudiPrecedent":"سابقة استثمار في السعودية أو الخليج مع الرابط والسنة أو null","legalPath":"آلية الاستثمار: حصة مباشرة أو عبر صندوق أو دين قابل للتحويل أو null","instrument":"أداة الجهة: ملكية أو دين مساند أو دين","engagement":"طرف مقابل إذا كانت تستثمر من مالها، أو قناة إذا كانت منصة تعرض الفرصة على غيرها","source":"رابط المصدر"}]}';
 
     const basePrompt = isInvest ? investPrompt : prompt;
 
@@ -174,11 +174,15 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       requirements: o.requirements,
       fit: o.verdict || null,
       fit_score: (() => {
+        const inst = String(o.instrument || '');
+        if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
         const v = String(o.verdict || '');
         if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(v)) return 0;
         if (v.includes('\u0628\u0634\u0631\u0637')) return 70;
         return 90;
       })(),
+      instrument: o.instrument || null,
+      engagement: o.engagement || null,
       source: o.source || null,
       verdict: o.verdict || null,
       gaps: o.gaps || [],
