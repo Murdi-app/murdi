@@ -132,8 +132,6 @@ export async function POST(req: Request) {
           alt_contact: gen.altContact,
           contact_method: gen.contactMethod,
           track: entityTrack,
-      instrument: (m as { instrument?: string }).instrument || undefined,
-      engagement: (m as { engagement?: string }).engagement || undefined,
           subject: gen.subject,
           message_body: gen.body,
           status: 'مسودة',
