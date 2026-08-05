@@ -154,7 +154,7 @@ export default function OutreachPage() {
     setBusy(false);
     if (d.ok) {
       setNextOffset(d.nextOffset);
-      setProgress('تم توليد ' + d.processedSoFar + ' من ' + d.total + (d.remaining > 0 ? ' — المتبقّي ' + d.remaining : ' (اكتمل)'));
+      setProgress('نجح ' + d.batchGenerated + ' من ' + (d.batchGenerated + d.batchFailed) + (d.batchFailed ? ' — فشل ' + d.batchFailed + ': ' + ((d.results||[]).find((x: { ok?: boolean; error?: string })=>!x.ok)?.error || 'سبب غير معروف') : '') + ' | معالَج ' + d.processedSoFar + ' من ' + d.total + (d.remaining > 0 ? ' — المتبقّي ' + d.remaining : ' (اكتمل)'));
       flash('✓ تمت هذه الدفعة (' + d.batchGenerated + ' رسالة)' + (d.batchFailed ? ' — فشل ' + d.batchFailed : ''));
       load(companyId.trim());
     }
