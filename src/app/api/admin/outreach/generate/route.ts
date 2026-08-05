@@ -118,6 +118,8 @@ export async function POST(req: Request) {
         requirements: m.requirements || undefined,
         region: m.region || undefined,
         track: entityTrack,
+      instrument: (m as { instrument?: string }).instrument || undefined,
+      engagement: (m as { engagement?: string }).engagement || undefined,
       };
       try {
         const gen = await buildFullOutreach(client, entity);
@@ -130,6 +132,8 @@ export async function POST(req: Request) {
           alt_contact: gen.altContact,
           contact_method: gen.contactMethod,
           track: entityTrack,
+      instrument: (m as { instrument?: string }).instrument || undefined,
+      engagement: (m as { engagement?: string }).engagement || undefined,
           subject: gen.subject,
           message_body: gen.body,
           status: 'مسودة',
