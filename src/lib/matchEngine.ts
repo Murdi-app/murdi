@@ -197,9 +197,21 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       legal_path: o.legalPath || null,
       status: 'new',
     }));
-    const { error } = await admin.from('match_results').insert(rows);
+    const firmKey = (p: string) => {
+      const acr = /\(([A-Za-z][A-Za-z .&]{1,})\)/.exec(p);
+      const base = acr ? acr[1] : String(p).split(/[\u2013\u2014(|]|\s-\s/)[0];
+      return base.toLowerCase().replace(/\s+/g, ' ').trim();
+    };
+    const bestByFirm = new Map<string, typeof rows[number]>();
+    for (const r of rows) {
+      const k = firmKey(r.provider || '');
+      const cur = bestByFirm.get(k);
+      if (!cur || (r.fit_score || 0) > (cur.fit_score || 0)) bestByFirm.set(k, r);
+    }
+    const deduped = Array.from(bestByFirm.values());
+    const { error } = await admin.from('match_results').insert(deduped);
     if (error) return { saved: 0, error: error.message };
-    return { saved: rows.length, error: '' };
+    return { saved: deduped.length, error: '' };
   } catch (e) {
     return { saved: 0, error: e instanceof Error ? e.message : String(e) };
   }
