@@ -95,7 +95,7 @@ export async function POST(req: Request) {
   const PAGE = 10;
   let q = admin.from('match_results').select('*', { count: 'exact' }).eq('company_id', companyId);
   if (track) q = q.eq('track', track);
-  q = q.or('status.is.null,status.neq.superseded').or('fit_score.is.null,fit_score.gt.0').order('fit_score', { ascending: false, nullsFirst: false }).range(offset, offset + PAGE - 1);
+  q = q.or('status.is.null,status.neq.superseded').or('fit_score.is.null,fit_score.gt.0').or('engagement.is.null,engagement.neq.قناة').order('fit_score', { ascending: false, nullsFirst: false }).range(offset, offset + PAGE - 1);
   const { data: matches, error: mErr, count: totalCount } = await q;
   if (mErr) return NextResponse.json({ error: 'تعذّر جلب الجهات' }, { status: 500 });
   if (!matches || matches.length === 0) {
