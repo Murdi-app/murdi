@@ -194,7 +194,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
   async function generateFile(r: any) {
     setBusy(r.id)
-    const track = r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' ? 'investment' : 'funding'
+    const track = r.service_title === 'تجهيز صفقة التملّك والتفاوض' ? 'acquisition' : r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' ? 'investment' : 'funding'
     try {
       // نولّد نسختين: عربية (محلي) + إنجليزية (دولي). احفظ كل واحدة PDF وارفعها في قسم المخاطبة.
       const regions = ['محلي', 'دولي']
