@@ -59,7 +59,7 @@ export async function generateFileContent(
     client.assets ? 'إجمالي الأصول: ' + num(client.assets) : '',
     client.liabilities ? 'إجمالي الالتزامات: ' + num(client.liabilities) : '',
     client.valuationEstimate ? 'التقييم التقديري: ' + client.valuationEstimate : '',
-    (!isInvestment && client.readinessScore) ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
+    (!isInvestment && !isAcq && client.readinessScore) ? 'درجة الجاهزية: ' + client.readinessScore + '/100' : '',
     client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
   ].filter(Boolean).join('\\n');
 
@@ -196,6 +196,7 @@ export function buildFileHTML(
   region?: string,
   statementsRaw?: string
 ): string {
+  const isAcqDoc = track === 'acquisition';
   const isInv = track === 'investment';
   const intl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
   const cAny = content as unknown as Record<string, unknown>;
@@ -205,11 +206,11 @@ export function buildFileHTML(
   const dirAttr = intl ? 'ltr' : 'rtl';
   const langAttr = intl ? 'en' : 'ar';
   const title = intl
-    ? (isInv ? 'Investment Offering' : 'Financing Proposal')
-    : (isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي');
+    ? (isAcqDoc ? 'Sale Memorandum' : isInv ? 'Investment Offering' : 'Financing Proposal')
+    : (isAcqDoc ? 'مذكرة بيع' : isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي');
   const L = intl
-    ? { exec: 'Executive Summary', company: 'Company Overview', fin: 'Financial Position', req: isInv ? 'The Investment Offer' : 'The Financing Request', strengths: 'Key Strengths', closing: 'Closing', sector: 'Sector', city: 'City', cr: 'CR Number', score: 'Readiness Score', brand: 'HOLOL ALMURDI FINANCIAL CONSULTING' }
-    : { exec: 'الملخص التنفيذي', company: 'نبذة عن الشركة', fin: 'الوضع المالي', req: isInv ? 'العرض الاستثماري' : 'طلب التمويل', strengths: 'نقاط القوة', closing: 'الخاتمة', sector: 'القطاع', city: 'المدينة', cr: 'السجل التجاري', score: 'درجة الجاهزية', brand: 'حلول المرضي للاستشارات المالية' };
+    ? { exec: 'Executive Summary', company: 'Company Overview', fin: 'Financial Position', req: isAcqDoc ? 'What Is Offered for Acquisition' : isInv ? 'The Investment Offer' : 'The Financing Request', strengths: 'Key Strengths', closing: 'Closing', sector: 'Sector', city: 'City', cr: 'CR Number', score: 'Readiness Score', brand: 'HOLOL ALMURDI FINANCIAL CONSULTING' }
+    : { exec: 'الملخص التنفيذي', company: 'نبذة عن الشركة', fin: 'الوضع المالي', req: isAcqDoc ? 'ما يُطرح للتملّك' : isInv ? 'العرض الاستثماري' : 'طلب التمويل', strengths: 'نقاط القوة', closing: 'الخاتمة', sector: 'القطاع', city: 'المدينة', cr: 'السجل التجاري', score: 'درجة الجاهزية', brand: 'حلول المرضي للاستشارات المالية' };
   const ink = '#1A3D34', gold = '#C9A84C', green = '#2E9E7B', gray = '#6B8A80';
   const today = new Date().toLocaleDateString(intl ? 'en-GB' : 'ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -220,7 +221,7 @@ export function buildFileHTML(
     sectorOut ? [L.sector, sectorOut] as [string, string] : null,
     cityOut ? [L.city, cityOut] as [string, string] : null,
     client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
-    (!isInv && client.readinessScore) ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
+    (!isInv && !isAcqDoc && client.readinessScore) ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
 
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
