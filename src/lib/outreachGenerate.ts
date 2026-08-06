@@ -215,7 +215,17 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
     throw new Error('فشل JSON.parse: ' + (e instanceof Error ? e.message : String(e)) + ' — المقتطف: ' + m[0].slice(0, 200));
   }
   return {
-    subject: String(parsed.subject || 'استفسار بخصوص أحد عملائنا').trim(),
+    subject: (() => {
+      const en = language === 'إنجليزي';
+      const head = isGuar
+        ? (en ? 'Guarantee coverage enquiry' : 'استفسار عن تغطية ضمان')
+        : isMezz
+          ? (en ? 'Growth debt enquiry' : 'استفسار تمويلي: دين مساند لجولة نمو')
+          : isEquity
+            ? (en ? 'Invitation to participate in an investment round' : 'دعوة للمشاركة في جولة استثمارية')
+            : (en ? 'Financing facility enquiry' : 'طلب تسهيل تمويلي');
+      return head + ' — ' + client.companyName + ' | ' + entity.provider;
+    })(),
     body: String(parsed.body || '').trim(),
     language,
   };
