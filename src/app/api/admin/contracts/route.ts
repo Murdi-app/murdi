@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { fundingContract, investmentContract, ContractFields } from '@/lib/contracts';
+import { fundingContract, investmentContract, acquisitionContract, ContractFields } from '@/lib/contracts';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const { serviceRequestId, companyId, contractType } = body;
 
   const fields: ContractFields = {};
-  const text = contractType === 'investment' ? investmentContract(fields) : fundingContract(fields);
+  const text = contractType === 'acquisition' ? acquisitionContract(fields) : contractType === 'investment' ? investmentContract(fields) : fundingContract(fields);
 
   const { data, error } = await admin.from('contracts').insert({
     company_id: companyId,
@@ -72,7 +72,7 @@ export async function PATCH(req: Request) {
       establishmentCr: body.establishment_cr ?? existing.establishment_cr,
       feePercent: body.fee_percent ?? existing.fee_percent,
     };
-    updates.contract_body = existing.contract_type === 'investment' ? investmentContract(fields) : fundingContract(fields);
+    updates.contract_body = existing.contract_type === 'acquisition' ? acquisitionContract(fields) : existing.contract_type === 'investment' ? investmentContract(fields) : fundingContract(fields);
   }
   if (body.status === 'issued') updates.issued_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
