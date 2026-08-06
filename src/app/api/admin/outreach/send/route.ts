@@ -52,6 +52,8 @@ export async function POST(req: Request) {
   const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).single();
   const loadAtt = async (fileUrl?: string, fileName?: string): Promise<Att | null> => {
     if (!fileUrl) return null;
+    const bad = /سرّي|سرية|موقف|تقييم|negotiation|valuation|confidential/i;
+    if (bad.test(String(fileName || '')) || bad.test(String(fileUrl))) return null;
     try {
       const fileRes = await fetch(fileUrl);
       if (fileRes.ok) {
