@@ -209,6 +209,7 @@ export default function OutreachPage() {
   const approvedCount = msgs.filter(m => m.status === 'معتمدة').length;
   const sentCount = msgs.filter(m => m.status === 'مُرسلة').length;
   const awaitingCount = msgs.filter(m => m.status === 'مُرسلة' && m.reply_status === 'awaiting').length;
+  const repliedNoVal = msgs.filter(m => m.reply_status === 'replied').length;
   const repliedCount = msgs.filter(m => m.reply_status === 'replied').length;
   const declinedCount = msgs.filter(m => m.reply_status === 'declined').length;
 
@@ -344,6 +345,7 @@ export default function OutreachPage() {
         {msgs.length > 0 && (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexWrap:'wrap', gap:8 }}>
             <span style={{ color:C.gray, fontSize:13, fontWeight:700 }}>
+              {repliedNoVal > 0 && (<div style={{ background:'#FBF5E8', border:'1.5px solid #EAD9A8', borderRadius:14, padding:'10px 16px', marginBottom:10, color:'#6B5A2E', fontWeight:900, fontSize:13 }}>ردّت {repliedNoVal} جهة — جهّز التقييم المستقل قبل أن يُسأل العميل عن رقم <a href="/admin/services" style={{ color:'#1A3D34', textDecoration:'underline' }}>لوحة الخدمات</a></div>)}
               تم توليد {msgs.length} مخاطبة · {approvedCount} معتمدة · {sentCount} تم التواصل · <span style={{ color:'#9A7B2E' }}>{awaitingCount} بانتظار الرد</span> · <span style={{ color:C.green }}>{repliedCount} ردّت</span> · <span style={{ color:'#C0392B' }}>{declinedCount} اعتذرت</span>
             </span>
             <button onClick={send} disabled={busy || approvedCount===0}

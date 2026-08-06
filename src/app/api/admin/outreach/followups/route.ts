@@ -112,24 +112,5 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
   }
   await admin.from('outreach_messages').update({ reply_status, updated_at: new Date().toISOString() }).eq('id', id);
-  if (reply_status === 'replied') {
-    try {
-      const { data: m } = await admin.from('outreach_messages')
-        .select('entity_name, company_id').eq('id', id).single();
-      const { data: co } = await admin.from('companies')
-        .select('company_name').eq('id', m?.company_id).single();
-      const { Resend } = await import('resend');
-      const rs = new Resend(process.env.RESEND_API_KEY as string);
-      await rs.emails.send({
-        from: 'مُرضي — تنبيه <noreply@murdi.sa>',
-        to: 'hololalmurdi.fs@gmail.com',
-        subject: 'ردّت جهة على ' + (co?.company_name || 'عميل') + ' — ابدأ التقييم المستقل',
-        html: '<div style="font-family:Arial;direction:rtl;line-height:1.8;color:#1A3D34">'
-          + '<p><b>' + (m?.entity_name || '') + '</b> ردّت على مخاطبة العميل <b>' + (co?.company_name || '') + '</b>.</p>'
-          + '<p>الخطوة التالية: جهّز <b>التقييم المستقل</b> قبل أن يُسأل العميل عن رقم.</p>'
-          + '<p><a href="https://murdi.sa/admin/services" style="background:#1A3D34;color:#fff;padding:10px 22px;border-radius:30px;text-decoration:none;font-weight:900">لوحة الخدمات</a></p></div>',
-      });
-    } catch (e) { await logError('outreach.replyAlert', e, { entity: String(id) }); }
-  }
   return NextResponse.json({ ok: true });
 }
