@@ -125,5 +125,5 @@ export function investmentContract(f: ContractFields): string {
 export const COMMISSION_SERVICES: Record<string, 'funding' | 'investment'> = {
   'تجهيز ملف التمويل والتفاوض': 'funding',
   'تجهيز ملف عرض المستثمر والتفاوض': 'investment',
-  'تجهيز البيع والاستحواذ': 'investment',
+  'تجهيز صفقة التملّك والتفاوض': 'investment',
 };
