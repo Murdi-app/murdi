@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateFileContent, buildFileHTML, type FileClientData } from '@/lib/fileGenerate';
 import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
+import { logError } from '@/lib/logError';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -129,6 +130,7 @@ export async function POST(req: Request) {
     const html = buildFileHTML(client, content, track as 'funding' | 'investment', region, statementsHtml);
     return NextResponse.json({ ok: true, html });
   } catch (e) {
+    await logError('file.generate', e, {});
     return NextResponse.json({ error: 'تعذر التوليد: ' + String(e).slice(0, 120) }, { status: 500 });
   }
 }
