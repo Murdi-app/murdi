@@ -44,11 +44,11 @@ export default function GoalPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: comp } = await supabase
-        .from('companies').select('id, company_name, sector, subscription_active, subscription_until')
+        .from('companies').select('id, company_name, sector, subscription_active, subscription_end')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!comp) return;
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
-      const subActive = comp.subscription_active === true && (!comp.subscription_until || new Date(comp.subscription_until) > new Date());
+      const subActive = comp.subscription_active === true && (!comp.subscription_end || new Date(comp.subscription_end) > new Date());
       setSubscriptionActive(subActive);
       const out: Record<string, number> = {};
       const { data: rows } = await supabase
