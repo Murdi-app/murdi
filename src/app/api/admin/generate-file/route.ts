@@ -31,9 +31,19 @@ export async function POST(req: Request) {
 
   let companyId = '', track = 'funding', region = '';
   let fundingAmount: number | undefined;
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; }
+  let reqId = '';
+  let purpose = '';
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
+  if (reqId && (fundingAmount || purpose)) {
+    try {
+      const adm2 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+      await adm2.from('service_inputs').upsert({ service_request_id: reqId, company_id: companyId,
+        activity_kind: 'funding', inputs: { amount: fundingAmount || null, purpose: purpose || null },
+        updated_at: new Date().toISOString() }, { onConflict: 'service_request_id' });
+    } catch (e) { await logError('file.saveFundingInputs', e, { company_id: companyId }); }
+  }
 
   // القوائم المالية المُنجزة (إن وُجدت)
   let statementsHtml = '';
