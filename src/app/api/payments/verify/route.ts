@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     const until = new Date();
     until.setMonth(until.getMonth() + 4); // اشتراك ربعي (4 أشهر)
     await sb.from('companies')
-      .update({ subscription_active: true, subscription_until: until.toISOString() })
+      .update({ subscription_active: true, subscription_end: until.toISOString() })
       .eq('id', companyId);
   }
 

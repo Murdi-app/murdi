@@ -197,7 +197,7 @@ export default function ApprovalsPage() {
     const cur = c.subscription_end ? new Date(c.subscription_end) : new Date()
     const base = cur > new Date() ? cur : new Date()
     const newEnd = new Date(base.getTime() + 120*24*60*60*1000)
-    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active', subscription_active: true, subscription_until: newEnd.toISOString() }).eq('id', c.id)
+    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active', subscription_active: true }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
