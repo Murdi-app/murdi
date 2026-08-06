@@ -142,13 +142,13 @@ export default function OutreachPage() {
     else flash(d.error || 'خطأ');
   };
 
-  const generate = async (offset = 0) => {
+  const generate = async (offset = 0, kind = '') => {
     if (!companyId.trim()) { flash('أدخل معرّف العميل'); return; }
     setBusy(true);
     flash(offset === 0 ? 'جارٍ توليد أفضل ١٠ جهات...' : 'جارٍ توليد الدفعة التالية...');
     const r = await fetch('/api/admin/outreach/generate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ company_id: companyId.trim(), offset, track: new URLSearchParams(window.location.search).get('track') || undefined }),
+      body: JSON.stringify({ company_id: companyId.trim(), offset, kind: kind || undefined, track: new URLSearchParams(window.location.search).get('track') || undefined }),
     });
     const d = await r.json();
     setBusy(false);
@@ -279,6 +279,14 @@ export default function OutreachPage() {
             <input value={companyId} onChange={e => setCompanyId(e.target.value)}
               placeholder="الصق معرّف الشركة"
               style={{ flex:1, minWidth:220, padding:'10px 14px', borderRadius:10, border:'2px solid '+C.mint, fontSize:14 }} />
+            <button onClick={() => generate(0, 'equity')} disabled={busy}
+              style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'10px 18px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginInlineEnd:8 }}>
+              خاطب المستثمرين
+            </button>
+            <button onClick={() => generate(0, 'acquisition')} disabled={busy}
+              style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'10px 18px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginInlineEnd:8 }}>
+              خاطب المشترين
+            </button>
             <button onClick={() => generate(0)} disabled={busy}
               style={{ padding:'10px 20px', borderRadius:10, background:C.green, color:'#fff', fontWeight:900, border:'none', fontSize:14, opacity:busy?0.5:1 }}>
               {busy ? 'جارٍ...' : '⚙️ جهّز أفضل ١٠'}
