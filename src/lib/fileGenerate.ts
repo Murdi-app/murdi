@@ -34,20 +34,21 @@ export interface GeneratedFile {
 
 export async function generateFileContent(
   client: FileClientData,
-  track: 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation',
+  track: 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation' | 'intake',
   region?: string
 ): Promise<GeneratedFile> {
+  const isIn = track === 'intake';
   const isNeg = track === 'negotiation';
   const isVal = track === 'valuation';
   const isAcq = track === 'acquisition';
   const isInvestment = track === 'investment';
   const isIntl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
   const docType = isIntl
-    ? (isNeg ? 'confidential negotiation position paper' : isVal ? 'independent valuation report' : isAcq ? 'sale memorandum' : isInvestment ? 'investment offering document' : 'financing proposal document')
-    : (isNeg ? 'ورقة موقف تفاوضي سرّية' : isVal ? 'تقرير تقييم مستقل' : isAcq ? 'مذكرة بيع' : isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي');
+    ? (isIn ? 'due diligence document and question checklist' : isNeg ? 'confidential negotiation position paper' : isVal ? 'independent valuation report' : isAcq ? 'sale memorandum' : isInvestment ? 'investment offering document' : 'financing proposal document')
+    : (isIn ? 'قائمة المستندات والأسئلة' : isNeg ? 'ورقة موقف تفاوضي سرّية' : isVal ? 'تقرير تقييم مستقل' : isAcq ? 'مذكرة بيع' : isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي');
   const targetAudience = isIntl
-    ? (isNeg ? 'the owner and his advisor only' : isVal ? 'the business owner' : isAcq ? 'potential acquirers' : isInvestment ? 'institutional investors' : 'international financing institutions and banks')
-    : (isNeg ? 'المالك ومستشاره فقط' : isVal ? 'مالك الشركة وحده' : isAcq ? 'المشترين المحتملين' : isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك');
+    ? (isIn ? 'the client' : isNeg ? 'the owner and his advisor only' : isVal ? 'the business owner' : isAcq ? 'potential acquirers' : isInvestment ? 'institutional investors' : 'international financing institutions and banks')
+    : (isIn ? 'العميل' : isNeg ? 'المالك ومستشاره فقط' : isVal ? 'مالك الشركة وحده' : isAcq ? 'المشترين المحتملين' : isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك');
   const num = (n?: number) => n ? n.toLocaleString('en-US') + ' ريال' : '';
 
   const lines = [
@@ -83,6 +84,7 @@ export async function generateFileContent(
         : 'theRequest: طلب التمويل — المبلغ والغرض والقدرة على السداد');
 
   const ENTITY_RULE = 'قاعدة إلزامية عن الجهات: لا تصف أي جهة بأنها ستموّل العميل قبل التأكد من أداتها. جهة الضمان مثل وكالات ائتمان التصدير وبرنامج كفالة تضمن ولا تدفع للعميل ريالاً، والقناة مثل منصات التمويل الجماعي ومنصات الفواتير تعرض الطلب على ممولين آخرين ولا تموّل من ميزانيتها. اذكر دور كل جهة كما هو، ولا تحوّل ضامناً إلى ممول. ';
+  const IN_RULES = 'قواعد إلزامية لقائمة المستندات: (1) المستند موجّه للعميل، يطلب منه ما نحتاجه لتجهيز صفقته. خاطبه مباشرةً بلغة مهنية موجزة. (2) كل بند سطر مستقل يبدأ بـ «– »، محدّد لا عام، ومعه سبب مختصر لماذا نطلبه: إما يرفع سعره أو يحميه من مفاجأة. (3) كيّف القائمة على قطاع العميل وطبيعة نشاطه: التقنية تُسأل عن الملكية الفكرية والشفرة والاشتراكات، والتجارة عن المخزون والفروع والموردين، والخدمات عن العقود والكوادر. (4) في executiveSummary: لماذا هذه القائمة وما أثر التأخر في تسليمها على السعر. (5) في companyOverview: مستندات الكيان والتراخيص وشروط انتقالها عند تغيّر الملكية. (6) في financialPosition: المستندات المالية والزكوية والتأمينات والالتزامات. (7) في theRequest: العقود والعملاء والملكية الفكرية والفريق، وأبرز فيها شرط تغيّر السيطرة في عقود العملاء. (8) في strengths: أسئلة عن المشتري والصفقة وما قيل في الاجتماعات، ومنها ما قُصد بأي وعد غير مكتوب عن دور المؤسس بعد البيع. (9) في closing: أسئلة عن أهداف العميل نفسه: المبلغ الذي يحتاجه، والحد الأدنى، وأي ضغط زمني عليه، وهل يقبل جزءاً مؤجّلاً، وهل يرغب في الاستمرار مع المشتري. (10) ممنوع ذكر درجة الجاهزية أو أي سعر أو تقييم. ';
   const NEG_RULES = 'قواعد إلزامية لورقة الموقف: (1) وثيقة داخلية سرّية للمالك ومستشاره وحدهما، ولا تُرسل لأي مشترٍ إطلاقاً. اكتبها مخاطباً المالك. (2) في executiveSummary: ملخّص الموقف ومواطن قوته التفاوضية ومواطن ضعفه. (3) في companyOverview: نقاط القوة مرتّبة بالأثر، وما يُطرح أولاً وما يُدّخر للحظة الضغط. (4) في financialPosition: نقاط الضعف صراحةً قبل أن يكتشفها المشتري، وجواب جاهز لكل واحدة. (5) في theRequest: هيكل الصفقة المقترح بستة عناصر: ما يُباع، ونسبة النقد إلى المؤجّل وشروط المؤجّل ومن يتحكم في تحقق أهدافه، وعملة الدفع، والمبلغ المحجوز ومدته، وسقف الإقرارات والضمانات ومدتها، وفصل عقد عمل المؤسس عن ثمن الشركة. (6) في strengths: اعتراضات المشتري المتوقعة ورد مكتوب على كل اعتراض. (7) في closing: ما لا يُقال في الجلسة — الحاجة للمال، ودرجة الاستعجال، وأي رقم قبل أوانه، وقاعدة ألا ينطق المالك بالرقم أولاً. (8) لا تخترع معلومة غير واردة؛ وما نقص فاذكره كسؤال يُطرح على المالك. ';
   const VAL_RULES = 'قواعد إلزامية لتقرير التقييم: (1) المستند موجّه لمالك الشركة وحده ولا يُرسل لأي مشترٍ أو مستثمر. (2) المخرَج إلزاماً نطاق من رقمين بالريال مع المنهجية والحساب ظاهراً خطوة خطوة، لا رقم مرسل. (3) استخدم مضاعفات ربح محافظة للشركات الخاصة غير المدرجة: تقنية وبرمجيات 5ℒ7؛ صحة وتعليم 4ℒ6؛ تجزئة وخدمات 3ℒ5؛ صناعة ومقاولات وتجارة 3ℒ4؛ أغذية وزراعة 4ℒ5. الحد الأدنى مع النمو الضعيف والأعلى مع العالي. (4) اعرض ثلاث زوايا إن أمكن: مضاعف الربح، وكلفة وزمن بناء ما تملكه الشركة من الصفر، وسوابق صفقات مشابهة إن وجدت؛ وإن تعذّرت زاوية فقل صراحةً إنها تحتاج بيانات إضافية. (5) إن كانت الشركة خاسرة أو ربحها صفر فلا تعط رقماً، واشرح ما يلزم للوصول إلى تقييم ذي معنى. (6) اذكر صراحةً عوامل ترفع القيمة وعوامل تخفضها، وما لم تستطع تقييمه لنقص البيانات. (7) التقرير تقدير مهني لا ضمان سعر، ولا يُلزم أي طرف ثالث. ';
   const ACQ_RULES = 'قواعد إلزامية لمذكرة البيع: (1) المستند موجّه لمشترٍ يريد تملّك الشركة كاملة أو حصة أغلبية، لا لمستثمر يشارك في جولة. ممنوع ذكر التقييم قبل الجولة أو الحصة المعروضة أو استخدام رأس المال أو أي لغة جمع تمويل أو سداد. (2) ممنوع منعاً باتاً ذكر أي سعر أو نطاق ثمن أو قيمة مطلوبة وممنوع ذكر أي مضاعف ربح أو مضاعف إيراد أو تقدير قيمة مرجعي أو نطاق تقييم مهما كان مسنوداً — أي رقم يدل على قيمة الشركة يُعد مخالفة جسيمة، والجملة الوحيدة المسموحة أن التقييم يُحدّد بدراسة مستقلة. (2ب) ممنوع اختراع أي معلومة غير واردة في البيانات: لا تفترض قطاعاً ولا نشاطاً ولا منتجات ولا مدينة؛ وإن كان الحقل غير مفهوم فلا تذكره أصلاً. — الرقم يخرج من التقييم المستقل في التفاوض لا من هذا المستند. (3) في theRequest اكتب ما يُطرح للتملّك وما ينتقل مع الصفقة: الحصص أو الأصول، والتراخيص، والعقود الجارية، والفريق، والملكية الفكرية، وما يبقى خارج الصفقة. (4) اعتمد الأداء التاريخي المحقق لا التوقّعات. (5) بيّن مدى اعتماد التشغيل على المؤسس وقابلية استمرار العمل بعد انتقال الملكية. (6) اذكر الالتزامات القائمة بشفافية مرة واحدة — العناية النافية ستكشفها. (7) ممنوع ذكر درجة الجاهزية أو أي تقييم داخلي للمنصة. (8) ممنوع أي وصف لا يُشتق من البيانات المعطاة: لا تدّع ملكية فكرية أو علامة تجارية أو عقوداً أو فريقاً مؤهلاً أو قلة اعتماد على المؤسس إلا إذا وردت صراحةً في البيانات؛ وإن لم ترد فاذكر أنها تُفصَّل في العناية النافية. (9) الدقة الحسابية إلزامية: إذا كان الهامش ثلاثين بالمئة فقل ثلاثين لا «يتجاوز ثلاثين». لا تصف أداء سنة واحدة بأنه على مدار السنوات. ';
@@ -106,9 +108,9 @@ export async function generateFileContent(
     + 'ضوابط: لا تختلق أرقاماً، لا ضمانات، لا ذكر لأي ذكاء اصطناعي، أسلوب عربي مؤسسي، المحتوى منسوب لحلول المرضي.\\n\\n'
     + 'أرجع JSON نقي فقط بدون أي نص قبله أو بعده:\\n'
     + 'IMPORTANT: do not compare this client to other clients, no ranking claims, no invented facts beyond the figures given. '
-    + (isNeg ? NEG_RULES : isVal ? VAL_RULES : isAcq ? ACQ_RULES : isInvestment ? INVEST_RULES : '')
+    + (isIn ? IN_RULES : isNeg ? NEG_RULES : isVal ? VAL_RULES : isAcq ? ACQ_RULES : isInvestment ? INVEST_RULES : '')
     + ENTITY_RULE
-    + ((isAcq || isVal || isNeg) ? '' : 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. ')
+    + ((isAcq || isVal || isNeg || isIn) ? '' : 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. ')
     + '{"executiveSummary":"...","companyOverview":"...","financialPosition":"...","theRequest":"...","strengths":"...","closing":"..."}';
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -196,10 +198,11 @@ export function extractStatementTables(raw: string, toEnglish: boolean): string 
 export function buildFileHTML(
   client: FileClientData,
   content: GeneratedFile,
-  track: 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation',
+  track: 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation' | 'intake',
   region?: string,
   statementsRaw?: string
 ): string {
+  const isInDoc = track === 'intake';
   const isNegDoc = track === 'negotiation';
   const isValDoc = track === 'valuation';
   const isAcqDoc = track === 'acquisition';
@@ -212,12 +215,12 @@ export function buildFileHTML(
   const dirAttr = intl ? 'ltr' : 'rtl';
   const langAttr = intl ? 'en' : 'ar';
   const title = intl
-    ? (isNegDoc ? 'Negotiation Position (Confidential)' : isValDoc ? 'Independent Valuation' : isAcqDoc ? 'Sale Memorandum' : isInv ? 'Investment Offering' : 'Financing Proposal')
-    : (isNegDoc ? 'ورقة الموقف التفاوضي — سرّية' : isValDoc ? 'تقرير التقييم المستقل' : isAcqDoc ? 'مذكرة بيع' : isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي');
+    ? (isInDoc ? 'Document & Question Checklist' : isNegDoc ? 'Negotiation Position (Confidential)' : isValDoc ? 'Independent Valuation' : isAcqDoc ? 'Sale Memorandum' : isInv ? 'Investment Offering' : 'Financing Proposal')
+    : (isInDoc ? 'قائمة المستندات والأسئلة' : isNegDoc ? 'ورقة الموقف التفاوضي — سرّية' : isValDoc ? 'تقرير التقييم المستقل' : isAcqDoc ? 'مذكرة بيع' : isInv ? 'ملف العرض الاستثماري' : 'الملف التمويلي');
   const L0 = intl
     ? { exec: 'Executive Summary', company: 'Company Overview', fin: 'Financial Position', req: isAcqDoc ? 'What Is Offered for Acquisition' : isInv ? 'The Investment Offer' : 'The Financing Request', strengths: 'Key Strengths', closing: 'Closing', sector: 'Sector', city: 'City', cr: 'CR Number', score: 'Readiness Score', brand: 'HOLOL ALMURDI FINANCIAL CONSULTING' }
     : { exec: 'الملخص التنفيذي', company: 'نبذة عن الشركة', fin: 'الوضع المالي', req: isAcqDoc ? 'ما يُطرح للتملّك' : isInv ? 'العرض الاستثماري' : 'طلب التمويل', strengths: 'نقاط القوة', closing: 'الخاتمة', sector: 'القطاع', city: 'المدينة', cr: 'السجل التجاري', score: 'درجة الجاهزية', brand: 'حلول المرضي للاستشارات المالية' };
-  const L = isNegDoc ? { ...L0, exec: 'ملخّص الموقف', company: 'نقاط القوة وترتيب طرحها', fin: 'نقاط الضعف والرد عليها', req: 'هيكل الصفقة المقترح', strengths: 'اعتراضات متوقعة وردودها', closing: 'ما لا يُقال في الجلسة' } : isValDoc ? { ...L0, exec: 'الخلاصة والنطاق التقديري', company: 'المنهجية المتبعة', fin: 'الحساب والزوايا الثلاث', req: 'النطاق السعري والحد الأدنى', strengths: 'عوامل ترفع القيمة', closing: 'عوامل تخفض القيمة والتحفظات' } : L0;
+  const L = isInDoc ? { ...L0, exec: 'لماذا هذه القائمة', company: 'مستندات الكيان والتراخيص', fin: 'المستندات المالية', req: 'العقود والعملاء والفريق', strengths: 'أسئلة عن المشتري والصفقة', closing: 'أسئلة عن أهدافك' } : isNegDoc ? { ...L0, exec: 'ملخّص الموقف', company: 'نقاط القوة وترتيب طرحها', fin: 'نقاط الضعف والرد عليها', req: 'هيكل الصفقة المقترح', strengths: 'اعتراضات متوقعة وردودها', closing: 'ما لا يُقال في الجلسة' } : isValDoc ? { ...L0, exec: 'الخلاصة والنطاق التقديري', company: 'المنهجية المتبعة', fin: 'الحساب والزوايا الثلاث', req: 'النطاق السعري والحد الأدنى', strengths: 'عوامل ترفع القيمة', closing: 'عوامل تخفض القيمة والتحفظات' } : L0;
   const ink = '#1A3D34', gold = '#C9A84C', green = '#2E9E7B', gray = '#6B8A80';
   const today = new Date().toLocaleDateString(intl ? 'en-GB' : 'ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -228,7 +231,7 @@ export function buildFileHTML(
     sectorOut ? [L.sector, sectorOut] as [string, string] : null,
     cityOut ? [L.city, cityOut] as [string, string] : null,
     client.crNumber ? [L.cr, client.crNumber] as [string, string] : null,
-    (!isInv && !isAcqDoc && !isValDoc && !isNegDoc && client.readinessScore) ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
+    (!isInv && !isAcqDoc && !isValDoc && !isNegDoc && !isInDoc && client.readinessScore) ? [L.score, client.readinessScore + '/100'] as [string, string] : null,
   ].filter(Boolean);
 
   const factsHTML = (facts.filter(Boolean) as [string, string][]).map(f => '<div class="fact"><span>' + f[0] + '</span><b>' + f[1] + '</b></div>').join('');
