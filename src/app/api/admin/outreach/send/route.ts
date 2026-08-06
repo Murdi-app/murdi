@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
-const FROM = 'فريق الشراكات - حلول المرضي <partners@murdi.sa>';
+const FROM = 'مُرضي — فريق الشراكات <partners@murdi.sa>';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAdmin() {
