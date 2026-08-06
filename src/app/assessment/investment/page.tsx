@@ -66,6 +66,12 @@ const PRIOR_INV = [
   { id: 'no', label: 'لا' },
 ];
 
+const INTENT = [
+  { id: 'partner', label: 'أبحث عن شريك يستثمر ويبقى معي في الشركة' },
+  { id: 'sell', label: 'أرغب في بيع شركتي كاملة أو حصة أغلبية والخروج' },
+  { id: 'both', label: 'منفتح على الاثنين وأقرّر بعد رؤية العروض' },
+];
+
 const INVESTMENT_TYPES = [
   { id: 'equity', label: 'حصة ملكية — مقابل نسبة من الشركة' },
   { id: 'convertible', label: 'قرض قابل للتحويل لحصة لاحقاً' },
@@ -113,6 +119,7 @@ export default function InvestmentAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
   const [roundSize, setRoundSize] = useState('');
   const [investmentType, setInvestmentType] = useState('');
+  const [investmentIntent, setInvestmentIntent] = useState('');
   const [useOfFunds, setUseOfFunds] = useState('');
   const [competitiveEdge, setCompetitiveEdge] = useState('');
   const [problemSolved, setProblemSolved] = useState('');
@@ -158,6 +165,7 @@ export default function InvestmentAssessment() {
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
           months_late_inv: hasDebt && repaymentStatus === 'default' ? (monthsLateInv.trim() || null) : null,
           round_size: roundSize.trim() || null,
+          investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
           use_of_funds: useOfFunds.trim() || null,
           competitive_edge: competitiveEdge.trim() || null,
@@ -295,6 +303,9 @@ export default function InvestmentAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
+                <label className="block font-black text-[#1A3D34] mb-3">ما هدفك من هذا المسار؟</label>
+                <Choice items={INTENT} value={investmentIntent} onChange={setInvestmentIntent} />
+                <div style={{ height: 18 }} />
                 <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
               </div>
 
