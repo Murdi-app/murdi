@@ -77,6 +77,15 @@ export async function POST(req: Request) {
     profit: fd?.net_profit ? Number(fd.net_profit) : undefined,
   };
 
+  try {
+    const { data: fi } = await admin.from('service_inputs').select('inputs')
+      .eq('company_id', companyId).eq('activity_kind', 'funding')
+      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+    const inp = (fi?.inputs || {}) as { amount?: number; purpose?: string };
+    if (inp.amount) client.fundAmount = Number(inp.amount);
+    if (inp.purpose) client.fundPurpose = String(inp.purpose);
+  } catch {}
+
   // أرقام العرض المحفوظة من خدمة العرض الاستثماري
   try {
     const { data: pin } = await admin.from('service_inputs')
