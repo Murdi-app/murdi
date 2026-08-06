@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { logError } from '@/lib/logError';
 
 type Rec = Record<string, any>;
 
@@ -247,6 +248,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
     if (error) return { saved: 0, error: error.message };
     return { saved: deduped.length, error: '' };
   } catch (e) {
+    await logError('match.save', e, { company_id: companyId, entity: track });
     return { saved: 0, error: e instanceof Error ? e.message : String(e) };
   }
 }

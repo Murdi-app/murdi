@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { buildFullOutreach, type ClientInput, type EntityInput } from '@/lib/outreachGenerate';
+import { logError } from '@/lib/logError';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -141,6 +142,7 @@ export async function POST(req: Request) {
         });
         results.push({ provider: entity.provider, ok: true, confidence: gen.emailConfidence });
       } catch (e) {
+        await logError('outreach.generate', e, { company_id: companyId, entity: entity.provider });
         results.push({ provider: entity.provider, ok: false, error: e instanceof Error ? e.message : String(e) });
       }
     }));
