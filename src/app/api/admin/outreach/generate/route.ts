@@ -104,7 +104,7 @@ export async function POST(req: Request) {
   }
 
   // ٣) نتجنّب التكرار: نحذف المسودات السابقة لنفس العميل (نبدأ نظيف)
-  if (offset === 0) await admin.from('outreach_messages').delete().eq('company_id', companyId).eq('status', 'مسودة');
+  if (offset === 0) await admin.from('outreach_messages').update({ status: 'مستبدلة' }).eq('company_id', companyId).eq('status', 'مسودة');
 
   // ٤) نولّد رسالة لكل جهة (نعالجها بدفعات صغيرة لتجنّب الضغط)
   const results: { provider: string; ok: boolean; confidence?: string; error?: string }[] = [];
