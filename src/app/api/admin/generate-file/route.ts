@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   let companyId = '', track = 'funding', region = '';
   let fundingAmount: number | undefined;
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'investment' || b.track === 'acquisition') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; }
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
 
@@ -124,10 +124,10 @@ export async function POST(req: Request) {
       const { data: _fd } = await _adm.from('financial_data').select('assessment_type')
         .eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
       const at = String(_fd?.assessment_type || '');
-      if (track !== 'acquisition' && (at === 'investment' || at === 'funding')) track = at;
+      if (track !== 'acquisition' && track !== 'valuation' && (at === 'investment' || at === 'funding')) track = at;
     } catch {}
-    const content = await generateFileContent(client, track as 'funding' | 'investment' | 'acquisition', region);
-    const html = buildFileHTML(client, content, track as 'funding' | 'investment' | 'acquisition', region, statementsHtml);
+    const content = await generateFileContent(client, track as 'funding' | 'investment' | 'acquisition' | 'valuation', region);
+    const html = buildFileHTML(client, content, track as 'funding' | 'investment' | 'acquisition' | 'valuation', region, statementsHtml);
     return NextResponse.json({ ok: true, html });
   } catch (e) {
     await logError('file.generate', e, {});
