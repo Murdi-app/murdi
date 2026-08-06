@@ -107,7 +107,7 @@ export async function POST(req: Request) {
           if (main) list.push(main);
           // الشرائح: الإنجليزية تُرسل للجميع، والعربية للجهات المحلية فقط
           if (deckEn) list.push(deckEn);
-          else if (!isEn && deckAr) list.push(deckAr);
+          if (!isEn && deckAr) list.push(deckAr);
           return list.length ? (list as { filename: string; content: string }[]) : undefined;
         })(),
       });
