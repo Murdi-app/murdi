@@ -34,17 +34,18 @@ export interface GeneratedFile {
 
 export async function generateFileContent(
   client: FileClientData,
-  track: 'funding' | 'investment',
+  track: 'funding' | 'investment' | 'acquisition',
   region?: string
 ): Promise<GeneratedFile> {
+  const isAcq = track === 'acquisition';
   const isInvestment = track === 'investment';
   const isIntl = (region || '').includes('دولي') || (region || '').toLowerCase().includes('intl');
   const docType = isIntl
-    ? (isInvestment ? 'investment offering document' : 'financing proposal document')
-    : (isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي');
+    ? (isAcq ? 'sale memorandum' : isInvestment ? 'investment offering document' : 'financing proposal document')
+    : (isAcq ? 'مذكرة بيع' : isInvestment ? 'ملف عرض استثماري' : 'ملف تمويلي');
   const targetAudience = isIntl
-    ? (isInvestment ? 'institutional investors' : 'international financing institutions and banks')
-    : (isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك');
+    ? (isAcq ? 'potential acquirers' : isInvestment ? 'institutional investors' : 'international financing institutions and banks')
+    : (isAcq ? 'المشترين المحتملين' : isInvestment ? 'المستثمرين المؤسسيين' : 'جهات التمويل والبنوك');
   const num = (n?: number) => n ? n.toLocaleString('en-US') + ' ريال' : '';
 
   const lines = [
@@ -80,6 +81,7 @@ export async function generateFileContent(
         : 'theRequest: طلب التمويل — المبلغ والغرض والقدرة على السداد');
 
   const ENTITY_RULE = 'قاعدة إلزامية عن الجهات: لا تصف أي جهة بأنها ستموّل العميل قبل التأكد من أداتها. جهة الضمان مثل وكالات ائتمان التصدير وبرنامج كفالة تضمن ولا تدفع للعميل ريالاً، والقناة مثل منصات التمويل الجماعي ومنصات الفواتير تعرض الطلب على ممولين آخرين ولا تموّل من ميزانيتها. اذكر دور كل جهة كما هو، ولا تحوّل ضامناً إلى ممول. ';
+  const ACQ_RULES = 'قواعد إلزامية لمذكرة البيع: (1) المستند موجّه لمشترٍ يريد تملّك الشركة كاملة أو حصة أغلبية، لا لمستثمر يشارك في جولة. ممنوع ذكر التقييم قبل الجولة أو الحصة المعروضة أو استخدام رأس المال أو أي لغة جمع تمويل أو سداد. (2) ممنوع منعاً باتاً ذكر أي سعر أو نطاق ثمن أو قيمة مطلوبة — الرقم يخرج من التقييم المستقل في التفاوض لا من هذا المستند. (3) في theRequest اكتب ما يُطرح للتملّك وما ينتقل مع الصفقة: الحصص أو الأصول، والتراخيص، والعقود الجارية، والفريق، والملكية الفكرية، وما يبقى خارج الصفقة. (4) اعتمد الأداء التاريخي المحقق لا التوقّعات. (5) بيّن مدى اعتماد التشغيل على المؤسس وقابلية استمرار العمل بعد انتقال الملكية. (6) اذكر الالتزامات القائمة بشفافية مرة واحدة — العناية النافية ستكشفها. (7) ممنوع ذكر درجة الجاهزية أو أي تقييم داخلي للمنصة. ';
   const INVEST_RULES = 'قواعد إلزامية لمسار الاستثمار: (1) ممنوع منعاً باتاً ذكر درجة الجاهزية أو أي تقييم داخلي للمنصة، وممنوع أي إشارة إلى نقص في الجاهزية أو الحوكمة أو التوثيق. (2) ممنوع لغة الإقراض بالكامل: لا سداد، ولا خدمة دين، ولا جدارة ائتمانية، ولا قدرة على السداد، ولا وصف المبلغ بأنه تمويل يُسترد — المستثمر يشتري حصة ولا يُسدَّد له. (3) في theRequest اذكر صراحةً الحصة المعروضة والتقييم قبل الجولة إن وردا في البيانات، مع أوجه استخدام رأس المال بالتفصيل. (4) ممنوع إدراج الوعي بالجاهزية أو الرغبة في التحسين أو أي إقرار بنقص ضمن نقاط القوة — نقاط القوة إنجازات محققة فقط. (5) الالتزامات تُذكر مرة واحدة كحقيقة عابرة: لا تُجعل عنواناً ولا أبرز ميزة، ولا تُحسب نسبتها إلى الإيراد. (6) صافي الربح إن وُجد هو الرقم الأبرز، وابدأ به الملخص التنفيذي. (7) ممنوع أي مقارنة بمعايير القطاع أو متوسطات السوق أو المنافسين — لا تملك مرجعاً لها. (8) ممنوع أي وصف لا يُشتق حسابياً من الأرقام المعطاة (مثل: خفيف الأصول، رائد، الأرسخ) — صف ما تثبته الأرقام فقط. (9) تحقّق من صحة كل جمع أو مضاعفة قبل كتابتها: الطاقة الإيرادية بعد التوسع = (الفروع الحالية + الجديدة) × إيراد الفرع، وصف المضاعفة بدقة (مثلاً ثلاثة أضعاف لا ضعفين) ولا تقرّبها. ';
 
   const prompt = (isIntl
@@ -100,9 +102,9 @@ export async function generateFileContent(
     + 'ضوابط: لا تختلق أرقاماً، لا ضمانات، لا ذكر لأي ذكاء اصطناعي، أسلوب عربي مؤسسي، المحتوى منسوب لحلول المرضي.\\n\\n'
     + 'أرجع JSON نقي فقط بدون أي نص قبله أو بعده:\\n'
     + 'IMPORTANT: do not compare this client to other clients, no ranking claims, no invented facts beyond the figures given. '
-    + (isInvestment ? INVEST_RULES : '')
+    + (isAcq ? ACQ_RULES : isInvestment ? INVEST_RULES : '')
     + ENTITY_RULE
-    + 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. '
+    + (isAcq ? '' : 'In theRequest you MUST state a concrete financing/investment ask: an explicit amount or a clear range derived from the client goal or, if absent, a defensible range tied to annual revenue, plus the specific use of funds and the repayment/return basis. Never leave the amount to be decided later. ')
     + '{"executiveSummary":"...","companyOverview":"...","financialPosition":"...","theRequest":"...","strengths":"...","closing":"..."}';
 
   const res = await fetch(ANTHROPIC_URL, {
@@ -190,7 +192,7 @@ export function extractStatementTables(raw: string, toEnglish: boolean): string 
 export function buildFileHTML(
   client: FileClientData,
   content: GeneratedFile,
-  track: 'funding' | 'investment',
+  track: 'funding' | 'investment' | 'acquisition',
   region?: string,
   statementsRaw?: string
 ): string {
