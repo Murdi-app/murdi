@@ -123,6 +123,7 @@ export async function runScopedMatch(args: {
     ];
     const ACQ_SCOPE = 'اقتصر على مشتري الاستحواذ: صناديق تملّك المنشآت الرابحة (search funds وETA)؛ والشركات المدرجة في السوق الموازية نمو وفي السوق الرئيسية تداول الباحثة عن استحواذ مكمّل في قطاع العميل؛ والشركات المدرجة الخليجية والدولية والمشترين الاستراتيجيين من أي مكان، بشرط سابقة استحواذ موثّقة أو تفويض معلن يشمل السعودية.';
     const EARLY_STAGE = rev < 3000000;
+    const intent = String(fd.investment_intent || 'both');
     const INVEST_SCOPES = [
       'اقتصر على صناديق الملكية الخاصة وصناديق النمو المرخّصة من هيئة السوق المالية السعودية.',
       'اقتصر على المكاتب العائلية والمجموعات القابضة السعودية التي تستثمر في المنشآت الخاصة.',
@@ -134,7 +135,10 @@ export async function runScopedMatch(args: {
       'اقتصر على المستثمرين الاستراتيجيين عالمياً في قطاع العميل — منافس أو مورّد أو موزّع يبحث عن موطئ قدم في السوق السعودي.',
       'اقتصر على صناديق الدين المرن والميزانين وventure debt التي تستثمر في الشركات الخاصة بالمنطقة.',
     ];
-    const INVEST_ALL = (EARLY_STAGE ? EARLY_SCOPES : INVEST_SCOPES).concat([ACQ_SCOPE]);
+    const EQUITY_SET = EARLY_STAGE ? EARLY_SCOPES : INVEST_SCOPES;
+    const INVEST_ALL = intent === 'sell' ? [ACQ_SCOPE]
+      : intent === 'partner' ? EQUITY_SET
+      : EQUITY_SET.concat([ACQ_SCOPE]);
     const FUND_ALL = rev < 1000000 ? MICRO_SCOPES : FUND_SCOPES;
     const SCOPES = (isInvest ? INVEST_ALL : FUND_ALL).slice(0, budget === 'light' ? 2 : 99);
 
