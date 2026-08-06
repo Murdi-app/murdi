@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     .from('outreach_messages')
     .select('*')
     .eq('company_id', companyId)
+    .neq('status', 'مستبدلة')
     .order('created_at', { ascending: true });
 
   if (error) return NextResponse.json({ error: 'تعذّر الجلب' }, { status: 500 });
