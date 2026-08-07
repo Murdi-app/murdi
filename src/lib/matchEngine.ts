@@ -56,6 +56,8 @@ export async function runScopedMatch(args: {
       + '5) للطبقة الثانية (الخليج) والثالثة (الدولي): الممولون هناك يطلبون عادةً متطلبات أعلى — قوائم مالية مدققة، كيان قانوني واضح، حد أدنى أعلى للإيرادات، وأحياناً سجل تشغيلي أطول. اذكر في حقل requirements هذه المتطلبات الإضافية بوضوح، وفي حقل fit وضّح ما إذا كانت الشركة تستوفيها أو ما ينقصها للتأهل. لا تقترح جهة خليجية أو دولية إلا إذا كان حجم الشركة وإيراداتها منطقيين لها.\n'
       + '6) نوّع أنواع المنتجات حسب الطبقة: السعودية (تمويل عامل، مرابحة، إجارة، تمويل المنشآت)؛ الخليج (تمويل عابر للحدود، تمويل تجاري، خطوط ائتمان)؛ الدولي (private credit، تمويل تنموي، تمويل الأسواق الناشئة).\n\n'
       + '7) معيار الجدوى للجهات الخليجية والدولية: كثير من الجهات تموّل خليجياً ولا تنشر صفقاتها، فلا تشترط سابقة منشورة. يكفي أي دليل على قابلية التمويل: مكتب أو فرع أو ممثل في السعودية أو الخليج؛ أو منتج عابر للحدود معلن على موقعها؛ أو تفويض جغرافي يشمل الشرق الأوسط أو الأسواق الناشئة؛ أو شراكة أو مراسلة مع بنك سعودي؛ أو عضوية في شبكة تمويل تجارة تشمل السعودية؛ أو سابقة منشورة إن وجدت. وإن لم تجد أي دليل فلا تحذف الجهة، بل اجعل حكمها متأهل بشرط واكتب في الفجوات: يلزم التحقق من قابلية التمويل عبر الحدود. ورتّب الدولية بالأجدى عملياً لا بالأكبر اسماً.\n'
+      + '7و) مطابقة النوع المطلوب: أنواع التمويل المطلوبة مذكورة في ملف الشركة أعلاه. قدّم المنتجات التي تخدم هذه الأنواع تحديداً، واجعلها أول القائمة. والجهة التي لا تقدّم أي نوع منها اجعل حكمها متأهل بشرط واذكر في الفجوات أن منتجها يختلف عمّا طلبه العميل.\n'
+      + '7ز) الواقعية في الحجم: لا ترشّح جهة حدها الأدنى يفوق ما يحتمله العميل؛ صندوق يكتب تذكرة بمئات الملايين لا ينظر إلى منشأة إيرادها عشرات الملايين.\n'
       + '7د) استبعد من لا يُقرض أصلاً: شركات الاستشارات، وإدارة الأصول، وصناديق الملكية الخاصة التي تشتري حصصاً لا تقرض. إن كان منتج الجهة ليس ديناً يُمنح للمنشأة فلا تُدرجها أصلاً، ولا تكتب في وصف المنتج أنها لا تقدّم ديناً مباشراً ثم ترشّحها.\n'
       + '7هـ) العمق: لا تكتفِ بمنتج واحد للجهة؛ افحص صفحة منتجات المنشآت لديها كاملة، وأخرج كل منتج يناسب العميل. ووسّع البحث: لا تقف عند أول صفحة نتائج، وجرّب صيغ بحث مختلفة بالعربية والإنجليزية، وابحث باسم المنتج لا باسم الجهة فقط.\n'
       + '7ج) الضمانات: إن ذُكر أن لدى العميل عقاراً أو أصولاً قابلة للرهن، فافتح له المنتجات المضمونة برهن: التمويل التشغيلي بضمان عقاري، والبيع وإعادة الاستئجار، والجهات التي تقرض على قيمة الأصل لا على السجل الائتماني وحده. والرهن يرفع السقف ويليّن الشروط لكنه لا يُلغي شرط القدرة على السداد؛ فإن كان الإيراد لا يغطي القسط المتوقّع فاجعل الحكم متأهل بشرط واذكر في الفجوات ما يلزم من تدفق لتغطية القسط، ولا تعد بقبول لمجرد وجود الضمان.\n'
@@ -201,7 +203,7 @@ export async function runScopedMatch(args: {
   return { offers: webOffers, ok: webSearchOk, error: webSearchError };
 }
 
-export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[]) {
+export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[], clientRev?: number) {
   if (!companyId || !offers.length) return { saved: 0, error: 'no offers' };
   try {
     const admin = createClient(
@@ -222,6 +224,8 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       fit: o.verdict || null,
       fit_score: (() => {
         const inst = String(o.instrument || '');
+        const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '')).toLowerCase();
+        if (/private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
         if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
         if (track === 'funding' && (inst.includes('تأمين') || inst.includes('دعم'))) return 0;
         const v = String(o.verdict || '');
@@ -238,7 +242,9 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const rng = tl.match(/(\d+)\s*[-–—]\s*(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
         const one = tl.match(/(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
         const months = rng ? (Number(rng[1]) + Number(rng[2])) / 2 : (one ? Number(one[1]) : 12);
-        const ev = prob * (mid / 1000000) / Math.max(1, months) * 10;
+        const cap = (clientRev && clientRev > 0) ? clientRev * 1.5 : 0;
+        const fit = cap > 0 ? Math.min(1, cap / Math.max(mid, 1)) : 1;
+        const ev = prob * fit * (Math.min(mid, cap > 0 ? cap : mid) / 1000000) / Math.max(1, months) * 10;
         return ev;
       })(),
       instrument: o.instrument || null,
@@ -305,7 +311,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
       : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
     const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full' });
     if (!r.offers.length) return;
-    await saveMatchResults(companyId, track, r.offers);
+    await saveMatchResults(companyId, track, r.offers, rev);
     try {
       const { data: rr } = await admin.from('readiness_results')
         .select('readiness_score, verdict').eq('company_id', companyId)
