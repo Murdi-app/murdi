@@ -297,9 +297,9 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     const isInvest = track === 'investment';
     const rev = Number(fd.annual_revenue) || 0;
     const years = Number(fd.years_operating) || 0;
-    const typeLabel = fd.funding_type === 'other'
-      ? (fd.funding_type_other || '\u0623\u062e\u0631\u0649')
-      : (TYPE_LABELS[fd.funding_type as string] || fd.funding_type || '\u062a\u0645\u0648\u064a\u0644');
+    const typeLabel = String(fd.funding_type || '').split(',').filter(Boolean)
+      .map((k: string) => k === 'other' ? String(fd.funding_type_other || 'أخرى') : (TYPE_LABELS[k] || k))
+      .join('، ') || 'تمويل';
     const debtDesc = fd.has_debt
       ? '\u064a\u0648\u062c\u062f \u062a\u0645\u0648\u064a\u0644 \u0642\u0627\u0626\u0645'
       : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
