@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/admin/approvals', label: 'الاعتمادات' },
   { href: '/admin/entities', label: 'الجهات' },
   { href: '/admin/services', label: 'الخدمات' },
+  { href: '/admin/apply', label: '📤 لوحة التقديم' },
   { href: '/admin/hunt', label: '🎯 صيد الفرص' },
   { href: '/admin/client-hunt', label: '🪝 صيد العملاء' },
   { href: '/admin/payments', label: '💳 المدفوعات' },
