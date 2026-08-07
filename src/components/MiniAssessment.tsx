@@ -99,9 +99,9 @@ export default function MiniAssessment() {
   return (
     <section className="lp-mini">
       <div className="lp-mini-inner">
-        <div className="lp-mini-badge">تقييم مجاني · دقيقة واحدة</div>
+        <div className="lp-mini-badge">اعرف مؤشرك المبدئي · دقيقة واحدة</div>
         <h2>كم شركتك جاهزة لرأس المال؟</h2>
-        <p className="lp-mini-sub">أجب عن أسئلة سريعة واعرف درجتك المبدئية فوراً — مجاناً.</p>
+        <p className="lp-mini-sub">أجب عن أسئلة سريعة واعرف مؤشرك المبدئي فوراً، ثم سجّل للتقييم الكامل ومطابقة الجهات.</p>
 
         {step < QUESTIONS.length && (
           <div className="lp-mini-card">
