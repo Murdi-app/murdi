@@ -390,8 +390,11 @@ export default function FundingAssessment() {
 
           <div className="flex gap-3 mt-8">
             {step > 0 && (
-              <button type="button" onClick={() => setStep(step - 1)}
+              <><button type="button" onClick={() => setStep(step - 1)}
                 className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
+              <button type="button" disabled={loading}
+                onClick={() => { if (confirm('ستخرج من التقييم وتفقد إجاباتك الحالية. هل تريد الخروج؟')) window.location.href = '/goal'; }}
+                className="px-6 py-3 rounded-xl border-2 border-[#F0D9D9] text-[#C0392B] font-bold disabled:opacity-40">خروج</button></>
             )}
             {step < 4 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
