@@ -248,7 +248,7 @@ export default function Home() {
           {true && <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>}
           {/* HIDE_FOR_PAYMENT_REVIEW_END */}
           <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
-          <div className="lp-cta-sub">اشتراك 2,900 ر.س لكل أربعة أشهر — يشمل التقييم الكامل والمرافقة</div>
+          <div className="lp-cta-sub">اشتراك 2,900 ر.س لأربعة أشهر — يفتح مطابقة الجهات ومخاطبتها نيابةً عنك، مع استشارات مفتوحة وأسئلة مباشرة مع د. عبدالحكيم والفريق</div>
         </section>
 
         <div style={{maxWidth:760,margin:'0 auto 14px',background:'#13302A',borderRadius:14,padding:'16px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
