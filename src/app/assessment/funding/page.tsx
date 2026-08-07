@@ -194,7 +194,7 @@ export default function FundingAssessment() {
             <div className="space-y-6">
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
-                <input type="number" inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">البنك الذي فيه حساب الشركة</label>
@@ -203,7 +203,7 @@ export default function FundingAssessment() {
 
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" inputMode="decimal" min="0" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
+                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
           )}
@@ -218,15 +218,15 @@ export default function FundingAssessment() {
                 <>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">قيمة التمويل الأصلية (ريال)</label>
-                    <input type="number" inputMode="numeric" value={originalLoan} onChange={(e) => setOriginalLoan(e.target.value)} placeholder="مثال: 2000000" className={inputCls} />
+                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={originalLoan} onChange={(e) => setOriginalLoan(e.target.value)} placeholder="مثال: 2000000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي (ريال)</label>
-                    <input type="number" inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
+                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">القسط الشهري (ريال)</label>
-                    <input type="number" inputMode="numeric" value={monthlyInstallment} onChange={(e) => setMonthlyInstallment(e.target.value)} placeholder="مثال: 15000" className={inputCls} />
+                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={monthlyInstallment} onChange={(e) => setMonthlyInstallment(e.target.value)} placeholder="مثال: 15000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل</label>
@@ -253,7 +253,7 @@ export default function FundingAssessment() {
                   {debtStatus === 'late' && (
                     <div>
                       <label className="block font-black text-[#1A3D34] mb-2">كم شهر التأخر؟</label>
-                      <input type="number" inputMode="numeric" value={monthsLate} onChange={(e) => setMonthsLate(e.target.value)} placeholder="مثال: 2" className={inputCls} />
+                      <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={monthsLate} onChange={(e) => setMonthsLate(e.target.value)} placeholder="مثال: 2" className={inputCls} />
                     </div>
                   )}
                   <div>
@@ -338,9 +338,9 @@ export default function FundingAssessment() {
                   <div className="space-y-3 mt-3 bg-[#FBFCFB] rounded-xl p-4 border border-[#F0F5F3]">
                     <input value={posTypes} onChange={(e) => setPosTypes(e.target.value)}
                       placeholder="أنواع نقاط البيع (مثال: مدى، Apple Pay، STC Pay)" className={inputCls + ' text-right'} />
-                    <input type="number" inputMode="numeric" value={posCount} onChange={(e) => setPosCount(e.target.value)}
+                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={posCount} onChange={(e) => setPosCount(e.target.value)}
                       placeholder="عدد أجهزة نقاط البيع" className={inputCls + ' text-right'} />
-                    <input type="number" inputMode="numeric" value={posUsage} onChange={(e) => setPosUsage(e.target.value)}
+                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={posUsage} onChange={(e) => setPosUsage(e.target.value)}
                       placeholder="نسبة مبيعاتك عبر نقاط البيع تقريباً (%)" className={inputCls + ' text-right'} />
                   </div>
                 )}
