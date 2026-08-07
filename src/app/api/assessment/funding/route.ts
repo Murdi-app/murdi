@@ -177,6 +177,10 @@ export async function POST(req: Request) {
     has_pos: body.has_pos,
     issues_invoices: body.issues_invoices,
     has_fleet: body.has_fleet,
+    trades_cross_border: body.trades_cross_border,
+    client_type: body.client_type,
+    collection_cycle: body.collection_cycle,
+    has_collateral: body.has_collateral,
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
