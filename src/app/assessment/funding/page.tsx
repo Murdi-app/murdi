@@ -4,18 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const FUNDING_TYPES = [
-  { id: 'cash', label: 'تمويل نقدي (كاش)' },
-  { id: 'working_capital', label: 'رأس مال عامل' },
-  { id: 'revenue', label: 'تمويل الإيرادات' },
-  { id: 'pos', label: 'تمويل نقاط البيع' },
-  { id: 'invoices', label: 'تمويل الفواتير والمستخلصات' },
-  { id: 'assets', label: 'تمويل أصول ومعدات' },
-  { id: 'vehicles', label: 'تمويل مركبات وأساطيل' },
-  { id: 'real_estate', label: 'عقاري تجاري' },
-  { id: 'lc', label: 'اعتمادات وخطابات ضمان' },
-  { id: 'project', label: 'تمويل مشاريع وعقود' },
-  { id: 'other', label: 'أخرى' },
+  { id: 'cash', label: 'تمويل نقدي (كاش)', desc: 'مبلغ يدخل حسابك تستخدمه كما تشاء' },
+  { id: 'working_capital', label: 'رأس مال عامل', desc: 'لتغطية المصاريف التشغيلية والمخزون والرواتب حتى يدخل التحصيل' },
+  { id: 'revenue', label: 'تمويل الإيرادات', desc: 'تأخذ مقدماً على مبيعاتك القادمة وتسدّد كنسبة منها' },
+  { id: 'pos', label: 'تمويل نقاط البيع', desc: 'يُسدَّد تلقائياً من مبيعاتك عبر الشبكة يومياً' },
+  { id: 'invoices', label: 'تمويل الفواتير والمستخلصات', desc: 'عندك فواتير على عملاء لم تُحصَّل بعد، فتأخذ قيمتها اليوم' },
+  { id: 'assets', label: 'تمويل أصول ومعدات', desc: 'لشراء آلات أو أجهزة تبقى ملكاً لشركتك' },
+  { id: 'vehicles', label: 'تمويل مركبات وأساطيل', desc: 'لشراء سيارات أو شاحنات أو معدات نقل' },
+  { id: 'real_estate', label: 'عقاري تجاري', desc: 'لشراء مقر أو مستودع، أو للحصول على سيولة برهن عقار تملكه' },
+  { id: 'lc', label: 'اعتمادات وخطابات ضمان', desc: 'لا تأخذ مالاً — تعهّد بنكي يطلبه مورّدك أو الجهة المتعاقدة' },
+  { id: 'project', label: 'تمويل مشاريع وعقود', desc: 'عندك عقد أو مشروع مُرسى وتحتاج تمويل تنفيذه' },
+  { id: 'other', label: 'أخرى', desc: 'نوع آخر تكتبه بنفسك' },
 ];
+
 
 const DEBT_TYPES = [
   { id: 'cash', label: 'نقدي' },
@@ -176,14 +177,19 @@ export default function FundingAssessment() {
             <div className="space-y-3">
               <h2 className="font-black text-[#1A3D34] mb-4">ما نوع التمويل الذي تحتاجه شركتك؟</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {FUNDING_TYPES.map((t) => (
-                  <button key={t.id} type="button" onClick={() => setFundingType(t.id)}
-                    className={'p-4 rounded-xl border-2 text-right font-bold text-sm transition ' + (fundingType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
-                    {t.label}
+                {FUNDING_TYPES.map((t) => {
+                  const sel = fundingType.split(',').filter(Boolean);
+                  const on = sel.includes(t.id);
+                  return (
+                  <button key={t.id} type="button" onClick={() => setFundingType((on ? sel.filter(x => x !== t.id) : sel.concat([t.id])).join(','))}
+                    className={'p-4 rounded-xl border-2 text-right transition ' + (on ? 'border-[#2E9E7B] bg-[#E8F5EF]' : 'border-[#E8F5EF] bg-white')}>
+                    <div className={'font-bold text-sm ' + (on ? 'text-[#1A3D34]' : 'text-[#6B8A80]')}>{t.label}</div>
+                    <div className="text-[11px] font-bold mt-1 leading-relaxed text-[#8AA79D]">{t.desc}</div>
                   </button>
-                ))}
+                  );
+                })}
               </div>
-              {fundingType === 'other' && (
+              {fundingType.split(',').includes('other') && (
                 <input value={fundingTypeOther} onChange={(e) => setFundingTypeOther(e.target.value)}
                   placeholder="اكتب نوع التمويل المطلوب" className={inputCls + ' text-right'} />
               )}
