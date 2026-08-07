@@ -85,7 +85,8 @@ interface SuggestInput {
 interface ServiceSuggestion { service: string; icon: string; why: string; urgency: 'required' | 'recommended' | 'none'; }
 
 export function suggestService(fd: SuggestInput, track: Track, score: number): ServiceSuggestion {
-  const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
+  const isDefaulted = fd?.repayment_status === 'default';
+  const isLate = !isDefaulted && (fd?.repayment_status === 'slight' || fd?.debt_status === 'late');
   // نميّز "نعرف أنها ناقصة" (false صريح) عن "لا نعرف" (null/غير مذكور) — عند الشك لا نُرهق العميل
   const stmtKnown = fd?.has_financial_statements !== undefined && fd?.has_financial_statements !== null;
   const audKnown = fd?.audited_statements !== undefined && fd?.audited_statements !== null;
@@ -175,7 +176,8 @@ export function suggestAllServices(fd: SuggestInput, track: Track, score: number
   const seen = new Set<string>();
   const add = (s: ServiceSuggestion) => { if (!seen.has(s.service)) { seen.add(s.service); out.push(s); } };
 
-  const isDefaulted = fd?.repayment_status === 'default' || fd?.debt_status === 'late';
+  const isDefaulted = fd?.repayment_status === 'default';
+  const isLate = !isDefaulted && (fd?.repayment_status === 'slight' || fd?.debt_status === 'late');
   const stmtKnown = fd?.has_financial_statements !== undefined && fd?.has_financial_statements !== null;
   const audKnown = fd?.audited_statements !== undefined && fd?.audited_statements !== null;
   const noStatements = (stmtKnown || audKnown) && fd?.has_financial_statements !== true && fd?.audited_statements !== true;
@@ -188,10 +190,13 @@ export function suggestAllServices(fd: SuggestInput, track: Track, score: number
   if (isDefaulted) {
     add({ urgency: 'required', icon: '🔧', service: 'إعادة الهيكلة المالية ومعالجة التعثّر', why: 'الشركة متعثّرة في السداد — معالجة التعثّر أول خطوة ضرورية قبل أي تقديم.' });
   }
+  if (isLate) {
+    add({ urgency: 'recommended', icon: '⏱', service: 'إعادة الهيكلة المالية ومعالجة التعثّر', why: 'تأخّر بسيط في الأقساط — ليس تعثّراً، لكن انتظام ستة أشهر قبل التقديم يرفع فرص القبول جوهرياً.' });
+  }
 
   // ٢) غياب القوائم المالية (ضروري للاستثمار/الطرح، يقوّي للتمويل)
   if (noStatements) {
-    const req = (track === 'investment' || track === 'ipo');
+    const req = (track === 'investment' || track === 'ipo') || (Number(fd?.annual_revenue) || 0) >= 3000000;
     add({ urgency: req ? 'required' : 'recommended', icon: '📊', service: 'إعداد القوائم المالية المعتمدة', why: req ? 'لا توجد قوائم مالية معتمدة — وهي شرط أساسي للمستثمر والجهات الرقابية.' : 'إعداد القوائم يفتح خيارات تمويل أوسع وبشروط أفضل.' });
   }
 
