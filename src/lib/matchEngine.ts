@@ -248,6 +248,10 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         return ev;
       })(),
       instrument: o.instrument || null,
+      apply_channel: (o as unknown as Record<string, unknown>).applyChannel || null,
+      apply_url: (o as unknown as Record<string, unknown>).applyUrl || null,
+      apply_steps: (o as unknown as Record<string, unknown>).applySteps || null,
+      required_docs: (o as unknown as Record<string, unknown>).requiredDocs || null,
       engagement: o.engagement || null,
       source: o.source || null,
       verdict: o.verdict || null,
