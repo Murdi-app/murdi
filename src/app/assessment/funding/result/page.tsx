@@ -393,7 +393,7 @@ export default function FundingResult() {
             <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
               ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · مخاطبة الجهات نيابةً عنك · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
             </p>
-            <button onClick={() => router.push('/goal')}
+            <button onClick={() => router.push('/pay')}
               className="w-full font-black text-sm py-4 rounded-full transition hover:opacity-90"
               style={{ background: '#C9A84C', color: '#1A3D34' }}>
               فعّل ملفك وشاهد جهاتك ←
