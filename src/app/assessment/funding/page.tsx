@@ -69,6 +69,10 @@ export default function FundingAssessment() {
   const [posTypes, setPosTypes] = useState('');
   const [issuesInvoices, setIssuesInvoices] = useState<boolean | null>(null);
   const [hasFleet, setHasFleet] = useState<boolean | null>(null);
+  const [crossBorder, setCrossBorder] = useState('');
+  const [clientType, setClientType] = useState('');
+  const [collectionCycle, setCollectionCycle] = useState('');
+  const [collateral, setCollateral] = useState('');
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
@@ -123,6 +127,10 @@ export default function FundingAssessment() {
           pos_types: hasPos ? (posTypes.trim() || null) : null,
           issues_invoices: issuesInvoices,
           has_fleet: hasFleet,
+          trades_cross_border: crossBorder || null,
+          client_type: clientType || null,
+          collection_cycle: collectionCycle || null,
+          has_collateral: collateral || null,
         }),
       });
       const data = await res.json();
@@ -344,6 +352,30 @@ export default function FundingAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">تملك أسطول مركبات أو معدات تشغيلية (على ملك الشركة، لا مؤجّرة باسم بنك)؟</label>
                 <YesNo value={hasFleet} onChange={setHasFleet} />
+                <div style={{ marginTop: 22 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">هل تصدّر أو تستورد؟</label>
+                  <select value={crossBorder} onChange={e => setCrossBorder(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="none">لا</option><option value="import">أستورد</option><option value="export">أصدّر</option><option value="both">الاثنان</option>
+                  </select>
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">من عملاؤك غالباً؟</label>
+                  <select value={clientType} onChange={e => setClientType(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="gov">جهات حكومية</option><option value="large">شركات كبرى</option><option value="sme">شركات صغيرة</option><option value="retail">أفراد</option>
+                  </select>
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">كم تستغرق تحصيل مستحقاتك؟</label>
+                  <select value={collectionCycle} onChange={e => setCollectionCycle(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="instant">فوري</option><option value="30">حتى 30 يوماً</option><option value="90">30 إلى 90 يوماً</option><option value="90plus">أكثر من 90 يوماً</option>
+                  </select>
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">هل لديك أصول قابلة للرهن؟</label>
+                  <select value={collateral} onChange={e => setCollateral(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="realestate">عقار</option><option value="assets">معدّات وأصول</option><option value="none">لا يوجد</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
