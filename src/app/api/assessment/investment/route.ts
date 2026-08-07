@@ -246,7 +246,8 @@ export async function POST(req: Request) {
 
   // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري للأدمن) — استدعاء داخلي متين بلا شبكة
   try {
-    await runAutoMatch(company.id, 'investment');
+    // المطابقة لا تعمل مع التقييم المجاني — تُطلق بعد تفعيل الاشتراك
+    void runAutoMatch;
   } catch {}
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict });

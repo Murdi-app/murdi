@@ -209,7 +209,8 @@ const { error: rrError } = await supabase.from('readiness_results').insert({
 
   // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري) — استدعاء داخلي متين بلا شبكة
   try {
-    await runAutoMatch(company.id, 'funding');
+    // المطابقة لا تعمل مع التقييم المجاني — تُطلق بعد تفعيل الاشتراك
+    void runAutoMatch;
   } catch (e) { await logError('match.autoFunding', e, { company_id: company.id }); }
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict });
