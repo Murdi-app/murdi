@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runAutoMatch } from '@/lib/matchEngine';
+import { logError } from '@/lib/logError';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
@@ -209,7 +210,7 @@ const { error: rrError } = await supabase.from('readiness_results').insert({
   // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري) — استدعاء داخلي متين بلا شبكة
   try {
     await runAutoMatch(company.id, 'funding');
-  } catch {}
+  } catch (e) { await logError('match.autoFunding', e, { company_id: company.id }); }
 
   return NextResponse.json({ ok: true, readiness_score: score, verdict });
 }
