@@ -128,6 +128,18 @@ export default function GoalPage() {
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
 
+      {!subscriptionActive && Object.keys(scores || {}).length > 0 && (
+        <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-right">
+              <div className="text-white font-black text-sm">درجتك جاهزة — وجهاتك بانتظار التفعيل</div>
+              <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">فعّل ملفك لتبدأ مطابقة الجهات ومخاطبتها نيابةً عنك، مع استشارات مفتوحة أربعة أشهر وأسئلة مباشرة مع د. عبدالحكيم والفريق</div>
+            </div>
+            <a href="/pay" className="font-black text-sm px-6 py-2.5 rounded-full whitespace-nowrap" style={{ background: '#C9A84C', color: '#1A3D34' }}>فعّل الآن ←</a>
+          </div>
+        </div>
+      )}
+
       {/* الشريط العلوي */}
       <nav className="bg-white border-b border-[#F0F5F3] px-3 md:px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
