@@ -365,6 +365,43 @@ export default function FundingResult() {
           </div>
         )}
 
+        {fdRaw && (() => {
+          const f = fdRaw as Record<string, unknown>;
+          const rev = Number(f.annual_revenue) || 0;
+          let n = 38;
+          if (rev >= 1000000) n += 8;
+          if (rev >= 5000000) n += 8;
+          if (rev >= 20000000) n += 6;
+          if (f.has_collateral && f.has_collateral !== 'none') n += 7;
+          if (f.trades_cross_border && f.trades_cross_border !== 'none') n += 9;
+          n += Math.min(9, String(f.funding_type || '').split(',').filter(Boolean).length * 3);
+          if (f.issues_invoices === true) n += 4;
+          const lo = n, hi = n + 15;
+          return (
+          <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
+            <div className="text-3xl mb-3">🎯</div>
+            <h3 className="text-white font-black text-lg mb-3">مطابقة الجهات — الخطوة التي تحوّل درجتك إلى تمويل</h3>
+            <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-4">
+              درجتك تقول أين أنت. والمطابقة تقول <span style={{ color: '#C9A84C' }}>مع مَن</span>:
+              نبحث لك في البنوك وشركات التمويل السعودية والخليجية والدولية، ونستخرج <span style={{ color: '#C9A84C' }}>المنتج المحدَّد</span> الذي تتأهل له في كل جهة — لا اسم الجهة فقط.
+              فالعميل قد يُرفض في منتج ويُقبل في آخر داخل البنك نفسه.
+            </p>
+            <div className="rounded-2xl py-4 px-5 mb-4" style={{ background: 'rgba(201,168,76,0.12)', border: '1.5px solid rgba(201,168,76,0.35)' }}>
+              <div className="text-[#C9A84C] font-black text-2xl">{lo}–{hi} جهة</div>
+              <div className="text-[#CFE0DA] text-xs font-bold mt-1">تقدير مبدئي للجهات المناسبة لملفك</div>
+            </div>
+            <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
+              ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · مخاطبة الجهات نيابةً عنك · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
+            </p>
+            <button onClick={() => router.push('/goal')}
+              className="w-full font-black text-sm py-4 rounded-full transition hover:opacity-90"
+              style={{ background: '#C9A84C', color: '#1A3D34' }}>
+              فعّل ملفك وشاهد جهاتك ←
+            </button>
+          </div>
+          );
+        })()}
+
         <p className="text-center text-[#A3BAB2] text-xs font-bold leading-relaxed pb-6">
           نتائج مُرضي تمثل مؤشرات جاهزية مبدئية فقط، ولا تعني الموافقة النهائية من أي جهة تمويل.
         </p>
