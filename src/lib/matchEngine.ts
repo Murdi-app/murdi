@@ -321,12 +321,12 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     const debtDesc = fd.has_debt
       ? '\u064a\u0648\u062c\u062f \u062a\u0645\u0648\u064a\u0644 \u0642\u0627\u0626\u0645'
       : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
-    const SIZE = 3;
+    const SIZE = 1;
     const from = (batch === undefined ? 0 : batch) * SIZE;
     const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full',
       scopeFrom: batch === undefined ? undefined : from, scopeTo: batch === undefined ? undefined : from + SIZE });
     const nextB = (batch === undefined ? 0 : batch) + 1;
-    const doneAll = batch === undefined || (nextB * 3) >= r.totalScopes;
+    const doneAll = batch === undefined || (nextB * SIZE) >= r.totalScopes;
     if (r.offers.length) await saveMatchResults(companyId, track, r.offers, rev, batch !== undefined && batch > 0);
     if (!r.offers.length && batch === undefined) return { done: true, total: r.totalScopes, next: 0 };
     if (doneAll) try {
