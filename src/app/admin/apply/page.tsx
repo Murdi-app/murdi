@@ -18,9 +18,19 @@ export default function ApplyPage() {
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
+  type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
+  const [due, setDue] = useState<DueFU[]>([]);
+  const [fuMsg, setFuMsg] = useState('');
 
   const load = () => fetch('/api/admin/apply').then(r => r.json()).then(d => setRows(d.rows || [])).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDue(d.due || [])).catch(() => {}); }, []);
+
+  async function sendFU(item: DueFU) {
+    setFuMsg('جارٍ إرسال المتابعة لـ ' + item.entity_name + '\u2026');
+    const r = await fetch('/api/admin/outreach/followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, company_name: '' }) });
+    if (r.ok) { setFuMsg('✅ أُرسلت المتابعة لـ ' + item.entity_name); setDue(p => p.filter(x => x.id !== item.id)); }
+    else { setFuMsg('تعذّر الإرسال لـ ' + item.entity_name); }
+  }
 
   async function setStatus(id: string, s: string) {
     setBusy(id);
@@ -40,6 +50,19 @@ export default function ApplyPage() {
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 16px' }}>
         <h1 style={{ color: C.ink, fontWeight: 900, fontSize: 24, marginBottom: 6 }}>لوحة التقديم</h1>
         <p style={{ color: C.gray, fontWeight: 700, fontSize: 13, marginBottom: 18 }}>كل جهة مطابَقة وطريق التقديم عليها — ابدأ من الأعلى.</p>
+
+        {due.length > 0 && (
+          <div style={{ background: '#FBF5E8', border: '1.5px solid #EAD9A8', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+            <div style={{ color: '#6B5A2E', fontWeight: 900, fontSize: 13.5, marginBottom: 10 }}>متابعات مستحقة اليوم: {due.length}</div>
+            {due.map(x => (
+              <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '7px 0', borderTop: '1px solid #EFE3C8' }}>
+                <span style={{ color: C.ink, fontWeight: 800, fontSize: 12.5 }}>{x.entity_name} · المتابعة {x.followup_stage === 0 ? 'الأولى' : 'الأخيرة'}</span>
+                <button onClick={() => sendFU(x)} style={{ background: C.gold, color: C.ink, border: 'none', borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>أرسل المتابعة</button>
+              </div>
+            ))}
+            {fuMsg && <div style={{ color: '#6B5A2E', fontWeight: 800, fontSize: 12, marginTop: 8 }}>{fuMsg}</div>}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
           {STATES.map(s => (
