@@ -27,7 +27,9 @@ export   type WebOffer = { region?: string; provider: string; product: string; r
 export async function runScopedMatch(args: {
   company: Rec; fd: Rec; typeLabel: string; rev: number;
   years: number; debtDesc: string; isInvest: boolean; budget?: 'light' | 'full';
-}): Promise<{ offers: WebOffer[]; ok: boolean; error: string }> {
+  scopeFrom?: number; scopeTo?: number;
+}): Promise<{ offers: WebOffer[]; ok: boolean; error: string; totalScopes: number }> {
+  let totalScopes = 0;
   const { company, fd, typeLabel, rev, years, debtDesc, isInvest, budget } = args;
   let webOffers: WebOffer[] = [];
   let webSearchOk = false;
@@ -154,7 +156,11 @@ export async function runScopedMatch(args: {
       : intent === 'partner' ? EQUITY_SET
       : EQUITY_SET.concat([ACQ_SCOPE]);
     const FUND_ALL = rev < 1000000 ? MICRO_SCOPES : FUND_SCOPES;
-    const SCOPES = (isInvest ? INVEST_ALL : FUND_ALL).slice(0, budget === 'light' ? 2 : 99);
+    const ALL_SCOPES = (isInvest ? INVEST_ALL : FUND_ALL);
+    totalScopes = ALL_SCOPES.length;
+    const SCOPES = (args.scopeFrom !== undefined || args.scopeTo !== undefined)
+      ? ALL_SCOPES.slice(args.scopeFrom || 0, args.scopeTo === undefined ? 99 : args.scopeTo)
+      : ALL_SCOPES.slice(0, budget === 'light' ? 2 : 99);
 
     const INST_RULE = '\nقاعدة إلزامية قصوى: لكل جهة يجب ملء حقلي instrument وengagement ولا يجوز تركهما فارغين أبداً. '
       + 'instrument قيمة واحدة فقط: ملكية إذا كان المقابل حصة، أو دين مساند للميزانين وventure debt، أو دين لأي تمويل يُسدّد. '
@@ -198,20 +204,22 @@ export async function runScopedMatch(args: {
   } catch (err) {
     webSearchError = err instanceof Error ? err.message : String(err);
   }
-  return { offers: webOffers, ok: webSearchOk, error: webSearchError };
+  return { offers: webOffers, ok: webSearchOk, error: webSearchError, totalScopes };
 }
 
-export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[], clientRev?: number) {
+export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[], clientRev?: number, keepPrev?: boolean) {
   if (!companyId || !offers.length) return { saved: 0, error: 'no offers' };
   try {
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.SUPABASE_SERVICE_ROLE_KEY as string
     );
-    await admin.from('match_results')
-      .update({ status: 'superseded' })
-      .eq('company_id', companyId)
-      .eq('track', track);
+    if (!keepPrev) {
+      await admin.from('match_results')
+        .update({ status: 'superseded' })
+        .eq('company_id', companyId)
+        .eq('track', track);
+    }
     const rows = offers.map((o) => ({
       company_id: companyId,
       track,
@@ -293,17 +301,17 @@ export async function saveMatchResults(companyId: string, track: string, offers:
   }
 }
 
-export async function runAutoMatch(companyId: string, track: 'funding' | 'investment'): Promise<void> {
+export async function runAutoMatch(companyId: string, track: 'funding' | 'investment', batch?: number): Promise<{ done: boolean; total: number; next: number }> {
   try {
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.SUPABASE_SERVICE_ROLE_KEY as string
     );
     const { data: company } = await admin.from('companies').select('*').eq('id', companyId).single();
-    if (!company) return;
+    if (!company) return { done: true, total: 0, next: 0 };
     const { data: fd } = await admin.from('financial_data').select('*')
       .eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
-    if (!fd) return;
+    if (!fd) return { done: true, total: 0, next: 0 };
     const isInvest = track === 'investment';
     const rev = Number(fd.annual_revenue) || 0;
     const years = Number(fd.years_operating) || 0;
@@ -313,10 +321,15 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     const debtDesc = fd.has_debt
       ? '\u064a\u0648\u062c\u062f \u062a\u0645\u0648\u064a\u0644 \u0642\u0627\u0626\u0645'
       : '\u0644\u0627 \u062a\u0648\u062c\u062f \u062f\u064a\u0648\u0646 \u0642\u0627\u0626\u0645\u0629';
-    const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full' });
-    if (!r.offers.length) return;
-    await saveMatchResults(companyId, track, r.offers, rev);
-    try {
+    const SIZE = 3;
+    const from = (batch === undefined ? 0 : batch) * SIZE;
+    const r = await runScopedMatch({ company, fd, typeLabel, rev, years, debtDesc, isInvest, budget: 'full',
+      scopeFrom: batch === undefined ? undefined : from, scopeTo: batch === undefined ? undefined : from + SIZE });
+    const nextB = (batch === undefined ? 0 : batch) + 1;
+    const doneAll = batch === undefined || (nextB * 3) >= r.totalScopes;
+    if (r.offers.length) await saveMatchResults(companyId, track, r.offers, rev, batch !== undefined && batch > 0);
+    if (!r.offers.length && batch === undefined) return { done: true, total: r.totalScopes, next: 0 };
+    if (doneAll) try {
       const { data: rr } = await admin.from('readiness_results')
         .select('readiness_score, verdict').eq('company_id', companyId)
         .order('created_at', { ascending: false }).limit(1).single();
@@ -353,5 +366,9 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
           + '</div>',
       });
     } catch {}
-  } catch {}
+    return { done: doneAll, total: r.totalScopes, next: nextB };
+  } catch (e) {
+    await logError('match.run', e, { company_id: companyId, entity: track });
+    return { done: true, total: 0, next: 0 };
+  }
 }
