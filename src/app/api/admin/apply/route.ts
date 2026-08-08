@@ -14,9 +14,10 @@ export async function GET() {
     .order('fit_score', { ascending: false }).limit(400);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const ids = Array.from(new Set((rows || []).map(r => r.company_id)));
-  const { data: cos } = await a.from('companies').select('id, company_name').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+  const { data: cos } = await a.from('companies').select('id, company_name, match_progress').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
   const map = new Map((cos || []).map(c => [c.id, c.company_name]));
-  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '' })) });
+  const inc = new Map((cos || []).map(c => [c.id, Object.values((c.match_progress || {}) as Record<string, unknown>).some(v => typeof v === 'number')]));
+  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false })) });
 }
 
 export async function PATCH(req: Request) {
