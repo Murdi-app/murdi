@@ -27,11 +27,12 @@ export default function GoalPage() {
   const [matching, setMatching] = useState(false);
   const [matchPhase, setMatchPhase] = useState('');
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
+  const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
-  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); }).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); }).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -151,7 +152,7 @@ export default function GoalPage() {
               </>
             ) : (
               <>
-                <div className="text-white font-black text-sm mb-1">ملفك مفعّل — ابدأ مطابقة الجهات</div>
+                <div className="text-white font-black text-sm mb-1">{Object.values(resumeMap).some(v => (v || 0) > 0) ? 'مطابقتك لم تكتمل بعد' : 'ملفك مفعّل — ابدأ مطابقة الجهات'}</div>{matchCount && matchCount > 0 ? <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 15, marginBottom: 4 }}>{matchCount} جهة حتى الآن</div> : null}
                 <div className="text-[#CFE0DA] text-xs font-bold mb-3">نطابق ملفك مع شبكة جهات مُرضي ونستخرج المنتج المناسب لك في كل جهة</div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                   {pendingTracks.map(tr => (
@@ -171,10 +172,10 @@ export default function GoalPage() {
                       }
                     } catch {}
                     setMatchCount(last); setMatchPhase(''); setMatching(false);
-                    try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); } catch {}
+                    try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); setResumeMap(q2.resume || {}); } catch {}
                   }}
                     className="font-black text-sm px-7 py-3 rounded-full disabled:opacity-50" style={{ background: '#C9A84C', color: '#1A3D34' }}>
-                    {tr === 'investment' ? 'طابق جهات الاستثمار' : 'طابق جهات التمويل'}
+                    {((resumeMap[tr] || 0) > 0 ? 'أكمل مطابقة ' : 'طابق جهات ') + (tr === 'investment' ? 'الاستثمار' : 'التمويل')}
                   </button>
                   ))}
                 </div>
