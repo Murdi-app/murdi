@@ -25,6 +25,7 @@ export default function GoalPage() {
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matching, setMatching] = useState(false);
+  const [matchPhase, setMatchPhase] = useState('');
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
@@ -138,7 +139,7 @@ export default function GoalPage() {
             {matching ? (
               <>
                 <div style={{ display: 'inline-block', width: 22, height: 22, border: '3px solid rgba(201,168,76,0.3)', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8 }} />
-                <div className="text-white font-black text-sm">جارٍ مطابقة ملفك مع شبكة جهات مُرضي</div>
+                <div className="text-white font-black text-sm">{matchPhase || 'جارٍ مطابقة ملفك مع شبكة جهات مُرضي'}</div>
                 <div className="text-[#CFE0DA] text-xs font-bold mt-1">قد تستغرق بضع دقائق — لا تغلق الصفحة</div>
                 <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
               </>
@@ -151,7 +152,26 @@ export default function GoalPage() {
               <>
                 <div className="text-white font-black text-sm mb-1">ملفك مفعّل — ابدأ مطابقة الجهات</div>
                 <div className="text-[#CFE0DA] text-xs font-bold mb-3">نطابق ملفك مع شبكة جهات مُرضي ونستخرج المنتج المناسب لك في كل جهة</div>
-                <button onClick={async () => { setMatching(true); try { const r = await fetch('/api/match/run', { method: 'POST' }); const d = await r.json(); setMatchCount(d.count || 0); } catch { setMatchCount(0); } setMatching(false); }}
+                <button onClick={async () => {
+                  const PH = ['نفحص شبكة جهات مُرضي…', 'نطابق ملفك مع معايير كل جهة…', 'نستخرج المنتج المناسب لك في كل جهة…', 'نتحقق من شروط القبول…', 'نرتّب الجهات حسب احتمال قبولك…', 'نجهّز متطلبات التقديم…'];
+                  setMatching(true); let i = 0; let last = 0;
+                  try {
+                    const info = await (await fetch('/api/match/run')).json();
+                    const trs: string[] = info.tracks && info.tracks.length ? info.tracks : ['funding'];
+                    for (const tr of trs) {
+                      let batch = 0, guard = 0;
+                      while (guard++ < 12) {
+                        setMatchPhase(PH[i++ % PH.length]);
+                        const r = await fetch('/api/match/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch }) });
+                        const d = await r.json();
+                        if (typeof d.count === 'number') last = d.count;
+                        if (!r.ok || d.done) break;
+                        batch = d.next;
+                      }
+                    }
+                  } catch {}
+                  setMatchCount(last); setMatchPhase(''); setMatching(false);
+                }}
                   className="font-black text-sm px-8 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>طابق جهاتي</button>
               </>
             )}

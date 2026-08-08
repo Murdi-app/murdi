@@ -21,10 +21,14 @@ export async function GET() {
   if (!co) return NextResponse.json({ count: 0 });
   const { count } = await ad.from('match_results').select('id', { count: 'exact', head: true })
     .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0);
-  return NextResponse.json({ count: count || 0 });
+  const { data: rr0 } = await ad.from('readiness_results').select('result_type').eq('company_id', co.id);
+  const tracks0 = Array.from(new Set((rr0 || []).map((x: { result_type: string }) => x.result_type)
+    .filter((t: string) => t === 'funding' || t === 'investment')));
+  return NextResponse.json({ count: count || 0, tracks: tracks0 });
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({})) as { track?: string; batch?: number };
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -50,14 +54,15 @@ export async function POST() {
     .filter((t: string) => t === 'funding' || t === 'investment')));
   if (!tracks.length) return NextResponse.json({ error: 'أكمل تقييم مسار واحد على الأقل' }, { status: 400 });
 
-  for (const t of tracks) {
-    try { await runAutoMatch(co.id, t as 'funding' | 'investment'); }
-    catch (e) { await logError('match.clientRun', e, { company_id: co.id, entity: t }); }
-  }
+  const t = (body.track === 'investment' || body.track === 'funding') ? body.track : String(tracks[0]);
+  const b0 = Number(body.batch) || 0;
+  let res = { done: true, total: 0, next: 0 };
+  try { res = await runAutoMatch(co.id, t as 'funding' | 'investment', b0); }
+  catch (e) { await logError('match.clientRun', e, { company_id: co.id, entity: t }); }
 
   const { count } = await admin.from('match_results')
     .select('id', { count: 'exact', head: true })
     .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0);
 
-  return NextResponse.json({ ok: true, count: count || 0 });
+  return NextResponse.json({ ok: true, count: count || 0, done: res.done, next: res.next, total: res.total, track: t });
 }
