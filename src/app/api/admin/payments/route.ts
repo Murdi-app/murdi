@@ -51,18 +51,7 @@ export async function POST(req: Request) {
     if (pay.kind === 'subscription' && pay.company_id) {
       const until = new Date(); until.setMonth(until.getMonth() + 4);
       await admin.from('companies').update({ subscription_active: true, subscription_end: until.toISOString() }).eq('id', pay.company_id);
-      // تشغيل المطابقة للمسارات التي قيّمها العميل — في الخلفية بلا انتظار
-      try {
-        const { data: rr } = await admin.from('readiness_results')
-          .select('result_type').eq('company_id', pay.company_id);
-        const tracks = Array.from(new Set((rr || [])
-          .map((x: { result_type: string }) => x.result_type)
-          .filter((t: string) => t === 'funding' || t === 'investment')));
-        for (const t of tracks) {
-          runAutoMatch(pay.company_id, t as 'funding' | 'investment')
-            .catch((e) => logError('match.afterPayment', e, { company_id: pay.company_id, entity: t }));
-        }
-      } catch (e) { await logError('match.afterPayment.setup', e, { company_id: pay.company_id }); }
+      // المطابقة يُطلقها العميل بنفسه من بوابته بعد التفعيل
     }
     // عند تأكيد تحويل خدمة: ربط الدفعة بالطلب وتحويله إلى مدفوع
     if (pay.kind === 'service' && pay.company_id) {
