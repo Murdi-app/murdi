@@ -26,11 +26,12 @@ export default function GoalPage() {
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matching, setMatching] = useState(false);
   const [matchPhase, setMatchPhase] = useState('');
+  const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
-  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => setMatchCount(d.count || 0)).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); }).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,7 +144,7 @@ export default function GoalPage() {
                 <div className="text-[#CFE0DA] text-xs font-bold mt-1">قد تستغرق بضع دقائق — لا تغلق الصفحة</div>
                 <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
               </>
-            ) : matchCount && matchCount > 0 ? (
+            ) : matchCount && matchCount > 0 && pendingTracks.length === 0 ? (
               <>
                 <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 26 }}>{matchCount} جهة</div>
                 <div className="text-[#CFE0DA] text-xs font-bold mt-1">طوبق ملفك مع شبكة مُرضي — فريق د. عبدالحكيم يراجعها ويبدأ التقديم نيابةً عنك</div>
@@ -157,7 +158,7 @@ export default function GoalPage() {
                   setMatching(true); let i = 0; let last = 0;
                   try {
                     const info = await (await fetch('/api/match/run')).json();
-                    const trs: string[] = info.tracks && info.tracks.length ? info.tracks : ['funding'];
+                    const trs: string[] = info.pending && info.pending.length ? info.pending : [];
                     for (const tr of trs) {
                       let batch = 0, guard = 0;
                       while (guard++ < 12) {
@@ -171,6 +172,7 @@ export default function GoalPage() {
                     }
                   } catch {}
                   setMatchCount(last); setMatchPhase(''); setMatching(false);
+                  try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); } catch {}
                 }}
                   className="font-black text-sm px-8 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>طابق جهاتي</button>
               </>

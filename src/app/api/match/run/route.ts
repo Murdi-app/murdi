@@ -24,7 +24,13 @@ export async function GET() {
   const { data: rr0 } = await ad.from('readiness_results').select('result_type').eq('company_id', co.id);
   const tracks0 = Array.from(new Set((rr0 || []).map((x: { result_type: string }) => x.result_type)
     .filter((t: string) => t === 'funding' || t === 'investment')));
-  return NextResponse.json({ count: count || 0, tracks: tracks0 });
+  const pending: string[] = [];
+  for (const t0 of tracks0) {
+    const { count: c0 } = await ad.from('match_results').select('id', { count: 'exact', head: true })
+      .eq('company_id', co.id).eq('track', t0).eq('status', 'new');
+    if (!c0) pending.push(String(t0));
+  }
+  return NextResponse.json({ count: count || 0, tracks: tracks0, pending });
 }
 
 export async function POST(req: Request) {
