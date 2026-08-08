@@ -23,9 +23,13 @@ export default function GoalPage() {
   const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [subscriptionActive, setSubscriptionActive] = useState(false);
+  const [matchCount, setMatchCount] = useState<number | null>(null);
+  const [matching, setMatching] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
+
+  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => setMatchCount(d.count || 0)).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -127,6 +131,33 @@ export default function GoalPage() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
+
+      {subscriptionActive && (
+        <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
+          <div className="max-w-5xl mx-auto text-center">
+            {matching ? (
+              <>
+                <div style={{ display: 'inline-block', width: 22, height: 22, border: '3px solid rgba(201,168,76,0.3)', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8 }} />
+                <div className="text-white font-black text-sm">جارٍ مطابقة ملفك مع شبكة جهات مُرضي</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mt-1">قد تستغرق بضع دقائق — لا تغلق الصفحة</div>
+                <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+              </>
+            ) : matchCount && matchCount > 0 ? (
+              <>
+                <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 26 }}>{matchCount} جهة</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mt-1">طوبق ملفك مع شبكة مُرضي — فريق د. عبدالحكيم يراجعها ويبدأ التقديم نيابةً عنك</div>
+              </>
+            ) : (
+              <>
+                <div className="text-white font-black text-sm mb-1">ملفك مفعّل — ابدأ مطابقة الجهات</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mb-3">نطابق ملفك مع شبكة جهات مُرضي ونستخرج المنتج المناسب لك في كل جهة</div>
+                <button onClick={async () => { setMatching(true); try { const r = await fetch('/api/match/run', { method: 'POST' }); const d = await r.json(); setMatchCount(d.count || 0); } catch { setMatchCount(0); } setMatching(false); }}
+                  className="font-black text-sm px-8 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>طابق جهاتي</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {!subscriptionActive && Object.keys(scores || {}).length > 0 && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
