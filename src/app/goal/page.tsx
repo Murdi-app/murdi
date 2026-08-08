@@ -153,28 +153,31 @@ export default function GoalPage() {
               <>
                 <div className="text-white font-black text-sm mb-1">ملفك مفعّل — ابدأ مطابقة الجهات</div>
                 <div className="text-[#CFE0DA] text-xs font-bold mb-3">نطابق ملفك مع شبكة جهات مُرضي ونستخرج المنتج المناسب لك في كل جهة</div>
-                <button onClick={async () => {
-                  const PH = ['نفحص شبكة جهات مُرضي…', 'نطابق ملفك مع معايير كل جهة…', 'نستخرج المنتج المناسب لك في كل جهة…', 'نتحقق من شروط القبول…', 'نرتّب الجهات حسب احتمال قبولك…', 'نجهّز متطلبات التقديم…'];
-                  setMatching(true); let i = 0; let last = 0;
-                  try {
-                    const info = await (await fetch('/api/match/run')).json();
-                    const trs: string[] = info.pending && info.pending.length ? info.pending : [];
-                    for (const tr of trs) {
-                      let batch = 0, guard = 0;
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {pendingTracks.map(tr => (
+                  <button key={tr} disabled={matching} onClick={async () => {
+                    const PH = ['نفحص شبكة جهات مُرضي…', 'نطابق ملفك مع معايير كل جهة…', 'نستخرج المنتج المناسب لك في كل جهة…', 'نتحقق من شروط القبول…', 'نرتّب الجهات حسب احتمال قبولك…', 'نجهّز متطلبات التقديم…'];
+                    setMatching(true); let k = 0; let last = matchCount || 0;
+                    try {
+                      const info = await (await fetch('/api/match/run')).json();
+                      let batch = (info.resume && info.resume[tr]) || 0; let guard = 0;
                       while (guard++ < 12) {
-                        setMatchPhase(PH[i++ % PH.length]);
+                        setMatchPhase(PH[k++ % PH.length]);
                         const r = await fetch('/api/match/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch }) });
                         const d = await r.json();
                         if (typeof d.count === 'number') last = d.count;
                         if (!r.ok || d.done) break;
                         batch = d.next;
                       }
-                    }
-                  } catch {}
-                  setMatchCount(last); setMatchPhase(''); setMatching(false);
-                  try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); } catch {}
-                }}
-                  className="font-black text-sm px-8 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>طابق جهاتي</button>
+                    } catch {}
+                    setMatchCount(last); setMatchPhase(''); setMatching(false);
+                    try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); } catch {}
+                  }}
+                    className="font-black text-sm px-7 py-3 rounded-full disabled:opacity-50" style={{ background: '#C9A84C', color: '#1A3D34' }}>
+                    {tr === 'investment' ? 'طابق جهات الاستثمار' : 'طابق جهات التمويل'}
+                  </button>
+                  ))}
+                </div>
               </>
             )}
           </div>
