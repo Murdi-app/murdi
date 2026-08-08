@@ -162,7 +162,7 @@ export default function GoalPage() {
                     try {
                       const info = await (await fetch('/api/match/run')).json();
                       let batch = (info.resume && info.resume[tr]) || 0; let guard = 0;
-                      while (guard++ < 12) {
+                      while (guard++ < 40) {
                         setMatchPhase(PH[k++ % PH.length]);
                         const r = await fetch('/api/match/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch }) });
                         const d = await r.json();
