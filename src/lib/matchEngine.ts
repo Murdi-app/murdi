@@ -230,7 +230,12 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       fit: o.verdict || null,
       fit_score: (() => {
         const inst = String(o.instrument || '');
-        const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '')).toLowerCase();
+        const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '') + ' ' + String(o.provider || '') + ' ' + (Array.isArray(o.gaps) ? o.gaps.join(' ') : '')).toLowerCase();
+        if (/الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
+        if (/transaction banking|تمويل المعاملات|إدارة السيولة|treasury|gtb/.test(txt2)) return 0;
+        if (/أُغلق فعلي|أغلق فعلا|مغلق|توقفت|تحت الحراسة|in administration/.test(txt2)) return 0;
+        if (/مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance/.test(txt2)) return 0;
+        if (/مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
         if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(txt2)) return 0;
         if (/\u0645\u0624\u0633\u0633\u0627\u062a \u0645\u0627\u0644\u064a\u0629|\u0645\u0624\u0633\u0633\u0629 \u0648\u0633\u064a\u0637\u0629|on-lending|wholesale|\u0644\u0628\u0646\u0648\u0643|financial institution/.test(txt2)) return 0;
         if (/private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
