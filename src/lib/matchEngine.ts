@@ -83,7 +83,7 @@ export async function runScopedMatch(args: {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 16000,
+          max_tokens: 24000,
           messages: [{ role: 'user', content: pmt }],
           tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: budget === 'light' ? 8 : 25 }],
         }),
@@ -236,6 +236,10 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (/أُغلق فعلي|أغلق فعلا|مغلق|توقفت|تحت الحراسة|in administration/.test(txt2)) return 0;
         if (/مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance/.test(txt2)) return 0;
         if (/مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
+        // وكالات ائتمان التصدير بالاسم — تموّل مشتري منتج بلدها لا تمويلاً عاماً
+        if (/ukef|bpifrance|sinosure|sace|nexi|k-sure|edc|us exim|exim bank|coface|allianz trade|atradius|iciec|الإسلامية لضمان الاستثمار/.test(txt2)) return 0;
+        // صناديق الدين الخاص — تذاكرها كبيرة؛ لا تُرشّح إلا لمنشأة إيرادها مناسب
+        if (/private credit|private debt|دين خاص|ائتمان خاص|mezzanine|مزانين/.test(txt2) && (!clientRev || clientRev < 50000000)) return 0;
         if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(txt2)) return 0;
         if (/\u0645\u0624\u0633\u0633\u0627\u062a \u0645\u0627\u0644\u064a\u0629|\u0645\u0624\u0633\u0633\u0629 \u0648\u0633\u064a\u0637\u0629|on-lending|wholesale|\u0644\u0628\u0646\u0648\u0643|financial institution/.test(txt2)) return 0;
         if (/private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
@@ -255,7 +259,8 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const rng = tl.match(/(\d+)\s*[-–—]\s*(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
         const one = tl.match(/(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
         const months = rng ? (Number(rng[1]) + Number(rng[2])) / 2 : (one ? Number(one[1]) : 12);
-        const cap = (clientRev && clientRev > 0) ? clientRev * 1.5 : 0;
+        const cap = (clientRev && clientRev > 0) ? clientRev : 0;
+        if (cap > 0 && mid > cap * 2) return 0;
         const fit = cap > 0 ? Math.min(1, cap / Math.max(mid, 1)) : 1;
         const ev = prob * fit * (Math.min(mid, cap > 0 ? cap : mid) / 1000000) / Math.max(1, months) * 10;
         return ev;
@@ -372,4 +377,51 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     await logError('match.run', e, { company_id: companyId, entity: track });
     return { done: true, total: 0, next: 0 };
   }
+}
+
+
+// إثراء طريق التقديم — يعمل داخل العامل بلا سقف زمني
+export async function enrichApplyPaths(companyId: string, track: string): Promise<number> {
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+  const { data: rows } = await admin.from('match_results')
+    .select('id, provider, product')
+    .eq('company_id', companyId).eq('track', track).eq('status', 'new').gt('fit_score', 0)
+    .order('fit_score', { ascending: false });
+  const all = rows || [];
+  let done = 0;
+  for (let i = 0; i < all.length; i += 8) {
+    const chunk = all.slice(i, i + 8);
+    const list = chunk.map((r, n) => (n + 1) + ') ' + r.provider + ' — ' + (r.product || '')).join('\n');
+    const prompt = 'أنت مستشار تمويل سعودي. لكل جهة ومنتج أدناه ابحث عن طريقة التقديم الفعلية اليوم.\n\n'
+      + list + '\n\n'
+      + 'لكل رقم أرجع كائناً فيه: applyChannel وapplyUrl وapplySteps وrequiredDocs. '
+      + 'أغلب البنوك السعودية لا تقبل طلبات التمويل بالبريد. '
+      + 'وفي applySteps اكتب خطوات مرقّمة ينفّذها موظف لا يعرف الجهة. ولا تترك حقلاً فارغاً؛ إن لم تجد رابطاً فاذكر اسم الإدارة.\n'
+      + 'أرجع JSON نقي: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"..."}]}';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000,
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+          messages: [{ role: 'user', content: prompt }] }),
+      });
+      const d = await res.json();
+      const text = (d.content || []).map((c: { type: string; text?: string }) => c.type === 'text' ? (c.text || '') : '').join('\n');
+      const m = text.match(/\{[\s\S]*\}/);
+      const parsed = m ? JSON.parse(m[0]) : { items: [] };
+      for (const it of (parsed.items || [])) {
+        const row = chunk[Number(it.n) - 1];
+        if (!row) continue;
+        await admin.from('match_results').update({
+          apply_channel: it.applyChannel || null,
+          apply_url: it.applyUrl && String(it.applyUrl) !== 'null' ? it.applyUrl : null,
+          apply_steps: it.applySteps || null,
+          required_docs: it.requiredDocs || null,
+        }).eq('id', row.id);
+        done++;
+      }
+    } catch (e) { await logError('match.enrichAll', e, { company_id: companyId, entity: track }); }
+  }
+  return done;
 }
