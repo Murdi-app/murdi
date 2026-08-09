@@ -26,10 +26,12 @@ export async function POST(req: Request) {
   const offset = Number(body.offset) || 0;
   if (offset >= TOP) return NextResponse.json({ ok: true, done: true, next: offset });
 
-  const { data: rows } = await admin.from('match_results')
-    .select('id, provider, product')
-    .eq('company_id', co.id).eq('track', track).eq('status', 'new').gt('fit_score', 0)
-    .order('fit_score', { ascending: false }).range(offset, offset + CHUNK - 1);
+  const rowId = String((body as { rowId?: string }).rowId || '');
+  const base = admin.from('match_results').select('id, provider, product');
+  const { data: rows } = rowId
+    ? await base.eq('id', rowId)
+    : await base.eq('company_id', co.id).eq('track', track).eq('status', 'new').gt('fit_score', 0)
+        .order('fit_score', { ascending: false }).range(offset, offset + CHUNK - 1);
 
   if (!rows || !rows.length) return NextResponse.json({ ok: true, done: true, next: offset });
 
