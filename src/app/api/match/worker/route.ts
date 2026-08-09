@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { runAutoMatch } from '@/lib/matchEngine';
+import { runAutoMatch, enrichApplyPaths } from '@/lib/matchEngine';
 import { logError } from '@/lib/logError';
 import { createClient } from '@supabase/supabase-js';
 
@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       if (r.done) break;
       batch = r.next;
     }
+    await enrichApplyPaths(companyId, t);
     const { count } = await admin.from('match_results').select('id', { count: 'exact', head: true })
       .eq('company_id', companyId).eq('track', t).eq('status', 'new').gt('fit_score', 0);
     await admin.from('companies').update({ match_notice: 'ready' }).eq('id', companyId);
