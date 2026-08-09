@@ -171,6 +171,16 @@ export default function GoalPage() {
                         batch = d.next;
                       }
                     } catch {}
+                    try {
+                      let off = 0, g2 = 0;
+                      while (g2++ < 10) {
+                        setMatchPhase('نجهّز طريق التقديم لكل جهة…');
+                        const er = await fetch('/api/match/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, offset: off }) });
+                        const ed = await er.json();
+                        if (!er.ok || ed.done) break;
+                        off = ed.next;
+                      }
+                    } catch {}
                     setMatchCount(last); setMatchPhase(''); setMatching(false);
                     try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); setResumeMap(q2.resume || {}); } catch {}
                   }}
