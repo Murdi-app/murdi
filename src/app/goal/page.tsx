@@ -161,14 +161,18 @@ export default function GoalPage() {
                     setMatching(true); let k = 0; let last = matchCount || 0;
                     try {
                       const info = await (await fetch('/api/match/run')).json();
-                      let batch = (info.resume && info.resume[tr]) || 0; let guard = 0;
-                      while (guard++ < 40) {
+                      const start = (info.resume && info.resume[tr]) || 0;
+                      let stop = false;
+                      for (let w = start; w < 40 && !stop; w += 3) {
                         setMatchPhase(PH[k++ % PH.length]);
-                        const r = await fetch('/api/match/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch }) });
-                        const d = await r.json();
-                        if (typeof d.count === 'number') last = d.count;
-                        if (!r.ok || d.done) break;
-                        batch = d.next;
+                        const rs = await Promise.all([w, w + 1, w + 2].map(bn =>
+                          fetch('/api/match/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch: bn }) })
+                            .then(x => x.json()).catch(() => ({ done: true }))
+                        ));
+                        for (const d of rs) {
+                          if (typeof d.count === 'number' && d.count > last) last = d.count;
+                          if (d.done) stop = true;
+                        }
                       }
                     } catch {}
                     try {
