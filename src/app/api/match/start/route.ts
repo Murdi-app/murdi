@@ -30,5 +30,5 @@ export async function POST(req: Request) {
     body: JSON.stringify({ secret: process.env.WORKER_SECRET, companyId: co.id, track }),
   }).catch(() => {});
   await new Promise(r => setTimeout(r, 1500));
-  return NextResponse.json({ ok: true, started: true });
+  return NextResponse.json({ ok: true, started: true, done: true, count: 0 });
 }
