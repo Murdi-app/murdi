@@ -7,7 +7,7 @@ type Row = {
   provider: string; product: string | null; fit_score: number | null;
   apply_channel: string | null; apply_url: string | null; apply_steps: string | null;
   required_docs: string | null; apply_status: string | null; apply_note: string | null;
-  entity_email: string | null; incomplete?: boolean;
+  entity_email: string | null; incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
 const C = { ink: '#1A3D34', gold: '#C9A84C', green: '#2E9E7B', gray: '#6B8A80', mint: '#E8F5EF' };
@@ -100,6 +100,11 @@ export default function ApplyPage() {
               {r.apply_url && <a href={r.apply_url} target="_blank" rel="noopener noreferrer" style={{ color: C.green, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح صفحة التقديم ←</a>}
               {r.apply_steps && <div style={{ color: C.ink, fontWeight: 700, fontSize: 12.5, marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.9 }}>{r.apply_steps}</div>}
               {r.required_docs && <div style={{ color: C.gray, fontWeight: 700, fontSize: 12, marginTop: 8, lineHeight: 1.8 }}>المستندات: {r.required_docs}</div>}
+              <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11.5, fontWeight: 900 }}>
+                <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 \u0627\u0644\u0645\u0644\u0641 \u062c\u0627\u0647\u0632' : '\u2715 \u0627\u0644\u0645\u0644\u0641 \u063a\u064a\u0631 \u062c\u0627\u0647\u0632'}</span>
+                <span style={{ color: r.contract_ok ? C.green : '#C0392B' }}>{r.contract_ok ? '\u2713 \u0627\u0644\u0639\u0642\u062f \u0645\u0648\u0642\u0651\u0639' : '\u2715 \u0644\u0627 \u064a\u0648\u062c\u062f \u0639\u0642\u062f'}</span>
+                <a href={'/admin/services?company_id=' + r.company_id} style={{ color: C.gold, textDecoration: 'underline' }}>\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644 \u2190</a>
+              </div>
               {r.entity_email && <a href={'/admin/outreach?company_id=' + r.company_id} style={{ display: 'inline-block', marginTop: 10, color: C.gold, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح المخاطبة بالبريد ←</a>}
             </div>
           </div>
