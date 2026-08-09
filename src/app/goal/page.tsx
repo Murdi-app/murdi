@@ -26,13 +26,14 @@ export default function GoalPage() {
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matching, setMatching] = useState(false);
   const [matchPhase, setMatchPhase] = useState('');
+  const [matchNotice, setMatchNotice] = useState('');
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
-  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); }).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -138,7 +139,7 @@ export default function GoalPage() {
       {subscriptionActive && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
-            {matching ? (
+            {matching || matchNotice === 'running' ? (
               <>
                 <div style={{ display: 'inline-block', width: 22, height: 22, border: '3px solid rgba(201,168,76,0.3)', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8 }} />
                 <div className="text-white font-black text-sm">{matchPhase || 'جارٍ مطابقة ملفك مع شبكة جهات مُرضي'}</div>
