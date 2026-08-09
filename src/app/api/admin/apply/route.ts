@@ -17,7 +17,18 @@ export async function GET() {
   const { data: cos } = await a.from('companies').select('id, company_name, match_progress').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
   const map = new Map((cos || []).map(c => [c.id, c.company_name]));
   const inc = new Map((cos || []).map(c => [c.id, Object.values((c.match_progress || {}) as Record<string, unknown>).some(v => typeof v === 'number')]));
-  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false })) });
+  const ids2 = ids.length ? ids : ['00000000-0000-0000-0000-000000000000'];
+  const { data: srv } = await a.from('service_requests').select('company_id, service_title, status').in('company_id', ids2);
+  const { data: con } = await a.from('contracts').select('company_id, status').in('company_id', ids2);
+  const fileReady = new Map<string, boolean>();
+  const contractOk = new Map<string, boolean>();
+  for (const r of (srv || [])) {
+    if (['delivered', 'completed', 'paid'].includes(String(r.status))) fileReady.set(r.company_id, true);
+  }
+  for (const r of (con || [])) {
+    if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);
+  }
+  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false })) });
 }
 
 export async function PATCH(req: Request) {
