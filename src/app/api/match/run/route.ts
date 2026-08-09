@@ -29,8 +29,13 @@ export async function GET() {
       .eq('company_id', co.id).eq('track', t0).eq('status', 'new');
     if (!c0) pending.push(String(t0));
   }
-  const { data: nz } = await ad.from('companies').select('match_notice').eq('id', co.id).maybeSingle();
-  return NextResponse.json({ count: count || 0, tracks: tracks0, pending, notice: nz?.match_notice || '' });
+  const { data: nz } = await ad.from('companies').select('match_notice, match_started_at').eq('id', co.id).maybeSingle();
+  let notice = String(nz?.match_notice || '');
+  if (notice === 'running' && nz?.match_started_at && (Date.now() - new Date(nz.match_started_at as string).getTime()) > 2 * 3600 * 1000) {
+    notice = 'stalled';
+    await ad.from('companies').update({ match_notice: 'stalled' }).eq('id', co.id);
+  }
+  return NextResponse.json({ count: count || 0, tracks: tracks0, pending, notice });
 }
 
 export async function POST(req: Request) {

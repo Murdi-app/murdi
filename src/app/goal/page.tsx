@@ -139,6 +139,12 @@ export default function GoalPage() {
       {subscriptionActive && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
+            {matchNotice === 'stalled' && !matching ? (
+              <>
+                <div className="text-white font-black text-sm mb-1">تعذّر إكمال مطابقتك — أعد المحاولة</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mb-3">توقّفت العملية قبل اكتمالها. ما أُنجز محفوظ، والضغط مرة أخرى يكمل من حيث توقّفت بلا رسوم إضافية.</div>
+              </>
+            ) : null}
             {matching || matchNotice === 'running' ? (
               <>
                 <div style={{ display: 'inline-block', width: 22, height: 22, border: '3px solid rgba(201,168,76,0.3)', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8 }} />
