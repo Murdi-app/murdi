@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const url = process.env.WORKER_URL;
   if (!url) return NextResponse.json({ error: 'المشغّل غير مهيأ' }, { status: 500 });
 
-  await admin.from('companies').update({ match_notice: 'running' }).eq('id', co.id);
+  await admin.from('companies').update({ match_notice: 'running', match_started_at: new Date().toISOString() }).eq('id', co.id);
   fetch(url + '/api/match/worker', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ secret: process.env.WORKER_SECRET, companyId: co.id, track }),
