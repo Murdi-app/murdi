@@ -70,6 +70,8 @@ export default function FundingAssessment() {
   const [posTypes, setPosTypes] = useState('');
   const [issuesInvoices, setIssuesInvoices] = useState<boolean | null>(null);
   const [hasFleet, setHasFleet] = useState<boolean | null>(null);
+  const [reqAmount, setReqAmount] = useState('');
+  const [fundPurpose, setFundPurpose] = useState('');
   const [crossBorder, setCrossBorder] = useState('');
   const [clientType, setClientType] = useState('');
   const [collectionCycle, setCollectionCycle] = useState('');
@@ -128,6 +130,8 @@ export default function FundingAssessment() {
           pos_types: hasPos ? (posTypes.trim() || null) : null,
           issues_invoices: issuesInvoices,
           has_fleet: hasFleet,
+          requested_amount: reqAmount ? Number(reqAmount) : null,
+          funding_purpose: fundPurpose.trim() || null,
           trades_cross_border: crossBorder || null,
           client_type: clientType || null,
           collection_cycle: collectionCycle || null,
@@ -358,6 +362,14 @@ export default function FundingAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">تملك أسطول مركبات أو معدات تشغيلية (على ملك الشركة، لا مؤجّرة باسم بنك)؟</label>
                 <YesNo value={hasFleet} onChange={setHasFleet} />
+                <div style={{ marginTop: 22 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">كم المبلغ الذي تحتاجه؟ (ريال)</label>
+                  <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={reqAmount} onChange={(e) => setReqAmount(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">ما الغرض من التمويل؟</label>
+                  <input type="text" value={fundPurpose} onChange={(e) => setFundPurpose(e.target.value)} placeholder="مثال: شراء مخزون موسمي وتغطية دورة تحصيل 90 يوماً" className={inputCls} />
+                </div>
                 <div style={{ marginTop: 22 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">هل تصدّر أو تستورد؟</label>
                   <select value={crossBorder} onChange={e => setCrossBorder(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">

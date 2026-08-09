@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   // جلب الإيراد الفعلي من financial_data ودرجة الجاهزية من readiness_results
   const { data: fd } = await admin
     .from('financial_data')
-    .select('annual_revenue, net_profit')
+    .select('annual_revenue, net_profit, requested_amount, funding_purpose')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -84,6 +84,10 @@ export async function POST(req: Request) {
     const inp = (fi?.inputs || {}) as { amount?: number; purpose?: string };
     if (inp.amount) client.fundAmount = Number(inp.amount);
     if (inp.purpose) client.fundPurpose = String(inp.purpose);
+  } catch {}
+  try {
+    if (!client.fundAmount && fd?.requested_amount) client.fundAmount = Number(fd.requested_amount);
+    if (!client.fundPurpose && fd?.funding_purpose) client.fundPurpose = String(fd.funding_purpose);
   } catch {}
 
   // أرقام العرض المحفوظة من خدمة العرض الاستثماري

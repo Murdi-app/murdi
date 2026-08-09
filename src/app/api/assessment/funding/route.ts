@@ -178,6 +178,8 @@ export async function POST(req: Request) {
     has_pos: body.has_pos,
     issues_invoices: body.issues_invoices,
     has_fleet: body.has_fleet,
+    requested_amount: body.requested_amount,
+    funding_purpose: body.funding_purpose,
     trades_cross_border: body.trades_cross_border,
     client_type: body.client_type,
     collection_cycle: body.collection_cycle,
