@@ -83,7 +83,7 @@ export async function runScopedMatch(args: {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 8000,
+          max_tokens: 16000,
           messages: [{ role: 'user', content: pmt }],
           tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: budget === 'light' ? 8 : 25 }],
         }),
