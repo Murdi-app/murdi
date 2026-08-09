@@ -29,7 +29,8 @@ export async function GET() {
       .eq('company_id', co.id).eq('track', t0).eq('status', 'new');
     if (!c0) pending.push(String(t0));
   }
-  return NextResponse.json({ count: count || 0, tracks: tracks0, pending });
+  const { data: nz } = await ad.from('companies').select('match_notice').eq('id', co.id).maybeSingle();
+  return NextResponse.json({ count: count || 0, tracks: tracks0, pending, notice: nz?.match_notice || '' });
 }
 
 export async function POST(req: Request) {
