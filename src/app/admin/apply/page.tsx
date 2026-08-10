@@ -7,7 +7,7 @@ type Row = {
   provider: string; product: string | null; fit_score: number | null;
   apply_channel: string | null; apply_url: string | null; apply_steps: string | null;
   required_docs: string | null; apply_status: string | null; apply_note: string | null;
-  entity_email: string | null; incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
+  incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
 const C = { ink: '#1A3D34', gold: '#C9A84C', green: '#2E9E7B', gray: '#6B8A80', mint: '#E8F5EF' };
@@ -106,7 +106,7 @@ export default function ApplyPage() {
                 {!r.apply_channel && <button onClick={async () => { setBusy(r.id); await fetch('/api/match/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: r.track, rowId: r.id }) }); await load(); setBusy(''); }} disabled={busy === r.id} style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>جهّز طريق التقديم</button>}
                 <a href={'/admin/services?company_id=' + r.company_id} style={{ color: C.gold, textDecoration: 'underline' }}>\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644 \u2190</a>
               </div>
-              {r.entity_email && <a href={'/admin/outreach?company_id=' + r.company_id} style={{ display: 'inline-block', marginTop: 10, color: C.gold, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح المخاطبة بالبريد ←</a>}
+              {<a href={'/admin/outreach?company_id=' + r.company_id} style={{ display: 'inline-block', marginTop: 10, color: C.gold, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح المخاطبة بالبريد ←</a>}
             </div>
           </div>
         ))}
