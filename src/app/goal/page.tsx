@@ -165,7 +165,7 @@ export default function GoalPage() {
                   {pendingTracks.map(tr => (
                   <button key={tr} disabled={matching} onClick={async () => {
                     const PH = ['نفحص شبكة جهات مُرضي…', 'نطابق ملفك مع معايير كل جهة…', 'نستخرج المنتج المناسب لك في كل جهة…', 'نتحقق من شروط القبول…', 'نرتّب الجهات حسب احتمال قبولك…', 'نجهّز متطلبات التقديم…'];
-                    setMatching(true); let k = 0; let last = matchCount || 0;
+                    setMatching(true); setMatchNotice('running'); setPendingTracks([]); let k = 0; let last = matchCount || 0;
                     try {
                       const info = await (await fetch('/api/match/run')).json();
                       const start = (info.resume && info.resume[tr]) || 0;
@@ -193,6 +193,7 @@ export default function GoalPage() {
                       }
                     } catch {}
                     setMatchCount(last); setMatchPhase(''); setMatching(false);
+                    try { const q3 = await (await fetch('/api/match/run')).json(); setMatchNotice(q3.notice || ''); } catch {}
                     try { const q2 = await (await fetch('/api/match/run')).json(); setPendingTracks(q2.pending || []); setResumeMap(q2.resume || {}); } catch {}
                   }}
                     className="font-black text-sm px-7 py-3 rounded-full disabled:opacity-50" style={{ background: '#C9A84C', color: '#1A3D34' }}>
