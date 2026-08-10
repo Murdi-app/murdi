@@ -20,7 +20,10 @@ export async function POST(req: Request) {
     await enrichApplyPaths(companyId, t);
     const { count } = await admin.from('match_results').select('id', { count: 'exact', head: true })
       .eq('company_id', companyId).eq('track', t).eq('status', 'new').gt('fit_score', 0);
-    await admin.from('companies').update({ match_notice: 'ready' }).eq('id', companyId);
+    const { data: cpx } = await admin.from('companies').select('match_progress').eq('id', companyId).maybeSingle();
+    const progx = (cpx?.match_progress || {}) as Record<string, unknown>;
+    progx[t] = 'done';
+    await admin.from('companies').update({ match_notice: 'ready', match_progress: progx }).eq('id', companyId);
     try {
       const { data: co2 } = await admin.from('companies').select('*').eq('id', companyId).single();
       const rec = (co2 || {}) as Record<string, unknown>;

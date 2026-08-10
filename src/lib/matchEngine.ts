@@ -235,7 +235,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (/الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
         if (/transaction banking|تمويل المعاملات|إدارة السيولة|treasury|gtb/.test(txt2)) return 0;
         if (/أُغلق فعلي|أغلق فعلا|مغلق|توقفت|تحت الحراسة|in administration/.test(txt2)) return 0;
-        if (/مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance/.test(txt2)) return 0;
+        if (/مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance|تمويل المشاريع|مؤسسة الخليج للاستثمار/.test(txt2)) return 0;
         if (/مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
         // وكالات ائتمان التصدير بالاسم — تموّل مشتري منتج بلدها لا تمويلاً عاماً
         if (/ukef|bpifrance|sinosure|sace|nexi|k-sure|edc|us exim|exim bank|coface|allianz trade|atradius|iciec|الإسلامية لضمان الاستثمار/.test(txt2)) return 0;
@@ -296,7 +296,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
     const bestByFirm = new Map<string, typeof rows[number]>();
     for (const r of rows) {
       const norm = (x: string) => x.toLowerCase().replace(/[\u0640()\u2014\u2013,\-\/]/g,' ').replace(/[a-z]{2,}/g,'').replace(/\s+/g,' ').trim().slice(0, 28);
-      const k = firmKey(r.provider || '') + '|' + norm(String(r.product || ''));
+      const k = firmKey(String(r.provider || '').replace(/\(.*/,'').trim()) + '|' + norm(String(r.product || ''));
       const cur = bestByFirm.get(k);
       if (!cur || (r.fit_score || 0) > (cur.fit_score || 0)) bestByFirm.set(k, r);
     }
@@ -338,7 +338,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     const doneAll = batch === undefined || (nextB * SIZE) >= r.totalScopes;
     if (r.offers.length) await saveMatchResults(companyId, track, r.offers, rev, batch !== undefined && batch > 0);
     if (!r.offers.length && batch === undefined) return { done: true, total: r.totalScopes, next: 0 };
-    if (doneAll) try {
+    if (doneAll && batch === undefined) try {
       const { data: rr } = await admin.from('readiness_results')
         .select('readiness_score, verdict').eq('company_id', companyId)
         .order('created_at', { ascending: false }).limit(1).single();
