@@ -22,35 +22,18 @@ async function getAdmin() {
   );
 }
 
-// POST { company_id, track } : يولّد رسائل المخاطبة لكل جهة مطابقة
-export async function POST(req: Request) {
-  const admin = await getAdmin();
-  if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
+type Admin = NonNullable<Awaited<ReturnType<typeof getAdmin>>>;
+type MatchRow = Record<string, unknown> & { id: string; company_id: string };
 
-  let companyId = '';
-  let track = '';
-  let offset = 0;
-  let kind = '';
-  try {
-    const body = await req.json();
-    companyId = String(body.company_id || '');
-    track = String(body.track || '');
-    offset = Number(body.offset) || 0;
-    kind = String(body.kind || '');
-  } catch {
-    return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
-  }
-  if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
-
-  // ١) بيانات العميل
+// ————— بناء بيانات العميل (مشتركة بين التوليد الفردي والدفعات) —————
+async function buildClient(admin: Admin, companyId: string): Promise<ClientInput | null> {
   const { data: company, error: cErr } = await admin
     .from('companies')
     .select('id, company_name, sector, city, goal')
     .eq('id', companyId)
     .single();
-  if (cErr || !company) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
+  if (cErr || !company) return null;
 
-  // جلب الإيراد الفعلي من financial_data ودرجة الجاهزية من readiness_results
   const { data: fd } = await admin
     .from('financial_data')
     .select('annual_revenue, net_profit, requested_amount, funding_purpose')
@@ -90,7 +73,6 @@ export async function POST(req: Request) {
     if (!client.fundPurpose && fd?.funding_purpose) client.fundPurpose = String(fd.funding_purpose);
   } catch {}
 
-  // أرقام العرض المحفوظة من خدمة العرض الاستثماري
   try {
     const { data: pin } = await admin.from('service_inputs')
       .select('inputs').eq('company_id', companyId).eq('activity_kind', 'pitch')
@@ -107,60 +89,145 @@ export async function POST(req: Request) {
     if (srv?.price) client.roundSize = Number(srv.price);
   } catch {}
 
-  // ٢) الجهات المطابقة (نفلتر حسب المسار إن طُلب)
+  return client;
+}
+
+// ————— صفٌّ واحد ← رسالة واحدة —————
+// المسار يُؤخذ من الصف نفسه دائماً. لا من الرابط ولا من kind.
+async function generateForRow(admin: Admin, client: ClientInput, m: MatchRow) {
+  const entityTrack: 'funding' | 'investment' = m.track === 'investment' ? 'investment' : 'funding';
+  const entity: EntityInput = {
+    provider: String(m.provider || 'جهة غير مسمّاة'),
+    product: String(m.product || ''),
+    requirements: (m.requirements as string) || undefined,
+    region: (m.region as string) || undefined,
+    track: entityTrack,
+    instrument: (m.instrument as string) || undefined,
+    engagement: (m.engagement as string) || undefined,
+  };
+
+  const gen = await buildFullOutreach(client, entity);
+
+  // نُبطل المسودة السابقة لهذه الجهة وحدها — لا لكل العميل
+  await admin.from('outreach_messages')
+    .update({ status: 'مستبدلة' })
+    .eq('company_id', m.company_id)
+    .eq('entity_name', entity.provider)
+    .eq('track', entityTrack)
+    .eq('status', 'مسودة');
+
+  const { data: inserted, error: iErr } = await admin.from('outreach_messages').insert({
+    company_id: m.company_id,
+    match_row_id: m.id,
+    entity_table: entityTrack === 'funding' ? 'financing_products' : 'investment_entities',
+    entity_name: entity.provider,
+    entity_email: gen.email,
+    entity_language: gen.language,
+    alt_contact: gen.altContact,
+    contact_method: gen.contactMethod,
+    track: entityTrack,
+    subject: gen.subject,
+    message_body: gen.body,
+    status: 'مسودة',
+    error_note: gen.emailConfidence !== 'مؤكّد'
+      ? 'الإيميل: ' + gen.emailConfidence + ' (' + gen.emailSource + ')'
+      : null,
+  }).select('*').single();
+  if (iErr) throw iErr;
+
+  return { inserted, gen, entity, entityTrack };
+}
+
+// POST { rowId }              : توليد مخاطبة لجهة واحدة عند الطلب  ← المسار الجديد
+// POST { company_id, track }  : الدفعات القديمة (باقية للتوافق، ولم تعد مستعملة من الواجهة)
+export async function POST(req: Request) {
+  const admin = await getAdmin();
+  if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
+
+  let companyId = '';
+  let track = '';
+  let offset = 0;
+  let kind = '';
+  let rowId = '';
+  try {
+    const body = await req.json();
+    companyId = String(body.company_id || '');
+    track = String(body.track || '');
+    offset = Number(body.offset) || 0;
+    kind = String(body.kind || '');
+    rowId = String(body.rowId || '');
+  } catch {
+    return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
+  }
+
+  // ═══════ المسار الفردي: جهة واحدة عند الطلب ═══════
+  if (rowId) {
+    const { data: row, error: rErr } = await admin
+      .from('match_results').select('*').eq('id', rowId).single();
+    if (rErr || !row) return NextResponse.json({ error: 'الصف غير موجود' }, { status: 404 });
+
+    const client = await buildClient(admin, String(row.company_id));
+    if (!client) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
+
+    try {
+      const { inserted, gen, entity, entityTrack } = await generateForRow(admin, client, row as MatchRow);
+      return NextResponse.json({
+        ok: true,
+        single: true,
+        track: entityTrack,
+        message: inserted,
+        provider: entity.provider,
+        email: gen.email,
+        contactMethod: gen.contactMethod,
+        altContact: gen.altContact,
+        emailConfidence: gen.emailConfidence,
+        subject: gen.subject,
+        body: gen.body,
+        language: gen.language,
+      });
+    } catch (e) {
+      await logError('outreach.generateOne', e, { rowId, company_id: row.company_id });
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'تعذّر توليد المخاطبة' },
+        { status: 500 }
+      );
+    }
+  }
+
+  // ═══════ المسار القديم بالدفعات ═══════
+  if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
+
+  const client = await buildClient(admin, companyId);
+  if (!client) return NextResponse.json({ error: 'العميل غير موجود' }, { status: 404 });
+
   const PAGE = 10;
   let q = admin.from('match_results').select('*', { count: 'exact' }).eq('company_id', companyId);
   if (track) q = q.eq('track', track);
   if (kind === 'acquisition') q = q.ilike('instrument', '%استحواذ%');
   else if (kind === 'equity') q = q.or('instrument.is.null,instrument.not.ilike.%استحواذ%');
-  q = q.or('status.is.null,status.neq.superseded').or('fit_score.is.null,fit_score.gt.0').or('engagement.is.null,engagement.neq.قناة').order('fit_score', { ascending: false, nullsFirst: false }).range(offset, offset + PAGE - 1);
+  q = q.or('status.is.null,status.neq.superseded')
+       .or('fit_score.is.null,fit_score.gt.0')
+       .or('engagement.is.null,engagement.neq.قناة')
+       .order('fit_score', { ascending: false, nullsFirst: false })
+       .range(offset, offset + PAGE - 1);
   const { data: matches, error: mErr, count: totalCount } = await q;
   if (mErr) return NextResponse.json({ error: 'تعذّر جلب الجهات' }, { status: 500 });
   if (!matches || matches.length === 0) {
     return NextResponse.json({ error: 'لا توجد جهات مطابقة لهذا العميل' }, { status: 404 });
   }
 
-  // ٣) نتجنّب التكرار: نحذف المسودات السابقة لنفس العميل (نبدأ نظيف)
-  if (offset === 0) await admin.from('outreach_messages').update({ status: 'مستبدلة' }).eq('company_id', companyId).eq('status', 'مسودة');
-
-  // ٤) نولّد رسالة لكل جهة (نعالجها بدفعات صغيرة لتجنّب الضغط)
   const results: { provider: string; ok: boolean; confidence?: string; error?: string }[] = [];
   const BATCH = 3;
   for (let i = 0; i < matches.length; i += BATCH) {
     const slice = matches.slice(i, i + BATCH);
     await Promise.all(slice.map(async (m) => {
-      const entityTrack: 'funding' | 'investment' = m.track === 'investment' ? 'investment' : 'funding';
-      const entity: EntityInput = {
-        provider: m.provider || 'جهة غير مسمّاة',
-        product: m.product || '',
-        requirements: m.requirements || undefined,
-        region: m.region || undefined,
-        track: entityTrack,
-      instrument: (m as { instrument?: string }).instrument || undefined,
-      engagement: (m as { engagement?: string }).engagement || undefined,
-      };
+      const provider = String(m.provider || 'جهة غير مسمّاة');
       try {
-        const gen = await buildFullOutreach(client, entity);
-        await admin.from('outreach_messages').insert({
-          company_id: companyId,
-          entity_table: entityTrack === 'funding' ? 'financing_products' : 'investment_entities',
-          entity_name: entity.provider,
-          entity_email: gen.email,
-          entity_language: gen.language,
-          alt_contact: gen.altContact,
-          contact_method: gen.contactMethod,
-          track: entityTrack,
-          subject: gen.subject,
-          message_body: gen.body,
-          status: 'مسودة',
-          error_note: gen.emailConfidence !== 'مؤكّد'
-            ? 'الإيميل: ' + gen.emailConfidence + ' (' + gen.emailSource + ')'
-            : null,
-        });
-        results.push({ provider: entity.provider, ok: true, confidence: gen.emailConfidence });
+        const { gen } = await generateForRow(admin, client, m as MatchRow);
+        results.push({ provider, ok: true, confidence: gen.emailConfidence });
       } catch (e) {
-        await logError('outreach.generate', e, { company_id: companyId, entity: entity.provider });
-        results.push({ provider: entity.provider, ok: false, error: e instanceof Error ? e.message : String(e) });
+        await logError('outreach.generate', e, { company_id: companyId, entity: provider });
+        results.push({ provider, ok: false, error: e instanceof Error ? e.message : String(e) });
       }
     }));
   }
