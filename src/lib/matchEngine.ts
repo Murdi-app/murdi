@@ -247,6 +247,20 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (/private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
         if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
         if (track === 'funding' && (inst.includes('تأمين') || inst.includes('دعم'))) return 0;
+        // بنوك التنمية التي ولايتها الدول النامية — المملكة خارج نطاقها
+        if (/proparco|oe-?eb|oesterreichische entwicklungsbank|\bfmo\b|\bdeg\b|british international investment|\bbii\b|norfund|swedfund|finnfund|cofides|\bsimest\b|entwicklungsbank/.test(txt2)) return 0;
+        // السابقة الخليجية أو المسار القانوني — نُقلت من البرومبت إلى الكود
+        {
+          const reg = String(o.region || '');
+          const foreign = reg.indexOf('السعود') < 0 && reg.indexOf('خليج') < 0;
+          if (foreign) {
+            const weak = (x: unknown) => {
+              const t = String(x || '').trim();
+              return t.length < 12 || /^(لا يوجد|لا توجد|غير معروف|غير متاح|غير محدد|none|n\/a|-)$/i.test(t);
+            };
+            if (weak(o.saudiPrecedent) && weak(o.legalPath)) return 0;
+          }
+        }
         const v = String(o.verdict || '');
         if (/غير مؤهل|مستبعد|غير متاح/.test(v)) return 0;
         const prob = v.includes('بشرط') ? 0.3 : 0.6;
