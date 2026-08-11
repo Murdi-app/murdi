@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
   let companyId = '', html = '', lang = 'ar', name = '';
-  let landscape = false, download = false, kind = 'file';
+  let landscape = false, download = false, kind = 'file', track = 'funding';
   try {
     const b = await req.json();
     companyId = String(b.company_id || '');
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     landscape = b.landscape === true;
     download = b.download === true;
     kind = b.kind === 'deck' ? 'deck' : 'file';
+    track = String(b.track) === 'investment' ? 'investment' : 'funding';
   } catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId || !html) return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
 
@@ -83,13 +84,14 @@ export async function POST(req: Request) {
       uploaded_at: new Date().toISOString(),
       file_url: pub.publicUrl,
       file_name: fileName,
+      track,
     };
     if (kind === 'deck') {
       if (lang === 'en') { row.deck_url_en = pub.publicUrl; row.deck_name_en = fileName; }
       else { row.deck_url_ar = pub.publicUrl; row.deck_name_ar = fileName; }
     } else if (lang === 'en') { row.file_url_en = pub.publicUrl; row.file_name_en = fileName; }
     else { row.file_url_ar = pub.publicUrl; row.file_name_ar = fileName; }
-    const { error } = await admin.from('outreach_attachments').upsert(row, { onConflict: 'company_id' });
+    const { error } = await admin.from('outreach_attachments').upsert(row, { onConflict: 'company_id,track' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ ok: true, url: pub.publicUrl, name: fileName });
