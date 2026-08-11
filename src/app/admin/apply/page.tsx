@@ -106,10 +106,10 @@ export default function ApplyPage() {
 
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (showWeak || (r.fit_score || 0) >= 20))
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
-  const weakCount = rows.filter(r => (r.fit_score || 0) < 20).length;
+  const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
   const RISKY = /حساب\s+(لدى|في)\s|موثّق|موثقة|سبق\s+(أن|له)|علاقة\s+مسبقة|عميل\s+لديكم/;
 
   return (
@@ -143,7 +143,7 @@ export default function ApplyPage() {
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
           <button onClick={() => setShowWeak(v => !v)}
             style={{ background: showWeak ? C.ink : '#fff', color: showWeak ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
-            {showWeak ? 'أخفِ الضعيفة' : 'أظهر الضعيفة (' + weakCount + ')'}
+            {showWeak ? 'اعرض الكل' : 'الأقوى فقط (' + weakCount + ')'}
           </button>
           <select value={co} onChange={e => setCo(e.target.value)}
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 14px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5 }}>
