@@ -25,9 +25,14 @@ export async function POST(req: Request) {
     progx[t] = 'done';
     await admin.from('companies').update({ match_notice: 'ready', match_progress: progx }).eq('id', companyId);
     try {
-      const { data: co2 } = await admin.from('companies').select('*').eq('id', companyId).single();
+      const { data: co2 } = await admin.from('companies').select('user_id').eq('id', companyId).single();
       const rec = (co2 || {}) as Record<string, unknown>;
-      const to = String(rec.email || rec.contact_email || rec.owner_email || '');
+      let to = '';
+      if (rec.user_id) {
+        const { data: pf } = await admin.from('profiles').select('email').eq('id', rec.user_id).maybeSingle();
+        to = String((pf as Record<string, unknown> | null)?.email || '');
+      }
+      if (!to.includes('@')) await logError('match.noClientEmail', new Error('no client email'), { company_id: companyId });
       if (to.includes('@')) {
         const { Resend } = await import('resend');
         await new Resend(process.env.ANTHROPIC_API_KEY ? process.env.RESEND_API_KEY : process.env.RESEND_API_KEY).emails.send({
