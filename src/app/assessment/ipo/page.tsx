@@ -140,9 +140,9 @@ export default function IpoAssessment() {
   const YesNo = ({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) => (
     <div className="flex gap-3">
       <button type="button" onClick={() => onChange(true)}
-        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === true ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>نعم</button>
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === true ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>نعم</button>
       <button type="button" onClick={() => onChange(false)}
-        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === false ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>لا</button>
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === false ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>لا</button>
     </div>
   );
 
@@ -150,19 +150,19 @@ export default function IpoAssessment() {
     <div className={cols === 2 ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
       {items.map((t) => (
         <button key={t.id} type="button" onClick={() => onChange(t.id)}
-          className={'w-full p-4 rounded-xl border-2 text-right font-bold transition ' + (value === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+          className={'w-full p-4 rounded-xl border-2 text-right font-bold transition ' + (value === t.id ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
           {t.label}
         </button>
       ))}
     </div>
   );
 
-  const inputCls = 'w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-left';
+  const inputCls = 'w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-left';
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
       <div className="max-w-xl mx-auto mb-4">
-        <button onClick={() => router.push('/goal')} className="flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+        <button onClick={() => router.push('/goal')} className="flex items-center gap-2 text-[#6B8A80] hover:text-[#1A3D34] font-black text-sm transition-colors">
           <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
         </button>
       </div>
@@ -175,8 +175,8 @@ export default function IpoAssessment() {
         <div className="flex items-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
-              <div className={'h-2 rounded-full ' + (i <= step ? 'bg-[#2E9E7B]' : 'bg-[#E8F5EF]')} />
-              <p className={'text-[10px] mt-1 text-center font-bold ' + (i <= step ? 'text-[#2E9E7B]' : 'text-[#6B8A80]')}>{s}</p>
+              <div className={'h-2 rounded-full ' + (i <= step ? 'bg-[#1A3D34]' : 'bg-[#E8F5EF]')} />
+              <p className={'text-[10px] mt-1 text-center font-bold ' + (i <= step ? 'text-[#1A3D34]' : 'text-[#6B8A80]')}>{s}</p>
             </div>
           ))}
         </div>
@@ -317,16 +317,16 @@ export default function IpoAssessment() {
             )}
             {step < 3 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
-                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
+                className="flex-1 py-3 rounded-xl bg-[#1A3D34] text-white font-black disabled:opacity-40">التالي</button>
             )}
             {step === 3 && loading && (
               <div style={{ width:'100%', background:'#FDF8EC', border:'2px solid #C9A84C', borderRadius:12, padding:'12px 16px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:13.5, textAlign:'center', lineHeight:1.7 }}>
-                ⏳ التحليل جارٍ — لا تغلق الصفحة ولا تنتقل منها حتى تظهر النتيجة.
+                التحليل جارٍ — لا تغلق الصفحة ولا تنتقل منها حتى تظهر النتيجة.
               </div>
             )}
             {step === 3 && (
               <button type="button" disabled={stepValid() === false || loading} onClick={submit}
-                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">
+                className="flex-1 py-3 rounded-xl bg-[#1A3D34] text-white font-black disabled:opacity-40">
                 {loading ? 'جارٍ التحليل...' : 'احسب جاهزية الطرح'}
               </button>
             )}

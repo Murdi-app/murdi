@@ -88,7 +88,7 @@ export default function InvestmentResult() {
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
         <p className="text-[#6B8A80] font-bold">جارٍ تحميل النتيجة...</p>
       </div>
     );
@@ -96,7 +96,7 @@ export default function InvestmentResult() {
 
   if (result === null) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
         <p className="text-[#6B8A80] font-bold">لا توجد نتيجة — ابدأ التقييم أولاً</p>
       </div>
     );
@@ -131,7 +131,7 @@ export default function InvestmentResult() {
     if (!result) return;
     const esc = (t: unknown) => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const sc = result.readiness_score;
-    const col = sc >= 70 ? '#2E9E7B' : sc >= 50 ? '#C9A84C' : '#C0564B';
+    const col = sc >= 70 ? '#1A3D34' : sc >= 50 ? '#C9A84C' : '#C0564B';
     const today = new Date().toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
     const listHTML = (arr: unknown) => Array.isArray(arr) && arr.length
       ? '<ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
@@ -152,7 +152,7 @@ export default function InvestmentResult() {
       + '.verdict{font-size:20px;font-weight:900;margin-top:10px}'
       + '.val{background:#F0F5F3;border-radius:12px;padding:14px;text-align:center;margin:18px 0;font-size:15px;font-weight:900;color:#1A3D34}'
       + '.sec{margin:24px 0}'
-      + '.sec h2{font-size:17px;color:#1A3D34;border-right:5px solid #2E9E7B;padding-right:10px;margin-bottom:10px}'
+      + '.sec h2{font-size:17px;color:#1A3D34;border-right:5px solid #1A3D34;padding-right:10px;margin-bottom:10px}'
       + 'ul{padding-right:24px}li{margin-bottom:7px;font-size:14px}'
       + '.method{background:#F0F5F3;border-radius:12px;padding:14px;font-size:12.5px;color:#6B8A80;text-align:center;margin-top:20px}'
       + '.footer{margin-top:30px;padding-top:16px;border-top:2px solid #EEE;text-align:center;color:#9DB3AB;font-size:12px}'
@@ -170,17 +170,17 @@ export default function InvestmentResult() {
     if (w) { w.document.write(html); w.document.close(); }
   }
 
-  const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
+  const scoreColor = result.readiness_score >= 70 ? '#1A3D34' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
       <div className="max-w-2xl mx-auto mb-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+          <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#1A3D34] font-black text-sm transition-colors">
             <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
           </a>
           <button onClick={printResult} className="inline-flex items-center gap-2 bg-[#1A3D34] text-white font-black text-sm px-5 py-2.5 rounded-full hover:opacity-90 transition">
-            🖨️ احفظ نتيجتك PDF
+            احفظ نتيجتك PDF
           </button>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function InvestmentResult() {
 
         {valuation !== null && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#C9A84C]">
-            <h2 className="font-black text-[#1A3D34] mb-1">💰 القيمة التقديرية لشركتك</h2>
+            <h2 className="font-black text-[#1A3D34] mb-1">القيمة التقديرية لشركتك</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">تقدير استرشادي مبدئي وفق ربحية شركتك ونموها</p>
             <div className="bg-[#FBF5E8] rounded-xl p-5 text-center">
               <p className="text-[#9A7B2E] font-black text-2xl">{fmtM(valuation.lo)} — {fmtM(valuation.hi)} ريال</p>
@@ -220,7 +220,7 @@ export default function InvestmentResult() {
             <div className="mt-4">
               <div className="bg-[#F0F5F3] rounded-xl p-5">
                 <p className="text-[#1A3D34] font-black text-sm mb-2">لو رفعت ربحيتك 15%، ترتفع قيمتك إلى:</p>
-                <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.4)} ريال</p>
+                <p className="text-[#1A3D34] font-black text-xl">{fmtM(valuation.hi * 1.4)} ريال</p>
                 <p className="text-[#6B8A80] text-xs font-bold mt-2">+ سيناريوهات الحوكمة والتنويع ترفع المضاعف أكثر</p>
               </div>
             </div>
@@ -243,7 +243,7 @@ export default function InvestmentResult() {
             )}
             {result.readiness_score >= 65 ? (
               <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
-                <p className="text-3xl mb-2">🏆</p>
+                <p className="text-3xl mb-2"></p>
                 <p className="font-black text-white mb-1">شركتك جاذبة للمستثمر</p>
                 <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يعدّ لك فريق د. عبدالحكيم المرضي خطة جذب المستثمر الكاملة خطوةً بخطوة، مع تجهيز ملف الشركة للعرض على المستثمرين المناسبين.</p>
               </div>
@@ -259,7 +259,7 @@ export default function InvestmentResult() {
         {/* قسم المستندات المطلوبة مخفي عن العميل عمداً — يبقى في DB ويظهر للأدمن */}
 
         {result.readiness_score >= 70 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#2E9E7B]">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#1A3D34]">
             <h2 className="font-black text-[#1A3D34] mb-1">فرص الاستثمار المتاحة</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">بناءً على ملفك، هذه الفرص التي تتطابق معها شركتك</p>
 
@@ -268,7 +268,7 @@ export default function InvestmentResult() {
             {matchLoading === false && matches !== null && matches.length > 0 && (
               <div>
                 <div className="bg-[#E8F5EF] rounded-xl p-4 text-center mb-3">
-                  <p className="text-3xl mb-1">🎯</p>
+                  <p className="text-3xl mb-1"></p>
                   <p className="text-[#1A3D34] font-black">وجدنا لك {matchCount} جهة استثمارية مناسبة</p>
                   <p className="text-[#6B8A80] text-xs font-bold mt-1">طابقناها مع ملف شركتك — التفاصيل محفوظة لك مع فريق مُرضي</p>
                 </div>
@@ -278,7 +278,7 @@ export default function InvestmentResult() {
                       <div key={i} className="border border-[#E8F5EF] rounded-xl p-4">
                         <div className="flex justify-between items-center mb-2">
                           <p className="font-black text-[#1A3D34] text-sm">{m.funding_type}</p>
-                          <span className="bg-[#E8F5EF] text-[#2E9E7B] font-black text-xs px-3 py-1 rounded-full">ملاءمة {m.fit_percent}%</span>
+                          <span className="bg-[#E8F5EF] text-[#1A3D34] font-black text-xs px-3 py-1 rounded-full">ملاءمة {m.fit_percent}%</span>
                         </div>
                         <ul className="space-y-1">
                           {m.reasons.map((r, j) => (
@@ -289,7 +289,7 @@ export default function InvestmentResult() {
                     ))}
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                    <span className="text-3xl mb-1">🔒</span>
+                    <span className="text-3xl mb-1"></span>
                     <p className="font-black text-[#1A3D34] text-sm">أسماء الجهات وتفاصيل المطابقة محجوبة</p>
                   </div>
                 </div>
@@ -307,11 +307,11 @@ export default function InvestmentResult() {
         )}
 
         {result.readiness_score < 70 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#2E9E7B]">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#1A3D34]">
             <h2 className="font-black text-[#1A3D34] mb-1">فرص استثمارية في قطاعك</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">رصد فريق مُرضي جهات استثمارية نشطة في قطاع شركتك — تُفتح لك عند رفع جاهزيتك</p>
             <div className="bg-[#E8F5EF] rounded-xl p-4 text-center mb-3">
-              <p className="text-3xl mb-1">🎯</p>
+              <p className="text-3xl mb-1"></p>
               <p className="text-[#1A3D34] font-black">{matchCount > 0 ? matchCount : 3} جهة استثمارية محتملة في قطاعك</p>
               <p className="text-[#6B8A80] text-xs font-bold mt-1">تظهر تفاصيلها فور وصول جاهزيتك إلى المستوى المطلوب</p>
             </div>
@@ -321,14 +321,14 @@ export default function InvestmentResult() {
                   <div key={i} className="border border-[#E8F5EF] rounded-xl p-4">
                     <div className="flex justify-between items-center mb-2">
                       <p className="font-black text-[#1A3D34] text-sm">{t}</p>
-                      <span className="bg-[#E8F5EF] text-[#2E9E7B] font-black text-xs px-3 py-1 rounded-full">ملاءمة مبدئية</span>
+                      <span className="bg-[#E8F5EF] text-[#1A3D34] font-black text-xs px-3 py-1 rounded-full">ملاءمة مبدئية</span>
                     </div>
                     <p className="text-[#6B8A80] text-xs font-bold">تفاصيل الجهة وشروط دخولها محجوبة</p>
                   </div>
                 ))}
               </div>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                <span className="text-3xl mb-1">🔒</span>
+                <span className="text-3xl mb-1"></span>
                 <p className="font-black text-[#1A3D34] text-sm">الجهات الاستثمارية محجوبة حتى ترفع جاهزيتك</p>
               </div>
             </div>
@@ -344,10 +344,10 @@ export default function InvestmentResult() {
         {fdRaw && (() => {
           const sug = suggestService(fdRaw, 'investment', result.readiness_score);
           const theme = sug.urgency === 'required'
-            ? { bg: '#FBECEC', border: '#C0564B', label: '🔴 خدمة ضرورية قبل التقديم', labelColor: '#A33' }
+            ? { bg: '#FBECEC', border: '#C0564B', label: 'خدمة ضرورية قبل التقديم', labelColor: '#A33' }
             : sug.urgency === 'none'
-            ? { bg: '#EAF7F0', border: '#2E9E7B', label: '✅ توجيه مُرضي', labelColor: '#1E7A5A' }
-            : { bg: '#FBF5E8', border: '#C9A84C', label: '💡 خدمة موصى بها تقوّي عرضك', labelColor: '#9A7B2E' };
+            ? { bg: '#EAF7F0', border: '#1A3D34', label: 'توجيه مُرضي', labelColor: '#1E7A5A' }
+            : { bg: '#FBF5E8', border: '#C9A84C', label: 'خدمة موصى بها تقوّي عرضك', labelColor: '#9A7B2E' };
           return (
             <div style={{ background: theme.bg, border: '2px solid ' + theme.border, borderRadius: 16, padding: '22px 24px' }}>
               <div style={{ color: theme.labelColor, fontSize: 14, fontWeight: 900, marginBottom: 8 }}>{theme.label}</div>
@@ -383,11 +383,11 @@ export default function InvestmentResult() {
             }));
             const { error } = await supabase.from('service_requests').insert(rows);
             if (error) { setBundleStatus('تعذّر التقديم، حاول مرة أخرى'); return; }
-            setBundleStatus('✅ تم تقديم طلباتك — فريق مرضي سيتابع معك');
+            setBundleStatus('تم تقديم طلباتك — فريق مرضي سيتابع معك');
           };
           return (
             <div style={{ background: '#FBF5E8', border: '2px solid #C9A84C', borderRadius: 16, padding: '22px 24px' }}>
-              <div style={{ color: '#9A7B2E', fontSize: 14, fontWeight: 900, marginBottom: 10 }}>🧭 خطتك للجاهزية</div>
+              <div style={{ color: '#9A7B2E', fontSize: 14, fontWeight: 900, marginBottom: 10 }}>خطتك للجاهزية</div>
               <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: 14 }}>
                 بناءً على نتيجتك، هذه الخطوات التي تجهّز شركتك لجذب المستثمر. يرافقك فريق مُرضي فيها:
               </p>
@@ -418,7 +418,7 @@ export default function InvestmentResult() {
 
         <div className="bg-gradient-to-l from-[#FBF5E8] to-white rounded-2xl p-6 border-2 border-[#C9A84C]">
           <div className="flex items-start gap-3">
-            <span style={{ fontSize: 28 }}>🎓</span>
+            <span style={{ fontSize: 28 }}></span>
             <div className="flex-1">
               <h2 className="font-black text-[#1A3D34] mb-1">استشارتك الخاصة قيد الإعداد الآن</h2>
               <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">د. عبدالحكيم المرضي وفريقه يُعدّون لك استشارة استثمار مخصّصة لأرقام شركتك — تحليل عميق، خطة نجاح، وتوعية مالية. ستجدها جاهزة في قسم الاستشارات فور مراجعتها واعتمادها.</p>
@@ -441,7 +441,7 @@ export default function InvestmentResult() {
           const lo = n, hi = n + 15;
           return (
           <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
-            <div className="text-3xl mb-3">🎯</div>
+            <div className="text-3xl mb-3"></div>
             <h3 className="text-white font-black text-lg mb-3">مطابقة الجهات — الخطوة التي تحوّل درجتك إلى تمويل</h3>
             <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-4">
               درجتك تقول أين أنت. والمطابقة تقول <span style={{ color: '#C9A84C' }}>مع مَن</span>:

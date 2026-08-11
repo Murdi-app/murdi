@@ -150,16 +150,16 @@ export default function FundingAssessment() {
   const YesNo = ({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) => (
     <div className="flex gap-3">
       <button type="button" onClick={() => onChange(true)}
-        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === true ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>نعم</button>
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === true ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>نعم</button>
       <button type="button" onClick={() => onChange(false)}
-        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === false ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>لا</button>
+        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (value === false ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>لا</button>
     </div>
   );
 
-  const inputCls = 'w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-left';
+  const inputCls = 'w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-left';
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-black text-[#1A3D34]">تقييم جاهزية التمويل</h1>
@@ -169,8 +169,8 @@ export default function FundingAssessment() {
         <div className="flex items-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex-1">
-              <div className={'h-2 rounded-full ' + (i <= step ? 'bg-[#2E9E7B]' : 'bg-[#E8F5EF]')} />
-              <p className={'text-[10px] mt-1 text-center font-bold ' + (i <= step ? 'text-[#2E9E7B]' : 'text-[#6B8A80]')}>{s}</p>
+              <div className={'h-2 rounded-full ' + (i <= step ? 'bg-[#1A3D34]' : 'bg-[#E8F5EF]')} />
+              <p className={'text-[10px] mt-1 text-center font-bold ' + (i <= step ? 'text-[#1A3D34]' : 'text-[#6B8A80]')}>{s}</p>
             </div>
           ))}
         </div>
@@ -186,7 +186,7 @@ export default function FundingAssessment() {
                   const on = sel.includes(t.id);
                   return (
                   <button key={t.id} type="button" onClick={() => setFundingType((on ? sel.filter(x => x !== t.id) : sel.concat([t.id])).join(','))}
-                    className={'p-4 rounded-xl border-2 text-right transition ' + (on ? 'border-[#2E9E7B] bg-[#E8F5EF]' : 'border-[#E8F5EF] bg-white')}>
+                    className={'p-4 rounded-xl border-2 text-right transition ' + (on ? 'border-[#1A3D34] bg-[#E8F5EF]' : 'border-[#E8F5EF] bg-white')}>
                     <div className={'font-bold text-sm ' + (on ? 'text-[#1A3D34]' : 'text-[#6B8A80]')}>{t.label}</div>
                     <div className="text-[11px] font-bold mt-1 leading-relaxed text-[#8AA79D]">{t.desc}</div>
                   </button>
@@ -242,9 +242,9 @@ export default function FundingAssessment() {
                     <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل</label>
                     <div className="flex gap-3 mb-3">
                       <button type="button" onClick={() => setLenderType('bank')}
-                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'bank' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>بنك</button>
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'bank' ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>بنك</button>
                       <button type="button" onClick={() => setLenderType('finance_company')}
-                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'finance_company' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>شركة تمويل</button>
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (lenderType === 'finance_company' ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>شركة تمويل</button>
                     </div>
                     {lenderType !== '' && (
                       <input value={lenderName} onChange={(e) => setLenderName(e.target.value)}
@@ -255,7 +255,7 @@ export default function FundingAssessment() {
                     <label className="block font-black text-[#1A3D34] mb-2">حالة السداد</label>
                     <div className="flex gap-3">
                       <button type="button" onClick={() => setDebtStatus('committed')}
-                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'committed' ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>ملتزم بالسداد</button>
+                        className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'committed' ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>ملتزم بالسداد</button>
                       <button type="button" onClick={() => setDebtStatus('late')}
                         className={'flex-1 py-3 rounded-xl border-2 font-bold transition ' + (debtStatus === 'late' ? 'border-[#C9A84C] bg-[#FDF8EC] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>متأخر</button>
                     </div>
@@ -271,7 +271,7 @@ export default function FundingAssessment() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {DEBT_TYPES.map((t) => (
                         <button key={t.id} type="button" onClick={() => setDebtType(t.id)}
-                          className={'p-3 rounded-xl border-2 font-bold transition ' + (debtType === t.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                          className={'p-3 rounded-xl border-2 font-bold transition ' + (debtType === t.id ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
                           {t.label}
                         </button>
                       ))}
@@ -331,7 +331,7 @@ export default function FundingAssessment() {
                     { id: 'other_activity', label: 'أخرى' },
                   ].map((a) => (
                     <button key={a.id} type="button" onClick={() => setActivityType(a.id)}
-                      className={'p-3 rounded-xl border-2 text-right font-bold text-sm transition ' + (activityType === a.id ? 'border-[#2E9E7B] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
+                      className={'p-3 rounded-xl border-2 text-right font-bold text-sm transition ' + (activityType === a.id ? 'border-[#1A3D34] bg-[#E8F5EF] text-[#1A3D34]' : 'border-[#E8F5EF] bg-white text-[#6B8A80]')}>
                       {a.label}
                     </button>
                   ))}
@@ -410,16 +410,16 @@ export default function FundingAssessment() {
             )}
             {step < 4 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
-                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">التالي</button>
+                className="flex-1 py-3 rounded-xl bg-[#1A3D34] text-white font-black disabled:opacity-40">التالي</button>
             )}
             {step === 4 && loading && (
               <div style={{ width:'100%', background:'#FDF8EC', border:'2px solid #C9A84C', borderRadius:12, padding:'12px 16px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:13.5, textAlign:'center', lineHeight:1.7 }}>
-                ⏳ التحليل جارٍ — لا تغلق الصفحة ولا تنتقل منها حتى تظهر النتيجة.
+                التحليل جارٍ — لا تغلق الصفحة ولا تنتقل منها حتى تظهر النتيجة.
               </div>
             )}
             {step === 4 && (
               <button type="button" disabled={stepValid() === false || loading} onClick={submit}
-                className="flex-1 py-3 rounded-xl bg-[#2E9E7B] text-white font-black disabled:opacity-40">
+                className="flex-1 py-3 rounded-xl bg-[#1A3D34] text-white font-black disabled:opacity-40">
                 {loading ? 'جارٍ التحليل...' : 'احسب جاهزيتي'}
               </button>
             )}
