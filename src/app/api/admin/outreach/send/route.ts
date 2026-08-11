@@ -51,7 +51,8 @@ export async function POST(req: Request) {
   let attEn: Att | null = null;
   let deckAr: Att | null = null;
   let deckEn: Att | null = null;
-  const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).single();
+  const trk = String(msgs[0]?.track) === 'investment' ? 'investment' : 'funding';
+  const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).eq('track', trk).maybeSingle();
   const loadAtt = async (fileUrl?: string, fileName?: string): Promise<Att | null> => {
     if (!fileUrl) return null;
     const bad = /سرّي|سرية|موقف|تقييم|negotiation|valuation|confidential/i;
