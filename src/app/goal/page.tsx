@@ -259,7 +259,7 @@ export default function GoalPage() {
         {/* ملف الجاهزية */}
         {doneScores.length > 0 && (
           <div className="mb-12">
-            <div className="rounded-3xl p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+            <div className="rounded-2xl p-6 md:p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
               <p className="text-[#C9D8D0] text-sm font-bold mb-2">مؤشر جاهزية {company?.name || 'شركتك'}</p>
               <div className="text-5xl md:text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 100</span></div>
               <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
@@ -318,7 +318,7 @@ export default function GoalPage() {
         <div className="grid md:grid-cols-3 gap-5 mb-8">
           {TRACKS.map((t) => (
             <button key={t.id} onClick={() => setSelected(t.id)}
-              className={'text-right bg-white rounded-3xl p-7 border-2 transition relative ' + (selected === t.id ? 'border-[#1A3D34] shadow-md' : 'border-[#F0F5F3]')}>
+              className={'text-right bg-white rounded-2xl p-5 md:p-7 border transition relative ' + (selected === t.id ? 'border-[#1A3D34] shadow-md' : 'border-[#F0F5F3]')}>
               {selected === t.id && (
                 <span className="absolute top-4 left-4 w-7 h-7 rounded-full bg-[#1A3D34] text-white flex items-center justify-center text-sm font-black">✓</span>
               )}
