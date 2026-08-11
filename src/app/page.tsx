@@ -10,41 +10,29 @@ export default function Home() {
   const WHATSAPP = '966570314005'
 
   const paths = [
-    {
-      icon: '🏦', title: 'تمويل', tag: '',
-      desc: 'كل أبواب التمويل المتاحة لمنشأتك.',
-      detail: 'نقيس جاهزيتك، نكشف ما يمنع قبولك، ونفتح لك الباب المناسب من بين جهات تمويل محلية وعالمية — أياً كان احتياجك.',
-    },
-    {
-      icon: '📈', title: 'استثمار', tag: '',
-      desc: 'من المستثمر الفردي إلى الصناديق المؤسسية.',
-      detail: 'نجهّز ملفك، نُبرز جاذبية شركتك، ونصلك بالشريك أو المستثمر المناسب لمرحلتك — من داخل المملكة وخارجها.',
-    },
-    {
-      icon: '🏛️', title: 'طرح', tag: '',
-      desc: 'طريقك نحو الإدراج، خطوة بخطوة.',
-      detail: 'نقيس جاهزيتك للطرح، ونرسم لك خارطة طريق واضحة من وضعك الحالي حتى الإدراج في السوق المناسبة، مع مرافقة كاملة.',
-    },
+    { k: 'تمويل', d: 'نقيس جاهزيتك، نكشف ما يمنع قبولك، ونفتح الباب المناسب من بين جهات تمويل محلية وخليجية ودولية — بالمنتج الذي يناسب حالتك لا بالجهة وحدها.' },
+    { k: 'استثمار', d: 'نجهّز ملفك، ونُبرز جاذبية شركتك، ونصلك بالشريك أو المستثمر المناسب لمرحلتك — من داخل المملكة وخارجها.' },
+    { k: 'طرح', d: 'نقيس جاهزيتك للإدراج، ونرسم خارطة طريق من وضعك الحالي حتى السوق المناسبة، مع مرافقة كاملة.' },
   ]
 
   const steps = [
-    { n: '1', t: 'افتح ملفك', d: 'سجّل بيانات شركتك واشترك لفتح ملفك المالي الكامل' },
-    { n: '2', t: 'حدّد هدفك', d: 'تمويل، استثمار، أو طرح — أسئلة دقيقة مصمّمة لهدفك' },
-    { n: '3', t: 'اعرف جاهزيتك', d: 'درجة جاهزية، العوائق، وخطة تحسين واضحة' },
-    { n: '4', t: 'نفتح لك الطريق', d: 'نطابقك مع الجهات المناسبة وفريقنا يتولّى التواصل' },
+    { n: '01', t: 'افتح ملفك', d: 'سجّل بيانات منشأتك في دقائق.' },
+    { n: '02', t: 'حدّد هدفك', d: 'تمويل أو استثمار أو طرح — لكل هدف أسئلته.' },
+    { n: '03', t: 'اعرف جاهزيتك', d: 'درجة دقيقة، والعوائق، وخطة رفعها.' },
+    { n: '04', t: 'نفتح لك الطريق', d: 'نطابقك بالجهات ونخاطبها نيابةً عنك.' },
   ]
 
-  const companion = [
-    { icon: '⚡', t: 'نجهّز ملفك في أيام', d: 'بدل شهور من المحاولة والرفض، نعدّ ملفك المالي جاهزاً للتقديم بسرعة واحترافية — ونختصر عليك الطريق.' },
-    { icon: '🎯', t: 'الجهات الأقرب لك', d: 'لا نضيّع وقتك على أبواب لا تناسبك — نحدّد الجهات الأقرب لقبولك محلياً وعالمياً، ونوجّهك إليها مباشرة.' },
-    { icon: '🚪', t: 'ثلاثة مسارات مفتوحة', d: 'تمويل، استثمار، وطرح — كلها متاحة لك طوال اشتراكك. انطلق في أيٍّ منها متى شئت، وفريق مُرضي معك في كل خطوة.' },
-    { icon: '🧠', t: 'ذاكرة لا تنساك', d: 'مُرضي يتذكّر كل تفاصيل شركتك وتاريخها — فكل استشارة تبني على ما قبلها، ولا تبدأ من الصفر أبداً.' },
+  const opens = [
+    { t: 'مطابقة على مستوى المنتج', d: 'البنك الواحد يطرح منتجات مختلفة، وقد تُرفض في واحد وتُقبل في آخر. نطابقك بالمنتج الصحيح لا بالاسم.' },
+    { t: 'مخاطبة نيابةً عنك', d: 'نكتب لكل جهة خطاباً يحمل المبلغ والغرض ومصدر السداد، ونرسله ونتابعه — بخبرة مستشار مرخّص.' },
+    { t: 'طريق تقديم مكتوب', d: 'لكل جهة: القناة، ورابط التقديم، وخطوات مرقّمة، والمستندات المطلوبة. لا تخمين.' },
+    { t: 'ثلاثة مسارات مفتوحة', d: 'التمويل والاستثمار والطرح متاحة طوال اشتراكك، مع استشارات مفتوحة وأسئلة مباشرة مع الدكتور والفريق.' },
   ]
 
-  const reasons = [
-    { t: 'منصّة مصممة لفتح آفاقك', d: 'مُرضي ليست أداة تقييم فحسب — بُنيت خصيصاً لتفتح أمام شركتك آفاق التمويل والاستثمار والطرح، محلياً وعالمياً، وتمهّد لك طريقاً كان بعيد المنال.' },
-    { t: 'شبكة علاقات تصنع الفرق', d: 'علاقات مباشرة مع جهات تمويل واستثمار معتمدة داخل المملكة وخارجها، وخبرة ١٥ عاماً وعضوية البورد الأمريكي في خدمة طموحك.' },
-    { t: 'أنت صاحب القرار، ونحن نمهّد الطريق', d: 'نجهّز ملفك ونوصلك بالجهات المناسبة وفق الأنظمة السعودية وعبر شركاء معتمدين — ويبقى القرار الأول والأخير بين يديك.' },
+  const score = [
+    { t: 'تحليل أرقامك الفعلية', d: 'كل جانب مالي وتشغيلي يُقاس ويُوزن وفق منهجية مدروسة، لا انطباعات.' },
+    { t: 'مقارنة بمعايير قطاعك', d: 'نضع وضعك مقابل معايير السوق السعودي لتعرف فجوتك بدقة.' },
+    { t: 'العوائق ثم الطريق', d: 'الدرجة بداية لا نهاية — يتبعها ما يمنعك، وكيف يُغلق كل عائق.' },
   ]
 
   const testimonials = [
@@ -56,394 +44,327 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; }
-        .lp { font-family:'Cairo',sans-serif; background:#FBFCFB; color:#1A3D34; direction:rtl; overflow-x:hidden; }
-        .lp-nav { display:flex; justify-content:space-between; align-items:center; padding:16px 32px; background:#fff; border-bottom:1px solid #EAF2EE; position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:10px; }
-        .lp-logo { font-size:26px; font-weight:900; color:#2E9E7B; }
-        .lp-logo span { color:#1A3D34; font-size:15px; font-weight:700; }
-        .lp-nav-right { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-        .lp-nav-phone { display:flex; align-items:center; gap:7px; color:#1A3D34; font-weight:800; font-size:14.5px; text-decoration:none; }
-        .lp-nav-phone:hover { color:#2E9E7B; }
-        .lp-login { background:transparent; color:#1A3D34; border:1.5px solid #E8F5EF; padding:9px 22px; border-radius:30px; font-family:'Cairo'; font-weight:700; font-size:14px; cursor:pointer; }
-        .lp-login:hover { border-color:#2E9E7B; color:#2E9E7B; }
-        .lp-trust-bar { background:linear-gradient(135deg,#1A3D34,#2E5E50); color:#fff; text-align:center; padding:9px 20px; font-size:13px; font-weight:600; display:flex; justify-content:center; align-items:center; gap:18px; flex-wrap:wrap; }
-        .lp-trust-bar span { display:inline-flex; align-items:center; gap:6px; }
-        .lp-hero { text-align:center; padding:64px 20px 50px; max-width:880px; margin:0 auto; }
-        .lp-badge { display:inline-block; background:#E8F5EF; color:#2E9E7B; padding:8px 20px; border-radius:30px; font-size:13px; font-weight:800; margin-bottom:22px; }
-        .lp-h1 { font-size:40px; font-weight:900; line-height:1.4; margin-bottom:20px; color:#1A3D34; }
-        .lp-h1 em { color:#2E9E7B; font-style:normal; }
-        .lp-pain { color:#C0564B; font-size:17px; font-weight:800; line-height:1.8; max-width:640px; margin:0 auto 14px; }
-        .lp-painlead { max-width:680px; margin:0 auto 24px; }
-        .lp-painlead-1 { color:#1A3D34; font-size:24px; font-weight:900; line-height:1.7; margin-bottom:12px; }
-        .lp-painlead-1 span { color:#C0564B; }
-        .lp-painlead-2 { color:#5B7068; font-size:16px; font-weight:700; line-height:1.9; }
-        .lp-sub { color:#5B7068; font-size:17px; line-height:2; max-width:680px; margin:0 auto 16px; }
-        .lp-clarify { display:inline-block; background:#EAF7F0; color:#1E7A5A; font-size:13.5px; font-weight:700; padding:7px 16px; border-radius:30px; margin-bottom:16px; border:1px solid #C5E8D8; }
-        .lp-global { display:inline-flex; align-items:center; gap:8px; background:#FBF3DC; color:#9A7B2E; padding:9px 22px; border-radius:30px; font-size:14px; font-weight:800; margin-bottom:26px; }
-        .lp-cta { background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; border:none; padding:17px 52px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:17px; font-weight:900; cursor:pointer; box-shadow:0 10px 28px rgba(46,158,123,0.32); transition:transform .15s; display:block; margin:0 auto; }
-        .lp-cta:hover { transform:translateY(-2px); }
-        .lp-cta-sub { color:#A3BAB2; font-size:12.5px; margin-top:12px; }
-        .lp-section { max-width:1100px; margin:0 auto; padding:56px 20px; }
-        .lp-sec-title { text-align:center; font-size:30px; font-weight:900; color:#1A3D34; margin-bottom:10px; }
-        .lp-sec-sub { text-align:center; color:#5B7068; font-size:16px; margin-bottom:42px; }
-        .lp-paths { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
-        .lp-path { position:relative; background:#fff; border:1.5px solid #EAF2EE; border-radius:20px; padding:32px 26px; cursor:pointer; transition:all .2s; }
-        .lp-path:hover { border-color:#2E9E7B; transform:translateY(-4px); box-shadow:0 14px 36px rgba(46,158,123,0.13); }
-        .lp-path-tag { position:absolute; top:-11px; right:24px; background:#C9A84C; color:#fff; padding:4px 14px; border-radius:20px; font-size:11.5px; font-weight:900; }
-        .lp-path-icon { font-size:42px; margin-bottom:14px; }
-        .lp-path-title { font-size:23px; font-weight:900; color:#1A3D34; margin-bottom:10px; }
-        .lp-path-desc { color:#1A3D34; font-size:14px; font-weight:700; line-height:1.7; margin-bottom:10px; }
-        .lp-path-detail { color:#6B8A80; font-size:13px; line-height:1.85; }
-        .lp-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
-        .lp-step { text-align:center; padding:10px; }
-        .lp-step-n { width:52px; height:52px; line-height:52px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; font-size:22px; font-weight:900; margin:0 auto 16px; }
-        .lp-step-t { font-size:17px; font-weight:900; color:#1A3D34; margin-bottom:7px; }
-        .lp-step-d { color:#6B8A80; font-size:13.5px; line-height:1.75; }
-        .lp-companion-wrap { background:linear-gradient(135deg,#F0F7F4,#E8F5EF); }
-        .lp-companion { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
-        .lp-services-hint { margin-top:26px; background:#fff; border:1.5px dashed #2E9E7B; border-radius:18px; padding:24px 28px; display:flex; gap:18px; align-items:center; }
-        .lp-services-hint-icon { font-size:38px; flex-shrink:0; }
-        .lp-services-hint-t { font-size:18px; font-weight:900; color:#1A3D34; margin-bottom:6px; }
-        .lp-services-hint-d { color:#5B7068; font-size:14px; line-height:1.85; }
-        .lp-comp-item { background:#fff; border-radius:18px; padding:26px 22px; text-align:center; }
-        .lp-comp-icon { font-size:34px; margin-bottom:12px; }
-        .lp-comp-t { font-size:16px; font-weight:900; color:#1A3D34; margin-bottom:8px; }
-        .lp-comp-d { color:#6B8A80; font-size:13px; line-height:1.8; }
-        .lp-why { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; max-width:880px; margin:0 auto; }
-        .lp-why-item { background:#fff; border:1.5px solid #EAF2EE; border-radius:16px; padding:24px 26px; }
-        .lp-why-t { font-size:17px; font-weight:900; color:#2E9E7B; margin-bottom:8px; }
-        .lp-why-d { color:#5B7068; font-size:14px; line-height:1.8; }
-        .lp-advisor-wrap { background:#1A3D34; }
-        .lp-advisor { max-width:900px; margin:0 auto; padding:56px 20px; display:flex; gap:32px; align-items:center; flex-wrap:wrap; justify-content:center; }
-        .lp-advisor-photo { width:130px; height:130px; border-radius:50%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); display:flex; align-items:center; justify-content:center; font-size:54px; flex-shrink:0; }
-        .lp-advisor-body { flex:1; min-width:280px; }
-        .lp-advisor-name { color:#fff; font-size:25px; font-weight:900; margin-bottom:6px; }
-        .lp-advisor-title { color:#2E9E7B; font-size:15px; font-weight:700; margin-bottom:14px; }
-        .lp-advisor-desc { color:#C5D8D1; font-size:14.5px; line-height:2; margin-bottom:14px; }
-        .lp-advisor-lic { display:inline-block; background:rgba(255,255,255,0.1); color:#fff; padding:8px 18px; border-radius:30px; font-size:13px; font-weight:700; }
-        .lp-tst { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
-        .lp-tst-card { background:#fff; border:1.5px solid #EAF2EE; border-radius:18px; padding:28px 24px; }
-        .lp-tst-stars { color:#C9A84C; font-size:16px; margin-bottom:12px; letter-spacing:2px; }
-        .lp-tst-quote { color:#3A4D47; font-size:14px; line-height:2; margin-bottom:18px; }
-        .lp-tst-name { font-size:15px; font-weight:900; color:#1A3D34; }
-        .lp-tst-role { color:#9DB3AB; font-size:12.5px; margin-top:2px; }
-        .lp-cred-wrap { background:#F0F7F4; }
-        .lp-cred { max-width:1000px; margin:0 auto; padding:50px 20px; }
-        .lp-cred-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; margin-top:8px; }
-        .lp-cred-item { background:#fff; border-radius:14px; padding:22px; display:flex; gap:14px; align-items:flex-start; }
-        .lp-cred-icon { font-size:26px; flex-shrink:0; }
-        .lp-cred-label { font-size:12.5px; color:#9DB3AB; font-weight:700; margin-bottom:3px; }
-        .lp-cred-val { font-size:14.5px; color:#1A3D34; font-weight:800; line-height:1.6; }
-        .lp-support { max-width:760px; margin:0 auto; padding:50px 20px; text-align:center; }
-        .lp-support-icon { font-size:46px; margin-bottom:14px; }
-        .lp-support h2 { font-size:27px; font-weight:900; color:#1A3D34; margin-bottom:10px; }
-        .lp-support p { color:#5B7068; font-size:15.5px; line-height:1.9; margin-bottom:24px; }
-        .lp-support-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
-        .lp-btn-wa { background:#25D366; color:#fff; text-decoration:none; padding:14px 32px; border-radius:40px; font-weight:900; font-size:15px; display:inline-flex; align-items:center; gap:9px; }
-        .lp-btn-call { background:#1A3D34; color:#fff; text-decoration:none; padding:14px 32px; border-radius:40px; font-weight:900; font-size:15px; display:inline-flex; align-items:center; gap:9px; }
-        .lp-final { background:linear-gradient(135deg,#2E9E7B,#1A3D34); text-align:center; padding:60px 20px; }
-        .lp-final h2 { color:#fff; font-size:30px; font-weight:900; margin-bottom:14px; }
-        .lp-final p { color:#D5EBE3; font-size:16px; margin-bottom:28px; }
-        .lp-final-cta { background:#fff; color:#1A3D34; border:none; padding:17px 50px; border-radius:40px; font-family:'Cairo'; font-size:17px; font-weight:900; cursor:pointer; }
-        .lp-footer { background:#13302A; color:#9DB3AB; padding:40px 20px 28px; }
-        .lp-footer-inner { max-width:1000px; margin:0 auto; display:flex; justify-content:space-between; gap:28px; flex-wrap:wrap; }
-        .lp-footer-logo { font-size:22px; font-weight:900; color:#2E9E7B; margin-bottom:10px; }
-        .lp-footer-col h4 { color:#fff; font-size:14px; margin-bottom:12px; font-weight:800; }
-        .lp-footer-col p { font-size:13px; line-height:2; }
-        .lp-footer-bottom { max-width:1000px; margin:26px auto 0; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1); text-align:center; font-size:12px; color:#6B8A80; }
-
-        .lp-mini { background:#F4FBF8; padding:56px 20px; }
-        .lp-mini-inner { max-width:640px; margin:0 auto; text-align:center; }
-        .lp-mini-badge { display:inline-block; background:#C9A84C; color:#fff; font-weight:700; font-size:13px; padding:6px 16px; border-radius:30px; margin-bottom:16px; }
-        .lp-mini h2 { font-size:30px; font-weight:900; color:#1A3D34; margin:0 0 8px; }
-        .lp-mini-sub { color:#5a6f68; font-size:16px; margin:0 0 28px; }
-        .lp-mini-card { background:#fff; border:1px solid #E8F5EF; border-radius:20px; padding:32px 26px; box-shadow:0 8px 30px rgba(46,158,123,0.08); text-align:right; }
-        .lp-mini-progress { height:6px; background:#E8F5EF; border-radius:10px; overflow:hidden; margin-bottom:18px; }
-        .lp-mini-bar { height:100%; background:#2E9E7B; border-radius:10px; transition:width .3s ease; }
-        .lp-mini-qnum { color:#C9A84C; font-weight:700; font-size:13px; margin-bottom:8px; }
-        .lp-mini-q { font-size:21px; font-weight:700; color:#1A3D34; margin:0 0 20px; }
-        .lp-mini-opts { display:grid; gap:11px; }
-        .lp-mini-opt { background:#F4FBF8; border:1.5px solid #E8F5EF; color:#1A3D34; padding:14px 18px; border-radius:14px; font-family:'Cairo'; font-weight:600; font-size:15px; cursor:pointer; text-align:right; transition:all .15s ease; }
-        .lp-mini-opt:hover { border-color:#2E9E7B; background:#fff; transform:translateY(-1px); }
-        .lp-mini-score { font-size:64px; font-weight:900; text-align:center; line-height:1; }
-        .lp-mini-score span { font-size:24px; color:#9bb0a8; }
-        .lp-mini-verdict { display:block; width:fit-content; margin:14px auto 18px; color:#fff; font-weight:700; font-size:15px; padding:7px 22px; border-radius:30px; }
-        .lp-mini-text { color:#3d524b; font-size:16px; line-height:1.8; text-align:center; margin:0 0 24px; }
-        .lp-mini-gate { border-top:1px dashed #E8F5EF; padding-top:22px; }
-        .lp-mini-gate-t { font-weight:700; color:#1A3D34; font-size:15px; margin:0 0 14px; text-align:center; }
-        .lp-mini-input { width:100%; box-sizing:border-box; border:1.5px solid #E8F5EF; border-radius:12px; padding:13px 16px; font-family:'Cairo'; font-size:15px; margin-bottom:11px; text-align:right; }
-        .lp-mini-input:focus { outline:none; border-color:#2E9E7B; }
-        .lp-mini-err { color:#d9534f; font-size:14px; font-weight:600; margin-bottom:10px; text-align:center; }
-        .lp-mini-submit { width:100%; background:#2E9E7B; color:#fff; border:none; padding:15px; border-radius:14px; font-family:'Cairo'; font-weight:700; font-size:16px; cursor:pointer; }
-        .lp-mini-submit:hover { background:#268768; }
-        .lp-mini-submit:disabled { opacity:.6; cursor:default; }
-        .lp-mini-thanks { text-align:center; }
-        .lp-mini-check { width:60px; height:60px; line-height:60px; margin:0 auto 14px; background:#2E9E7B; color:#fff; font-size:30px; border-radius:50%; }
-        .lp-mini-thanks h3 { font-size:23px; color:#1A3D34; margin:0 0 8px; }
-        .lp-mini-thanks-sub { color:#5a6f68; font-size:15px; line-height:1.7; margin:0 0 24px; }
-        .lp-mini-benefits { display:grid; gap:16px; text-align:right; margin-bottom:26px; }
-        .lp-mini-benefit { display:flex; gap:14px; align-items:flex-start; background:#F4FBF8; border-radius:14px; padding:16px; }
-        .lp-mini-b-icon { font-size:26px; flex-shrink:0; }
-        .lp-mini-benefit b { color:#1A3D34; font-size:16px; display:block; margin-bottom:4px; }
-        .lp-mini-benefit p { color:#5a6f68; font-size:14px; line-height:1.7; margin:0; }
-        .lp-mini-register { width:100%; background:linear-gradient(135deg,#2E9E7B,#1A3D34); color:#fff; border:none; padding:16px; border-radius:14px; font-family:'Cairo'; font-weight:700; font-size:17px; cursor:pointer; }
-        .lp-mini-register:hover { opacity:.93; }
-        .lp-mini-note { color:#9bb0a8; font-size:13px; margin:12px 0 0; }
-
-        .lp-score-wrap { background:#F4FBF8; }
-        .lp-score-inner { max-width:900px; margin:0 auto; padding:56px 20px; text-align:center; }
-        .lp-score-badge { display:inline-block; background:#C9A84C; color:#fff; font-weight:700; font-size:13px; padding:6px 18px; border-radius:30px; margin-bottom:16px; }
-        .lp-score-h { font-size:28px; font-weight:900; color:#1A3D34; margin:0 0 14px; }
-        .lp-score-sub { color:#5B7068; font-size:15.5px; line-height:2; max-width:720px; margin:0 auto 36px; }
-        .lp-score-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-        .lp-score-item { background:#fff; border:1.5px solid #E8F5EF; border-radius:16px; padding:26px 22px; text-align:right; }
-        .lp-score-icon { font-size:30px; margin-bottom:12px; }
-        .lp-score-t { font-size:16px; font-weight:900; color:#2E9E7B; margin-bottom:8px; }
-        .lp-score-d { color:#5B7068; font-size:13.5px; line-height:1.9; }
-
-        @media (max-width:860px) {
-          .lp-h1 { font-size:30px; }
-          .lp-paths, .lp-steps, .lp-companion, .lp-why, .lp-tst, .lp-score-grid { grid-template-columns:1fr; }
-          .lp-sec-title { font-size:24px; }
-          .lp-nav { padding:14px 18px; }
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+        :root{
+          --ink:#1A3D34; --deep:#122C26; --gold:#C9A84C; --gold-soft:#E4CE93;
+          --paper:#FFFFFF; --mist:#F4F7F6; --line:#E3EAE7; --muted:#6B8A80;
         }
+        *{box-sizing:border-box;margin:0;padding:0}
+        .lp{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--paper);color:var(--ink);direction:rtl;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+        .lp h1,.lp h2,.lp h3,.lp .disp{font-family:'Tajawal',sans-serif;font-weight:900;letter-spacing:-.01em}
+        .lp a{color:inherit}
+        .eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
+
+        .bar{background:var(--deep);color:#9FB6AE;font-size:12px;text-align:center;padding:8px 16px;letter-spacing:.02em}
+        .bar b{color:#fff;font-weight:600}
+        .nav{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 28px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:90}
+        .logo{font-family:'Tajawal';font-size:24px;font-weight:900;color:var(--ink)}
+        .logo i{font-style:normal;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.14em;margin-inline-start:7px}
+        .nav-r{display:flex;align-items:center;gap:14px}
+        .nav-tel{font-size:14px;font-weight:600;text-decoration:none;color:var(--ink);white-space:nowrap}
+        .nav-btn{background:none;border:1.5px solid var(--line);color:var(--ink);padding:9px 20px;border-radius:2px;font-family:'IBM Plex Sans Arabic';font-weight:600;font-size:13.5px;cursor:pointer;transition:.18s}
+        .nav-btn:hover{border-color:var(--ink)}
+
+        .hero{background:var(--ink);color:#fff;padding:clamp(44px,7vw,80px) 20px clamp(48px,7vw,76px)}
+        .hero-in{max-width:960px;margin:0 auto;text-align:center}
+        .idx{max-width:440px;margin:0 auto clamp(30px,5vw,44px)}
+        .idx-num{font-family:'Tajawal';font-weight:900;color:var(--gold);font-size:clamp(64px,14vw,104px);line-height:.95;margin:12px 0 4px}
+        .idx-num span{font-size:clamp(18px,3.5vw,26px);color:var(--gold-soft);font-weight:500}
+        .idx-track{position:relative;height:2px;background:rgba(255,255,255,.16);margin:20px 0 8px}
+        .idx-fill{position:absolute;right:0;top:0;height:100%;width:43%;background:var(--gold)}
+        .idx-dot{position:absolute;right:43%;top:50%;transform:translate(50%,-50%);width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 5px rgba(201,168,76,.22)}
+        .idx-sc{display:flex;justify-content:space-between;font-size:11px;color:#7E9A92;letter-spacing:.08em}
+        .idx-cap{color:#B9CDC6;font-size:13.5px;line-height:1.9;margin-top:14px}
+        .idx-link{display:inline-block;margin-top:8px;color:var(--gold);font-size:13px;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:2px}
+
+        .hero h1{font-size:clamp(27px,5.4vw,46px);line-height:1.35;margin-bottom:16px}
+        .hero h1 em{font-style:normal;color:var(--gold)}
+        .hero-sub{color:#C2D5CE;font-size:clamp(14.5px,2.2vw,17px);line-height:2;max-width:620px;margin:0 auto 26px}
+        .cta{background:var(--gold);color:var(--deep);border:none;padding:16px 40px;border-radius:2px;font-family:'Tajawal';font-size:16px;font-weight:900;cursor:pointer;transition:.18s}
+        .cta:hover{background:#D9BA63}
+        .cta-note{color:#8FA9A1;font-size:12.5px;line-height:1.9;margin-top:14px;max-width:520px;margin-inline:auto}
+        .chip{display:inline-block;border:1px solid rgba(255,255,255,.2);color:#B9CDC6;font-size:12px;padding:6px 14px;border-radius:2px;margin-bottom:22px}
+
+        .sec{max-width:1080px;margin:0 auto;padding:clamp(48px,7vw,80px) 20px}
+        .sec-head{max-width:640px;margin:0 auto clamp(28px,4vw,44px);text-align:center}
+        .sec-head h2{font-size:clamp(23px,4vw,34px);line-height:1.4;margin:10px 0 10px}
+        .sec-head p{color:var(--muted);font-size:15px;line-height:1.95}
+        .rule{width:38px;height:2px;background:var(--gold);margin:0 auto}
+
+        .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+        .cell{background:#fff;padding:30px 26px}
+        .cell h3{font-size:19px;margin-bottom:10px}
+        .cell p{color:var(--muted);font-size:14px;line-height:1.95}
+        .cell-k{font-family:'Tajawal';font-weight:900;font-size:22px;color:var(--ink);margin-bottom:12px;padding-bottom:12px;border-bottom:2px solid var(--gold);display:inline-block}
+
+        .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+        .step-n{font-family:'Tajawal';font-weight:900;font-size:15px;color:var(--gold);letter-spacing:.1em;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+        .step h3{font-size:17px;margin-bottom:7px}
+        .step p{color:var(--muted);font-size:13.5px;line-height:1.9}
+
+        .mist{background:var(--mist)}
+        .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:22px}
+        .card{background:#fff;border:1px solid var(--line);padding:26px 24px}
+        .card h3{font-size:17px;margin-bottom:9px}
+        .card p{color:var(--muted);font-size:14px;line-height:1.95}
+
+        .adv{background:var(--deep);color:#fff}
+        .adv-in{max-width:820px;margin:0 auto;padding:clamp(46px,7vw,72px) 20px;text-align:center}
+        .adv-name{font-family:'Tajawal';font-weight:900;font-size:clamp(21px,3.6vw,29px);margin:14px 0 8px}
+        .adv-role{color:var(--gold);font-size:14px;font-weight:600;margin-bottom:20px}
+        .adv-txt{color:#BDD1CA;font-size:15px;line-height:2.1;max-width:640px;margin:0 auto 22px}
+        .adv-lic{display:inline-block;border:1px solid rgba(255,255,255,.18);padding:9px 18px;font-size:12.5px;color:#DCE8E4;border-radius:2px}
+
+        .tst{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+        .tst-c{background:#fff;border:1px solid var(--line);border-top:3px solid var(--gold);padding:28px 24px}
+        .tst-q{color:#33473F;font-size:14.5px;line-height:2.05;margin-bottom:20px}
+        .tst-n{font-family:'Tajawal';font-weight:900;font-size:15.5px}
+        .tst-r{color:var(--muted);font-size:12.5px;margin-top:3px}
+
+        .legal{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+        .legal-c{background:#fff;padding:24px}
+        .legal-l{font-size:11.5px;color:var(--muted);letter-spacing:.1em;margin-bottom:6px}
+        .legal-v{font-family:'Tajawal';font-weight:700;font-size:15px;line-height:1.7}
+
+        .final{background:var(--ink);text-align:center;padding:clamp(50px,7vw,76px) 20px}
+        .final h2{color:#fff;font-size:clamp(23px,4vw,33px);margin-bottom:12px}
+        .final p{color:#B9CDC6;font-size:15px;margin-bottom:26px}
+
+        .ft{background:var(--deep);color:#8FA9A1;padding:44px 20px 24px;font-size:13px}
+        .ft-in{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+        .ft h4{color:#fff;font-family:'Tajawal';font-size:14px;margin-bottom:12px}
+        .ft p,.ft a{line-height:2.1;text-decoration:none;color:#8FA9A1}
+        .ft a:hover{color:var(--gold)}
+        .ft-logo{font-family:'Tajawal';font-weight:900;font-size:20px;color:#fff;margin-bottom:10px}
+        .ft-b{max-width:1000px;margin:26px auto 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.08);text-align:center;font-size:11.5px;color:#65837B}
+        .ft-cta{display:inline-block;border:1px solid rgba(201,168,76,.4);color:var(--gold);padding:9px 18px;border-radius:2px;margin-top:6px;font-weight:600}
+
+        .lp-mini{background:var(--mist);padding:clamp(44px,6vw,66px) 20px}
+        .lp-mini-inner{max-width:620px;margin:0 auto;text-align:center}
+        .lp-mini-badge{display:inline-block;border:1px solid var(--gold);color:var(--gold);font-weight:600;font-size:11.5px;letter-spacing:.14em;padding:6px 14px;border-radius:2px;margin-bottom:16px}
+        .lp-mini h2{font-family:'Tajawal';font-size:clamp(23px,4vw,32px);font-weight:900;color:var(--ink);margin:0 0 10px}
+        .lp-mini-sub{color:var(--muted);font-size:15px;margin:0 0 26px;line-height:1.9}
+        .lp-mini-card{background:#fff;border:1px solid var(--line);border-radius:2px;padding:30px 24px;text-align:right}
+        .lp-mini-progress{height:2px;background:var(--line);overflow:hidden;margin-bottom:20px}
+        .lp-mini-bar{height:100%;background:var(--gold);transition:width .3s ease}
+        .lp-mini-qnum{color:var(--gold);font-weight:600;font-size:12px;letter-spacing:.1em;margin-bottom:8px}
+        .lp-mini-q{font-family:'Tajawal';font-size:20px;font-weight:900;color:var(--ink);margin:0 0 20px;line-height:1.6}
+        .lp-mini-opts{display:grid;gap:10px}
+        .lp-mini-opt{background:#fff;border:1px solid var(--line);color:var(--ink);padding:14px 18px;border-radius:2px;font-family:'IBM Plex Sans Arabic';font-weight:500;font-size:15px;cursor:pointer;text-align:right;transition:.15s}
+        .lp-mini-opt:hover{border-color:var(--ink);background:var(--mist)}
+        .lp-mini-score{font-family:'Tajawal';font-size:60px;font-weight:900;text-align:center;line-height:1;color:var(--ink)}
+        .lp-mini-score span{font-size:22px;color:var(--muted)}
+        .lp-mini-verdict{display:block;width:fit-content;margin:14px auto 18px;color:#fff;font-weight:600;font-size:14px;padding:7px 20px;border-radius:2px}
+        .lp-mini-text{color:#3d524b;font-size:15px;line-height:1.9;text-align:center;margin:0 0 24px}
+        .lp-mini-gate{border-top:1px solid var(--line);padding-top:22px}
+        .lp-mini-gate-t{font-family:'Tajawal';font-weight:900;color:var(--ink);font-size:15px;margin:0 0 14px;text-align:center}
+        .lp-mini-input{width:100%;border:1px solid var(--line);border-radius:2px;padding:13px 15px;font-family:'IBM Plex Sans Arabic';font-size:15px;margin-bottom:10px;text-align:right}
+        .lp-mini-input:focus{outline:none;border-color:var(--ink)}
+        .lp-mini-err{color:#B4453C;font-size:13.5px;font-weight:600;margin-bottom:10px;text-align:center}
+        .lp-mini-submit{width:100%;background:var(--ink);color:#fff;border:none;padding:15px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:16px;cursor:pointer}
+        .lp-mini-submit:hover{background:var(--deep)}
+        .lp-mini-submit:disabled{opacity:.55;cursor:default}
+        .lp-mini-thanks{text-align:center}
+        .lp-mini-check{width:54px;height:54px;line-height:54px;margin:0 auto 14px;background:var(--ink);color:#fff;font-size:26px;border-radius:50%}
+        .lp-mini-thanks h3{font-family:'Tajawal';font-size:22px;color:var(--ink);margin:0 0 8px}
+        .lp-mini-thanks-sub{color:var(--muted);font-size:15px;line-height:1.8;margin:0 0 24px}
+        .lp-mini-benefits{display:grid;gap:12px;text-align:right;margin-bottom:24px}
+        .lp-mini-benefit{display:flex;gap:14px;align-items:flex-start;background:var(--mist);border-radius:2px;padding:16px}
+        .lp-mini-b-icon{font-size:22px;flex-shrink:0;color:var(--gold)}
+        .lp-mini-benefit b{font-family:'Tajawal';color:var(--ink);font-size:15.5px;display:block;margin-bottom:4px}
+        .lp-mini-benefit p{color:var(--muted);font-size:14px;line-height:1.8;margin:0}
+        .lp-mini-register{width:100%;background:var(--gold);color:var(--deep);border:none;padding:16px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:16.5px;cursor:pointer}
+        .lp-mini-register:hover{background:#D9BA63}
+        .lp-mini-note{color:var(--muted);font-size:12.5px;margin:12px 0 0}
+
+        @media (max-width:900px){
+          .grid3,.tst,.legal{grid-template-columns:1fr}
+          .steps{grid-template-columns:repeat(2,1fr)}
+          .ft-in{grid-template-columns:repeat(2,1fr)}
+        }
+        @media (max-width:620px){
+          .nav{padding:12px 16px}
+          .logo{font-size:20px}
+          .nav-tel{display:none}
+          .grid2,.steps,.ft-in{grid-template-columns:1fr}
+          .sec{padding:40px 16px}
+          .cell{padding:24px 20px}
+          .cta{width:100%;padding:16px 20px}
+        }
+        @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
       `}</style>
 
       <div className="lp">
 
-        <div className="lp-trust-bar">
-          <span>🛡️ شركة سعودية</span>
-          <span>🌍 جهات محلية وعالمية</span>
-          <span>📞 دعم ٢٤ ساعة</span>
-        </div>
+        <div className="bar"><b>حلول المرضي للاستشارات المالية</b> · رخصة استشارة FL-457927015 · سجل تجاري 7039663724</div>
 
-        <nav className="lp-nav">
-          <div className="lp-logo">مُرضي <span>Murdi</span></div>
-          <div className="lp-nav-right">
-            <a className="lp-nav-phone" href={`tel:${PHONE}`}>📞 {PHONE}</a>
-            <button className="lp-login" onClick={() => router.push('/auth/login')}>تسجيل الدخول</button>
+        <nav className="nav">
+          <div className="logo">مُرضي <i>MURDI</i></div>
+          <div className="nav-r">
+            <a className="nav-tel" href={`tel:${PHONE}`}>{PHONE}</a>
+            <button className="nav-btn" onClick={() => router.push('/auth/login')}>تسجيل الدخول</button>
           </div>
         </nav>
 
-        <section className="lp-hero">
-          <div className="lp-badge">منصة جاهزية رأس المال الأولى في السعودية</div>
-          <div className="lp-painlead">
-            <p className="lp-painlead-1">أكثر ما يمنع الشركات من الوصول إلى رأس المال ليس نقص الفرص…<br/><span>بل نقص الجاهزية.</span></p>
-            <p className="lp-painlead-2">قبل أن تضيّع وقتك مع البنوك، أو المستثمرين، أو التفكير في الإدراج — اعرف أولاً أين تقف.</p>
+        <section className="hero">
+          <div className="hero-in">
+            <div className="idx">
+              <div className="eyebrow">مؤشر مُرضي لجاهزية رأس المال</div>
+              <div className="idx-num">43<span>/100</span></div>
+              <div className="idx-track"><div className="idx-fill" /><div className="idx-dot" /></div>
+              <div className="idx-sc"><span>0</span><span>100</span></div>
+              <div className="idx-cap">متوسط جاهزية المنشآت السعودية التي قاستها مُرضي. أين تقف أنت؟</div>
+              <a className="idx-link" href="/readiness-index">اقرأ التقرير الكامل ←</a>
+            </div>
+
+            <h1>ما يمنع الشركات عن رأس المال ليس نقص الفرص —<br /><em>بل نقص الجاهزية.</em></h1>
+            <p className="hero-sub">نقيس أين تقف منشأتك بالضبط، ونكشف ما يمنع قبولها، ونجهّز ملفها — ثم نطابقها بالجهات الأقرب لقبولها ونخاطبها نيابةً عنك.</p>
+            <div className="chip">منصة استشارية لقياس وتجهيز الجاهزية — لا نمنح تمويلاً ولا نضمن نتيجة</div>
+            <div><button className="cta" onClick={go}>افتح ملف شركتك — التقييم مجاني</button></div>
+            <div className="cta-note">الاشتراك 2,900 ر.س لأربعة أشهر يفتح مطابقة الجهات ومخاطبتها نيابةً عنك، مع استشارات مفتوحة وأسئلة مباشرة مع د. عبدالحكيم والفريق.</div>
           </div>
-          <h1 className="lp-h1">شركتك تستحق <em>تمويلاً، استثماراً، أو طرحاً</em><br/>لكن هل هي جاهزة؟</h1>
-          <p className="lp-pain">تعِبت من رفض الجهات؟ تائه بين الأبواب؟ لا تعرف أين الخلل في ملفك؟</p>
-          <div className="lp-clarify">منصة استشارية لقياس وتجهيز جاهزية رأس المال — لا نمنح تمويلاً ولا نضمن نتيجة</div>
-          {/* HIDE2_START فقرة الوصف — لإرجاعها احذف هذا السطر وسطر النهاية */}
-          {true && (
-          <p className="lp-sub">
-            مرضي يكشف لك أين تقف شركتك بالضبط، وما الذي يمنعها، ويجهّز ملفك في أيام —
-            ثم يوصلك بالجهات الأقرب لقبولك محلياً وعالمياً، ويرافقك حتى تفتح الباب.
-          </p>
-          )}
-          {/* HIDE2_END */}
-          {/* HIDE_FOR_PAYMENT_REVIEW_START — لإرجاعها: احذف هذا السطر والسطر المقابل END */}
-          {true && <div className="lp-global">🌍 تمويل واستثمار بمعايير نظامية — جهات محلية وعالمية</div>}
-          {/* HIDE_FOR_PAYMENT_REVIEW_END */}
-          <button className="lp-cta" onClick={go}>افتح ملف شركتك الآن</button>
-          <div className="lp-cta-sub">اشتراك 2,900 ر.س لأربعة أشهر — يفتح مطابقة الجهات ومخاطبتها نيابةً عنك، مع استشارات مفتوحة وأسئلة مباشرة مع د. عبدالحكيم والفريق</div>
         </section>
 
-        <div style={{maxWidth:760,margin:'0 auto 14px',background:'#13302A',borderRadius:14,padding:'16px 22px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
-          <span style={{color:'#fff',fontSize:15,lineHeight:1.8}}>مؤشر مُرضي: متوسط جاهزية الشركات السعودية <strong style={{color:'#C9A84C',fontSize:20}}>43/100</strong></span>
-          <a href="/readiness-index" style={{color:'#C9A84C',fontWeight:700,textDecoration:'none',fontSize:14,whiteSpace:'nowrap'}}>اقرأ التقرير الكامل ←</a>
-        </div>
         <div id="mini-assessment"><MiniAssessment /></div>
 
-        {/* HIDE_FOR_PAYMENT_REVIEW_START — قسم البطاقات — لإرجاعه: احذف سطر البداية وسطر النهاية فقط */}
-        {true && (
-        <section className="lp-section">
-          <h2 className="lp-sec-title">اختر هدفك — والباقي علينا</h2>
-          <p className="lp-sec-sub">ثلاثة مسارات، لكل مسار محرك تقييم خاص ومطابقة مع الجهات المناسبة</p>
-          <div className="lp-paths">
+        <section className="sec">
+          <div className="sec-head">
+            <div className="rule" />
+            <h2>ثلاثة مسارات — اختر هدفك</h2>
+            <p>لكل مسار محرك تقييم خاص، ومطابقة مع الجهات التي تناسب حالتك تحديداً.</p>
+          </div>
+          <div className="grid3">
             {paths.map(p => (
-              <div className="lp-path" key={p.title} onClick={go}>
-                {p.tag && <span className="lp-path-tag">{p.tag}</span>}
-                <div className="lp-path-icon">{p.icon}</div>
-                <div className="lp-path-title">{p.title}</div>
-                <div className="lp-path-desc">{p.desc}</div>
-                <div className="lp-path-detail">{p.detail}</div>
+              <div className="cell" key={p.k} onClick={go} style={{ cursor: 'pointer' }}>
+                <div className="cell-k">{p.k}</div>
+                <p>{p.d}</p>
               </div>
             ))}
           </div>
         </section>
-        )}
-        {/* HIDE_FOR_PAYMENT_REVIEW_END */}
 
-        {/* HIDE2_START كيف تعمل — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
-        <section className="lp-section">
-          <h2 className="lp-sec-title">كيف تعمل المنصة؟</h2>
-          <p className="lp-sec-sub">أربع خطوات من التسجيل حتى فتح الأبواب</p>
-          <div className="lp-steps">
-            {steps.map(s => (
-              <div className="lp-step" key={s.n}>
-                <div className="lp-step-n">{s.n}</div>
-                <div className="lp-step-t">{s.t}</div>
-                <div className="lp-step-d">{s.d}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-        )}
-        {/* HIDE2_END */}
-
-        {/* HIDE2_START اشتراك واحد — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
-        <div className="lp-companion-wrap">
-          <section className="lp-section">
-            <h2 className="lp-sec-title">اشتراك واحد… يفتح لك كل الأبواب</h2>
-            <p className="lp-sec-sub">تدفع مرة، فتحصل على تقييم دقيق وخارطة طريق واستشارة و٣ مسارات شغّالة طوال اشتراكك — وفريق مُرضي يجهّز ملفك ويختصر طريقك</p>
-            <div className="lp-companion">
-              {companion.map(c => (
-                <div className="lp-comp-item" key={c.t}>
-                  <div className="lp-comp-icon">{c.icon}</div>
-                  <div className="lp-comp-t">{c.t}</div>
-                  <div className="lp-comp-d">{c.d}</div>
+        <div className="mist">
+          <section className="sec">
+            <div className="sec-head">
+              <div className="rule" />
+              <h2>كيف تعمل المنصة</h2>
+              <p>أربع خطوات من التسجيل حتى فتح الأبواب.</p>
+            </div>
+            <div className="steps">
+              {steps.map(s => (
+                <div className="step" key={s.n}>
+                  <div className="step-n">{s.n}</div>
+                  <h3>{s.t}</h3>
+                  <p>{s.d}</p>
                 </div>
               ))}
             </div>
-            <div className="lp-services-hint">
-              <div className="lp-services-hint-icon">🤝</div>
-              <div>
-                <div className="lp-services-hint-t">وخدمات احترافية تساندك عند الحاجة</div>
-                <div className="lp-services-hint-d">لا تبحث ولا تتنقّل بين المكاتب — كل ما تحتاجه لتجهيز منشأتك نوفّره لك داخل مُرضي، نجهّزه خطوة بخطوة حسب حالتك.</div>
+          </section>
+        </div>
+
+        <section className="sec">
+          <div className="sec-head">
+            <div className="rule" />
+            <h2>ما يفتحه اشتراكك</h2>
+            <p>دفعة واحدة، وثلاثة مسارات تعمل طوال أربعة أشهر.</p>
+          </div>
+          <div className="grid2">
+            {opens.map(o => (
+              <div className="card" key={o.t}>
+                <h3>{o.t}</h3>
+                <p>{o.d}</p>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mist">
+          <section className="sec">
+            <div className="sec-head">
+              <div className="rule" />
+              <h2>مُرضي سكور — رقم واحد يكشف أين تقف</h2>
+              <p>ليس رقماً عشوائياً، بل خلاصة منهجية المستشار الدكتور عبدالحكيم المرضي، تقرأ أرقامك الفعلية وتقارنها بمعايير السوق السعودي.</p>
+            </div>
+            <div className="grid3">
+              {score.map(s => (
+                <div className="cell" key={s.t}>
+                  <h3>{s.t}</h3>
+                  <p>{s.d}</p>
+                </div>
+              ))}
             </div>
           </section>
         </div>
-        )}
-        {/* HIDE2_END */}
 
-        {/* HIDE2_START لماذا مرضي — لإرجاعه احذف هذا السطر وسطر النهاية المقابل */}
-        {true && (
-        <section className="lp-section">
-          <h2 className="lp-sec-title">لماذا مُرضي؟</h2>
-          <p className="lp-sec-sub">منصة بُنيت على خبرة حقيقية وعلاقات حقيقية</p>
-          <div className="lp-why">
-            {reasons.map(r => (
-              <div className="lp-why-item" key={r.t}>
-                <div className="lp-why-t">{r.t}</div>
-                <div className="lp-why-d">{r.d}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-        )}
-        {/* HIDE2_END */}
-
-        <div className="lp-score-wrap">
-          <div className="lp-score-inner">
-            <div className="lp-score-badge">مُرضي سكور</div>
-            <h2 className="lp-score-h">رقمٌ واحد يكشف أين تقف شركتك</h2>
-            <p className="lp-score-sub">مُرضي سكور ليس رقماً عشوائياً — هو خلاصة منهجية المستشار الدكتور عبدالحكيم المرضي، المبنية على دكتوراه في إدارة الأعمال وخبرة عميقة في المال والأعمال. يقرأ أرقامك الفعلية، يقارنها بمعايير السوق السعودي، ويحوّلها إلى درجة دقيقة (٠–١٠٠) تكشف جاهزيتك الحقيقية.</p>
-            <div className="lp-score-grid">
-              <div className="lp-score-item"><div className="lp-score-icon">🎯</div><div className="lp-score-t">تحليل عميق لأرقامك</div><div className="lp-score-d">كل جانب مالي وتشغيلي في شركتك يُقاس ويُوزن وفق منهجية مدروسة.</div></div>
-              <div className="lp-score-item"><div className="lp-score-icon">📊</div><div className="lp-score-t">مقارنة بمعايير السوق</div><div className="lp-score-d">نضع وضعك مقابل معايير قطاعك في السوق السعودي، لتعرف فجوتك بدقة.</div></div>
-              <div className="lp-score-item"><div className="lp-score-icon">🧭</div><div className="lp-score-t">يكشف العوائق والطريق</div><div className="lp-score-d">الدرجة ليست النهاية — بل بداية خطة واضحة ترفع جاهزيتك خطوة بخطوة.</div></div>
-            </div>
+        <div className="adv">
+          <div className="adv-in">
+            <div className="eyebrow">المؤسس</div>
+            <div className="adv-name">المستشار الدكتور عبدالحكيم المرضي</div>
+            <div className="adv-role">مستشار مالي معتمد · دكتوراه في إدارة الأعمال · عضوية البورد الأمريكي</div>
+            <p className="adv-txt">خمسة عشر عاماً في القطاع المالي، وشبكة علاقات محلية ودولية في التمويل والاستثمار — مبنية داخل كل تقييم تقدّمه المنصة. بنيتُ مُرضي لأضع هذه الخبرة بين يديك مباشرة: لا وعوداً، بل وضوحاً وطريقاً ومرافقة حتى تصل.</p>
+            <div className="adv-lic">رخصة استشارة رقم FL-457927015</div>
           </div>
         </div>
 
-        <div className="lp-advisor-wrap">
-          <div className="lp-advisor">
-            <div className="lp-advisor-photo">👨‍💼</div>
-            <div className="lp-advisor-body">
-              <div className="lp-advisor-name">المستشار الدكتور عبدالحكيم المرضي</div>
-              <div className="lp-advisor-title">مؤسس مُرضي · مستشار مالي معتمد · دكتوراه في إدارة الأعمال</div>
-              <div className="lp-advisor-desc">
-                دكتوراه في إدارة الأعمال، وعضوية البورد الأمريكي، وخمسة عشر عاماً من الخبرة في القطاع المالي — مبنية داخل كل تقييم تقدّمه المنصة.
-                أمتلك شبكة علاقات محلية ودولية واسعة في مجالات التمويل والاستثمار والمال والأعمال، أضعها في خدمة جاهزيتك.
-                بنيتُ مُرضي لأضع خبرتي بين يديك مباشرة — لا وعوداً، بل وضوحاً وطريقاً ومرافقة حتى تصل.
-              </div>
-              <div className="lp-advisor-lic">🪪 رخصة استشارة رقم: FL-457927015</div>
-            </div>
+        <section className="sec">
+          <div className="sec-head">
+            <div className="rule" />
+            <h2>ماذا يقول عملاؤنا</h2>
+            <p>منشآت اختارت أن تعرف أين تقف قبل أن تطرق الأبواب.</p>
           </div>
-        </div>
-
-        <section className="lp-section">
-          <h2 className="lp-sec-title">ماذا يقول عملاؤنا؟</h2>
-          <p className="lp-sec-sub">نتائج حقيقية لمنشآت اختارت أن تعرف أين تقف</p>
-          <div className="lp-tst">
+          <div className="tst">
             {testimonials.map(t => (
-              <div className="lp-tst-card" key={t.name}>
-                <div className="lp-tst-stars">★★★★★</div>
-                <div className="lp-tst-quote">"{t.quote}"</div>
-                <div className="lp-tst-name">{t.name}</div>
-                <div className="lp-tst-role">{t.role}</div>
+              <div className="tst-c" key={t.name}>
+                <p className="tst-q">«{t.quote}»</p>
+                <div className="tst-n">{t.name}</div>
+                <div className="tst-r">{t.role}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <div className="lp-cred-wrap">
-          <div className="lp-cred">
-            <h2 className="lp-sec-title">شركة سعودية موثوقة</h2>
-            <p className="lp-sec-sub">شفافية كاملة — تعرف مع من تتعامل</p>
-            <div className="lp-cred-grid">
-              <div className="lp-cred-item">
-                <div className="lp-cred-icon">🏢</div>
-                <div><div className="lp-cred-label">السجل التجاري</div><div className="lp-cred-val">7039663724</div></div>
-              </div>
-              <div className="lp-cred-item">
-                <div className="lp-cred-icon">🪪</div>
-                <div><div className="lp-cred-label">رخصة الاستشارة المالية</div><div className="lp-cred-val">FL-457927015</div></div>
-              </div>
-              <div className="lp-cred-item">
-                <div className="lp-cred-icon">📍</div>
-                <div><div className="lp-cred-label">مقر الشركة</div><div className="lp-cred-val">الرياض — حي الربيع، طريق الملك عبدالعزيز، قرب مدارس المملكة</div></div>
-              </div>
-              <div className="lp-cred-item">
-                <div className="lp-cred-icon">💳</div>
-              </div>
+        <div className="mist">
+          <section className="sec">
+            <div className="sec-head">
+              <div className="rule" />
+              <h2>شركة سعودية موثّقة</h2>
+              <p>تعرف مع من تتعامل، بالأرقام النظامية.</p>
             </div>
-          </div>
+            <div className="legal">
+              <div className="legal-c"><div className="legal-l">السجل التجاري</div><div className="legal-v">7039663724</div></div>
+              <div className="legal-c"><div className="legal-l">رخصة الاستشارة المالية</div><div className="legal-v">FL-457927015</div></div>
+              <div className="legal-c"><div className="legal-l">مقر الشركة</div><div className="legal-v">الرياض — حي الربيع، طريق الملك عبدالعزيز</div></div>
+            </div>
+          </section>
         </div>
 
-        <section className="lp-support">
-          <div className="lp-support-icon">💬</div>
-          <h2>خدمة عملاء على مدار الساعة</h2>
-          <p>فريق مُرضي جاهز للإجابة على استفساراتك في أي وقت — قبل اشتراكك وبعده. تواصل معنا مباشرة:</p>
-          <div className="lp-support-btns">
-            <a className="lp-btn-wa" href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer">💚 واتساب</a>
-            <a className="lp-btn-call" href={`tel:${PHONE}`}>📞 {PHONE}</a>
-          </div>
-        </section>
-
-        <div className="lp-final">
+        <div className="final">
           <h2>جاهز تعرف أين تقف شركتك؟</h2>
-          <p>افتح ملفك اليوم، ودع مُرضي يرافقك حتى تصل</p>
-          <button className="lp-final-cta" onClick={go}>افتح ملف شركتك الآن</button>
+          <p>ابدأ التقييم المجاني الآن — تعرف درجتك وعوائقك قبل أن تدفع ريالاً.</p>
+          <button className="cta" onClick={go}>افتح ملف شركتك</button>
         </div>
 
-        <footer className="lp-footer">
-          <div className="lp-footer-inner">
-            <div className="lp-footer-col">
-              <div className="lp-footer-logo">مُرضي Murdi</div>
-              <p>منصة جاهزية رأس المال<br/>للمنشآت السعودية</p>
+        <footer className="ft">
+          <div className="ft-in">
+            <div>
+              <div className="ft-logo">مُرضي</div>
+              <p>منصة جاهزية رأس المال<br />للمنشآت السعودية</p>
             </div>
-            <div className="lp-footer-col">
+            <div>
               <h4>تواصل معنا</h4>
-              <p>📞 {PHONE}<br/>📍 الرياض — حي الربيع<br/>طريق الملك عبدالعزيز</p>
+              <p><a href={`tel:${PHONE}`}>{PHONE}</a><br />الرياض — حي الربيع<br />طريق الملك عبدالعزيز</p>
+              <a className="ft-cta" href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noopener noreferrer">راسلنا على واتساب</a>
             </div>
-            <div className="lp-footer-col">
+            <div>
               <h4>بيانات نظامية</h4>
-              <p>السجل التجاري: 7039663724<br/>رخصة الاستشارة: FL-457927015<br/>🏦 تحصيل عبر حساب بنكي موثّق</p>
+              <p>السجل التجاري 7039663724<br />رخصة الاستشارة FL-457927015</p>
             </div>
-            <div className="lp-footer-col">
-              <h4>روابط نظامية</h4>
-              <p><a href="/terms" style={{color:'#9DB3AB',textDecoration:'none'}}>الشروط والأحكام</a><br/><a href="/privacy" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الخصوصية</a><br/><a href="/refund" style={{color:'#9DB3AB',textDecoration:'none'}}>سياسة الاسترجاع والإلغاء</a><br/><a href="/disclaimer" style={{color:'#9DB3AB',textDecoration:'none'}}>إخلاء المسؤولية</a><br/><a href="/readiness-index" style={{color:'#9DB3AB',textDecoration:'none'}}>مؤشر جاهزية رأس المال</a></p>
+            <div>
+              <h4>روابط</h4>
+              <p><a href="/terms">الشروط والأحكام</a><br /><a href="/privacy">سياسة الخصوصية</a><br /><a href="/refund">سياسة الاسترجاع والإلغاء</a><br /><a href="/disclaimer">إخلاء المسؤولية</a><br /><a href="/readiness-index">مؤشر جاهزية رأس المال</a></p>
             </div>
           </div>
-          <div className="lp-footer-bottom">
-            ©️ 2026 مُرضي · حلول المرضي للاستشارات المالية · جميع الحقوق محفوظة
-          </div>
+          <div className="ft-b">©️ 2026 مُرضي · حلول المرضي للاستشارات المالية · جميع الحقوق محفوظة</div>
         </footer>
 
       </div>
