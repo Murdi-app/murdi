@@ -134,7 +134,7 @@ export default function GoalPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
 
       {subscriptionActive && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
@@ -239,14 +239,14 @@ export default function GoalPage() {
 
       {/* شريط التبويبات */}
       <div className="bg-white border-b border-[#F0F5F3] px-3 md:px-6">
-        <div className="max-w-5xl mx-auto flex gap-1 overflow-x-auto">
+        <div className="max-w-5xl mx-auto flex gap-1 overflow-x-auto min-w-0">
           {[
             { id: 'overview', label: 'نظرة عامة' },
             { id: 'consult', label: 'الاستشارة والأسئلة' },
             { id: 'services', label: 'الخدمات' },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as 'overview' | 'consult' | 'services')}
-              className={'px-5 py-4 font-black text-sm transition border-b-2 ' + (tab === t.id ? 'text-[#1A3D34] border-[#1A3D34]' : 'text-[#6B8A80] border-transparent')}>
+              className={'px-3 md:px-5 py-4 font-black text-[13px] md:text-sm whitespace-nowrap transition border-b-2 ' + (tab === t.id ? 'text-[#1A3D34] border-[#1A3D34]' : 'text-[#6B8A80] border-transparent')}>
               {t.label}
             </button>
           ))}
