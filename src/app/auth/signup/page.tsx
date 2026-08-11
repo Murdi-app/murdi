@@ -67,6 +67,7 @@ export default function SignUp() {
         .au-links b{color:#1A3D34;cursor:pointer;font-weight:600;border-bottom:1px solid #C9A84C;padding-bottom:1px}
         .au-back{display:block;margin-top:8px;color:#9DB3AB;font-size:12.5px;text-decoration:none}
         .au-ft{text-align:center;color:#9DB3AB;font-size:11.5px;padding:18px;line-height:1.9}
+        @media (max-width:620px){.au-mid{align-items:flex-start;padding:26px 16px 12px}.au-brand{font-size:26px}.au-title{margin-top:20px;font-size:19px}}
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
       `}</style>
       <div className="au">
