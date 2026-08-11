@@ -32,6 +32,7 @@ export default function ApplyPage() {
   const [genBusy, setGenBusy] = useState('');
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [genErr, setGenErr] = useState<Record<string, string>>({});
+  const [q, setQ] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -98,10 +99,12 @@ export default function ApplyPage() {
     await fetch('/api/match/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: r.track, rowId: r.id }) });
     await load();
     setBusy('');
+    setTimeout(() => { document.getElementById('row-' + r.id)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 150);
   }
 
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st))
+  const qq = q.trim().toLowerCase();
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
 
@@ -132,6 +135,8 @@ export default function ApplyPage() {
               {s} ({count(s)})
             </button>
           ))}
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
+            style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
           <select value={co} onChange={e => setCo(e.target.value)}
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 14px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5 }}>
             <option value="">كل العملاء</option>
@@ -143,7 +148,7 @@ export default function ApplyPage() {
           const d = drafts[r.id];
           const portal = Boolean(r.apply_url);
           return (
-          <div key={r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: norm(r.apply_status) === 'قُدِّم' ? 0.7 : 1 }}>
+          <div key={r.id} id={'row-' + r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: norm(r.apply_status) === 'قُدِّم' ? 0.7 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <div>
                 <div style={{ color: C.ink, fontWeight: 900, fontSize: 15 }}>{r.provider}</div>
