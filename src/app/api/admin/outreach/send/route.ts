@@ -29,16 +29,18 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
   let companyId = '';
-  try { const b = await req.json(); companyId = String(b.company_id || ''); }
+  let ids: string[] = [];
+  try { const b = await req.json(); companyId = String(b.company_id || ''); ids = Array.isArray(b.ids) ? b.ids.map(String) : []; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
 
   // نجلب الرسائل المعتمدة فقط، اللي عندها إيميل
-  const { data: msgs, error } = await admin
+  let mq = admin
     .from('outreach_messages')
     .select('*')
-    .eq('company_id', companyId)
-    .eq('status', 'معتمدة');
+    .eq('company_id', companyId);
+  mq = ids.length > 0 ? mq.in('id', ids) : mq.eq('status', 'معتمدة');
+  const { data: msgs, error } = await mq;
 
   if (error) return NextResponse.json({ error: 'تعذّر الجلب' }, { status: 500 });
   if (!msgs || msgs.length === 0) return NextResponse.json({ error: 'لا توجد رسائل معتمدة' }, { status: 404 });
