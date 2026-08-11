@@ -8,9 +8,9 @@ import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
 
 const TRACKS = [
-  { id: 'funding', icon: '💰', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
-  { id: 'investment', icon: '📈', title: 'أريد مستثمراً', en: 'INVESTMENT READINESS', desc: 'اعرف مدى جاذبية شركتك للمستثمرين، ونقاط القوة والضعف قبل العرض.', href: '/assessment/investment' },
-  { id: 'ipo', icon: '🏛️', title: 'أريد تجهيز الشركة للطرح', en: 'IPO READINESS', desc: 'اعرف موقع شركتك على طريق الطرح، وخارطة الطريق للوصول للجاهزية.', href: '/assessment/ipo' },
+  { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
+  { id: 'investment', icon: '', title: 'أريد مستثمراً', en: 'INVESTMENT READINESS', desc: 'اعرف مدى جاذبية شركتك للمستثمرين، ونقاط القوة والضعف قبل العرض.', href: '/assessment/investment' },
+  { id: 'ipo', icon: '', title: 'أريد تجهيز الشركة للطرح', en: 'IPO READINESS', desc: 'اعرف موقع شركتك على طريق الطرح، وخارطة الطريق للوصول للجاهزية.', href: '/assessment/ipo' },
 ];
 
 export default function GoalPage() {
@@ -134,7 +134,7 @@ export default function GoalPage() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
 
       {subscriptionActive && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
@@ -223,11 +223,11 @@ export default function GoalPage() {
       <nav className="bg-white border-b border-[#F0F5F3] px-3 md:px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-[#2E9E7B] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-[#1A3D34] flex items-center justify-center">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <span className="font-black text-[#2E9E7B] text-lg block leading-tight">مُرضي</span>
+              <span className="font-black text-[#1A3D34] text-lg block leading-tight">مُرضي</span>
               <span className="text-[10px] tracking-widest text-[#A3BAB2] font-black">MURDI</span>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function GoalPage() {
             { id: 'services', label: 'الخدمات' },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as 'overview' | 'consult' | 'services')}
-              className={'px-5 py-4 font-black text-sm transition border-b-2 ' + (tab === t.id ? 'text-[#2E9E7B] border-[#2E9E7B]' : 'text-[#6B8A80] border-transparent')}>
+              className={'px-5 py-4 font-black text-sm transition border-b-2 ' + (tab === t.id ? 'text-[#1A3D34] border-[#1A3D34]' : 'text-[#6B8A80] border-transparent')}>
               {t.label}
             </button>
           ))}
@@ -268,7 +268,7 @@ export default function GoalPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
               {TRACKS.map((t) => (
                 <div key={t.id} className="bg-white rounded-2xl p-5 border-2 border-[#F0F5F3] text-center">
-                  <div className="text-2xl mb-1">{t.icon}</div>
+                  <div className="w-10 h-[3px] bg-[#C9A84C] mb-5"></div>
                   <div className="font-black text-[#1A3D34] text-sm mb-2">{t.title.replace('أريد ', '').replace('تجهيز الشركة لل', '')}</div>
                   {scores[t.id] !== undefined ? (
                     <div className={'text-3xl font-black leading-none ' + (scores[t.id] >= 70 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{scores[t.id]}</div>
@@ -279,7 +279,7 @@ export default function GoalPage() {
               ))}
             </div>
             <div className="text-center">
-              <button onClick={() => setShowCard(true)} className="px-8 py-3 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">📄 بطاقة عرض شركتك</button>
+              <button onClick={() => setShowCard(true)} className="px-8 py-3 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">بطاقة عرض شركتك</button>
             </div>
           </div>
         )}
@@ -318,11 +318,11 @@ export default function GoalPage() {
         <div className="grid md:grid-cols-3 gap-5 mb-8">
           {TRACKS.map((t) => (
             <button key={t.id} onClick={() => setSelected(t.id)}
-              className={'text-right bg-white rounded-3xl p-7 border-2 transition relative ' + (selected === t.id ? 'border-[#2E9E7B] shadow-md' : 'border-[#F0F5F3]')}>
+              className={'text-right bg-white rounded-3xl p-7 border-2 transition relative ' + (selected === t.id ? 'border-[#1A3D34] shadow-md' : 'border-[#F0F5F3]')}>
               {selected === t.id && (
-                <span className="absolute top-4 left-4 w-7 h-7 rounded-full bg-[#2E9E7B] text-white flex items-center justify-center text-sm font-black">✓</span>
+                <span className="absolute top-4 left-4 w-7 h-7 rounded-full bg-[#1A3D34] text-white flex items-center justify-center text-sm font-black">✓</span>
               )}
-              <div className="w-14 h-14 rounded-2xl bg-[#2E9E7B] flex items-center justify-center text-2xl mb-4">{t.icon}</div>
+              <div className="w-10 h-[3px] bg-[#C9A84C] mb-5"></div>
               <h3 className="font-black text-[#1A3D34] text-lg mb-1">{t.title}</h3>
               <p className="text-[10px] tracking-widest text-[#A3BAB2] font-black mb-3">{t.en}</p>
               <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">{t.desc}</p>
@@ -331,7 +331,7 @@ export default function GoalPage() {
         </div>
 
         <div className="text-center mb-16">
-          <button onClick={go} className="px-14 py-4 rounded-full bg-[#2E9E7B] text-white font-black text-lg shadow-lg shadow-[#2E9E7B]/25">
+          <button onClick={go} className="px-14 py-4 rounded-full bg-[#1A3D34] text-white font-black text-lg shadow-lg shadow-[#1A3D34]/25">
             ابدأ التقييم
           </button>
         </div>
@@ -344,10 +344,10 @@ export default function GoalPage() {
         {/* الدعم الفني */}
         <div className="grid md:grid-cols-1 gap-5 mb-16">
           <a href="https://wa.me/966570314005?text=%D8%A7%D9%84%D8%B3%D9%84%D8%A7%D9%85%20%D8%B9%D9%84%D9%8A%D9%83%D9%85%D8%8C%20%D8%A3%D9%88%D8%A7%D8%AC%D9%87%20%D9%85%D8%B4%D9%83%D9%84%D8%A9%20%D8%AA%D9%82%D9%86%D9%8A%D8%A9%20%D9%81%D9%8A%20%D9%85%D9%8F%D8%B1%D8%B6%D9%8A" target="_blank" rel="noopener noreferrer" className="block bg-white rounded-3xl p-7 border-2 border-[#E8F5EF] hover:shadow-md transition">
-            <div className="text-3xl mb-3">📞</div>
+            <div className="text-3xl mb-3"></div>
             <h3 className="font-black text-[#1A3D34] text-lg mb-2">الدعم الفني</h3>
             <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-3">واجهت مشكلة تقنية في المنصة (تسجيل دخول، صفحة لا تفتح، خطأ في النظام)؟ تواصل مع فريق مُرضي مباشرة عبر واتساب.</p>
-            <span className="text-[#2E9E7B] font-black text-sm">تواصل عبر واتساب ←</span>
+            <span className="text-[#1A3D34] font-black text-sm">تواصل عبر واتساب ←</span>
           </a>
         </div>
         </>)}
@@ -360,24 +360,24 @@ export default function GoalPage() {
           </div>
           {[
             { label: 'خدمات أساسية', note: 'تخدم المسارات الثلاثة', items: [
-              { icon: '📊', title: 'إعداد القوائم المالية المعتمدة', display: 'تجهيز ملف القوائم المالية الجاهز للاعتماد', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
-              { icon: '🏛️', title: 'بناء الحوكمة المؤسسية', display: 'إعداد لوائح الحوكمة ومسوّداتها الجاهزة', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
-              { icon: '💎', title: 'التقييم العادل المعمّق', display: 'تقرير تقييم القيمة العادلة المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
-              { icon: '🔧', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', display: 'خطة إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
+              { icon: '', title: 'إعداد القوائم المالية المعتمدة', display: 'تجهيز ملف القوائم المالية الجاهز للاعتماد', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
+              { icon: '', title: 'بناء الحوكمة المؤسسية', display: 'إعداد لوائح الحوكمة ومسوّداتها الجاهزة', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
+              { icon: '', title: 'التقييم العادل المعمّق', display: 'تقرير تقييم القيمة العادلة المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
+              { icon: '', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', display: 'خطة إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
             ]},
             { label: 'مسار التمويل', note: 'للوصول إلى التمويل المناسب', items: [
-              { icon: '🏦', title: 'تجهيز ملف التمويل والتفاوض', desc: 'إعداد ملفك التمويلي بصورة تُقنع البنوك وجهات التمويل، ومرافقتك في التفاوض حتى الحصول على التمويل.' },
-              { icon: '🗓️', title: 'إعادة جدولة الديون', display: 'خطة إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
+              { icon: '', title: 'تجهيز ملف التمويل والتفاوض', desc: 'إعداد ملفك التمويلي بصورة تُقنع البنوك وجهات التمويل، ومرافقتك في التفاوض حتى الحصول على التمويل.' },
+              { icon: '', title: 'إعادة جدولة الديون', display: 'خطة إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
             ]},
             { label: 'مسار الاستثمار', note: 'لجعل شركتك جاذبة للمستثمر', items: [
-              { icon: '📈', title: 'تجهيز ملف عرض المستثمر والتفاوض', desc: 'تتم على مرحلتين: (١) إعداد العرض التقديمي (Pitch) الذي يُبرز قيمة شركتك للمستثمر المؤسسي — برسوم محدّدة. (٢) بعد اعتماد العرض، نُبرم عقد تجهيز الملف الكامل والتفاوض نيابةً عنك حتى إتمام الصفقة — بعمولة نجاح. للشركات التي بلغت جاهزيتها.' },
-              { icon: '🤝', title: 'تجهيز صفقة التملّك والتفاوض', desc: 'حين يتقدّم مشترٍ للاستحواذ على شركتك كاملة أو على حصة أغلبية: نراجع اتفاقية عدم الإفصاح قبل توقيعك، ونُعدّ تقييماً مستقلاً موثّقاً يحدّد ما تساويه شركتك فعلاً، ونصمّم بنية الصفقة ونقف معك في التفاوض حتى الإغلاق — بعمولة نجاح.' },
-              { icon: '🎯', title: 'بناء خطة جذب المستثمر', desc: 'الخطوة التمهيدية: نعالج الفجوات التي تخفض جاذبية شركتك (الحوكمة، تركّز العملاء، وضوح الأرقام) ونرفع جاهزيتها — قبل أن تُعرض على المستثمر. تأتي قبل تجهيز ملف العرض.' },
+              { icon: '', title: 'تجهيز ملف عرض المستثمر والتفاوض', desc: 'تتم على مرحلتين: (١) إعداد العرض التقديمي (Pitch) الذي يُبرز قيمة شركتك للمستثمر المؤسسي — برسوم محدّدة. (٢) بعد اعتماد العرض، نُبرم عقد تجهيز الملف الكامل والتفاوض نيابةً عنك حتى إتمام الصفقة — بعمولة نجاح. للشركات التي بلغت جاهزيتها.' },
+              { icon: '', title: 'تجهيز صفقة التملّك والتفاوض', desc: 'حين يتقدّم مشترٍ للاستحواذ على شركتك كاملة أو على حصة أغلبية: نراجع اتفاقية عدم الإفصاح قبل توقيعك، ونُعدّ تقييماً مستقلاً موثّقاً يحدّد ما تساويه شركتك فعلاً، ونصمّم بنية الصفقة ونقف معك في التفاوض حتى الإغلاق — بعمولة نجاح.' },
+              { icon: '', title: 'بناء خطة جذب المستثمر', desc: 'الخطوة التمهيدية: نعالج الفجوات التي تخفض جاذبية شركتك (الحوكمة، تركّز العملاء، وضوح الأرقام) ونرفع جاهزيتها — قبل أن تُعرض على المستثمر. تأتي قبل تجهيز ملف العرض.' },
             ]},
             { label: 'مسار الطرح والإدراج', note: 'الطريق المؤسسي نحو السوق المالية', items: [
-              { icon: '📁', title: 'تجهيز ملف هيئة السوق المالية', desc: 'خدمة استشارية ترافقك في التهيؤ للإدراج: تحديد متطلبات الهيئة النظامية وتجهيز ملف الشركة، والتنسيق مع مستشار مالي مرخّص يتولّى الإجراءات الخاضعة للترخيص.' },
-              { icon: '⚖️', title: 'تشكيل لجنة المراجعة والحوكمة', display: 'خطة تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
-              { icon: '🗺️', title: 'خارطة طريق الإدراج', desc: 'خطة تنفيذية مرحلية بالمدد والمتطلبات، تقودك من وضعك الحالي حتى لحظة الإدراج.' },
+              { icon: '', title: 'تجهيز ملف هيئة السوق المالية', desc: 'خدمة استشارية ترافقك في التهيؤ للإدراج: تحديد متطلبات الهيئة النظامية وتجهيز ملف الشركة، والتنسيق مع مستشار مالي مرخّص يتولّى الإجراءات الخاضعة للترخيص.' },
+              { icon: '', title: 'تشكيل لجنة المراجعة والحوكمة', display: 'خطة تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
+              { icon: '', title: 'خارطة طريق الإدراج', desc: 'خطة تنفيذية مرحلية بالمدد والمتطلبات، تقودك من وضعك الحالي حتى لحظة الإدراج.' },
             ]},
           ].map((cat, ci) => (
             <div key={ci} className="mb-7">
@@ -408,7 +408,7 @@ export default function GoalPage() {
                         return (
                           <div className="flex flex-col gap-2">
                             <div className="rounded-2xl bg-[#FBF5E8] border border-[#EAD9A8] p-3 text-center">
-                              <div className="text-[#9A7B2E] font-black text-sm mb-1">🔒 تحتاج تقييم مسار {missing}</div>
+                              <div className="text-[#9A7B2E] font-black text-sm mb-1">تحتاج تقييم مسار {missing}</div>
                               <div className="text-[#6B5A2E] text-xs font-bold leading-relaxed">هذه الخدمة تخص مسار {missing}. قيّم جاهزيتك فيه أولاً ليتمكّن فريق مُرضي من تحليل دقيق وفق منهجيته.</div>
                             </div>
                             <button onClick={() => router.push('/assessment/' + firstTrack)} className="text-center py-2.5 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">ابدأ تقييم {TRACK_LABEL[firstTrack]} ←</button>
@@ -418,18 +418,18 @@ export default function GoalPage() {
                       if (!req) {
                         return (
                           <div className="flex flex-col gap-2">
-                            <button onClick={() => submitServiceRequest(it.title, cat.label)} className="text-center py-2.5 rounded-full bg-[#2E9E7B] text-white font-black text-sm">📤 تقديم طلب الخدمة</button>
+                            <button onClick={() => submitServiceRequest(it.title, cat.label)} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">تقديم طلب الخدمة</button>
                             <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + ((it as any).display || it.title))} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
                           </div>
                         );
                       }
                       const STAT: Record<string, { t: string; bg: string; fg: string }> = {
                         submitted: { t: '⏳ بانتظار الفريق والدكتور', bg: '#FBF5E8', fg: '#9A7B2E' },
-                        in_progress: { t: '🛠️ قيد التجهيز', bg: '#EAF7F0', fg: '#9A7B2E' },
-                        priced: { t: '💳 جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
-                        paid: { t: '✅ تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
-                        delivered: { t: '✅ جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
-                        completed: { t: '🏆 مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
+                        in_progress: { t: 'قيد التجهيز', bg: '#EAF7F0', fg: '#9A7B2E' },
+                        priced: { t: 'جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
+                        paid: { t: 'تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
+                        delivered: { t: 'جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
+                        completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
                       };
                       const st = STAT[req.status] || STAT.submitted;
                       return (
@@ -438,11 +438,11 @@ export default function GoalPage() {
                           {req.status === 'priced' && req.price && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
-                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">🏦 إتمام الدفع</button>
+                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
                             </div>
                           )}
                           {(req.status === 'delivered' || req.status === 'completed') && req.deliverable && (
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + ((it as any).display || it.title) + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ طباعة الخدمة</button>
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + ((it as any).display || it.title) + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
                           )}
                         </div>
                       );
@@ -453,16 +453,16 @@ export default function GoalPage() {
                       if (!ctr) return null;
                       return (
                         <div className="mt-3 pt-3 border-t border-dashed border-[#EAD9A8]">
-                          <div className="text-[#9A7B2E] font-black text-xs mb-2">📄 عقد الخدمة {ctr.status === 'signed' ? '— تم استلام توقيعك ✅' : '— بانتظار توقيعك'}</div>
+                          <div className="text-[#9A7B2E] font-black text-xs mb-2">عقد الخدمة {ctr.status === 'signed' ? '— تم استلام توقيعك ' : '— بانتظار توقيعك'}</div>
                           <div className="flex flex-col gap-2">
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>عقد</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (ctr.body || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">🖨️ اطبع العقد لقراءته وتوقيعه</button>
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>عقد</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (ctr.body || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">اطبع العقد لقراءته وتوقيعه</button>
                             {ctr.status !== 'signed' && (
                               <label className="text-center py-2 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-xs cursor-pointer">
-                                📎 ارفع العقد بعد توقيعه
+                                ارفع العقد بعد توقيعه
                                 <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSignedContract(ctr.id, ctype, f); }} />
                               </label>
                             )}
-                            {ctr.status === 'signed' && <div className="text-center py-2 rounded-full bg-[#EAF7F0] text-[#1E7A5A] font-black text-xs">✅ تم رفع العقد الموقّع — فريق مُرضي يتابع معك</div>}
+                            {ctr.status === 'signed' && <div className="text-center py-2 rounded-full bg-[#EAF7F0] text-[#1E7A5A] font-black text-xs">تم رفع العقد الموقّع — فريق مُرضي يتابع معك</div>}
                           </div>
                         </div>
                       );
@@ -502,7 +502,7 @@ export default function GoalPage() {
       {showPaywall && (
         <div onClick={() => setShowPaywall(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>🔑</div>
+            <div style={{ fontSize: 44, marginBottom: 8 }}></div>
             <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>افتح كامل منصّة مُرضي</h2>
             <p style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.9, margin: '0 0 8px' }}>
               باشتراكك تفتح جميع مسارات الجاهزية (التمويل، الاستثمار، الطرح)، مع التقييم الكامل، خطة التحسين، ومتابعة د. عبدالحكيم المرضي.
@@ -511,7 +511,7 @@ export default function GoalPage() {
             <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
             <button onClick={() => router.push('/pay/transfer?amount=2900&kind=subscription&company_id=' + companyId)}
               style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              🏦 إتمام الدفع
+              إتمام الدفع
             </button>
             <button onClick={() => setShowPaywall(false)}
               style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
