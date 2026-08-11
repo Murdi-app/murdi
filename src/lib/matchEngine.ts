@@ -270,6 +270,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (/مليار/.test(txt)) mid *= 1000000000;
         else if (/مليون/.test(txt)) mid *= 1000000;
         if (/دولار|USD/i.test(txt)) mid *= 3.75;
+        if (!mid) mid = (clientRev && clientRev > 0) ? clientRev * 0.3 : 0;
         if (!mid) return prob >= 0.6 ? 3 : 1.5;
         const tl = String(o.timeline || '');
         const rng = tl.match(/(\d+)\s*[-–—]\s*(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);

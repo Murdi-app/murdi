@@ -159,7 +159,8 @@ export default function ApplyPage() {
         {shown.map(r => {
           const d = drafts[r.id];
           const portal = Boolean(r.apply_url);
-          const riskNote = !d ? '' : (RISKY.test(String(d.body || '')) ? 'الرسالة تنسب للعميل واقعة غير موجودة في سجله — راجعها قبل الإرسال' : ((d.emailConfidence && d.emailConfidence !== 'مؤكّد') ? 'بريد الجهة غير مؤكّد — تحقّق من وجود الجهة وعنوانها قبل الإرسال' : ''));
+          const unverified = !/السعود|خليج/.test(String(r.region || '')) && !r.apply_url;
+          const riskNote = !d ? '' : (unverified ? 'جهة دولية بلا بوابة تقديم يمكن التحقق منها — أكّد وجودها قبل الإرسال' : RISKY.test(String(d.body || '')) ? 'الرسالة تنسب للعميل واقعة غير موجودة في سجله — راجعها قبل الإرسال' : ((d.emailConfidence && d.emailConfidence !== 'مؤكّد') ? 'بريد الجهة غير مؤكّد — تحقّق من وجود الجهة وعنوانها قبل الإرسال' : ''));
           return (
           <div key={r.id} id={'row-' + r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: norm(r.apply_status) === 'قُدِّم' ? 0.7 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
