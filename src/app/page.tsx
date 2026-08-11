@@ -214,7 +214,6 @@ export default function Home() {
 
         <div className="lp-trust-bar">
           <span>🛡️ شركة سعودية</span>
-          <span>🏦 دفع آمن عبر تحويل بنكي</span>
           <span>🌍 جهات محلية وعالمية</span>
           <span>📞 دعم ٢٤ ساعة</span>
         </div>
@@ -402,7 +401,6 @@ export default function Home() {
               </div>
               <div className="lp-cred-item">
                 <div className="lp-cred-icon">💳</div>
-                <div><div className="lp-cred-label">الدفع الإلكتروني</div><div className="lp-cred-val">دفع آمن عبر بوابة ميسر المرخّصة من ساما</div></div>
               </div>
             </div>
           </div>
