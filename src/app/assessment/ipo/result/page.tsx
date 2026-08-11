@@ -77,7 +77,7 @@ export default function IpoResult() {
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
         <p className="text-[#6B8A80] font-bold">جارٍ تحميل النتيجة...</p>
       </div>
     );
@@ -85,7 +85,7 @@ export default function IpoResult() {
 
   if (result === null) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
         <p className="text-[#6B8A80] font-bold">لا توجد نتيجة — ابدأ التقييم أولاً</p>
       </div>
     );
@@ -123,7 +123,7 @@ export default function IpoResult() {
     if (!result) return;
     const esc = (t: unknown) => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const sc = result.readiness_score;
-    const col = sc >= 70 ? '#2E9E7B' : sc >= 50 ? '#C9A84C' : '#C0564B';
+    const col = sc >= 70 ? '#1A3D34' : sc >= 50 ? '#C9A84C' : '#C0564B';
     const today = new Date().toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
     const listHTML = (arr: unknown) => Array.isArray(arr) && arr.length
       ? '<ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
@@ -148,7 +148,7 @@ export default function IpoResult() {
       + '.info{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0}'
       + '.chip{background:#F0F5F3;border-radius:12px;padding:12px 18px;font-size:14px;font-weight:900;color:#1A3D34}'
       + '.sec{margin:24px 0}'
-      + '.sec h2{font-size:17px;color:#1A3D34;border-right:5px solid #2E9E7B;padding-right:10px;margin-bottom:10px}'
+      + '.sec h2{font-size:17px;color:#1A3D34;border-right:5px solid #1A3D34;padding-right:10px;margin-bottom:10px}'
       + 'ul{padding-right:24px}li{margin-bottom:7px;font-size:14px}'
       + '.method{background:#F0F5F3;border-radius:12px;padding:14px;font-size:12.5px;color:#6B8A80;text-align:center;margin-top:20px}'
       + '.footer{margin-top:30px;padding-top:16px;border-top:2px solid #EEE;text-align:center;color:#9DB3AB;font-size:12px}'
@@ -166,19 +166,19 @@ export default function IpoResult() {
     if (w) { w.document.write(html); w.document.close(); }
   }
 
-  const scoreColor = result.readiness_score >= 70 ? '#2E9E7B' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
+  const scoreColor = result.readiness_score >= 70 ? '#1A3D34' : result.readiness_score >= 50 ? '#C9A84C' : '#C0564B';
   const roadmap = result.improvement_plan?.filter((p) => p.startsWith('السوق المقترح') === false) || [];
   const market = result.improvement_plan?.find((p) => p.startsWith('السوق المقترح'));
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
+    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
       <div className="max-w-2xl mx-auto mb-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#2E9E7B] font-black text-sm transition-colors">
+          <a href="/goal" className="inline-flex items-center gap-2 text-[#6B8A80] hover:text-[#1A3D34] font-black text-sm transition-colors">
             <span style={{ fontSize: 18 }}>→</span> رجوع للمركز
           </a>
           <button onClick={printResult} className="inline-flex items-center gap-2 bg-[#1A3D34] text-white font-black text-sm px-5 py-2.5 rounded-full hover:opacity-90 transition">
-            🖨️ احفظ نتيجتك PDF
+            احفظ نتيجتك PDF
           </button>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function IpoResult() {
           <p className="text-6xl font-black" style={{ color: scoreColor }}>{result.readiness_score}</p>
           <p className="text-lg font-black text-[#1A3D34] mt-3">{result.verdict}</p>
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
-          {market && <p className="text-[#2E9E7B] font-black text-sm mt-2">{market}</p>}
+          {market && <p className="text-[#1A3D34] font-black text-sm mt-2">{market}</p>}
         </div>
 
         {(result.months_to_ready ?? 0) > 0 && (
@@ -214,7 +214,7 @@ export default function IpoResult() {
 
         {valuation !== null && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#C9A84C]">
-            <h2 className="font-black text-[#1A3D34] mb-1">💰 القيمة السوقية التقديرية للطرح</h2>
+            <h2 className="font-black text-[#1A3D34] mb-1">القيمة السوقية التقديرية للطرح</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">تقدير استرشادي مبدئي وفق ربحية شركتك ونموها على أساس مضاعفات السوق</p>
             <div className="bg-[#FBF5E8] rounded-xl p-5 text-center">
               <p className="text-[#9A7B2E] font-black text-2xl">{fmtM(valuation.lo)} — {fmtM(valuation.hi)} ريال</p>
@@ -228,7 +228,7 @@ export default function IpoResult() {
             <div className="mt-4">
               <div className="bg-[#F0F5F3] rounded-xl p-5">
                 <p className="text-[#1A3D34] font-black text-sm mb-2">عند استيفاء متطلبات الحوكمة والإفصاح، يرتفع مضاعف التقييم إلى:</p>
-                <p className="text-[#2E9E7B] font-black text-xl">{fmtM(valuation.hi * 1.5)} ريال</p>
+                <p className="text-[#1A3D34] font-black text-xl">{fmtM(valuation.hi * 1.5)} ريال</p>
               </div>
             </div>
             <p className="text-[#6B8A80] text-xs font-bold mt-4 leading-relaxed">القيمة الفعلية عند الطرح تحتاج تقييماً معمّقاً يعدّه فريق د. عبدالحكيم المرضي بالتنسيق مع المستشار المالي المرخّص.</p>
@@ -236,7 +236,7 @@ export default function IpoResult() {
         )}
 
         {roadmap.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#2E9E7B]">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#1A3D34]">
             <h2 className="font-black text-[#1A3D34] mb-1">خارطة الطريق للجاهزية</h2>
             <p className="text-[#6B8A80] text-xs font-bold mb-4">خطوات مرتبة للوصول لمتطلبات الإدراج</p>
             <ul className="space-y-3">
@@ -255,7 +255,7 @@ export default function IpoResult() {
             {/* الدعوة حسب الأهلية */}
             {result.readiness_score >= 65 ? (
               <div className="mt-5 bg-gradient-to-l from-[#FBF5E8] to-white rounded-xl p-5 border-2 border-[#C9A84C]">
-                <h3 className="font-black text-[#1A3D34] mb-1">🎯 شركتك مؤهلة — افتح خطة الطرح الكاملة</h3>
+                <h3 className="font-black text-[#1A3D34] mb-1">شركتك مؤهلة — افتح خطة الطرح الكاملة</h3>
                 <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي خطة طرح تنفيذية كاملة: كل مرحلة بمدتها وتكلفتها، تجهيز ملف الهيئة، واختيار السوق الأنسب — بمرافقة حتى الإدراج.</p>
               </div>
             ) : (
@@ -279,10 +279,10 @@ export default function IpoResult() {
         {fdRaw && (() => {
           const sug = suggestService(fdRaw, 'ipo', result.readiness_score);
           const theme = sug.urgency === 'required'
-            ? { bg: '#FBECEC', border: '#C0564B', label: '🔴 خدمة ضرورية قبل الطرح', labelColor: '#A33' }
+            ? { bg: '#FBECEC', border: '#C0564B', label: 'خدمة ضرورية قبل الطرح', labelColor: '#A33' }
             : sug.urgency === 'none'
-            ? { bg: '#EAF7F0', border: '#2E9E7B', label: '✅ ملفك سليم — لا حاجة لخدمة تجهيز', labelColor: '#1E7A5A' }
-            : { bg: '#FBF5E8', border: '#C9A84C', label: '💡 خدمة موصى بها تقوّي ملفك', labelColor: '#9A7B2E' };
+            ? { bg: '#EAF7F0', border: '#1A3D34', label: 'ملفك سليم — لا حاجة لخدمة تجهيز', labelColor: '#1E7A5A' }
+            : { bg: '#FBF5E8', border: '#C9A84C', label: 'خدمة موصى بها تقوّي ملفك', labelColor: '#9A7B2E' };
           return (
             <div style={{ background: theme.bg, border: '2px solid ' + theme.border, borderRadius: 16, padding: '22px 24px' }}>
               <div style={{ color: theme.labelColor, fontSize: 14, fontWeight: 900, marginBottom: 8 }}>{theme.label}</div>
@@ -318,11 +318,11 @@ export default function IpoResult() {
             }));
             const { error } = await supabase.from('service_requests').insert(rows);
             if (error) { setBundleStatus('تعذّر التقديم، حاول مرة أخرى'); return; }
-            setBundleStatus('✅ تم تقديم طلباتك — فريق مُرضي سيتابع معك');
+            setBundleStatus('تم تقديم طلباتك — فريق مُرضي سيتابع معك');
           };
           return (
             <div style={{ background: '#FBF5E8', border: '2px solid #C9A84C', borderRadius: 16, padding: '22px 24px', marginBottom: 20 }}>
-              <div style={{ color: '#9A7B2E', fontSize: 14, fontWeight: 900, marginBottom: 10 }}>🧭 خطتك للجاهزية</div>
+              <div style={{ color: '#9A7B2E', fontSize: 14, fontWeight: 900, marginBottom: 10 }}>خطتك للجاهزية</div>
               <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: 14 }}>
                 بناءً على نتيجتك، هذه الخطوات التي تهيّئ شركتك لرحلة الطرح. يرافقك فريق مُرضي فيها:
               </p>
@@ -355,7 +355,7 @@ export default function IpoResult() {
 
         {/* تحليل الأهلية للطرح — بحث في مصادر الهيئة */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#1A3D34]">
-          <h2 className="font-black text-[#1A3D34] mb-1">🏛️ تحليل أهليتك للطرح</h2>
+          <h2 className="font-black text-[#1A3D34] mb-1">تحليل أهليتك للطرح</h2>
           <p className="text-[#6B8A80] text-xs font-bold mb-4">وفق آخر متطلبات هيئة السوق المالية وتداول — مطابقة بأرقام شركتك</p>
           {eligLoading && (
             <div className="flex items-center gap-3 bg-[#FBFCFB] rounded-xl p-4">
@@ -376,7 +376,7 @@ export default function IpoResult() {
                 )}
                 {result.readiness_score >= 65 ? (
                   <div className="mt-5 rounded-2xl p-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
-                    <p className="text-3xl mb-2">🏛️</p>
+                    <p className="text-3xl mb-2"></p>
                     <p className="font-black text-white mb-1">شركتك على أعتاب الطرح</p>
                     <p className="text-[#D8E8E0] text-sm font-bold leading-relaxed mb-4">يُعدّ لك فريق د. عبدالحكيم المرضي تحليل الأهلية الكامل وخطوات العمل الفورية، ويرافقك في تجهيز ملف الشركة لهيئة السوق المالية مرحلةً بمرحلة.</p>
                   </div>
@@ -412,7 +412,7 @@ export default function IpoResult() {
           const lo = n, hi = n + 15;
           return (
           <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
-            <div className="text-3xl mb-3">🎯</div>
+            <div className="text-3xl mb-3"></div>
             <h3 className="text-white font-black text-lg mb-3">مطابقة الجهات — الخطوة التي تحوّل درجتك إلى تمويل</h3>
             <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-4">
               درجتك تقول أين أنت. والمطابقة تقول <span style={{ color: '#C9A84C' }}>مع مَن</span>:
