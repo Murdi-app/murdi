@@ -82,7 +82,7 @@ export default function OutreachPage() {
   // جلب الملف المرفق
   const loadAttachment = async (cid: string) => {
     try {
-      const r = await fetch('/api/admin/outreach/attachment?company_id=' + cid);
+      const r = await fetch('/api/admin/outreach/attachment?company_id=' + cid + '&track=' + tab);
       const d = await r.json();
       if (d.ok && d.attachment) {
         const a = d.attachment;
@@ -110,7 +110,7 @@ export default function OutreachPage() {
       const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
       const r = await fetch('/api/admin/outreach/attachment', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_id: companyId.trim(), lang, file_url: pub.publicUrl, file_name: file.name }),
+        body: JSON.stringify({ company_id: companyId.trim(), lang, track: tab, file_url: pub.publicUrl, file_name: file.name }),
       });
       const d = await r.json();
       if (d.ok) {
@@ -127,11 +127,13 @@ export default function OutreachPage() {
   // حذف الملف المرفق
   const deleteAttachment = async (lang: 'ar' | 'en') => {
     if (!confirm('حذف هذه النسخة؟')) return;
-    await fetch('/api/admin/outreach/attachment?company_id=' + companyId.trim() + '&lang=' + lang, { method: 'DELETE' });
+    await fetch('/api/admin/outreach/attachment?company_id=' + companyId.trim() + '&lang=' + lang + '&track=' + tab, { method: 'DELETE' });
     if (lang === 'ar') setAttAr(null); else setAttEn(null);
     flash('✓ حُذفت النسخة');
   };
 
+
+  useEffect(() => { if (companyId) loadAttachment(companyId); }, [tab]);
 
   const load = async (cid: string) => {
     loadAttachment(cid);
