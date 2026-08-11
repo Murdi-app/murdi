@@ -424,7 +424,7 @@ export default function GoalPage() {
                         );
                       }
                       const STAT: Record<string, { t: string; bg: string; fg: string }> = {
-                        submitted: { t: '⏳ بانتظار الفريق والدكتور', bg: '#FBF5E8', fg: '#9A7B2E' },
+                        submitted: { t: 'بانتظار الفريق والدكتور', bg: '#FBF5E8', fg: '#9A7B2E' },
                         in_progress: { t: 'قيد التجهيز', bg: '#EAF7F0', fg: '#9A7B2E' },
                         priced: { t: 'جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
                         paid: { t: 'تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
