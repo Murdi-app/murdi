@@ -248,7 +248,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
           for (const m of made) {
             const lang = m.region === 'دولي' ? 'en' : 'ar'
             try {
-              const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, html: m.html, lang, name: 'murdi-' + track }) })
+              const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: r.company_id, html: m.html, lang, name: 'murdi-' + track, track }) })
               const txt = await pr.text()
               let pd: { ok?: boolean; error?: string } = {}
               try { pd = JSON.parse(txt) } catch { pd = { error: txt.slice(0, 300) } }
@@ -290,14 +290,14 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       if (!d.ok) { alert(d.error || 'تعذّر بناء الشرائح'); setBusy(''); return }
       let msg = ''
       if (d.deckHtml) {
-        const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: d.deckHtml, lang: 'ar', name: 'murdi-deck', landscape: true, kind: 'deck' }) })
+        const pr = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: d.deckHtml, lang: 'ar', name: 'murdi-deck', landscape: true, kind: 'deck', track: 'investment' }) })
         const pd = await pr.json().catch(() => ({}))
         msg += pd.ok ? 'تم رفع الشرائح للمخاطبة. ' : ('تعذّر رفع الشرائح: ' + (pd.error || pr.status) + ' ')
       }
       const er = await fetch('/api/admin/pitch-render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestId: id, text, lang: 'en' }) })
       const ed = await er.json().catch(() => ({}))
       if (ed.ok && ed.deckHtml) {
-        const pr2 = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: ed.deckHtml, lang: 'en', name: 'murdi-deck', landscape: true, kind: 'deck' }) })
+        const pr2 = await fetch('/api/admin/file-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, html: ed.deckHtml, lang: 'en', name: 'murdi-deck', landscape: true, kind: 'deck', track: 'investment' }) })
         const pd2 = await pr2.json().catch(() => ({}))
         msg += pd2.ok ? 'ورُفعت النسخة الإنجليزية. ' : ('تعذّر رفع الإنجليزية: ' + (pd2.error || pr2.status) + ' ')
       } else { msg += 'تعذّرت الترجمة الإنجليزية: ' + (ed.error || er.status) + ' ' }
