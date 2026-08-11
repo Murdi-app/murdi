@@ -246,7 +246,7 @@ export default function GoalPage() {
             { id: 'services', label: 'الخدمات' },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as 'overview' | 'consult' | 'services')}
-              className={'px-3 md:px-5 py-4 font-black text-[13px] md:text-sm whitespace-nowrap transition border-b-2 ' + (tab === t.id ? 'text-[#1A3D34] border-[#1A3D34]' : 'text-[#6B8A80] border-transparent')}>
+              className={'px-3 md:px-5 py-4 font-black text-[13px] md:text-sm whitespace-nowrap transition border-b-[3px] ' + (tab === t.id ? 'text-[#1A3D34] border-[#C9A84C]' : 'text-[#9DB3AB] border-transparent hover:text-[#6B8A80]')}>
               {t.label}
             </button>
           ))}
