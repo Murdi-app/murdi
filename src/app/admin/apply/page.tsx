@@ -8,6 +8,7 @@ type Row = {
   apply_channel: string | null; apply_url: string | null; apply_steps: string | null;
   required_docs: string | null; apply_status: string | null; apply_note: string | null;
   verdict?: string | null; region?: string | null;
+  requirements?: string | null;
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
@@ -28,6 +29,15 @@ const norm = (s?: string | null) => {
 // «متأهل» قبل «متأهل بشرط» — الأخيرة تحتاج إغلاق عائق قبل التقديم
 const tier = (v?: string | null) => /بشرط/.test(String(v || '')) ? 1 : 0;
 
+const NEEDS: { rx: string; label: string; svc: string }[] = [
+  { rx: 'ضمان|رهن|كفالة', label: 'ضمانات ورهن', svc: 'ملف الضمانات والرهن' },
+  { rx: 'مدقق|مراجع', label: 'قوائم مدققة', svc: 'إعداد القوائم المالية' },
+  { rx: 'فاتور|ذمم|عقود', label: 'فواتير وعقود', svc: 'دورة الفوترة وملف الذمم' },
+  { rx: 'جدوى|خطة عمل|تدفق', label: 'جدوى وخطة عمل', svc: 'دراسة الجدوى الاقتصادية' },
+  { rx: 'حوكمة|مجلس إدارة', label: 'حوكمة', svc: 'بناء الحوكمة المؤسسية' },
+  { rx: 'تعثر|متعثر|سمة|جدولة', label: 'سجل ائتماني', svc: 'إعادة جدولة الديون' },
+];
+
 export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [co, setCo] = useState('');
@@ -42,6 +52,7 @@ export default function ApplyPage() {
   const [editRow, setEditRow] = useState('');
   const [eEmail, setEEmail] = useState('');
   const [eBody, setEBody] = useState('');
+  const [need, setNeed] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -127,7 +138,7 @@ export default function ApplyPage() {
 
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20))
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
   const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
@@ -173,6 +184,25 @@ export default function ApplyPage() {
           </select>
         </div>
 
+        {(() => {
+          const src = rows.filter(r => (!co || r.company_name === co));
+          const txt = (r: Row) => String(r.requirements || '') + ' ' + String(r.required_docs || '');
+          const counts = NEEDS.map(n => ({ ...n, count: src.filter(r => new RegExp(n.rx).test(txt(r))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
+          if (counts.length === 0) return null;
+          return (
+            <div style={{ background: '#FBF5E8', border: '1.5px solid #EAD9A8', borderRadius: 16, padding: 14, marginBottom: 16 }}>
+              <div style={{ color: '#6B5A2E', fontWeight: 900, fontSize: 13, marginBottom: 8 }}>ما تطلبه الجهات — اضغط لتصفية الصفوف</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {counts.map(x => (
+                  <button key={x.label} onClick={() => setNeed(need === x.rx ? '' : x.rx)}
+                    style={{ background: need === x.rx ? C.ink : '#fff', color: need === x.rx ? '#fff' : '#6B5A2E', border: '1.5px solid #EAD9A8', borderRadius: 20, padding: '6px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                    {x.label} ({x.count}) — {x.svc}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         {shown.map(r => {
           const d = drafts[r.id];
           const portal = Boolean(r.apply_url);
