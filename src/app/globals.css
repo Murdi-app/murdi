@@ -58,3 +58,6 @@ body {
   .murdi-hamburger { display: none !important; }
   .murdi-desktop-nav { display: flex !important; }
 }
+
+/* حاجز الانزلاق الأفقي على الجوال */
+html, body { max-width: 100%; overflow-x: hidden; }
