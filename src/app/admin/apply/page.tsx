@@ -33,6 +33,8 @@ export default function ApplyPage() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [genErr, setGenErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState('');
+  const [showWeak, setShowWeak] = useState(false);
+  const [okRisk, setOkRisk] = useState<Record<string, boolean>>({});
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -104,9 +106,11 @@ export default function ApplyPage() {
 
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))))
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (showWeak || (r.fit_score || 0) >= 20))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
+  const weakCount = rows.filter(r => (r.fit_score || 0) < 20).length;
+  const RISKY = /حساب\s+(لدى|في)\s|موثّق|موثقة|سبق\s+(أن|له)|علاقة\s+مسبقة|عميل\s+لديكم/;
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo, sans-serif', background: '#FBFCFB', minHeight: '100vh' }}>
@@ -137,6 +141,10 @@ export default function ApplyPage() {
           ))}
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
+          <button onClick={() => setShowWeak(v => !v)}
+            style={{ background: showWeak ? C.ink : '#fff', color: showWeak ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            {showWeak ? 'أخفِ الضعيفة' : 'أظهر الضعيفة (' + weakCount + ')'}
+          </button>
           <select value={co} onChange={e => setCo(e.target.value)}
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 14px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5 }}>
             <option value="">كل العملاء</option>
@@ -147,6 +155,7 @@ export default function ApplyPage() {
         {shown.map(r => {
           const d = drafts[r.id];
           const portal = Boolean(r.apply_url);
+          const riskNote = !d ? '' : (RISKY.test(String(d.body || '')) ? 'الرسالة تنسب للعميل واقعة غير موجودة في سجله — راجعها قبل الإرسال' : ((d.emailConfidence && d.emailConfidence !== 'مؤكّد') ? 'بريد الجهة غير مؤكّد — تحقّق من وجود الجهة وعنوانها قبل الإرسال' : ''));
           return (
           <div key={r.id} id={'row-' + r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: norm(r.apply_status) === 'قُدِّم' ? 0.7 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -207,9 +216,17 @@ export default function ApplyPage() {
                     )}
                     <div style={{ color: C.ink, fontWeight: 900, fontSize: 12.5, marginBottom: 6 }}>{d.subject}</div>
                     <div style={{ color: C.ink, fontWeight: 600, fontSize: 12.5, whiteSpace: 'pre-wrap', lineHeight: 1.9, maxHeight: 300, overflowY: 'auto', background: '#F7FBF9', borderRadius: 8, padding: 10 }}>{d.body}</div>
+                    {riskNote && (
+                      <div style={{ marginTop: 10, background: '#FDECEA', border: '1.5px solid #F5B7B1', borderRadius: 10, padding: '8px 12px', color: '#C0392B', fontWeight: 900, fontSize: 11.5 }}>
+                        {riskNote}
+                        <label style={{ display: 'block', marginTop: 6, fontWeight: 800, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!okRisk[r.id]} onChange={e => setOkRisk(p => ({ ...p, [r.id]: e.target.checked }))} /> راجعتُها وأتحمّل مسؤوليتها
+                        </label>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                       {d.email && d.id && !d.sent && (
-                        <button onClick={() => sendOne(r, d.id)} disabled={genBusy === r.id}
+                        <button onClick={() => sendOne(r, d.id)} disabled={genBusy === r.id || (!!riskNote && !okRisk[r.id])}
                           style={{ background: C.green, color: '#fff', border: 'none', borderRadius: 20, padding: '6px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: genBusy === r.id ? 'wait' : 'pointer' }}>
                           {genBusy === r.id ? 'جارٍ الإرسال…' : 'أرسل الآن'}
                         </button>
