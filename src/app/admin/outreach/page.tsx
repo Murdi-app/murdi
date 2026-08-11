@@ -133,7 +133,7 @@ export default function OutreachPage() {
   };
 
 
-  useEffect(() => { if (companyId) loadAttachment(companyId); }, [tab]);
+  useEffect(() => { if (companyId) loadAttachment(companyId); }, [tab, companyId]);
 
   const load = async (cid: string) => {
     loadAttachment(cid);
