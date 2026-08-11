@@ -118,13 +118,13 @@ export async function POST(req: Request) {
     if (ratio > 0.5) { obstacles.push('حجم الدين القائم مرتفع نسبة للإيرادات'); plan.push('خفض الدين القائم أو زيادة الإيرادات قبل طلب تمويل إضافي'); }
   } else {
     const months = Number(body.months_late) || 0;
-    if (months <= 3) {
+    if (months <= 6) {
       score += 7;
       obstacles.push('تأخر في سداد التمويل القائم (' + months + ' شهر)');
-      plan.push('تسوية المتأخرات فوراً — التأخر يظهر في سمة ويغلق أبواب التمويل');
+      plan.push('سدّد المتأخرات قبل رفع الطلب — خطوة إجرائية تُحسّن قراءة ملفك لدى الجهات');
     } else {
-      obstacles.push('تعثر في السداد لأكثر من 3 أشهر');
-      plan.push('جدولة الدين المتعثر مع الجهة الممولة أولاً — لا جدوى من طلب تمويل جديد قبل التسوية');
+      obstacles.push('تعثر في السداد (' + months + ' شهر)');
+      plan.push('سوّ وضعك عبر خدمة إعادة الهيكلة ومعالجة التعثر في مُرضي قبل رفع الطلب');
     }
   }
 
@@ -194,6 +194,15 @@ export async function POST(req: Request) {
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
+      const LATE_M = Number(body.months_late) || 0;
+      const BAN = ['شبه صفر', 'لا جدوى', 'يغلق أبواب', 'مرفوض مبدئي', 'مستحيل', 'لن تحصل'];
+      const softly = (s: string) => (LATE_M > 6 ? s : s.replace(/متعثرة/g, 'متأخرة').replace(/متعثر/g, 'متأخر').replace(/تعثراً/g, 'تأخراً').replace(/التعثر/g, 'التأخر').replace(/تعثر/g, 'تأخر'));
+      const clean = (a: string[]) => a.map(softly).filter((t) => !BAN.some((b) => t.includes(b)));
+      obstacles = clean(obstacles);
+      plan = clean(plan);
+      if (LATE_M > 0 && !plan.some((p) => p.includes('المتأخرات') || p.includes('إعادة الهيكلة'))) {
+        plan.push(LATE_M > 6 ? 'سوّ وضعك عبر خدمة إعادة الهيكلة ومعالجة التعثر في مُرضي قبل رفع الطلب' : 'سدّد المتأخرات قبل رفع الطلب — خطوة إجرائية تُحسّن قراءة ملفك لدى الجهات');
+      }
     }
   } catch {}
   // القوالب الأصلية تبقى احتياطاً إن فشل التوليد
