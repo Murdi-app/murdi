@@ -9,7 +9,7 @@ const admin = () => createClient(
 export async function GET() {
   const a = admin();
   const { data: rows, error } = await a.from('match_results')
-    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note')
+    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region')
     .eq('status', 'new').gt('fit_score', 0)
     .order('fit_score', { ascending: false }).limit(400);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
