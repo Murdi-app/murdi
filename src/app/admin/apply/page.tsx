@@ -25,6 +25,9 @@ const norm = (s?: string | null) => {
   return v === 'قُدِم' ? 'قُدِّم' : v;
 };
 
+// «متأهل» قبل «متأهل بشرط» — الأخيرة تحتاج إغلاق عائق قبل التقديم
+const tier = (v?: string | null) => /بشرط/.test(String(v || '')) ? 1 : 0;
+
 export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [co, setCo] = useState('');
@@ -108,7 +111,7 @@ export default function ApplyPage() {
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
   const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20))
-    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
+    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
   const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
   const RISKY = /حساب\s+(لدى|في)\s|موثّق|موثقة|سبق\s+(أن|له)|علاقة\s+مسبقة|عميل\s+لديكم/;
