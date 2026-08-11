@@ -39,6 +39,9 @@ export default function ApplyPage() {
   const [q, setQ] = useState('');
   const [showWeak, setShowWeak] = useState(false);
   const [okRisk, setOkRisk] = useState<Record<string, boolean>>({});
+  const [editRow, setEditRow] = useState('');
+  const [eEmail, setEEmail] = useState('');
+  const [eBody, setEBody] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -97,6 +100,20 @@ export default function ApplyPage() {
     } catch (e) {
       setGenErr(p => ({ ...p, [r.id]: e instanceof Error ? e.message : 'تعذّر الإرسال' }));
     }
+    setGenBusy('');
+  }
+
+  async function saveEdit(r: Row, msgId: string) {
+    setGenBusy(r.id);
+    try {
+      const res = await fetch('/api/admin/outreach/manage', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: msgId, action: 'update', message_body: eBody, entity_email: eEmail }),
+      });
+      if (!res.ok) throw new Error('save');
+      setDrafts(p => ({ ...p, [r.id]: { ...p[r.id], body: eBody, email: eEmail } }));
+      setEditRow('');
+    } catch { setGenErr(p => ({ ...p, [r.id]: 'تعذّر حفظ التعديل' })); }
     setGenBusy('');
   }
 
@@ -221,7 +238,16 @@ export default function ApplyPage() {
                       </div>
                     )}
                     <div style={{ color: C.ink, fontWeight: 900, fontSize: 12.5, marginBottom: 6 }}>{d.subject}</div>
-                    <div style={{ color: C.ink, fontWeight: 600, fontSize: 12.5, whiteSpace: 'pre-wrap', lineHeight: 1.9, maxHeight: 300, overflowY: 'auto', background: '#F7FBF9', borderRadius: 8, padding: 10 }}>{d.body}</div>
+                    {editRow === r.id ? (
+                      <div>
+                        <input value={eEmail} onChange={e => setEEmail(e.target.value)} placeholder="بريد الجهة"
+                          style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid ' + C.mint, marginBottom: 8, fontSize: 12.5, fontFamily: 'Cairo' }} />
+                        <textarea value={eBody} onChange={e => setEBody(e.target.value)} rows={12}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid ' + C.mint, fontSize: 12.5, fontFamily: 'Cairo', lineHeight: 1.8 }} />
+                      </div>
+                    ) : (
+                      <div style={{ color: C.ink, fontWeight: 600, fontSize: 12.5, whiteSpace: 'pre-wrap', lineHeight: 1.9, maxHeight: 300, overflowY: 'auto', background: '#F7FBF9', borderRadius: 8, padding: 10 }}>{d.body}</div>
+                    )}
                     {riskNote && (
                       <div style={{ marginTop: 10, background: '#FDECEA', border: '1.5px solid #F5B7B1', borderRadius: 10, padding: '8px 12px', color: '#C0392B', fontWeight: 900, fontSize: 11.5 }}>
                         {riskNote}
@@ -231,6 +257,13 @@ export default function ApplyPage() {
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                      {editRow === r.id ? (
+                        <button onClick={() => saveEdit(r, d.id)} disabled={genBusy === r.id}
+                          style={{ background: C.ink, color: '#fff', border: 'none', borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>احفظ التعديل</button>
+                      ) : (
+                        <button onClick={() => { setEditRow(r.id); setEEmail(d.email || ''); setEBody(d.body || ''); }}
+                          style={{ background: '#fff', color: C.ink, border: '1.5px solid ' + C.mint, borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>عدّل البريد والنص</button>
+                      )}
                       {d.email && d.id && !d.sent && (
                         <button onClick={() => sendOne(r, d.id)} disabled={genBusy === r.id || (!!riskNote && !okRisk[r.id])}
                           style={{ background: C.green, color: '#fff', border: 'none', borderRadius: 20, padding: '6px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: genBusy === r.id ? 'wait' : 'pointer' }}>
@@ -241,7 +274,7 @@ export default function ApplyPage() {
                       <button onClick={() => { navigator.clipboard.writeText((d.subject ? d.subject + '\n\n' : '') + d.body); alert('نُسخت الرسالة'); }}
                         style={{ background: C.mint, color: C.ink, border: 'none', borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>انسخ النص</button>
                       <a href={'/admin/outreach?company_id=' + r.company_id + '&track=' + r.track}
-                        style={{ background: C.gold, color: C.ink, borderRadius: 20, padding: '6px 16px', fontWeight: 900, fontSize: 11.5, textDecoration: 'none' }}>{'راجع واعتمد ←'}</a>
+                        style={{ background: C.gold, color: C.ink, borderRadius: 20, padding: '6px 16px', fontWeight: 900, fontSize: 11.5, textDecoration: 'none' }}>{'السجل ←'}</a>
                     </div>
                   </div>
                 )}
