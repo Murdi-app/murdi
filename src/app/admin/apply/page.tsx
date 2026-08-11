@@ -10,14 +10,28 @@ type Row = {
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
+type Draft = {
+  id: string; subject: string; body: string; email: string | null; language: string;
+  contactMethod: string | null; altContact: string | null; emailConfidence: string | null;
+  sent?: boolean;
+};
+
 const C = { ink: '#1A3D34', gold: '#C9A84C', green: '#2E9E7B', gray: '#6B8A80', mint: '#E8F5EF' };
-const STATES = ['لم يُقدَّم', 'قيد التقديم', 'قُدِم', 'ردّت'];
+const STATES = ['لم يُقدَّم', 'قيد التقديم', 'قُدِّم', 'ردّت'];
+
+const norm = (s?: string | null) => {
+  const v = (s || 'لم يُقدَّم').trim();
+  return v === 'قُدِم' ? 'قُدِّم' : v;
+};
 
 export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
+  const [genBusy, setGenBusy] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [genErr, setGenErr] = useState<Record<string, string>>({});
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
@@ -28,7 +42,7 @@ export default function ApplyPage() {
   async function sendFU(item: DueFU) {
     setFuMsg('جارٍ إرسال المتابعة لـ ' + item.entity_name + '\u2026');
     const r = await fetch('/api/admin/outreach/followups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, company_name: '' }) });
-    if (r.ok) { setFuMsg('✅ أُرسلت المتابعة لـ ' + item.entity_name); setDue(p => p.filter(x => x.id !== item.id)); }
+    if (r.ok) { setFuMsg('\u2705 أُرسلت المتابعة لـ ' + item.entity_name); setDue(p => p.filter(x => x.id !== item.id)); }
     else { setFuMsg('تعذّر الإرسال لـ ' + item.entity_name); }
   }
 
@@ -39,10 +53,57 @@ export default function ApplyPage() {
     setBusy('');
   }
 
+  async function genOutreach(r: Row) {
+    setGenBusy(r.id);
+    setGenErr(p => ({ ...p, [r.id]: '' }));
+    try {
+      const res = await fetch('/api/admin/outreach/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowId: r.id }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.ok) throw new Error(d.error || 'تعذّر التوليد');
+      setDrafts(p => ({ ...p, [r.id]: {
+        id: String(d.message?.id || ''),
+        subject: d.subject || '', body: d.body || '', email: d.email || null,
+        language: d.language || 'عربي', contactMethod: d.contactMethod || null,
+        altContact: d.altContact || null, emailConfidence: d.emailConfidence || null,
+      } }));
+    } catch (e) {
+      setGenErr(p => ({ ...p, [r.id]: e instanceof Error ? e.message : 'تعذّر التوليد' }));
+    }
+    setGenBusy('');
+  }
+
+  async function sendOne(r: Row, msgId: string) {
+    if (!confirm('إرسال الرسالة إلى ' + r.provider + '؟')) return;
+    setGenBusy(r.id);
+    setGenErr(p => ({ ...p, [r.id]: '' }));
+    try {
+      const res = await fetch('/api/admin/outreach/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: r.company_id, ids: [msgId] }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'تعذّر الإرسال');
+      setDrafts(p => ({ ...p, [r.id]: { ...p[r.id], sent: true } }));
+    } catch (e) {
+      setGenErr(p => ({ ...p, [r.id]: e instanceof Error ? e.message : 'تعذّر الإرسال' }));
+    }
+    setGenBusy('');
+  }
+
+  async function enrich(r: Row) {
+    setBusy(r.id);
+    await fetch('/api/match/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: r.track, rowId: r.id }) });
+    await load();
+    setBusy('');
+  }
+
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || (r.apply_status || 'لم يُقدَّم') === st))
-    .sort((a, b) => ((a.apply_status === 'قُدِّم' ? 1 : 0) - (b.apply_status === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
-  const count = (s: string) => rows.filter(r => (r.apply_status || 'لم يُقدَّم') === s).length;
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st))
+    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || ((b.fit_score || 0) - (a.fit_score || 0)));
+  const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo, sans-serif', background: '#FBFCFB', minHeight: '100vh' }}>
@@ -78,38 +139,89 @@ export default function ApplyPage() {
           </select>
         </div>
 
-        {shown.map(r => (
-          <div key={r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: r.apply_status === 'قُدِّم' ? 0.7 : 1 }}>
+        {shown.map(r => {
+          const d = drafts[r.id];
+          const portal = Boolean(r.apply_url);
+          return (
+          <div key={r.id} style={{ background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 18, padding: 18, marginBottom: 12, opacity: norm(r.apply_status) === 'قُدِّم' ? 0.7 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <div>
                 <div style={{ color: C.ink, fontWeight: 900, fontSize: 15 }}>{r.provider}</div>
                 <div style={{ color: C.gray, fontWeight: 700, fontSize: 12.5, marginTop: 2 }}>{r.product}</div>
                 <div style={{ color: C.gold, fontWeight: 900, fontSize: 11.5, marginTop: 4 }}>{r.company_name} · {r.track === 'funding' ? 'تمويل' : 'استثمار'} · {r.fit_score}</div>
-                {r.incomplete && <div style={{ color: '#C0392B', fontWeight: 900, fontSize: 11, marginTop: 3 }}>⚠ مطابقة هذا العميل لم تكتمل</div>}
+                {r.incomplete && <div style={{ color: '#C0392B', fontWeight: 900, fontSize: 11, marginTop: 3 }}>{'\u26A0 مطابقة هذا العميل لم تكتمل'}</div>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 {STATES.map(s => (
                   <button key={s} disabled={busy === r.id} onClick={() => setStatus(r.id, s)}
-                    style={{ background: (r.apply_status || 'لم يُقدَّم') === s ? C.green : '#fff', color: (r.apply_status || 'لم يُقدَّم') === s ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 20, padding: '5px 11px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11, cursor: 'pointer' }}>{s}</button>
+                    style={{ background: norm(r.apply_status) === s ? C.green : '#fff', color: norm(r.apply_status) === s ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 20, padding: '5px 11px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11, cursor: 'pointer' }}>{s}</button>
                 ))}
               </div>
             </div>
 
             <div style={{ background: '#F7FBF9', borderRadius: 12, padding: 12, marginTop: 8 }}>
-              <div style={{ color: C.ink, fontWeight: 900, fontSize: 12.5, marginBottom: 4 }}>القناة: {r.apply_channel || 'غير محددة'}</div>
-              {r.apply_url && <a href={r.apply_url} target="_blank" rel="noopener noreferrer" style={{ color: C.green, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح صفحة التقديم ←</a>}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+                <span style={{ background: portal ? C.mint : '#FBF5E8', color: portal ? C.ink : '#8A6D1A', borderRadius: 20, padding: '3px 11px', fontWeight: 900, fontSize: 11 }}>
+                  {portal ? 'بوابة — قدّم مباشرة' : 'بلا بوابة — خاطب أولاً'}
+                </span>
+                <span style={{ color: C.ink, fontWeight: 900, fontSize: 12.5 }}>القناة: {r.apply_channel || 'غير محددة'}</span>
+              </div>
+              {r.apply_url && <a href={r.apply_url} target="_blank" rel="noopener noreferrer" style={{ color: C.green, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>{'افتح صفحة التقديم \u2190'}</a>}
               {r.apply_steps && <div style={{ color: C.ink, fontWeight: 700, fontSize: 12.5, marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.9 }}>{r.apply_steps}</div>}
               {r.required_docs && <div style={{ color: C.gray, fontWeight: 700, fontSize: 12, marginTop: 8, lineHeight: 1.8 }}>المستندات: {r.required_docs}</div>}
-              <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11.5, fontWeight: 900 }}>
-                <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 \u0627\u0644\u0645\u0644\u0641 \u062c\u0627\u0647\u0632' : '\u2715 \u0627\u0644\u0645\u0644\u0641 \u063a\u064a\u0631 \u062c\u0627\u0647\u0632'}</span>
-                <span style={{ color: r.contract_ok ? C.green : '#C0392B' }}>{r.contract_ok ? '\u2713 \u0627\u0644\u0639\u0642\u062f \u0645\u0648\u0642\u0651\u0639' : '\u2715 \u0644\u0627 \u064a\u0648\u062c\u062f \u0639\u0642\u062f'}</span>
-                {!r.apply_channel && <button onClick={async () => { setBusy(r.id); await fetch('/api/match/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: r.track, rowId: r.id }) }); await load(); setBusy(''); }} disabled={busy === r.id} style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>جهّز طريق التقديم</button>}
-                <a href={'/admin/services?company_id=' + r.company_id} style={{ color: C.gold, textDecoration: 'underline' }}>\u062e\u062f\u0645\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644 \u2190</a>
+
+              <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', fontSize: 11.5, fontWeight: 900 }}>
+                <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 الملف جاهز' : '\u2715 الملف غير جاهز'}</span>
+                <span style={{ color: r.contract_ok ? C.green : '#C0392B' }}>{r.contract_ok ? '\u2713 العقد موقّع' : '\u2715 لا يوجد عقد'}</span>
+                {!r.apply_channel && (
+                  <button onClick={() => enrich(r)} disabled={busy === r.id}
+                    style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, textDecoration: 'underline', cursor: busy === r.id ? 'wait' : 'pointer', padding: 0 }}>
+                    {busy === r.id ? '\u23F3 جارٍ التجهيز… قد يستغرق دقيقتين' : 'جهّز طريق التقديم'}
+                  </button>
+                )}
+                <a href={'/admin/services?company_id=' + r.company_id} style={{ color: C.gold, textDecoration: 'underline' }}>{'خدمات العميل \u2190'}</a>
               </div>
-              {<a href={'/admin/outreach?company_id=' + r.company_id} style={{ display: 'inline-block', marginTop: 10, color: C.gold, fontWeight: 900, fontSize: 12, textDecoration: 'underline' }}>افتح المخاطبة بالبريد ←</a>}
+
+              <div style={{ marginTop: 12, borderTop: '1px solid ' + C.mint, paddingTop: 10 }}>
+                <button onClick={() => genOutreach(r)} disabled={genBusy === r.id}
+                  style={{ background: genBusy === r.id ? C.gray : C.ink, color: '#fff', border: 'none', borderRadius: 20, padding: '7px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: genBusy === r.id ? 'wait' : 'pointer' }}>
+                  {genBusy === r.id ? '\u23F3 جارٍ توليد المخاطبة…' : (d ? '\u21BB أعد توليد المخاطبة' : '\u2709 جهّز مخاطبة هذه الجهة')}
+                </button>
+                {genErr[r.id] && <div style={{ color: '#C0392B', fontWeight: 800, fontSize: 11.5, marginTop: 6 }}>{genErr[r.id]}</div>}
+
+                {d && (
+                  <div style={{ marginTop: 10, background: '#fff', border: '1.5px solid ' + C.mint, borderRadius: 12, padding: 12 }}>
+                    <div style={{ fontSize: 11.5, color: C.gray, fontWeight: 800, marginBottom: 6 }}>
+                      البريد: {d.email || '—'} · اللغة: {d.language}
+                      {d.emailConfidence && d.emailConfidence !== 'مؤكّد' && <span style={{ color: '#C0392B' }}> · الإيميل {d.emailConfidence} — تحقّق قبل الإرسال</span>}
+                    </div>
+                    {d.altContact && (
+                      <div style={{ padding: '6px 10px', background: '#FFF8E6', border: '1px solid #E8D9A8', borderRadius: 8, color: '#8A6D1A', fontSize: 11.5, fontWeight: 700, marginBottom: 8 }}>
+                        تواصل بديل ({d.contactMethod || 'أخرى'}): {d.altContact}
+                      </div>
+                    )}
+                    <div style={{ color: C.ink, fontWeight: 900, fontSize: 12.5, marginBottom: 6 }}>{d.subject}</div>
+                    <div style={{ color: C.ink, fontWeight: 600, fontSize: 12.5, whiteSpace: 'pre-wrap', lineHeight: 1.9, maxHeight: 300, overflowY: 'auto', background: '#F7FBF9', borderRadius: 8, padding: 10 }}>{d.body}</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                      {d.email && d.id && !d.sent && (
+                        <button onClick={() => sendOne(r, d.id)} disabled={genBusy === r.id}
+                          style={{ background: C.green, color: '#fff', border: 'none', borderRadius: 20, padding: '6px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: genBusy === r.id ? 'wait' : 'pointer' }}>
+                          {genBusy === r.id ? 'جارٍ الإرسال…' : 'أرسل الآن'}
+                        </button>
+                      )}
+                      {d.sent && <span style={{ color: C.green, fontWeight: 900, fontSize: 11.5, alignSelf: 'center' }}>{'\u2713 أُرسلت'}</span>}
+                      <button onClick={() => { navigator.clipboard.writeText((d.subject ? d.subject + '\n\n' : '') + d.body); alert('نُسخت الرسالة'); }}
+                        style={{ background: C.mint, color: C.ink, border: 'none', borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>انسخ النص</button>
+                      <a href={'/admin/outreach?company_id=' + r.company_id + '&track=' + r.track}
+                        style={{ background: C.gold, color: C.ink, borderRadius: 20, padding: '6px 16px', fontWeight: 900, fontSize: 11.5, textDecoration: 'none' }}>{'راجع واعتمد ←'}</a>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        ))}
+          );
+        })}
         {shown.length === 0 && <p style={{ color: C.gray, fontWeight: 700, textAlign: 'center', padding: 30 }}>لا توجد جهات بهذا التصنيف.</p>}
       </div>
     </div>
