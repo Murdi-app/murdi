@@ -438,7 +438,7 @@ export default function GoalPage() {
                           {req.status === 'priced' && req.price && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
-                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">🏦 الدفع عبر تحويل بنكي</button>
+                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">🏦 إتمام الدفع</button>
                             </div>
                           )}
                           {(req.status === 'delivered' || req.status === 'completed') && req.deliverable && (
@@ -511,7 +511,7 @@ export default function GoalPage() {
             <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
             <button onClick={() => router.push('/pay/transfer?amount=2900&kind=subscription&company_id=' + companyId)}
               style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              🏦 الدفع عبر تحويل بنكي
+              🏦 إتمام الدفع
             </button>
             <button onClick={() => setShowPaywall(false)}
               style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
