@@ -7,6 +7,7 @@ type Row = {
   provider: string; product: string | null; fit_score: number | null;
   apply_channel: string | null; apply_url: string | null; apply_steps: string | null;
   required_docs: string | null; apply_status: string | null; apply_note: string | null;
+  verdict?: string | null; region?: string | null;
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
@@ -162,7 +163,8 @@ export default function ApplyPage() {
               <div>
                 <div style={{ color: C.ink, fontWeight: 900, fontSize: 15 }}>{r.provider}</div>
                 <div style={{ color: C.gray, fontWeight: 700, fontSize: 12.5, marginTop: 2 }}>{r.product}</div>
-                <div style={{ color: C.gold, fontWeight: 900, fontSize: 11.5, marginTop: 4 }}>{r.company_name} · {r.track === 'funding' ? 'تمويل' : 'استثمار'} · {r.fit_score}</div>
+                <div style={{ color: C.gold, fontWeight: 900, fontSize: 11.5, marginTop: 4 }}>{r.company_name} · {r.track === 'funding' ? 'تمويل' : 'استثمار'} · {r.fit_score}{r.region ? ' · ' + r.region : ''}</div>
+                {r.verdict && <div style={{ marginTop: 4 }}><span style={{ background: /بشرط/.test(String(r.verdict)) ? '#FBF5E8' : C.mint, color: /بشرط/.test(String(r.verdict)) ? '#8A6D1A' : C.ink, borderRadius: 20, padding: '3px 11px', fontWeight: 900, fontSize: 11 }}>{r.verdict}</span></div>}
                 {r.incomplete && <div style={{ color: '#C0392B', fontWeight: 900, fontSize: 11, marginTop: 3 }}>{'\u26A0 مطابقة هذا العميل لم تكتمل'}</div>}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
