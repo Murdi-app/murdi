@@ -65,6 +65,7 @@ export default function OutreachPage() {
       .then(r => r.json()).then(d => { if (d.ok) setMsgs(d.messages); }).catch(() => {});
   }, [companyId]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [tab, setTab] = useState('funding');
   const [busy, setBusy] = useState(false);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [progress, setProgress] = useState('');
@@ -246,12 +247,12 @@ export default function OutreachPage() {
           return (<>
             <h1 style={{ fontSize:24, fontWeight:900, color:C.ink, marginBottom:6 }}>📨 مخاطبة الجهات</h1>
             <div style={{ background:'#FBF5E8', border:'2px solid #EAD9A8', color:'#8A6D1A', borderRadius:12, padding:'10px 14px', fontSize:12.5, fontWeight:900, marginBottom:12 }}>
-              لم يُحدَّد المسار — ادخل من صفحة الاعتمادات عبر «خاطب الممولين» أو «خاطب المستثمرين» ليُصفّى حسب مساره.
+              هذه الصفحة سجلّ للمخاطبات ومكان رفع الملفات — التوليد والإرسال صارا من لوحة التقديم.
             </div>
           </>)
         })()}
         <p style={{ color:C.gray, fontSize:13, marginBottom:20 }}>
-          توليد رسائل مخصصة لكل جهة مطابقة، مراجعتها، ثم إرسالها بعد الاعتماد.
+          سجلّ ما وُلد وأُرسل، مفصولاً بحسب المسار.
         </p>
 
         {/* شريط التوليد */}
@@ -356,7 +357,15 @@ export default function OutreachPage() {
         )}
 
         {/* البطاقات */}
-        {msgs.map(m => {
+        <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+          {([['funding','\u{1F3E6} تمويل'],['investment','\u{1F4BC} استثمار']] as const).map(([k,lab]) => (
+            <button key={k} onClick={() => setTab(k)}
+              style={{ background: tab===k ? C.ink : '#fff', color: tab===k ? '#fff' : C.gray, border:'2px solid '+C.mint, borderRadius:30, padding:'8px 20px', fontWeight:900, fontSize:13, cursor:'pointer' }}>
+              {lab} ({msgs.filter(x => (x.track === 'investment' ? 'investment' : 'funding') === k).length})
+            </button>
+          ))}
+        </div>
+        {msgs.filter(m => (m.track === 'investment' ? 'investment' : 'funding') === tab).map(m => {
           const b = badge(m);
           return (
             <div key={m.id} style={{ background:C.card, border:'2px solid '+C.mint, borderRadius:16, padding:16, marginBottom:14 }}>
