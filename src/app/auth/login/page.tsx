@@ -61,9 +61,10 @@ export default function Login() {
         .au-err{color:#B4453C;text-align:center;margin-top:14px;font-size:13.5px;line-height:1.7;font-weight:600}
         .au-links{text-align:center;margin-top:20px;color:#6B8A80;font-size:13.5px;line-height:2.2}
         .au-links b{color:#1A3D34;cursor:pointer;font-weight:600;border-bottom:1px solid #C9A84C;padding-bottom:1px}
-        .au-quiet{color:#9DB3AB;cursor:pointer;font-size:13px}
+        .au-quiet{color:#6B8A80;cursor:pointer;font-size:13px;border-bottom:1px solid #E3EAE7;padding-bottom:1px}
         .au-back{display:block;margin-top:8px;color:#9DB3AB;font-size:12.5px;text-decoration:none;cursor:pointer}
         .au-ft{text-align:center;color:#9DB3AB;font-size:11.5px;padding:18px;line-height:1.9}
+        @media (max-width:620px){.au-mid{align-items:flex-start;padding:26px 16px 12px}.au-brand{font-size:26px}.au-title{margin-top:20px;font-size:19px}}
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
       `}</style>
       <div className="au">
@@ -78,7 +79,7 @@ export default function Login() {
             <div className="au-label">البريد الإلكتروني</div>
             <input className="au-input" placeholder="name@company.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={onKeyDown} type="email" />
             <div className="au-label">كلمة المرور</div>
-            <input className="au-input" placeholder="كلمة المرور" type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={onKeyDown} />
+            <input className="au-input" placeholder="" type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={onKeyDown} />
 
             <button className="au-btn" onClick={handleLogin} disabled={loading}>
               {loading ? 'جارٍ الدخول…' : 'دخول'}
