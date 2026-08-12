@@ -31,7 +31,9 @@ export default function Login() {
     const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
     if (!co) { router.push('/register'); return }
     if (co.account_status === 'active') { router.push('/goal'); return }
-    router.push('/pending')
+    const st = String(co.account_status || '')
+    if (st === 'rejected' || st === 'suspended') { router.push('/pending'); return }
+    router.push('/goal')
     setLoading(false)
   }
 

@@ -37,7 +37,7 @@ export default function RegisterPage() {
     const { data: company } = await supabase
       .from('companies').select('account_status').eq('user_id', user.id).maybeSingle()
     if (company && company.account_status === 'active') { router.push('/goal'); return }
-    if (company && company.account_status === 'pending_approval') { router.push('/pending'); return }
+    if (company && company.account_status === 'pending_approval') { router.push('/goal'); return }
     setLoading(false)
   }
 
@@ -94,7 +94,7 @@ export default function RegisterPage() {
     if (!user) return
     await supabase.from('companies').update({ account_status: 'pending_approval' }).eq('user_id', user.id)
     setSaving(false)
-    router.push('/pending')
+    router.push('/goal')
   }
 
   function copyIban() {
