@@ -453,7 +453,7 @@ export default function InvestmentResult() {
               <div className="text-[#CFE0DA] text-xs font-bold mt-1">تقدير مبدئي للجهات المناسبة لملفك</div>
             </div>
             <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
-              ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · مخاطبة الجهات نيابةً عنك · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
+              ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · رفع ملفك للجهات ومتابعة الرد · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
             </p>
             <button onClick={() => { window.location.href = '/pay'; }}
               className="w-full font-black text-sm py-4 rounded-full transition hover:opacity-90"
