@@ -23,7 +23,7 @@ export default function Page() {
         </section>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>4. مشاركة البيانات</h2>
-          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>لا نبيع بياناتك ولا نؤجّرها. قد نشارك ما يلزم فقط مع الجهات الممولة أو المستثمرة عند تجهيز ملفك ومخاطبتها نيابةً عنك، وبعد اطلاعك، أو مع مزوّدي خدمات تقنية موثوقين ملتزمين بالسرية، أو عند طلب نظامي رسمي.</div>
+          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>لا نبيع بياناتك ولا نؤجّرها. قد نشارك ما يلزم فقط مع الجهات الممولة أو المستثمرة عند تجهيز ملفك ورفعه إليها، وبعد اطلاعك، أو مع مزوّدي خدمات تقنية موثوقين ملتزمين بالسرية، أو عند طلب نظامي رسمي.</div>
         </section>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>5. حماية البيانات</h2>
