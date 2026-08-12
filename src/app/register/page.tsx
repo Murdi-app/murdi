@@ -105,7 +105,7 @@ export default function RegisterPage() {
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ color:'#2E9E7B', fontFamily:'Cairo,sans-serif', fontSize:18 }}>جاري التحميل...</div>
+      <div style={{ color:'#1A3D34', fontFamily:'Cairo,sans-serif', fontSize:18 }}>جاري التحميل...</div>
     </div>
   )
 
@@ -132,25 +132,25 @@ export default function RegisterPage() {
         .rg-field { margin-bottom:18px; }
         .rg-label { display:block; color:#1A3D34; font-size:14px; font-weight:600; margin-bottom:7px; }
         .rg-input { width:100%; background:#FBFCFB; border:1.5px solid #EAF1EE; border-radius:12px; padding:13px 16px; font-family:'Cairo',sans-serif; font-size:15px; color:#1A3D34; outline:none; direction:rtl; text-align:right; }
-        .rg-input:focus { border-color:#2E9E7B; background:#fff; }
-        .rg-btn { width:100%; background:linear-gradient(135deg,#2E9E7B,#2E9E7B); color:#fff; border:none; padding:15px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px rgba(46,158,123,0.28); margin-top:8px; }
+        .rg-input:focus { border-color:#1A3D34; background:#fff; }
+        .rg-btn { width:100%; background:linear-gradient(135deg,#1A3D34,#1A3D34); color:#fff; border:none; padding:15px; border-radius:40px; font-family:'Cairo',sans-serif; font-size:16px; font-weight:700; cursor:pointer; box-shadow:0 8px 22px rgba(46,158,123,0.28); margin-top:8px; }
         .rg-btn:disabled { opacity:0.45; cursor:not-allowed; }
         .rg-fee-box { background:#E8F5EF; border-radius:16px; padding:22px; text-align:center; margin-bottom:22px; }
         .rg-fee-label { color:#6B8A80; font-size:13px; margin-bottom:4px; }
-        .rg-fee-amount { font-family:'Amiri',serif; font-size:34px; color:#2E9E7B; font-weight:700; }
+        .rg-fee-amount { font-family:'Amiri',serif; font-size:34px; color:#1A3D34; font-weight:700; }
         .rg-bank-row { display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #F0F5F3; }
         .rg-bank-row:last-child { border-bottom:none; }
         .rg-bank-label { color:#A3BAB2; font-size:13px; }
         .rg-bank-val { color:#1A3D34; font-size:14px; font-weight:600; direction:ltr; }
-        .rg-copy { background:#2E9E7B; color:#fff; border:none; padding:6px 16px; border-radius:20px; font-family:'Cairo',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-right:8px; }
+        .rg-copy { background:#1A3D34; color:#fff; border:none; padding:6px 16px; border-radius:20px; font-family:'Cairo',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-right:8px; }
         .rg-note { background:#FBF5E8; border-radius:12px; padding:14px 16px; color:#9A7B2E; font-size:13px; line-height:1.7; margin:18px 0; }
         .rg-back { background:transparent; color:#A3BAB2; border:none; font-family:'Cairo',sans-serif; font-size:13px; cursor:pointer; margin-top:14px; width:100%; }
-        .rg-upload-box { border:2px dashed #2E9E7B; border-radius:16px; padding:20px; text-align:center; margin:18px 0; background:#FBFCFB; }
-        .rg-upload-label { display:inline-block; background:#E8F5EF; color:#2E9E7B; padding:10px 24px; border-radius:30px; font-size:14px; font-weight:700; cursor:pointer; }
+        .rg-upload-box { border:2px dashed #1A3D34; border-radius:16px; padding:20px; text-align:center; margin:18px 0; background:#FBFCFB; }
+        .rg-upload-label { display:inline-block; background:#E8F5EF; color:#1A3D34; padding:10px 24px; border-radius:30px; font-size:14px; font-weight:700; cursor:pointer; }
         .rg-upload-name { color:#1A3D34; font-size:13px; font-weight:600; margin-top:10px; word-break:break-all; }
-        .rg-upload-btn { background:#2E9E7B; color:#fff; border:none; padding:10px 28px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:14px; font-weight:700; cursor:pointer; margin-top:12px; }
+        .rg-upload-btn { background:#1A3D34; color:#fff; border:none; padding:10px 28px; border-radius:30px; font-family:'Cairo',sans-serif; font-size:14px; font-weight:700; cursor:pointer; margin-top:12px; }
         .rg-upload-btn:disabled { opacity:0.45; cursor:not-allowed; }
-        .rg-upload-done { color:#2E9E7B; font-size:14px; font-weight:700; margin-top:10px; }
+        .rg-upload-done { color:#1A3D34; font-size:14px; font-weight:700; margin-top:10px; }
         .rg-upload-err { color:#C0564B; font-size:13px; font-weight:700; margin-top:10px; }
       `}</style>
       <div className="rg-wrapper">
@@ -206,7 +206,7 @@ export default function RegisterPage() {
                   <input type="file" accept="image/*,.pdf" style={{ display:'none' }}
                     onChange={e => { setReceiptFile(e.target.files?.[0] || null); setReceiptUploaded(false); setUploadError('') }} />
                 </label>
-                {receiptFile && <div className="rg-upload-name">📎 {receiptFile.name}</div>}
+                {receiptFile && <div className="rg-upload-name">{receiptFile.name}</div>}
                 {receiptFile && !receiptUploaded && (
                   <div>
                     <button className="rg-upload-btn" disabled={uploading} onClick={uploadReceipt}>
