@@ -128,7 +128,6 @@ export default function GoalPage() {
   };
 
   const go = () => {
-    if (!subscriptionActive) { setShowPaywall(true); return; }
     const t = TRACKS.find((x) => x.id === selected);
     if (t) router.push(t.href);
   };

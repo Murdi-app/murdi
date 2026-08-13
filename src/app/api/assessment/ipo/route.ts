@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     .single();
 
   if (company === null) return NextResponse.json({ error: 'لا توجد شركة مسجلة' }, { status: 404 });
-  if (company.account_status !== 'active') return NextResponse.json({ error: 'الحساب غير مفعّل' }, { status: 403 });
+  if (['rejected','suspended'].includes(String(company.account_status || ''))) return NextResponse.json({ error: 'الحساب غير متاح' }, { status: 403 });
 
   const { createClient } = await import('@supabase/supabase-js');
   const adminGuard = createClient(
