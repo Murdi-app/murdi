@@ -112,7 +112,6 @@ export default function InvestmentAssessment() {
   const [financingSources, setFinancingSources] = useState('');
   const [debtDetails, setDebtDetails] = useState('');
   const [roundSize, setRoundSize] = useState('');
-  const [currentUnits, setCurrentUnits] = useState('');
   const [unitLabel, setUnitLabel] = useState('');
   const [investmentType, setInvestmentType] = useState('');
   const [investmentIntent, setInvestmentIntent] = useState('');
@@ -126,7 +125,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && currentUnits.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
     return false;
   };
 
@@ -158,7 +157,6 @@ export default function InvestmentAssessment() {
           financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
           debt_details: hasDebt ? debtDetails.trim() : '',
           round_size: roundSize.trim() || null,
-          current_units: currentUnits.trim() ? Number(currentUnits) : null,
           unit_label: unitLabel.trim() || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
@@ -308,14 +306,10 @@ export default function InvestmentAssessment() {
               <div className="bg-[#F7FAF9] rounded-2xl p-5 border-2 border-[#E3EDE8] space-y-5">
                 <p className="font-black text-[#9A7B2E] text-sm">ماذا تطلب من المستثمر؟ (يساعدنا نرشّح لك المستثمر الأنسب لصفقتك تحديداً)</p>
                 <div>
-                  <label className="block font-black text-[#1A3D34] mb-2">كم عدد وحداتك التشغيلية الحالية؟</label>
-                  <p className="text-[#6B8A80] text-xs font-bold mb-2">فروع أو محلات أو مركبات أو خطوط إنتاج أو عيادات أو نقاط بيع — حسب نشاطك</p>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={currentUnits} onChange={(e) => setCurrentUnits(e.target.value)}
-                      placeholder="العدد الحالي" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
-                    <input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)}
-                      placeholder="نوع الوحدة: فرع / مركبة / خط إنتاج" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
-                  </div>
+                  <label className="block font-black text-[#1A3D34] mb-2">وضعك التشغيلي اليوم (اختياري)</label>
+                  <p className="text-[#6B8A80] text-xs font-bold mb-2">اكتبه بلغتك: فرع واحد ومتجر إلكتروني · ٣ مركبات · خط إنتاج · منصة تخدم المملكة · ٥ محلات</p>
+                  <input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)}
+                    placeholder="مثال: فرع واحد ومبيعات أونلاين تغطي المملكة" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
                 </div>
                 <div>
                   <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
