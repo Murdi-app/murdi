@@ -230,6 +230,15 @@ export async function POST(req: Request) {
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
+      const LATE_I = Number(body.months_late_inv) || 0;
+      const BAN_I = ['شبه صفر', 'لا جدوى', 'يغلق أبواب', 'مرفوض مبدئي', 'مستحيل', 'لن تحصل'];
+      const softI = (s: string) => (LATE_I > 6 ? s : s.replace(/متعثرة/g, 'متأخرة').replace(/متعثر/g, 'متأخر').replace(/تعثراً/g, 'تأخراً').replace(/التعثر/g, 'التأخر').replace(/تعثر/g, 'تأخر'));
+      const cleanI = (a: string[]) => a.map(softI).filter((t) => !BAN_I.some((b) => t.includes(b)));
+      obstacles = cleanI(obstacles);
+      plan = cleanI(plan);
+      if (LATE_I > 6 && !plan.some((p) => p.includes('إعادة الهيكلة'))) {
+        plan.push('سوّ وضعك عبر خدمة إعادة الهيكلة ومعالجة التعثر في مُرضي قبل عرض شركتك على المستثمرين');
+      }
     }
   } catch {}
 
