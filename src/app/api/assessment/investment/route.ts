@@ -219,6 +219,7 @@ export async function POST(req: Request) {
     current_units: body.current_units,
     unit_label: body.unit_label,
     business_description: body.business_description,
+    prior_investment_details: body.prior_investment_details,
     legal_form: body.legal_form,
     problem_solved: body.problem_solved,
     team_info: body.team_info,
