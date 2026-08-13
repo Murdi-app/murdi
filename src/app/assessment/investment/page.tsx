@@ -44,6 +44,10 @@ const RECURRING = [
 ];
 
 
+const LEGAL_FORM = [
+  { id: 'company', label: 'شركة (ذات مسؤولية محدودة أو مساهمة) — قابلة لدخول شريك بحصة' },
+  { id: 'sole', label: 'مؤسسة فردية — تحتاج تحويلاً إلى شركة قبل دخول مستثمر' },
+]
 const FINANCING_TYPE = [
   { id: 'cash', label: 'نقدي / رأس مال عامل' },
   { id: 'assets', label: 'سيارات / معدات' },
@@ -113,6 +117,7 @@ export default function InvestmentAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
   const [roundSize, setRoundSize] = useState('');
   const [unitLabel, setUnitLabel] = useState('');
+  const [legalForm, setLegalForm] = useState('');
   const [investmentType, setInvestmentType] = useState('');
   const [investmentIntent, setInvestmentIntent] = useState('');
   const [useOfFunds, setUseOfFunds] = useState('');
@@ -125,7 +130,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && legalForm !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
     return false;
   };
 
@@ -158,6 +163,7 @@ export default function InvestmentAssessment() {
           debt_details: hasDebt ? debtDetails.trim() : '',
           round_size: roundSize.trim() || null,
           unit_label: unitLabel.trim() || null,
+          legal_form: legalForm || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
           use_of_funds: useOfFunds.trim() || null,
@@ -312,12 +318,16 @@ export default function InvestmentAssessment() {
                     placeholder="مثال: فرع واحد ومبيعات أونلاين تغطي المملكة" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
                 </div>
                 <div>
+                  <label className="block font-black text-[#1A3D34] mb-3">الشكل النظامي للمنشأة</label>
+                  <Choice items={LEGAL_FORM} value={legalForm} onChange={setLegalForm} />
+                </div>
+                <div>
                   <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
                   <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={roundSize} onChange={(e) => setRoundSize(e.target.value)}
                     placeholder="مثال: 5000000" className={inputCls + ' text-right'} />
                 </div>
                 <div>
-                  <label className="block font-black text-[#1A3D34] mb-2">غرض التمويل (فيمَ ستستخدم المبلغ؟)</label>
+                  <label className="block font-black text-[#1A3D34] mb-2">أوجه استخدام الجولة (فيمَ ستستخدم المبلغ؟)</label>
                   <textarea value={useOfFunds} onChange={(e) => setUseOfFunds(e.target.value)} rows={2}
                     placeholder="مثال: افتتاح 3 فروع جديدة، أو تطوير خط إنتاج، أو دخول سوق جديد..." className={inputCls + ' text-right'} />
                 </div>
