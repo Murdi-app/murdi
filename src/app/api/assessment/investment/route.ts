@@ -218,6 +218,7 @@ export async function POST(req: Request) {
     round_size: body.round_size,
     current_units: body.current_units,
     unit_label: body.unit_label,
+    business_description: body.business_description,
     legal_form: body.legal_form,
     problem_solved: body.problem_solved,
     team_info: body.team_info,
