@@ -92,7 +92,25 @@ export default function RegisterPage() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('companies').update({ account_status: 'pending_approval' }).eq('user_id', user.id)
+    const { data: co } = await supabase
+      .from('companies').select('id, receipt_path').eq('user_id', user.id).maybeSingle()
+    if (co) {
+      let receiptUrl = ''
+      if (co.receipt_path) {
+        const { data: pub } = supabase.storage.from('receipts').getPublicUrl(co.receipt_path)
+        receiptUrl = pub?.publicUrl || ''
+      }
+      try {
+        await fetch('/api/payments/transfer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyId: co.id, amountSar: 2900, kind: 'subscription',
+            description: '\u0627\u0634\u062a\u0631\u0627\u0643 \u0627\u0644\u0639\u0636\u0648\u064a\u0629 \u0627\u0644\u0631\u0628\u0639\u064a',
+            receiptUrl, note: '\u062a\u062d\u0648\u064a\u0644 \u0628\u0646\u0643\u064a \u0645\u0646 \u0635\u0641\u062d\u0629 \u0627\u0644\u062a\u0633\u062c\u064a\u0644'
+          }),
+        })
+      } catch {}
+    }
     setSaving(false)
     router.push('/goal')
   }
