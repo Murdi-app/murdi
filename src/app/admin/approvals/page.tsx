@@ -27,6 +27,7 @@ interface Company {
   created_at: string
   subscription_start?: string
   subscription_end?: string
+  subscription_active?: boolean
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -349,6 +350,7 @@ export default function ApprovalsPage() {
               <div className="ap-card-top">
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
+                <span className="ap-badge" style={{ background: c.subscription_active ? '#1A3D34' : '#F5EFE0', color: c.subscription_active ? '#fff' : '#8A6D1A' }}>{c.subscription_active ? 'مشترك' : 'لم يشترك'}</span>
               </div>
               {c.account_status === 'pending_payment' && (
                 <div className="ap-grid">
@@ -440,91 +442,7 @@ export default function ApprovalsPage() {
                         <div style={{ color:'#3A4D47', fontSize:13.5, lineHeight:2.1, whiteSpace:'pre-wrap' }}>{pr.eligibility.replace(/^#+ /gm, '').replace(/\*\*/g, '')}</div>
                       </div>
                     )}
-                    {(() => {
-                      const ms = matchesByCompany[pr.company?.id] || [];
-                      if (ms.length === 0) return null;
-                      const byRegion = (rg: string) => ms.filter((m: any) => (m.region || 'السعودية') === rg);
-                      const regionBlock = (label: string, color: string, list: any[]) => list.length === 0 ? null : (
-                        <div style={{ marginBottom:14 }}>
-                          <div style={{ color, fontSize:13, fontWeight:900, margin:'10px 0 8px' }}>{label} <span style={{ background:color, color:'#fff', borderRadius:10, padding:'1px 8px', fontSize:11 }}>{list.length}</span></div>
-                          <div style={{ overflowX:'auto' }}>
-                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                              <thead><tr style={{ background:'#F0F5F3' }}>
-                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الجهة</th>
-                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المنتج</th>
-                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المتطلبات</th>
-                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>الملاءمة</th>
-                                <th style={{ padding:'7px 9px', textAlign:'right', border:'1px solid #E3EDE8' }}>المصدر</th>
-                              </tr></thead>
-                              <tbody>
-                                {list.map((m: any, i: number) => (
-                                  <tr key={i}>
-                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', fontWeight:700, color:'#1A3D34' }}>{m.provider}</td>
-                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#3A4D47' }}>{m.product}</td>
-                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.requirements}</td>
-                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8', color:'#6B8A80', fontSize:11.5 }}>{m.fit}</td>
-                                    <td style={{ padding:'7px 9px', border:'1px solid #E3EDE8' }}>{m.source ? <a href={m.source} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B' }}>↗️</a> : '—'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      );
-                      const TRACK_META: Record<string, { ar: string; color: string; icon: string }> = {
-                        funding: { ar: 'التمويل', color: '#2E9E7B', icon: '💰' },
-                        investment: { ar: 'الاستثمار', color: '#9A7B2E', icon: '📈' },
-                        ipo: { ar: 'الطرح العام', color: '#A53B3B', icon: '🏛️' },
-                      };
-                      const byTrack = (tk: string) => ms.filter((m: any) => (m.track || 'funding') === tk);
-                      const trackBlock = (tk: string) => {
-                        const tl = byTrack(tk);
-                        if (tl.length === 0) return null;
-                        const meta = TRACK_META[tk] || TRACK_META.funding;
-                        const inRegion = (rg: string) => tl.filter((m: any) => (m.region || 'السعودية') === rg);
-                        return (
-                          <div key={tk} style={{ marginBottom:18, paddingBottom:14, borderBottom:'1px solid #EEF4F1' }}>
-                            <div style={{ color:meta.color, fontSize:13.5, fontWeight:900, margin:'4px 0 10px', display:'flex', alignItems:'center', gap:6 }}>
-                              <span>{meta.icon} مسار {meta.ar}</span>
-                              <span style={{ background:meta.color, color:'#fff', borderRadius:10, padding:'1px 9px', fontSize:11 }}>{tl.length}</span>
-                            </div>
-                            {regionBlock('🇸🇦 السعودية', '#2E9E7B', inRegion('السعودية'))}
-                            {regionBlock('🌙 الخليج', '#9A7B2E', inRegion('الخليج'))}
-                            {regionBlock('🌍 دولي', '#A53B3B', inRegion('دولي'))}
-                          </div>
-                        );
-                      };
-                      return (
-                        <div style={{ marginTop:18, background:'#FAFCFB', border:'2px solid #EAF2EE', borderRadius:12, padding:'16px 18px' }}>
-                          <div style={{ color:'#1A3D34', fontSize:14, fontWeight:900, marginBottom:10, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>🌐 جهات المطابقة (بحث مُرضي) <span style={{ color:'#2E9E7B' }}>({ms.length})</span>
-                            {ms.length > 0 && <a href={'/admin/matches-print?company_id=' + pr.company?.id} target="_blank" style={{ background:'#13302A', color:'#fff', borderRadius:8, padding:'5px 14px', fontSize:12.5, fontWeight:700, textDecoration:'none' }}>🖨️ طباعة PDF للعميل</a>}
-                          </div>
-                          {trackBlock('funding')}
-                          {trackBlock('investment')}
-                          {trackBlock('ipo')}
-                          {pr.company?.id && ms.length > 0 && (() => {
-                            const cts = contractsByCompany[pr.company.id] || []
-                            const isAct = (c: any) => c.status === 'issued' || c.status === 'signed' || c.status === 'completed'
-                            const trks: string[] = Array.from(new Set(cts.filter(isAct).map((c: any) => c.contract_type === 'investment' ? 'investment' : 'funding')))
-                            if (trks.length === 0) return (
-                              <div style={{ marginTop:12, background:'#FBF5E8', border:'2px solid #E8D9A8', borderRadius:10, padding:'14px 16px' }}>
-                                <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:13.5, marginBottom:6 }}>🔒 المخاطبة مقفلة — لا يوجد عقد تجهيز ملف</div>
-                                <div style={{ color:'#8A6D1A', fontSize:12.5, lineHeight:1.9 }}>مخاطبة الجهات بملف غير مجهّز تعني رفضاً شبه مؤكد، والرفض يُسجّل ضد العميل. أصدر عقد «تجهيز الملف والتفاوض» من صفحة الخدمات أولاً.</div>
-                                <a href="/admin/services" target="_blank" style={{ display:'inline-block', marginTop:10, background:'#9A7B2E', color:'#fff', borderRadius:8, padding:'7px 16px', fontSize:12.5, fontWeight:900, textDecoration:'none' }}>📄 اذهب إلى الخدمات والعقود</a>
-                              </div>
-                            )
-                            return (
-                              <>{trks.map((t) => (
-                              <button key={t} onClick={() => window.open('/admin/outreach?company_id=' + pr.company.id + '&track=' + t, '_blank')}
-                                style={{ marginTop:12, width:'100%', padding:'12px', borderRadius:10, background: t === 'investment' ? '#9A7B2E' : '#1A3D34', color:'#fff', fontWeight:900, border:'none', fontSize:14, cursor:'pointer' }}>
-                                {t === 'investment' ? '💼 خاطب المستثمرين نيابة عن العميل' : '🏦 خاطب الممولين نيابة عن العميل'}
-                              </button>
-                              ))}</>
-                            )
-                          })()}
-                        </div>
-                      );
-                    })()}
+                    
 
                     {/* مساعد البحث مُرضي — محادثة خاصة بالأدمن */}
                     {pr.company?.id && (() => {
