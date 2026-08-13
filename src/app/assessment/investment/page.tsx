@@ -118,6 +118,7 @@ export default function InvestmentAssessment() {
   const [roundSize, setRoundSize] = useState('');
   const [unitLabel, setUnitLabel] = useState('');
   const [businessDesc, setBusinessDesc] = useState('');
+  const [priorDetails, setPriorDetails] = useState('');
   const [legalForm, setLegalForm] = useState('');
   const [investmentType, setInvestmentType] = useState('');
   const [investmentIntent, setInvestmentIntent] = useState('');
@@ -131,7 +132,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && businessDesc.trim() !== '' && legalForm !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && businessDesc.trim() !== '' && (priorInvestment !== 'yes' || priorDetails.trim() !== '') && legalForm !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
     return false;
   };
 
@@ -165,6 +166,7 @@ export default function InvestmentAssessment() {
           round_size: roundSize.trim() || null,
           unit_label: unitLabel.trim() || null,
           business_description: businessDesc.trim() || null,
+          prior_investment_details: priorInvestment === 'yes' ? (priorDetails.trim() || null) : null,
           legal_form: legalForm || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
@@ -309,6 +311,14 @@ export default function InvestmentAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
                 <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
+                {priorInvestment === 'yes' && (
+                  <div style={{ marginTop: 14 }}>
+                    <label className="block font-black text-[#1A3D34] mb-2">تفاصيل الجولة السابقة</label>
+                    <p className="text-[#6B8A80] text-xs font-bold mb-2">من دخل، وبكم، وبأي حصة، وفي أي سنة، وبأي تقييم إن عُرف. مثال: مستثمر فرد دخل بـ٢ مليون مقابل ١٥٪ سنة ٢٠٢٤ بتقييم ١٣ مليون · صندوق نمو دخل بـ٥ ملايين مقابل ٢٠٪</p>
+                    <textarea value={priorDetails} onChange={(e) => setPriorDetails(e.target.value)} rows={3}
+                      placeholder="اكتب من دخل وبكم وبأي حصة وسنة الجولة" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right leading-relaxed" />
+                  </div>
+                )}
               </div>
 
               <div className="bg-[#F7FAF9] rounded-2xl p-5 border-2 border-[#E3EDE8] space-y-5">
