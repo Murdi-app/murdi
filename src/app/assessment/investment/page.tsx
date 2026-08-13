@@ -373,7 +373,7 @@ export default function InvestmentAssessment() {
                 className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
               <button type="button" disabled={loading}
                 onClick={() => { if (confirm('\u0633\u062a\u062e\u0631\u062c \u0645\u0646 \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0648\u062a\u0641\u0642\u062f \u0625\u062c\u0627\u0628\u0627\u062a\u0643 \u0627\u0644\u062d\u0627\u0644\u064a\u0629. \u0647\u0644 \u062a\u0631\u064a\u062f \u0627\u0644\u062e\u0631\u0648\u062c\u061f')) window.location.href = '/goal'; }}
-                className="px-6 py-3 rounded-xl border-2 border-[#F0D9D9] text-[#C0392B] font-bold disabled:opacity-40">\u062e\u0631\u0648\u062c</button></>
+                className="px-6 py-3 rounded-xl border-2 border-[#F0D9D9] text-[#C0392B] font-bold disabled:opacity-40">{'\u062e\u0631\u0648\u062c'}</button></>
             )}
             {step < 3 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
