@@ -43,11 +43,6 @@ const RECURRING = [
   { id: 'oneoff', label: 'حسب المشاريع — صفقات أو عقود منفصلة غير منتظمة' },
 ];
 
-const REPAYMENT = [
-  { id: 'regular', label: 'منتظم في السداد' },
-  { id: 'slight', label: 'متأخر بأقساط بسيطة' },
-  { id: 'default', label: 'متعثر' },
-];
 
 const FINANCING_TYPE = [
   { id: 'cash', label: 'نقدي / رأس مال عامل' },
@@ -115,7 +110,6 @@ export default function InvestmentAssessment() {
   const [totalFinancing, setTotalFinancing] = useState('');
   const [remainingDebt, setRemainingDebt] = useState('');
   const [financingSources, setFinancingSources] = useState('');
-  const [repaymentStatus, setRepaymentStatus] = useState('');
   const [debtDetails, setDebtDetails] = useState('');
   const [roundSize, setRoundSize] = useState('');
   const [investmentType, setInvestmentType] = useState('');
@@ -125,13 +119,12 @@ export default function InvestmentAssessment() {
   const [problemSolved, setProblemSolved] = useState('');
   const [teamInfo, setTeamInfo] = useState('');
   const [futurePlan, setFuturePlan] = useState('');
-  const [monthsLateInv, setMonthsLateInv] = useState('');
 
   const stepValid = () => {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && repaymentStatus !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
     return false;
   };
 
@@ -161,9 +154,7 @@ export default function InvestmentAssessment() {
           remaining_debt: hasDebt ? Number(remainingDebt) : 0,
           financing_sources: hasDebt ? financingSources : '',
           financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
-          repayment_status: hasDebt ? repaymentStatus : '',
           debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
-          months_late_inv: hasDebt && repaymentStatus === 'default' ? (monthsLateInv.trim() || null) : null,
           round_size: roundSize.trim() || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
@@ -369,17 +360,6 @@ export default function InvestmentAssessment() {
                         className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right leading-relaxed" />
                     </div>
                   )}
-                  <div>
-                    <label className="block font-black text-[#1A3D34] mb-3">ما وضع سداد الديون حالياً؟</label>
-                    <Choice items={REPAYMENT} value={repaymentStatus} onChange={setRepaymentStatus} />
-                  </div>
-                  {repaymentStatus === 'default' && (
-                    <div>
-                      <label className="block font-black text-[#1A3D34] mb-2">منذ كم شهر والتعثّر قائم؟</label>
-                      <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={monthsLateInv} onChange={(e) => setMonthsLateInv(e.target.value)}
-                        placeholder="مثال: 6" className={inputCls + ' text-right'} />
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -389,8 +369,11 @@ export default function InvestmentAssessment() {
 
           <div className="flex gap-3 mt-8">
             {step > 0 && (
-              <button type="button" onClick={() => setStep(step - 1)}
+              <><button type="button" onClick={() => setStep(step - 1)}
                 className="px-6 py-3 rounded-xl border-2 border-[#E8F5EF] text-[#6B8A80] font-bold">رجوع</button>
+              <button type="button" disabled={loading}
+                onClick={() => { if (confirm('\u0633\u062a\u062e\u0631\u062c \u0645\u0646 \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0648\u062a\u0641\u0642\u062f \u0625\u062c\u0627\u0628\u0627\u062a\u0643 \u0627\u0644\u062d\u0627\u0644\u064a\u0629. \u0647\u0644 \u062a\u0631\u064a\u062f \u0627\u0644\u062e\u0631\u0648\u062c\u061f')) window.location.href = '/goal'; }}
+                className="px-6 py-3 rounded-xl border-2 border-[#F0D9D9] text-[#C0392B] font-bold disabled:opacity-40">\u062e\u0631\u0648\u062c</button></>
             )}
             {step < 3 && (
               <button type="button" disabled={stepValid() === false} onClick={() => setStep(step + 1)}
