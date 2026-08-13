@@ -216,6 +216,8 @@ export async function POST(req: Request) {
     competitive_edge: body.competitive_edge,
     use_of_funds: body.use_of_funds,
     round_size: body.round_size,
+    current_units: body.current_units,
+    unit_label: body.unit_label,
     problem_solved: body.problem_solved,
     team_info: body.team_info,
     future_plan: body.future_plan,
