@@ -117,6 +117,7 @@ export default function InvestmentAssessment() {
   const [debtDetails, setDebtDetails] = useState('');
   const [roundSize, setRoundSize] = useState('');
   const [unitLabel, setUnitLabel] = useState('');
+  const [businessDesc, setBusinessDesc] = useState('');
   const [legalForm, setLegalForm] = useState('');
   const [investmentType, setInvestmentType] = useState('');
   const [investmentIntent, setInvestmentIntent] = useState('');
@@ -130,7 +131,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && legalForm !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && businessDesc.trim() !== '' && legalForm !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
     return false;
   };
 
@@ -163,6 +164,7 @@ export default function InvestmentAssessment() {
           debt_details: hasDebt ? debtDetails.trim() : '',
           round_size: roundSize.trim() || null,
           unit_label: unitLabel.trim() || null,
+          business_description: businessDesc.trim() || null,
           legal_form: legalForm || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
@@ -312,8 +314,14 @@ export default function InvestmentAssessment() {
               <div className="bg-[#F7FAF9] rounded-2xl p-5 border-2 border-[#E3EDE8] space-y-5">
                 <p className="font-black text-[#9A7B2E] text-sm">ماذا تطلب من المستثمر؟ (يساعدنا نرشّح لك المستثمر الأنسب لصفقتك تحديداً)</p>
                 <div>
+                  <label className="block font-black text-[#1A3D34] mb-2">ماذا تعمل شركتك بالضبط؟</label>
+                  <p className="text-[#6B8A80] text-xs font-bold mb-2">ما الذي تبيعه أو تقدّمه، ولمن، وكيف تكسب. مثال: نستورد ونوزّع مكمّلات غذائية مسجّلة عبر فرع ومتجر إلكتروني · نصنّع أثاثاً مكتبياً للشركات · نشغّل مطاعم وجبات سريعة · نقدّم خدمات نقل وتوصيل بعقود شهرية · تطبيق يربط العملاء بمزوّدي خدمة</p>
+                  <textarea value={businessDesc} onChange={(e) => setBusinessDesc(e.target.value)} rows={3}
+                    placeholder="اكتب بوضوح ماذا تبيع ولمن وكيف تحقق إيرادك" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right leading-relaxed" />
+                </div>
+                <div>
                   <label className="block font-black text-[#1A3D34] mb-2">وضعك التشغيلي اليوم (اختياري)</label>
-                  <p className="text-[#6B8A80] text-xs font-bold mb-2">اكتبه بلغتك: فرع واحد ومتجر إلكتروني · ٣ مركبات · خط إنتاج · منصة تخدم المملكة · ٥ محلات</p>
+                  <p className="text-[#6B8A80] text-xs font-bold mb-2">اكتبه بلغتك: فرع واحد ومتجر إلكتروني · ٣ مركبات · خط إنتاج · مصنع · مستودع · عيادتان · مكتب · ٥ محلات · عقود تشغيل جارية · تطبيق · فريق ميداني · منصة تخدم المملكة</p>
                   <input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)}
                     placeholder="مثال: فرع واحد ومبيعات أونلاين تغطي المملكة" className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
                 </div>
