@@ -293,10 +293,11 @@ export default function InvestmentAssessment() {
                 <Choice items={RECURRING} value={recurring} onChange={setRecurring} />
               </div>
               <div>
-                <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
                 <label className="block font-black text-[#1A3D34] mb-3">ما هدفك من هذا المسار؟</label>
                 <Choice items={INTENT} value={investmentIntent} onChange={setInvestmentIntent} />
-                <div style={{ height: 18 }} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-3">هل دخل مستثمر أو جولة تمويل سابقة؟</label>
                 <Choice items={PRIOR_INV} value={priorInvestment} onChange={setPriorInvestment} />
               </div>
 
