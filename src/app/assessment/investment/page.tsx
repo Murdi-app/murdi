@@ -124,7 +124,7 @@ export default function InvestmentAssessment() {
     if (step === 0) return sector !== '' && (sector !== 'other' || customSector.trim() !== '') && stage !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 1) return annualRevenue !== '' && netProfit !== '' && growth !== '';
     if (step === 2) return hasGovernance !== null && hasBoard !== null && hasStatements !== null && (hasStatements === false || audited !== null);
-    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== '' && financingSources !== '' && (financingSources !== 'multi' || debtDetails.trim() !== '') && financingType !== '' && (financingType !== 'other' || customFinancingType.trim() !== '')));
+    if (step === 3) return concentration !== '' && recurring !== '' && priorInvestment !== '' && roundSize.trim() !== '' && useOfFunds.trim() !== '' && hasDebt !== null && (hasDebt === false || (totalFinancing !== '' && remainingDebt !== ''));
     return false;
   };
 
@@ -154,7 +154,7 @@ export default function InvestmentAssessment() {
           remaining_debt: hasDebt ? Number(remainingDebt) : 0,
           financing_sources: hasDebt ? financingSources : '',
           financing_type: hasDebt ? (financingType === 'other' ? customFinancingType.trim() : financingType) : '',
-          debt_details: hasDebt && financingSources === 'multi' ? debtDetails.trim() : '',
+          debt_details: hasDebt ? debtDetails.trim() : '',
           round_size: roundSize.trim() || null,
           investment_intent: investmentIntent || null,
           investment_type: investmentType || null,
