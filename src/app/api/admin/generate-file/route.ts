@@ -6,6 +6,7 @@ import { generateFileContent, buildFileHTML, type FileClientData } from '@/lib/f
 import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 import { logError } from '@/lib/logError';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -26,6 +27,8 @@ async function getAdmin() {
 
 // POST { company_id, track } : يولّد ملف HTML احترافي
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 

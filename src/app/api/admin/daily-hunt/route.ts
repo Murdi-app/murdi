@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { runDailyHunt } from '@/lib/dailyHunt';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 export const maxDuration = 300;
 
@@ -25,6 +26,8 @@ async function getAdmin() {
 
 // GET ?date=YYYY-MM-DD : جلب جولة يوم (افتراضياً اليوم)
 export async function GET(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const url = new URL(req.url);
@@ -48,6 +51,8 @@ export async function GET(req: Request) {
 
 // POST : تشغيل جولة صيد جديدة لليوم
 export async function POST() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   try {

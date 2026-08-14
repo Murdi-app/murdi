@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { logError } from '@/lib/logError';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'فريق الشراكات - حلول المرضي <partners@murdi.sa>';
@@ -46,6 +47,8 @@ function buildFollowup(stage: number, entityName: string, lang: string, companyN
 
 // GET : المتابعات المستحقة اليوم
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { data } = await admin
@@ -62,6 +65,8 @@ export async function GET() {
 
 // POST { id, company_name } : إرسال متابعة لرسالة واحدة
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, company_name } = await req.json();
@@ -105,6 +110,8 @@ export async function POST(req: Request) {
 
 // PATCH { id, reply_status } : تحديث حالة الرد (replied / declined / closed)
 export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, reply_status } = await req.json();

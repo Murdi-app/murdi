@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { runAutoMatch } from '@/lib/matchEngine';
 import { logError } from '@/lib/logError';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -21,6 +22,8 @@ async function getAdmin() {
 
 // GET: كل المدفوعات + اسم الشركة
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { data: pays } = await admin.from('payments').select('*').order('created_at', { ascending: false });
@@ -36,6 +39,8 @@ export async function GET() {
 
 // POST { id, action: 'confirm' } : تأكيد تحويل وتفعيل الاشتراك
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json().catch(() => ({}));
