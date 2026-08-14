@@ -25,6 +25,22 @@ export async function POST(req: Request) {
     progx[t] = 'done';
     await admin.from('companies').update({ match_notice: 'ready', match_progress: progx }).eq('id', companyId);
     try {
+      const { data: cN } = await admin.from('companies').select('company_name').eq('id', companyId).maybeSingle();
+      const nm = String((cN as Record<string, unknown> | null)?.company_name || companyId);
+      const lbl = t === 'investment' ? 'استثمار' : 'تمويل';
+      const { Resend: R2 } = await import('resend');
+      await new R2(process.env.RESEND_API_KEY).emails.send({
+        from: 'مُرضي <noreply@murdi.sa>',
+        to: 'hololalmurdi.fs@gmail.com',
+        subject: 'اكتملت مطابقة ' + lbl + ' — ' + nm + ' (' + (count || 0) + ' جهة)',
+        html: '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34">'
+          + '<h2 style="color:#1A3D34">اكتملت المطابقة</h2>'
+          + '<p>الشركة: <b>' + nm + '</b></p><p>المسار: ' + lbl + '</p>'
+          + '<p>عدد الجهات: <b style="font-size:22px;color:#C9A84C">' + (count || 0) + '</b></p>'
+          + '<p><a href="https://murdi.sa/admin/apply" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح لوحة التقديم</a></p></div>',
+      });
+    } catch (e) { await logError('match.notifyAdmin', e, { company_id: companyId }); }
+    try {
       const { data: co2 } = await admin.from('companies').select('user_id').eq('id', companyId).single();
       const rec = (co2 || {}) as Record<string, unknown>;
       let to = '';
