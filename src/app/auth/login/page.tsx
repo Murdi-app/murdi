@@ -28,6 +28,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
     const { data: { user: u } } = await supabase.auth.getUser()
+    if (u?.email === 'hololalmurdi.fs@gmail.com') { router.push('/admin'); return }
     const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
     if (!co) { router.push('/register'); return }
     if (co.account_status === 'active') { router.push('/goal'); return }
