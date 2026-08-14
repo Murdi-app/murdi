@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { runClientHunt, runCallListHunt } from '@/lib/clientHunt';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 export const maxDuration = 300;
 
@@ -26,6 +27,8 @@ async function getAdmin() {
 
 // GET : جلب كل الشركات (الأحدث أولاً)
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { data } = await admin
@@ -38,6 +41,8 @@ export async function GET() {
 
 // POST : تشغيل جولة صيد (عادية أو قائمة اتصال حسب mode)
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   let mode = '';
@@ -52,6 +57,8 @@ export async function POST(req: Request) {
 
 // DELETE : استبعاد شركات محددة من قوائم الإرسال
 export async function DELETE(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { ids, newStatus } = await req.json();
@@ -66,6 +73,8 @@ export async function DELETE(req: Request) {
 
 // PUT : تعليم شركة أنها رُوسلت واتساب
 export async function PUT(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id } = await req.json();
@@ -76,6 +85,8 @@ export async function PUT(req: Request) {
 
 // PATCH : إرسال دفعة الإيميل اليومية (محكومة بحد أقصى)
 export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 

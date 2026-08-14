@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -7,6 +8,8 @@ const admin = () => createClient(
 );
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const a = admin();
   const { data: rows, error } = await a.from('match_results')
     .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements')
@@ -32,6 +35,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const { id, apply_status, apply_note } = await req.json();
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
   const patch: Record<string, unknown> = { };

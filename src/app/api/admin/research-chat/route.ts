@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -21,6 +22,8 @@ async function getAdmin() {
 }
 
 export async function GET(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const companyId = new URL(req.url).searchParams.get('company_id');
@@ -34,6 +37,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json().catch(() => ({}));

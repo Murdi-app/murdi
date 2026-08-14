@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { fundingContract, investmentContract, acquisitionContract, ContractFields } from '@/lib/contracts';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -23,6 +24,8 @@ async function getAdmin() {
 
 // GET: كل العقود (أو عقود شركة واحدة عبر ?company_id=)
 export async function GET(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const companyId = new URL(req.url).searchParams.get('company_id');
@@ -34,6 +37,8 @@ export async function GET(req: Request) {
 
 // POST: إنشاء مسودّة عقد لطلب خدمة
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json();
@@ -55,6 +60,8 @@ export async function POST(req: Request) {
 
 // PATCH: تحديث المسودّة أو إصدارها
 export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json();

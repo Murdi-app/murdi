@@ -5,11 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 import { SERVICES } from '@/lib/serviceSuggestion';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
 
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const cookieStore = await cookies();
   const sb = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,

@@ -3,10 +3,13 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { buildDeckHTML, buildNotesHTML } from '@/lib/pitchDeck';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const cookieStore = await cookies();
   const sb = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,

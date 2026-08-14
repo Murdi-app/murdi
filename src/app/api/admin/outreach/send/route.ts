@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'مُرضي — فريق الشراكات <partners@murdi.sa>';
@@ -25,6 +26,8 @@ async function getAdmin() {
 
 // POST { company_id } : يرسل كل الرسائل المعتمدة لهذا العميل
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 

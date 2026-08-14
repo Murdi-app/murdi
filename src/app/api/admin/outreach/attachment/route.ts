@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -22,6 +23,8 @@ async function getAdmin() {
 
 // GET ?company_id : يجيب رابط الملف المرفق
 export async function GET(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
   const url = new URL(req.url);
@@ -34,6 +37,8 @@ export async function GET(req: Request) {
 
 // POST { company_id, file_url, file_name } : يحفظ/يستبدل رابط الملف
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
   let companyId = '', fileUrl = '', fileName = '', lang = '', track = 'funding';
@@ -50,6 +55,8 @@ export async function POST(req: Request) {
 
 // DELETE ?company_id : يحذف الملف المرفق
 export async function DELETE(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
   const url = new URL(req.url);
