@@ -154,7 +154,7 @@ export default function GoalPage() {
               <>
                 <div style={{ display: 'inline-block', width: 22, height: 22, border: '3px solid rgba(201,168,76,0.3)', borderTopColor: '#C9A84C', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: 8 }} />
                 <div className="text-white font-black text-sm">{matchPhase || 'جارٍ مطابقة ملفك مع شبكة جهات مُرضي'}</div>
-                <div className="text-[#CFE0DA] text-xs font-bold mt-1">قد تستغرق بضع دقائق — لا تغلق الصفحة</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mt-1">التحليل جارٍ — يمكنك إغلاق الصفحة والعودة عند وصول إشعار على بريدك أو بعد ساعة تقريباً</div>
                 <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
               </>
             ) : matchCount && matchCount > 0 && pendingTracks.length === 0 ? (
