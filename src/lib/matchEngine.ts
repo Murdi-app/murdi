@@ -270,6 +270,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
             if (track === 'funding' && weak(o.saudiPrecedent) && weak(o.legalPath)) return 0;
           }
         }
+        if (track === 'investment' && /لا تستثمر مباشرة|لا يستثمر مباشرة|صناديق البحث|دعم الباحثين|صندوق وسيط|صناديق وسيطة|fund of funds|لا يناسب التواصل المباشر|مستثمر \(lp\)|كمستثمر lp/i.test(txt2)) return 0;
         const v = String(o.verdict || '');
         if (/غير مؤهل|مستبعد|غير متاح/.test(v)) return 0;
         const prob = v.includes('بشرط') ? 0.3 : 0.6;
@@ -291,7 +292,14 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const ev = prob * fit * (Math.min(mid, cap > 0 ? cap : mid) / 1000000) / Math.max(1, months) * 10;
         return ev;
       })(),
-      instrument: o.instrument || null,
+      instrument: (() => {
+        const iv = String(o.instrument || '');
+        if (!isInvest || !iv.includes('استحواذ')) return iv || null;
+        const t = String(o.provider || '') + ' ' + String(o.product || '');
+        const buyer = /search fund|\bETA\b|تملّك|تملك|مدرج|نمو:|تاسي|قابضة|holding|group|استراتيجي/i.test(t);
+        const fund = /صندوق|صناديق|private equity|growth fund|capital partners/i.test(t);
+        return (!buyer && fund) ? 'ملكية' : iv;
+      })(),
       engagement: o.engagement || null,
       source: o.source || null,
       verdict: o.verdict || null,
