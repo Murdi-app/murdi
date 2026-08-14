@@ -24,10 +24,14 @@ export async function GET() {
   const tracks0 = Array.from(new Set((rr0 || []).map((x: { result_type: string }) => x.result_type)
     .filter((t: string) => t === 'funding' || t === 'investment')));
   const pending: string[] = [];
+  const counts: Record<string, number> = {};
   for (const t0 of tracks0) {
     const { count: c0 } = await ad.from('match_results').select('id', { count: 'exact', head: true })
       .eq('company_id', co.id).eq('track', t0).eq('status', 'new');
     if (!c0) pending.push(String(t0));
+    const { count: cv } = await ad.from('match_results').select('id', { count: 'exact', head: true })
+      .eq('company_id', co.id).eq('track', t0).eq('status', 'new').gt('fit_score', 0);
+    counts[String(t0)] = cv || 0;
   }
   const { data: nz } = await ad.from('companies').select('match_notice, match_started_at').eq('id', co.id).maybeSingle();
   let notice = String(nz?.match_notice || '');
@@ -35,7 +39,7 @@ export async function GET() {
     notice = 'stalled';
     await ad.from('companies').update({ match_notice: 'stalled' }).eq('id', co.id);
   }
-  return NextResponse.json({ count: count || 0, tracks: tracks0, pending, notice });
+  return NextResponse.json({ count: count || 0, counts, tracks: tracks0, pending, notice });
 }
 
 export async function POST(req: Request) {
