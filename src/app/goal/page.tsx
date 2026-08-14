@@ -24,6 +24,7 @@ export default function GoalPage() {
   const [companyId, setCompanyId] = useState('');
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
+  const [matchCounts, setMatchCounts] = useState<Record<string, number>>({});
   const [matching, setMatching] = useState(false);
   const [matchPhase, setMatchPhase] = useState('');
   const [matchNotice, setMatchNotice] = useState('');
@@ -33,7 +34,7 @@ export default function GoalPage() {
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
 
-  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -92,6 +93,11 @@ export default function GoalPage() {
     load();
   }, []);
 
+  const trackLabel = (k: string) => (k === 'investment' ? 'استثمار' : 'تمويل');
+  const countText = () => {
+    const parts = ['funding', 'investment'].filter((k) => (matchCounts[k] || 0) > 0).map((k) => (matchCounts[k] || 0) + ' جهة ' + trackLabel(k));
+    return parts.length > 0 ? parts.join(' · ') : (matchCount || 0) + ' جهة';
+  };
   const doneScores = Object.values(scores);
   const overall = doneScores.length ? Math.round(doneScores.reduce((a, b) => a + b, 0) / doneScores.length) : 0;
   const pct = overall >= 75 ? 90 : overall >= 70 ? 82 : overall >= 65 ? 74 : overall >= 55 ? 60 : overall >= 45 ? 45 : overall >= 35 ? 30 : 18;
@@ -153,12 +159,12 @@ export default function GoalPage() {
               </>
             ) : matchCount && matchCount > 0 && pendingTracks.length === 0 ? (
               <>
-                <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 26 }}>{matchCount} جهة</div>
+                <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 26 }}>{countText()}</div>
                 <div className="text-[#CFE0DA] text-xs font-bold mt-1">طوبق ملفك مع شبكة مُرضي — فريق د. عبدالحكيم يراجعها ويجهّز ملفك للتقديم عليها</div>
               </>
             ) : (
               <>
-                <div className="text-white font-black text-sm mb-1">{Object.values(resumeMap).some(v => (v || 0) > 0) ? 'مطابقتك لم تكتمل بعد' : 'ملفك مفعّل — ابدأ مطابقة الجهات'}</div>{matchCount && matchCount > 0 ? <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 15, marginBottom: 4 }}>{matchCount} جهة حتى الآن</div> : null}
+                <div className="text-white font-black text-sm mb-1">{Object.values(resumeMap).some(v => (v || 0) > 0) ? 'مطابقتك لم تكتمل بعد' : 'ملفك مفعّل — ابدأ مطابقة الجهات'}</div>{matchCount && matchCount > 0 ? <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 15, marginBottom: 4 }}>{countText()}</div> : null}
                 <div className="text-[#CFE0DA] text-xs font-bold mb-3">نطابق ملفك مع شبكة جهات مُرضي ونستخرج المنتج المناسب لك في كل جهة</div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                   {pendingTracks.map(tr => (
