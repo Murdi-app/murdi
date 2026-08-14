@@ -294,7 +294,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       })(),
       instrument: (() => {
         const iv = String(o.instrument || '');
-        if (!isInvest || !iv.includes('استحواذ')) return iv || null;
+        if (track !== 'investment' || !iv.includes('استحواذ')) return iv || null;
         const t = String(o.provider || '') + ' ' + String(o.product || '');
         const buyer = /search fund|\bETA\b|تملّك|تملك|مدرج|نمو:|تاسي|قابضة|holding|group|استراتيجي/i.test(t);
         const fund = /صندوق|صناديق|private equity|growth fund|capital partners/i.test(t);
