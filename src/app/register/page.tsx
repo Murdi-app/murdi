@@ -57,7 +57,7 @@ export default function RegisterPage() {
       await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'pending_payment' })
     }
     setSaving(false)
-    setStep(2)
+    router.push('/goal')
   }
 
   async function uploadReceipt() {
