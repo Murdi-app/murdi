@@ -28,6 +28,8 @@ interface Company {
   subscription_start?: string
   subscription_end?: string
   subscription_active?: boolean
+  approved_tracks?: string[]
+  track_request?: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -145,6 +147,14 @@ export default function ApprovalsPage() {
     await fetch('/api/consultation', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     await loadConsultations()
     setBusy(null)
+  }
+
+  async function approveTrack(c: Company) {
+    const tk = String(c.track_request || '')
+    if (!tk) return
+    const cur = Array.isArray(c.approved_tracks) ? c.approved_tracks : []
+    await supabase.from('companies').update({ approved_tracks: cur.concat([tk]), track_request: null }).eq('id', c.id)
+    loadCompanies()
   }
 
   async function loadCompanies() {
@@ -300,6 +310,19 @@ export default function ApprovalsPage() {
               </div>
             )}
           </div>
+
+          {companies.filter(c => c.track_request).length > 0 && (
+            <div style={{ background:'#FDF8EC', border:'2px solid #C9A84C', borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
+              <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:14, marginBottom:10 }}>طلبات فتح مسار إضافي</div>
+              {companies.filter(c => c.track_request).map(c => (
+                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginBottom:8 }}>
+                  <span style={{ color:'#1A3D34', fontWeight:800, fontSize:13.5 }}>{c.company_name}</span>
+                  <span style={{ color:'#6B8A80', fontSize:13 }}>يطلب فتح مسار {c.track_request === 'investment' ? 'الاستثمار' : 'التمويل'}</span>
+                  <button onClick={() => approveTrack(c)} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:999, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>موافقة</button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {secBar('pending', 'طلبات بانتظار المراجعة', pending.length, '#2E9E7B')}
 
