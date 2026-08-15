@@ -16,11 +16,23 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end').eq('user_id', user.id).maybeSingle();
+    .select('id, subscription_active, subscription_end, approved_tracks').eq('user_id', user.id).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
   const active = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
   if (!active) return NextResponse.json({ error: 'يلزم تفعيل الملف' }, { status: 402 });
 
+  const tk = track === 'investment' ? 'investment' : 'funding';
+  const appr = Array.isArray((co as Record<string, unknown>).approved_tracks) ? ((co as Record<string, unknown>).approved_tracks as string[]) : [];
+  if (!appr.includes(tk)) {
+    const { data: prev } = await admin.from('match_results')
+      .select('track').eq('company_id', co.id).neq('track', tk).limit(1);
+    if (prev && prev.length > 0) {
+      await admin.from('companies')
+        .update({ track_request: tk, track_request_at: new Date().toISOString() }).eq('id', co.id);
+      return NextResponse.json({ error: 'أرسلنا طلبك لفريق مُرضي لفتح هذا المسار — سنبلغك فور الموافقة' }, { status: 403 });
+    }
+    await admin.from('companies').update({ approved_tracks: appr.concat([tk]) }).eq('id', co.id);
+  }
   const url = process.env.WORKER_URL;
   if (!url) return NextResponse.json({ error: 'المشغّل غير مهيأ' }, { status: 500 });
 
