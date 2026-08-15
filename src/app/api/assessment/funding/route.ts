@@ -145,6 +145,14 @@ export async function POST(req: Request) {
   if (body.has_bank_statement) score += 10;
   else { obstacles.push('لا يوجد كشف حساب بنكي حديث'); plan.push('تجهيز كشف حساب بنكي لآخر 6 أشهر — تطلبه كل جهات التمويل لتقييم التدفق النقدي'); }
 
+  {
+    const cc = Number(body.collection_cycle) || 0;
+    const noCol = !body.has_collateral || String(body.has_collateral) === 'none';
+    if (cc >= 90) { score -= 8; obstacles.push('دورة تحصيل 90 يوماً فأكثر تحتجز النقد وتضعف صورة التدفق أمام الممول'); plan.push('وثّق عقود العملاء وأوامر الشراء لإثبات أن التحصيل البطيء مقابل مبيعات مؤكدة'); }
+    if (body.has_pos === false && body.issues_invoices === false) { score -= 7; obstacles.push('لا يوجد أثر إلكتروني للمبيعات — لا نقاط بيع ولا فواتير صادرة'); plan.push('فعّل نقاط البيع أو الفوترة الإلكترونية لبناء سجل مبيعات يقرأه الممول'); }
+    if (noCol) { score = Math.min(score, 85); obstacles.push('لا توجد أصول قابلة للرهن مقابل المبلغ المطلوب'); plan.push('جهّز ملف الضمانات: حصر الأصول القابلة للرهن أو بديل ضمان مقبول لدى الجهة'); }
+    if (score < 0) score = 0;
+  }
   let verdict = '';
   if (score >= 80) verdict = 'جاهز للتمويل';
   else if (score >= 60) verdict = 'شبه جاهز — عوائق بسيطة';
