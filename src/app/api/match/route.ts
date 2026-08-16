@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   const webOffers = _m.offers;
   const webSearchOk = _m.ok;
   const webSearchError = _m.error;
-  const _save = await saveMatchResults(company.id, isInvest ? 'investment' : 'funding', webOffers);
+  const _save = await saveMatchResults(company.id, isInvest ? 'investment' : 'funding', webOffers, rev, false, String(fd.major_buyers || ''));
 
   // ====== الطبقة 2: مطابقة قاعدة جهاتك الخاصة ======
   type DbMatch = { product: Record<string, unknown>; fit: number };
