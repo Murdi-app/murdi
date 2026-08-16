@@ -63,6 +63,7 @@ export default function FundingAssessment() {
   const [hasPos, setHasPos] = useState<boolean | null>(null);
   const [posCount, setPosCount] = useState('');
   const [posUsage, setPosUsage] = useState('');
+  const [majorBuyers, setMajorBuyers] = useState('');
   const [posTypes, setPosTypes] = useState('');
   const [issuesInvoices, setIssuesInvoices] = useState<boolean | null>(null);
   const [hasFleet, setHasFleet] = useState<boolean | null>(null);
@@ -120,6 +121,7 @@ export default function FundingAssessment() {
           has_bank_statement: hasBankStatement,
           activity_type: activityType,
           activity_type_other: activityType === 'other_activity' ? activityTypeOther.trim() : null,
+          major_buyers: majorBuyers.trim() || null,
           has_pos: hasPos,
           pos_count: hasPos ? (posCount.trim() || null) : null,
           pos_usage_pct: hasPos ? (posUsage.trim() || null) : null,
@@ -336,6 +338,12 @@ export default function FundingAssessment() {
                   <input value={activityTypeOther} onChange={(e) => setActivityTypeOther(e.target.value)}
                     placeholder="اكتب طبيعة نشاطك بالتفصيل" className={inputCls + ' text-right mt-3'} />
                 )}
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">هل تورّد لجهات كبيرة أو حكومية؟</label>
+                <input value={majorBuyers} onChange={(e) => setMajorBuyers(e.target.value)}
+                  placeholder="اكتب أسماءها — أرامكو، سابك، البريد السعودي، وزارة، مستشفى… واتركه فارغاً إن لا يوجد" className={inputCls + ' text-right'} />
+                <p className="text-[11px] font-bold mt-2 text-[#8AA79D]">يفتح لك برامج تمويل الموردين المرتبطة بتلك الجهات.</p>
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">تستقبل مدفوعات عبر نقاط بيع (مدى / شبكة)؟</label>
