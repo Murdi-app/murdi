@@ -218,7 +218,7 @@ export async function runScopedMatch(args: {
   return { offers: webOffers, ok: webSearchOk, error: webSearchError, totalScopes };
 }
 
-export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[], clientRev?: number, keepPrev?: boolean) {
+export async function saveMatchResults(companyId: string, track: string, offers: WebOffer[], clientRev?: number, keepPrev?: boolean, buyers?: string) {
   if (!companyId || !offers.length) return { saved: 0, error: 'no offers' };
   try {
     const admin = createClient(
@@ -243,6 +243,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const inst = String(o.instrument || '');
         const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '') + ' ' + String(o.provider || '') + ' ' + (Array.isArray(o.gaps) ? o.gaps.join(' ') : '')).toLowerCase();
         if (track === 'funding' && /الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
+        if (track === 'funding' && /تمويل موردي|موردّي|supplier finance|supply chain finance|تمويل سلاسل الإمداد|سلاسل الامداد|reverse factoring|payables finance|receivables finance|early payment|dynamic discounting|taulia|\bscf\b/.test(txt2) && buyers !== undefined && !String(buyers).trim()) return 0;
         if (track === 'funding' && /transaction banking|تمويل المعاملات|إدارة السيولة|treasury|gtb/.test(txt2)) return 0;
         if (/أُغلق فعلي|أغلق فعلا|مغلق|توقفت|تحت الحراسة|in administration/.test(txt2)) return 0;
         if (track === 'funding' && /مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance|تمويل المشاريع|مؤسسة الخليج للاستثمار/.test(txt2)) return 0;
@@ -369,7 +370,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
       scopeFrom: batch === undefined ? undefined : from, scopeTo: batch === undefined ? undefined : from + SIZE });
     const nextB = (batch === undefined ? 0 : batch) + 1;
     const doneAll = batch === undefined || (nextB * SIZE) >= r.totalScopes;
-    if (r.offers.length) await saveMatchResults(companyId, track, r.offers, rev, batch !== undefined && batch > 0);
+    if (r.offers.length) await saveMatchResults(companyId, track, r.offers, rev, batch !== undefined && batch > 0, String(fd.major_buyers || ''));
     if (!r.offers.length && batch === undefined) return { done: true, total: r.totalScopes, next: 0 };
     if (doneAll && batch === undefined) try {
       const { data: rr } = await admin.from('readiness_results')
