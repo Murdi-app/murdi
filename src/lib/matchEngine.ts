@@ -249,9 +249,9 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (track === 'funding' && /مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance|تمويل المشاريع|مؤسسة الخليج للاستثمار/.test(txt2)) return 0;
         if (track === 'funding' && /مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
         // وكالات ائتمان التصدير بالاسم — تموّل مشتري منتج بلدها لا تمويلاً عاماً
-        if (track === 'funding' && /ukef|bpifrance|sinosure|sace|nexi|k-sure|edc|us exim|exim bank|coface|allianz trade|atradius|iciec|الإسلامية لضمان الاستثمار/.test(txt2)) return 0;
+        if (track === 'funding' && /trade credit insurance|credit reinsurance|تأمين ائتماني|تأمين الذمم|إعادة تأمين|غير قابل للتطبيق/.test(txt2)) return 0;
         // صناديق الدين الخاص — تذاكرها كبيرة؛ لا تُرشّح إلا لمنشأة إيرادها مناسب
-        if (track === 'funding' && /private credit|private debt|دين خاص|ائتمان خاص|mezzanine|مزانين/.test(txt2) && (!clientRev || clientRev < 50000000)) return 0;
+        // حظر فئة الائتمان الخاص أُزيل — قاعدة (mid > cap*2) أدناه تتكفّل بحجم التذكرة لكل جهة على حدة
         if (track === 'funding' && /venture debt|\u062f\u064a\u0646 \u0645\u062e\u0627\u0637\u0631|non-dilutive|growth credit|vc-backed|\u0645\u062f\u0639\u0648\u0645\u0629 \u0628\u0631\u0623\u0633 \u0645\u0627\u0644 \u062c\u0631\u064a\u0621/.test(txt2)) return 0;
         if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(txt2)) return 0;
         if (track === 'funding' && /\u0645\u0624\u0633\u0633\u0627\u062a \u0645\u0627\u0644\u064a\u0629|\u0645\u0624\u0633\u0633\u0629 \u0648\u0633\u064a\u0637\u0629|on-lending|wholesale|\u0644\u0628\u0646\u0648\u0643|financial institution/.test(txt2)) return 0;
