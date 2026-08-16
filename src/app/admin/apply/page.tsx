@@ -20,6 +20,15 @@ type Draft = {
 
 const C = { ink: '#1A3D34', gold: '#C9A84C', green: '#2E9E7B', gray: '#6B8A80', mint: '#E8F5EF' };
 const STATES = ['لم يُقدَّم', 'قيد التقديم', 'قُدِّم', 'ردّت'];
+const PRODUCTS = [
+  { id: 'liq', label: 'سيولة', re: 'تورق|تورّق|رأس مال عامل|مرابحة نقدية|تمويل نقدي|قرض مباشر|working capital|term loan|cash' },
+  { id: 'inv', label: 'فواتير', re: 'فواتير|فاتورة|مستخلص|factoring|receivable|discount' },
+  { id: 'veh', label: 'مركبات ومعدات', re: 'مركبات|أسطول|إجارة|معدات|آلات|fleet|equipment|leas|vehicle|auto' },
+  { id: 're', label: 'عقار', re: 'عقار|رهن|mortgage|home equity|real estate|بيع وإعادة' },
+  { id: 'prj', label: 'عقود ومشاريع', re: 'مشاريع|مشروع|عقود|أوامر شراء|contract|project|purchase order' },
+  { id: 'lc', label: 'اعتمادات وضمانات', re: 'اعتماد|خطاب ضمان|letter of credit|guarantee|كفالة' },
+  { id: 'scf', label: 'موردين', re: 'تمويل موردي|موردّي|supplier finance|supply chain|سلاسل الإمداد|reverse factoring|payables|early payment|taulia' },
+];
 
 const norm = (s?: string | null) => {
   const v = (s || 'لم يُقدَّم').trim();
@@ -52,6 +61,7 @@ export default function ApplyPage() {
   const [editRow, setEditRow] = useState('');
   const [eEmail, setEEmail] = useState('');
   const [eBody, setEBody] = useState('');
+  const [prod, setProd] = useState('');
   const [need, setNeed] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
   const [due, setDue] = useState<DueFU[]>([]);
@@ -138,7 +148,7 @@ export default function ApplyPage() {
 
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))))
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
   const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
@@ -164,6 +174,18 @@ export default function ApplyPage() {
           </div>
         )}
 
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          {PRODUCTS.map(p => {
+            const n = rows.filter(r => new RegExp(p.re, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))).length;
+            if (!n) return null;
+            return (
+              <button key={p.id} onClick={() => setProd(prod === p.re ? '' : p.re)}
+                style={{ background: prod === p.re ? C.gold : '#fff', color: C.ink, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '7px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                {p.label} ({n})
+              </button>
+            );
+          })}
+        </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
           {STATES.map(s => (
             <button key={s} onClick={() => setSt(st === s ? '' : s)}
