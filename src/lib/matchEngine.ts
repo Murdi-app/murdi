@@ -259,7 +259,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
         if (track === 'funding' && (inst.includes('تأمين') || inst.includes('دعم'))) return 0;
         // بنوك التنمية التي ولايتها الدول النامية — المملكة خارج نطاقها
-        if (/proparco|oe-?eb|oesterreichische entwicklungsbank|\bfmo\b|\bdeg\b|british international investment|\bbii\b|norfund|swedfund|finnfund|cofides|\bsimest\b|entwicklungsbank/.test(txt2)) return 0;
+        if (/proparco|oe-?eb|oesterreichische entwicklungsbank|\bfmo\b|\bdeg\b|british international investment|\bbii\b|norfund|swedfund|finnfund|cofides|\bsimest\b|entwicklungsbank|\bbio\b|bio-invest|الدول النامية|دول نامية|developing countries|oda|dac|أقل نمواً|الأسواق الحدودية|تمويل تنموي/.test(txt2)) return 0;
         // السابقة الخليجية أو المسار القانوني — نُقلت من البرومبت إلى الكود
         {
           const reg = String(o.region || '');
