@@ -422,17 +422,28 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
 
 // إثراء طريق التقديم — يعمل داخل العامل بلا سقف زمني
 const THIRD_PARTY = /wikipedia|linkedin|bloomberg|reuters|zawya|argaam|yahoo|prnewswire|businesswire|crunchbase|pitchbook|facebook|twitter|x\.com|youtube|medium|forbes|news/i;
+const AR_BRANDS: [RegExp, RegExp][] = [
+  [/الراجحي/, /rajhi/], [/الأهلي|الاهلي|\bSNB\b/i, /alahli|snb/], [/الرياض/, /riyadbank|riyad/],
+  [/الإنماء|الانماء/, /alinma/], [/البلاد/, /bankalbilad|albilad/], [/الجزيرة/, /baj|aljazira/],
+  [/الفرنسي|\bBSF\b/i, /alfransi|bsf/], [/العربي الوطني|\bANB\b/i, /anb/], [/ساب|السعودي الأول/, /sab\b|sabb/],
+  [/للاستثمار|\bSAIB\b/i, /saib/], [/الخليج الدولي|\bGIB\b/i, /gib/], [/الأمثل|الامثل/, /alamthal/],
+  [/اليسر/, /alyusr|yusr/], [/التيسير/, /tayseer/], [/نايفات/, /nayifat/], [/تأجير|تاجير/, /taajeer|tajeer/],
+  [/منافع/, /manafa/], [/لندو/, /lendo/], [/تمويل الأولى|الأولى/, /aloula/], [/يانال|ينال/, /yanal/],
+  [/عبداللطيف جميل/, /alj|jameel/], [/الجفالي|جفالي/, /jipco|juffali/], [/تعميد/, /tameed/], [/فورس/, /forus/],
+];
 export function gradeEvidence(url?: string | null, provider?: string | null): string {
   const u = String(url || '').trim();
   if (!u || u === 'null' || !/^https?:\/\//i.test(u)) return 'يحتاج تحقق';
   let host = '';
   try { host = new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return 'يحتاج تحقق'; }
   if (THIRD_PARTY.test(host)) return 'مرجّح';
-  const latin = String(provider || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+  const p = String(provider || '');
+  for (const [ar, en] of AR_BRANDS) { if (ar.test(p) && en.test(host)) return 'مؤكّد'; }
+  const latin = p.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
     .filter(w => w.length > 3 && !['bank','finance','financial','company','group','saudi','arabia','capital','services','international','limited','holding'].includes(w));
+  if (!latin.length) return 'مرجّح';
   const core = host.split('.')[0].replace(/[^a-z0-9]/g, '');
-  const match = latin.some(w => core.includes(w.slice(0, 5)) || w.includes(core.slice(0, 5)));
-  return match ? 'مؤكّد' : 'مرجّح';
+  return latin.some(w => core.includes(w.slice(0, 5)) || w.includes(core.slice(0, 5))) ? 'مؤكّد' : 'مرجّح';
 }
 export async function enrichApplyPaths(companyId: string, track: string): Promise<number> {
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
