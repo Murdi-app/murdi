@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { logError } from '@/lib/logError';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff, ownsCompany } from '@/lib/requireStaff';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'فريق الشراكات - حلول المرضي <partners@murdi.sa>';
@@ -47,8 +47,8 @@ function buildFollowup(stage: number, entityName: string, lang: string, companyN
 
 // GET : المتابعات المستحقة اليوم
 export async function GET() {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { data } = await admin
@@ -60,17 +60,27 @@ export async function GET() {
     .lte('next_followup_at', new Date().toISOString())
     .order('next_followup_at', { ascending: true })
     .limit(50);
-  return NextResponse.json({ due: data || [] });
+  let due = data || [];
+  if (who.role === 'staff') {
+    const keep = [];
+    for (const d of due) { if (await ownsCompany(who, String(d.company_id))) keep.push(d); }
+    due = keep;
+  }
+  return NextResponse.json({ due });
 }
 
 // POST { id, company_name } : إرسال متابعة لرسالة واحدة
 export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, company_name } = await req.json();
   if (!id) return NextResponse.json({ error: 'معرف مفقود' }, { status: 400 });
+  {
+    const { data: own } = await admin.from('outreach_messages').select('company_id').eq('id', id).maybeSingle();
+    if (!own || !(await ownsCompany(who, String(own.company_id)))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
+  }
 
   const { data: m } = await admin.from('outreach_messages').select('*').eq('id', id).single();
   if (!m) return NextResponse.json({ error: 'الرسالة غير موجودة' }, { status: 404 });
@@ -110,13 +120,17 @@ export async function POST(req: Request) {
 
 // PATCH { id, reply_status } : تحديث حالة الرد (replied / declined / closed)
 export async function PATCH(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, reply_status } = await req.json();
   if (!id || !['replied', 'declined', 'closed', 'awaiting'].includes(reply_status)) {
     return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
+  }
+  {
+    const { data: own } = await admin.from('outreach_messages').select('company_id').eq('id', id).maybeSingle();
+    if (!own || !(await ownsCompany(who, String(own.company_id)))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
   }
   await admin.from('outreach_messages').update({ reply_status, updated_at: new Date().toISOString() }).eq('id', id);
   return NextResponse.json({ ok: true });
