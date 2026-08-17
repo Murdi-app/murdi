@@ -34,6 +34,8 @@ export default function RegisterPage() {
   async function check() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth/login'); return }
+    const { data: stf } = await supabase.from('staff').select('active').eq('user_id', user.id).maybeSingle()
+    if (stf && stf.active === true) { router.push('/admin/apply'); return }
     const { data: company } = await supabase
       .from('companies').select('account_status').eq('user_id', user.id).maybeSingle()
     if (company && company.account_status === 'active') { router.push('/goal'); return }

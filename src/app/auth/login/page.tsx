@@ -29,6 +29,8 @@ export default function Login() {
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
     const { data: { user: u } } = await supabase.auth.getUser()
     if (u?.email === 'hololalmurdi.fs@gmail.com') { router.push('/admin'); return }
+    const { data: stf } = await supabase.from('staff').select('active').eq('user_id', u?.id).maybeSingle()
+    if (stf && stf.active === true) { router.push('/admin/apply'); return }
     const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
     if (!co) { router.push('/register'); return }
     if (co.account_status === 'active') { router.push('/goal'); return }
