@@ -23,6 +23,15 @@ export async function GET() {
   const ids2 = ids.length ? ids : ['00000000-0000-0000-0000-000000000000'];
   const { data: srv } = await a.from('service_requests').select('company_id, service_title, status').in('company_id', ids2);
   const { data: con } = await a.from('contracts').select('company_id, status').in('company_id', ids2);
+  const { data: msgs } = await a.from('outreach_messages')
+    .select('id, match_row_id, entity_email, subject, message_body, admin_edited_body, status, sent_at, alt_contact, contact_method')
+    .in('company_id', ids2).neq('status', 'مستبدلة');
+  const draft = new Map<string, Record<string, unknown>>();
+  for (const m of (msgs || [])) {
+    if (!m.match_row_id) continue;
+    const prev = draft.get(m.match_row_id);
+    if (!prev || String(m.status) === 'مرسلة') draft.set(m.match_row_id, m);
+  }
   const fileReady = new Map<string, boolean>();
   const contractOk = new Map<string, boolean>();
   for (const r of (srv || [])) {
@@ -31,7 +40,7 @@ export async function GET() {
   for (const r of (con || [])) {
     if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);
   }
-  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false })) });
+  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false, draft: draft.get(r.id) || null })) });
 }
 
 export async function PATCH(req: Request) {

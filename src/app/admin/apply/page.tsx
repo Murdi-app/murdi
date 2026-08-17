@@ -67,7 +67,27 @@ export default function ApplyPage() {
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
 
-  const load = () => fetch('/api/admin/apply').then(r => r.json()).then(d => setRows(d.rows || [])).catch(() => {});
+  const load = () => fetch('/api/admin/apply').then(r => r.json()).then(d => {
+    const rs = d.rows || [];
+    setRows(rs);
+    const dr: Record<string, Draft> = {};
+    for (const r of rs) {
+      const m = r.draft;
+      if (!m || !m.id) continue;
+      dr[r.id] = {
+        id: String(m.id),
+        subject: String(m.subject || ''),
+        body: String(m.admin_edited_body || m.message_body || ''),
+        email: m.entity_email || null,
+        language: '',
+        contactMethod: m.contact_method || null,
+        altContact: m.alt_contact || null,
+        emailConfidence: null,
+        sent: String(m.status) === 'مرسلة' || !!m.sent_at,
+      };
+    }
+    setDrafts(dr);
+  }).catch(() => {});
   useEffect(() => { load(); fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDue(d.due || [])).catch(() => {}); }, []);
 
   async function sendFU(item: DueFU) {
