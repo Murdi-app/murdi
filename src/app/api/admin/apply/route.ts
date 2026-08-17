@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -8,13 +9,21 @@ const admin = () => createClient(
 );
 
 export async function GET() {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const a = admin();
-  const { data: rows, error } = await a.from('match_results')
+  let mine: string[] | null = null;
+  if (who.role === 'staff') {
+    const { data: my } = await a.from('companies').select('id').eq('assigned_to', who.userId);
+    mine = (my || []).map(c => c.id);
+    if (!mine.length) return NextResponse.json({ ok: true, rows: [], role: who.role, can_send: who.canSend });
+  }
+  let q = a.from('match_results')
     .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements')
     .eq('status', 'new').gt('fit_score', 0)
     .order('fit_score', { ascending: false }).limit(400);
+  if (mine) q = q.in('company_id', mine);
+  const { data: rows, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const ids = Array.from(new Set((rows || []).map(r => r.company_id)));
   const { data: cos } = await a.from('companies').select('id, company_name, match_progress').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
@@ -40,7 +49,7 @@ export async function GET() {
   for (const r of (con || [])) {
     if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);
   }
-  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false, draft: draft.get(r.id) || null })) });
+  return NextResponse.json({ ok: true, rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false, draft: draft.get(r.id) || null })), role: who.role, can_send: who.canSend });
 }
 
 export async function PATCH(req: Request) {
