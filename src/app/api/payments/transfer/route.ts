@@ -51,6 +51,16 @@ export async function POST(req: Request) {
   }
 
   const sb = admin();
+  const { data: dup } = await sb.from('payments').select('id')
+    .eq('company_id', companyId).eq('kind', kind).eq('status', 'awaiting_confirmation').maybeSingle();
+  if (dup) {
+    await sb.from('payments').update({
+      amount_sar: amountSar,
+      transfer_receipt_url: receiptUrl || null,
+      transfer_note: note || null,
+    }).eq('id', dup.id);
+    return NextResponse.json({ ok: true, updated: true });
+  }
   const { error } = await sb.from('payments').insert({
     company_id: companyId,
     kind,
