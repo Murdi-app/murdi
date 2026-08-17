@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff, ownsCompany } from '@/lib/requireStaff';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'مُرضي — فريق الشراكات <partners@murdi.sa>';
@@ -26,8 +26,9 @@ async function getAdmin() {
 
 // POST { company_id } : يرسل كل الرسائل المعتمدة لهذا العميل
 export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  if (!who.canSend) return NextResponse.json({ error: 'الإرسال غير مصرّح لحسابك' }, { status: 403 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   try { const b = await req.json(); companyId = String(b.company_id || ''); ids = Array.isArray(b.ids) ? b.ids.map(String) : []; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
+  if (!(await ownsCompany(who, companyId))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
 
   // نجلب الرسائل المعتمدة فقط، اللي عندها إيميل
   let mq = admin

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff, ownsCompany } from '@/lib/requireStaff';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -23,14 +23,15 @@ async function getAdmin() {
 
 // GET ?company_id=... : كل رسائل المخاطبة لعميل
 export async function GET(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const url = new URL(req.url);
   const companyId = url.searchParams.get('company_id');
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
+  if (!(await ownsCompany(who, companyId))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
 
   const { data, error } = await admin
     .from('outreach_messages')
@@ -46,8 +47,8 @@ export async function GET(req: Request) {
 // POST { id, action, ...fields } : إجراء على رسالة واحدة
 // action: approve | reject | update | delete
 export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
@@ -57,6 +58,14 @@ export async function POST(req: Request) {
   const id = String(body.id || '');
   const action = String(body.action || '');
   if (!id || !action) return NextResponse.json({ error: 'id و action مطلوبان' }, { status: 400 });
+  if (who.role === 'staff' && (action === 'update' || action === 'delete')) {
+    return NextResponse.json({ error: 'تعديل نص الرسالة أو حذفها من صلاحية الإدارة فقط' }, { status: 403 });
+  }
+  {
+    const { data: own } = await admin.from('outreach_messages').select('company_id').eq('id', id).maybeSingle();
+    if (!own) return NextResponse.json({ error: 'الرسالة غير موجودة' }, { status: 404 });
+    if (!(await ownsCompany(who, String(own.company_id)))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
+  }
 
   if (action === 'delete') {
     const { error } = await admin.from('outreach_messages').delete().eq('id', id);

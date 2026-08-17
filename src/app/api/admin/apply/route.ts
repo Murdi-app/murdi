@@ -33,13 +33,14 @@ export async function GET() {
   const { data: srv } = await a.from('service_requests').select('company_id, service_title, status').in('company_id', ids2);
   const { data: con } = await a.from('contracts').select('company_id, status').in('company_id', ids2);
   const { data: msgs } = await a.from('outreach_messages')
-    .select('id, match_row_id, entity_email, subject, message_body, admin_edited_body, status, sent_at, alt_contact, contact_method')
+    .select('id, match_row_id, entity_email, subject, message_body, admin_edited_body, status, sent_at, last_sent_at, alt_contact, contact_method')
     .in('company_id', ids2).neq('status', 'مستبدلة');
   const draft = new Map<string, Record<string, unknown>>();
   for (const m of (msgs || [])) {
     if (!m.match_row_id) continue;
     const prev = draft.get(m.match_row_id);
-    if (!prev || String(m.status) === 'مرسلة') draft.set(m.match_row_id, m);
+    const isSent = String(m.status || '').replace(/[\u064B-\u0652]/g, '') === 'مرسلة' || !!m.sent_at || !!m.last_sent_at;
+    if (!prev || isSent) draft.set(m.match_row_id, m);
   }
   const fileReady = new Map<string, boolean>();
   const contractOk = new Map<string, boolean>();

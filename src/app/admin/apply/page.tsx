@@ -83,7 +83,7 @@ export default function ApplyPage() {
         contactMethod: m.contact_method || null,
         altContact: m.alt_contact || null,
         emailConfidence: null,
-        sent: String(m.status) === 'مرسلة' || !!m.sent_at,
+        sent: String(m.status || '').replace(/[\u064B-\u0652]/g, '') === 'مرسلة' || !!m.sent_at || !!m.last_sent_at,
       };
     }
     setDrafts(dr);
