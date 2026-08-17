@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logError } from '@/lib/logError';
+import { gradeEvidence } from '@/lib/matchEngine';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -42,13 +43,15 @@ export async function POST(req: Request) {
     + 'applyUrl (رابط التقديم المباشر أو null — لا تخترع رابطاً)، '
     + 'applySteps (خطوات مرقّمة ينفّذها موظف لا يعرف الجهة: ادخل إلى كذا، اختر كذا، ارفع كذا، تابع بعد كذا)، '
     + 'requiredDocs (المستندات المطلوبة لهذا المنتج تحديداً).\n'
+    + 'وgulfPresence: صف بدقة وجود الجهة في الخليج — مكتب أو فرع أو ترخيص أو شريك محلي مسمّى — وإن لم يكن لها وجود فاذكر الطريق النظامي الذي يصل به تمويلها إلى مقترض سعودي، '
+    + 'وevidenceUrl: الرابط الذي يثبت ما كتبته في gulfPresence، ويفضّل أن يكون على الموقع الرسمي للجهة نفسها؛ وإن لم تجد رابطاً يثبته فاتركه فارغاً ولا تخترعه.\n'
     + 'أغلب البنوك السعودية لا تقبل طلبات التمويل بالبريد.\n'
     + 'قواعد صدق إلزامية — الحقل الفارغ أشرف من معلومة مؤلّفة:\n'
     + '1. ممنوع تأليف اسم وكيل أو موزّع أو شريك محلي. إن لم تتحقق من اسمه من مصدر رسمي فاكتب «الوكيل المعتمد (يلزم تحقق)» بلا اسم، ولا تجمع اسمين في اسم واحد.\n'
     + '2. ممنوع تأليف بريد أو رابط. لا تكتب إلا ما رأيته فعلاً على الموقع الرسمي. إن لم تجد رابطاً فاترك applyUrl فارغاً واذكر في applyChannel طريقة التواصل الرسمية المتاحة.\n'
     + '3. ممنوع التناقض: إن لم تكن هناك بوابة فلا تصف القناة بأنها بوابة.\n'
     + '4. إن كان الدخول عبر وكيل أو بنك شريك أو منصة، فاذكر ذلك صراحة وسمِّ نقطة الدخول الأقرب في السعودية أو الخليج إن تحققت منها.\n'
-    + 'أرجع JSON نقي فقط: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"..."}]}';
+    + 'أرجع JSON نقي فقط: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"...","gulfPresence":"...","evidenceUrl":"..."}]}';
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -72,6 +75,9 @@ export async function POST(req: Request) {
         apply_url: it.applyUrl && String(it.applyUrl) !== 'null' ? it.applyUrl : null,
         apply_steps: it.applySteps || null,
         required_docs: it.requiredDocs || null,
+        gulf_presence: it.gulfPresence || null,
+        evidence_url: it.evidenceUrl && String(it.evidenceUrl) !== 'null' ? it.evidenceUrl : null,
+        evidence_grade: gradeEvidence(it.evidenceUrl),
       }).eq('id', row.id);
     }
   } catch (e) { await logError('match.enrich', e, { company_id: String(co?.id || ''), entity: track }); }
