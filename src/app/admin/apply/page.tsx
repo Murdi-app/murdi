@@ -307,6 +307,11 @@ export default function ApplyPage() {
               {r.required_docs && <div style={{ color: C.gray, fontWeight: 700, fontSize: 12, marginTop: 8, lineHeight: 1.8 }}>المستندات: {r.required_docs}</div>}
 
               <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', fontSize: 11.5, fontWeight: 900 }}>
+                {r.evidence_grade && (
+                  <span title={r.gulf_presence || ''} style={{ background: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? '#E8F5EF' : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#F7F1DF' : '#FBE9E7', color: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? C.ink : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#8A6D1A' : '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
+                    {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade}
+                  </span>
+                )}
                 <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 الملف جاهز' : '\u2715 الملف غير جاهز'}</span>
                 <span style={{ color: r.contract_ok ? C.green : '#C0392B' }}>{r.contract_ok ? '\u2713 العقد موقّع' : '\u2715 لا يوجد عقد'}</span>
                 {!r.apply_channel && (
