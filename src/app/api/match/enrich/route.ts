@@ -20,17 +20,17 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies').select('id, sector, city').eq('user_id', user.id).maybeSingle();
-  if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
 
   const track = body.track === 'investment' ? 'investment' : 'funding';
   const offset = Number(body.offset) || 0;
   if (offset >= TOP) return NextResponse.json({ ok: true, done: true, next: offset });
 
   const rowId = String((body as { rowId?: string }).rowId || '');
+  if (!rowId && !co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
   const base = admin.from('match_results').select('id, provider, product');
   const { data: rows } = rowId
     ? await base.eq('id', rowId)
-    : await base.eq('company_id', co.id).eq('track', track).eq('status', 'new').gt('fit_score', 0)
+    : await base.eq('company_id', String(co?.id || '')).eq('track', track).eq('status', 'new').gt('fit_score', 0)
         .order('fit_score', { ascending: false }).range(offset, offset + CHUNK - 1);
 
   if (!rows || !rows.length) return NextResponse.json({ ok: true, done: true, next: offset });
@@ -42,7 +42,12 @@ export async function POST(req: Request) {
     + 'applyUrl (رابط التقديم المباشر أو null — لا تخترع رابطاً)، '
     + 'applySteps (خطوات مرقّمة ينفّذها موظف لا يعرف الجهة: ادخل إلى كذا، اختر كذا، ارفع كذا، تابع بعد كذا)، '
     + 'requiredDocs (المستندات المطلوبة لهذا المنتج تحديداً).\n'
-    + 'أغلب البنوك السعودية لا تقبل طلبات التمويل بالبريد. ولا تترك أي حقل فارغاً؛ إن لم تجد رابطاً فاذكر اسم الإدارة أو القناة.\n'
+    + 'أغلب البنوك السعودية لا تقبل طلبات التمويل بالبريد.\n'
+    + 'قواعد صدق إلزامية — الحقل الفارغ أشرف من معلومة مؤلّفة:\n'
+    + '1. ممنوع تأليف اسم وكيل أو موزّع أو شريك محلي. إن لم تتحقق من اسمه من مصدر رسمي فاكتب «الوكيل المعتمد (يلزم تحقق)» بلا اسم، ولا تجمع اسمين في اسم واحد.\n'
+    + '2. ممنوع تأليف بريد أو رابط. لا تكتب إلا ما رأيته فعلاً على الموقع الرسمي. إن لم تجد رابطاً فاترك applyUrl فارغاً واذكر في applyChannel طريقة التواصل الرسمية المتاحة.\n'
+    + '3. ممنوع التناقض: إن لم تكن هناك بوابة فلا تصف القناة بأنها بوابة.\n'
+    + '4. إن كان الدخول عبر وكيل أو بنك شريك أو منصة، فاذكر ذلك صراحة وسمِّ نقطة الدخول الأقرب في السعودية أو الخليج إن تحققت منها.\n'
     + 'أرجع JSON نقي فقط: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"..."}]}';
 
   try {
@@ -69,7 +74,7 @@ export async function POST(req: Request) {
         required_docs: it.requiredDocs || null,
       }).eq('id', row.id);
     }
-  } catch (e) { await logError('match.enrich', e, { company_id: co.id, entity: track }); }
+  } catch (e) { await logError('match.enrich', e, { company_id: String(co?.id || ''), entity: track }); }
 
   const next = offset + CHUNK;
   return NextResponse.json({ ok: true, done: next >= TOP || rows.length < CHUNK, next });
