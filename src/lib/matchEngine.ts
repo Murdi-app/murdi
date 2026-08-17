@@ -422,12 +422,17 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
 
 // إثراء طريق التقديم — يعمل داخل العامل بلا سقف زمني
 const THIRD_PARTY = /wikipedia|linkedin|bloomberg|reuters|zawya|argaam|yahoo|prnewswire|businesswire|crunchbase|pitchbook|facebook|twitter|x\.com|youtube|medium|forbes|news/i;
-export function gradeEvidence(url?: string | null): string {
+export function gradeEvidence(url?: string | null, provider?: string | null): string {
   const u = String(url || '').trim();
   if (!u || u === 'null' || !/^https?:\/\//i.test(u)) return 'يحتاج تحقق';
   let host = '';
   try { host = new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return 'يحتاج تحقق'; }
-  return THIRD_PARTY.test(host) ? 'مرجّح' : 'مؤكّد';
+  if (THIRD_PARTY.test(host)) return 'مرجّح';
+  const latin = String(provider || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 3 && !['bank','finance','financial','company','group','saudi','arabia','capital','services','international','limited','holding'].includes(w));
+  const core = host.split('.')[0].replace(/[^a-z0-9]/g, '');
+  const match = latin.some(w => core.includes(w.slice(0, 5)) || w.includes(core.slice(0, 5)));
+  return match ? 'مؤكّد' : 'مرجّح';
 }
 export async function enrichApplyPaths(companyId: string, track: string): Promise<number> {
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
@@ -475,7 +480,7 @@ export async function enrichApplyPaths(companyId: string, track: string): Promis
           required_docs: it.requiredDocs || null,
           gulf_presence: it.gulfPresence || null,
           evidence_url: it.evidenceUrl && String(it.evidenceUrl) !== 'null' ? it.evidenceUrl : null,
-          evidence_grade: gradeEvidence(it.evidenceUrl),
+          evidence_grade: gradeEvidence(it.evidenceUrl, row.provider),
         }).eq('id', row.id);
         done++;
       }

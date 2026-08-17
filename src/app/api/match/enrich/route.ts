@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         required_docs: it.requiredDocs || null,
         gulf_presence: it.gulfPresence || null,
         evidence_url: it.evidenceUrl && String(it.evidenceUrl) !== 'null' ? it.evidenceUrl : null,
-        evidence_grade: gradeEvidence(it.evidenceUrl),
+        evidence_grade: gradeEvidence(it.evidenceUrl, row.provider),
       }).eq('id', row.id);
     }
   } catch (e) { await logError('match.enrich', e, { company_id: String(co?.id || ''), entity: track }); }
