@@ -9,6 +9,7 @@ type Row = {
   required_docs: string | null; apply_status: string | null; apply_note: string | null;
   verdict?: string | null; region?: string | null;
   requirements?: string | null;
+  evidence_grade?: string | null; gulf_presence?: string | null;
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
@@ -36,6 +37,8 @@ const norm = (s?: string | null) => {
 };
 
 // «متأهل» قبل «متأهل بشرط» — الأخيرة تحتاج إغلاق عائق قبل التقديم
+// سلّم القرب: الدليل المؤكّد قبل المرجّح قبل ما يحتاج تحققاً
+const ev = (g?: string | null) => { const t = String(g || ''); return t.includes('\u0645\u0624\u0643') ? 0 : t.includes('\u0645\u0631\u062c') ? 1 : t ? 2 : 3; };
 const tier = (v?: string | null) => /بشرط/.test(String(v || '')) ? 1 : 0;
 
 const NEEDS: { rx: string; label: string; svc: string }[] = [
@@ -171,7 +174,7 @@ export default function ApplyPage() {
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
   const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
-    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || ((b.fit_score || 0) - (a.fit_score || 0)));
+    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || ((b.fit_score || 0) - (a.fit_score || 0)));
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
   const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
   const RISKY = /حساب\s+(لدى|في)\s|موثّق|موثقة|سبق\s+(أن|له)|علاقة\s+مسبقة|عميل\s+لديكم/;
