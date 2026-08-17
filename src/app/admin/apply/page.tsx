@@ -10,6 +10,7 @@ type Row = {
   verdict?: string | null; region?: string | null;
   requirements?: string | null;
   evidence_grade?: string | null; gulf_presence?: string | null;
+  link_status?: string | null;
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
 
@@ -38,6 +39,7 @@ const norm = (s?: string | null) => {
 
 // «متأهل» قبل «متأهل بشرط» — الأخيرة تحتاج إغلاق عائق قبل التقديم
 // سلّم القرب: الدليل المؤكّد قبل المرجّح قبل ما يحتاج تحققاً
+const lk = (s?: string | null) => { const x = String(s || ''); return x === '\u064a\u0639\u0645\u0644' ? 0 : x === '\u0645\u062d\u062c\u0648\u0628 \u0622\u0644\u064a\u0627\u064b' ? 1 : x ? 2 : 1; };
 const ev = (g?: string | null) => { const t = String(g || ''); return t.includes('\u0645\u0624\u0643') ? 0 : t.includes('\u0645\u0631\u062c') ? 1 : t ? 2 : 3; };
 const tier = (v?: string | null) => /بشرط/.test(String(v || '')) ? 1 : 0;
 
@@ -185,7 +187,7 @@ export default function ApplyPage() {
   };
   const _seen: { p: string; t: Set<string> }[] = [];
   const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
-    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || ((b.fit_score || 0) - (a.fit_score || 0)))
+    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || ((b.fit_score || 0) - (a.fit_score || 0)))
     .filter((r) => {
       if (!collapse) return true;
       const t = TOKS(r.product);
@@ -309,7 +311,7 @@ export default function ApplyPage() {
               <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', fontSize: 11.5, fontWeight: 900 }}>
                 {r.evidence_grade && (
                   <span title={r.gulf_presence || ''} style={{ background: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? '#E8F5EF' : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#F7F1DF' : '#FBE9E7', color: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? C.ink : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#8A6D1A' : '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
-                    {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade}
+                    {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade + (r.link_status ? ' \u00b7 ' + r.link_status : '')}
                   </span>
                 )}
                 <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 الملف جاهز' : '\u2715 الملف غير جاهز'}</span>
