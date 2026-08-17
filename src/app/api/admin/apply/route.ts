@@ -19,7 +19,7 @@ export async function GET() {
     if (!mine.length) return NextResponse.json({ ok: true, rows: [], role: who.role, can_send: who.canSend });
   }
   let q = a.from('match_results')
-    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements, evidence_grade, gulf_presence')
+    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements, evidence_grade, gulf_presence, link_status')
     .eq('status', 'new').gt('fit_score', 0)
     .order('fit_score', { ascending: false }).limit(400);
   if (mine) q = q.in('company_id', mine);
