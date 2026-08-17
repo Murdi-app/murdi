@@ -28,3 +28,11 @@ export async function requireStaff(): Promise<{ who: Who | null; error: string |
     return { who: null, error: 'غير مصرح' };
   }
 }
+
+export async function ownsCompany(who: Who, companyId: string): Promise<boolean> {
+  if (who.role === 'admin') return true;
+  if (!companyId) return false;
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+  const { data } = await admin.from('companies').select('assigned_to').eq('id', companyId).maybeSingle();
+  return !!data && data.assigned_to === who.userId;
+}
