@@ -61,6 +61,7 @@ export default function ApplyPage() {
   const [editRow, setEditRow] = useState('');
   const [eEmail, setEEmail] = useState('');
   const [eBody, setEBody] = useState('');
+  const [role, setRole] = useState('admin');
   const [prod, setProd] = useState('');
   const [need, setNeed] = useState('');
   type DueFU = { id: string; company_id: string; entity_name: string; entity_language: string; followup_stage: number; last_sent_at: string | null };
@@ -70,6 +71,7 @@ export default function ApplyPage() {
   const load = () => fetch('/api/admin/apply').then(r => r.json()).then(d => {
     const rs = d.rows || [];
     setRows(rs);
+    if (d.role) setRole(String(d.role));
     const dr: Record<string, Draft> = {};
     for (const r of rs) {
       const m = r.draft;
@@ -334,6 +336,7 @@ export default function ApplyPage() {
                           style={{ background: C.ink, color: '#fff', border: 'none', borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>احفظ التعديل</button>
                       ) : (
                         <button onClick={() => { setEditRow(r.id); setEEmail(d.email || ''); setEBody(d.body || ''); }}
+                          hidden={role !== 'admin'}
                           style={{ background: '#fff', color: C.ink, border: '1.5px solid ' + C.mint, borderRadius: 20, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, cursor: 'pointer' }}>عدّل البريد والنص</button>
                       )}
                       {d.email && d.id && !d.sent && (
