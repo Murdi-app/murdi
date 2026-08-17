@@ -421,6 +421,14 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
 
 
 // إثراء طريق التقديم — يعمل داخل العامل بلا سقف زمني
+const THIRD_PARTY = /wikipedia|linkedin|bloomberg|reuters|zawya|argaam|yahoo|prnewswire|businesswire|crunchbase|pitchbook|facebook|twitter|x\.com|youtube|medium|forbes|news/i;
+export function gradeEvidence(url?: string | null): string {
+  const u = String(url || '').trim();
+  if (!u || u === 'null' || !/^https?:\/\//i.test(u)) return 'يحتاج تحقق';
+  let host = '';
+  try { host = new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return 'يحتاج تحقق'; }
+  return THIRD_PARTY.test(host) ? 'مرجّح' : 'مؤكّد';
+}
 export async function enrichApplyPaths(companyId: string, track: string): Promise<number> {
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: rows } = await admin.from('match_results')
@@ -434,7 +442,9 @@ export async function enrichApplyPaths(companyId: string, track: string): Promis
     const list = chunk.map((r, n) => (n + 1) + ') ' + r.provider + ' — ' + (r.product || '')).join('\n');
     const prompt = 'أنت مستشار تمويل سعودي. لكل جهة ومنتج أدناه ابحث عن طريقة التقديم الفعلية اليوم.\n\n'
       + list + '\n\n'
-      + 'لكل رقم أرجع كائناً فيه: applyChannel وapplyUrl وapplySteps وrequiredDocs. '
+      + 'لكل رقم أرجع كائناً فيه: applyChannel وapplyUrl وapplySteps وrequiredDocs وgulfPresence وevidenceUrl. '
+      + 'gulfPresence: صف بدقة وجود الجهة في الخليج — مكتب أو فرع أو ترخيص أو شريك محلي مسمّى — وإن لم يكن لها وجود فاذكر الطريق النظامي الذي يصل به تمويلها إلى مقترض سعودي. '
+      + 'evidenceUrl: الرابط الذي يثبت ما كتبته في gulfPresence، ويفضّل أن يكون على الموقع الرسمي للجهة نفسها؛ وإن لم تجد رابطاً يثبته فاتركه فارغاً ولا تخترعه. '
       + 'أغلب البنوك السعودية لا تقبل طلبات التمويل بالبريد. '
       + 'وفي applySteps اكتب خطوات مرقّمة ينفّذها موظف لا يعرف الجهة.\n'
       + 'قواعد صدق إلزامية — الحقل الفارغ أشرف من معلومة مؤلّفة:\n'
@@ -442,7 +452,7 @@ export async function enrichApplyPaths(companyId: string, track: string): Promis
       + '2. ممنوع تأليف بريد أو رابط. لا تكتب إلا ما رأيته فعلاً على الموقع الرسمي للجهة. إن لم تجد رابطاً فاترك applyUrl فارغاً، واكتب في applyChannel طريقة التواصل الرسمية المتاحة (صفحة تواصل، هاتف، لينكدإن).\n'
       + '3. ممنوع التناقض: إن لم تكن هناك بوابة تقديم فلا تصف القناة بأنها بوابة، ولا تذكر بوابة ثم تنفِها.\n'
       + '4. إن كان الدخول عبر وكيل أو بنك شريك أو منصة أو صندوق، فاذكر ذلك صراحة في applyChannel وسمِّ نقطة الدخول الأقرب في السعودية أو الخليج إن تحققت منها.\n'
-      + 'أرجع JSON نقي: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"..."}]}';
+      + 'أرجع JSON نقي: {"items":[{"n":1,"applyChannel":"...","applyUrl":"...","applySteps":"...","requiredDocs":"...","gulfPresence":"...","evidenceUrl":"..."}]}';
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -463,6 +473,9 @@ export async function enrichApplyPaths(companyId: string, track: string): Promis
           apply_url: it.applyUrl && String(it.applyUrl) !== 'null' ? it.applyUrl : null,
           apply_steps: it.applySteps || null,
           required_docs: it.requiredDocs || null,
+          gulf_presence: it.gulfPresence || null,
+          evidence_url: it.evidenceUrl && String(it.evidenceUrl) !== 'null' ? it.evidenceUrl : null,
+          evidence_grade: gradeEvidence(it.evidenceUrl),
         }).eq('id', row.id);
         done++;
       }
