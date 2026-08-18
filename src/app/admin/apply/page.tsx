@@ -58,6 +58,7 @@ export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [clients, setClients] = useState<{ id: string; company_name: string }[]>([]);
   const [coId, setCoId] = useState('');
+  const [big, setBig] = useState(false);
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
@@ -193,10 +194,10 @@ export default function ApplyPage() {
   };
   const _seen: { p: string; t: Set<string> }[] = [];
   const _bs: { p: string; t: Set<string> }[] = [];
-  const base = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (r.fit_score || 0) >= 20)
+  const base = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20))
     .sort((x, y) => (tier(x.verdict) - tier(y.verdict)) || ((y.fit_score || 0) - (x.fit_score || 0)))
     .filter((r) => { const t = TOKS(r.product); if (_bs.some(k => k.p === r.provider && JAC(k.t, t) >= 0.6)) return false; _bs.push({ p: r.provider, t }); return true; });
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || (ag(a.apply_channel) - ag(b.apply_channel)) || (own(a.product) - own(b.product)) || ((b.fit_score || 0) - (a.fit_score || 0)))
     .filter((r) => {
       if (!collapse) return true;
@@ -205,7 +206,7 @@ export default function ApplyPage() {
       _seen.push({ p: r.provider, t });
       return true;
     });
-  const count = (s: string) => rows.filter(r => (!co || r.company_name === co) && (r.fit_score || 0) >= 20 && norm(r.apply_status) === s).length;
+  const count = (s: string) => rows.filter(r => (!co || r.company_name === co) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20) && norm(r.apply_status) === s).length;
 
   const RISKY = /حساب\s+(لدى|في)\s+(?:البنك|بنك|مصرف|شركة|جهت|لديكم)|علاقة\s+(مصرفية|مسبقة|قائمة)\s+مع|عميل\s+(حالي\s+)?لديكم|سبق\s+(أن\s+)?(تعامل|حصل|موّل|منحتم)|تعامل\s+سابق\s+مع|اتفاق\s+(قائم|سابق)\s+مع|وعد|نضمن|نتعهد|بضمان\s+مُرضي/;
 
@@ -248,6 +249,10 @@ export default function ApplyPage() {
               {s} ({count(s)})
             </button>
           ))}
+          <button onClick={() => setBig(v => !v)}
+            style={{ background: big ? '#C0392B' : '#fff', color: big ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '7px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+            {'\u062a\u0630\u0643\u0631\u0629 \u0623\u0643\u0628\u0631 (' + rows.filter(r => (!coId || true) && (r.fit_score || 0) > 0 && (r.fit_score || 0) < 20).length + ')'}
+          </button>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
           <select value={coId} onChange={e => { setCoId(e.target.value); setCo(''); }}
@@ -350,6 +355,11 @@ export default function ApplyPage() {
                     </span>
                   );
                 })()}
+                {(r.fit_score || 0) < 20 && (
+                  <span title="حدّها الأدنى أكبر من طلب هذا العميل — احتفظ بها لعميل أكبر" style={{ background: '#FBE9E7', color: '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
+                    {'\u062a\u0630\u0643\u0631\u062a\u0647\u0627 \u0623\u0643\u0628\u0631 \u0645\u0646 \u0637\u0644\u0628 \u0627\u0644\u0639\u0645\u064a\u0644'}
+                  </span>
+                )}
                 {r.evidence_grade && (
                   <span title={r.gulf_presence || ''} style={{ background: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? '#E8F5EF' : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#F7F1DF' : '#FBE9E7', color: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? C.ink : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#8A6D1A' : '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
                     {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade + (r.link_status ? ' \u00b7 ' + r.link_status : '')}
