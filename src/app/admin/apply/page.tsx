@@ -63,12 +63,12 @@ export default function ApplyPage() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [genErr, setGenErr] = useState<Record<string, string>>({});
   const [q, setQ] = useState('');
-  const [showWeak, setShowWeak] = useState(true);
+  const showWeak = true;
   const [okRisk, setOkRisk] = useState<Record<string, boolean>>({});
   const [editRow, setEditRow] = useState('');
   const [eEmail, setEEmail] = useState('');
   const [eBody, setEBody] = useState('');
-  const [collapse, setCollapse] = useState(true);
+  const collapse = true;
   const [role, setRole] = useState('admin');
   const [prod, setProd] = useState('');
   const [need, setNeed] = useState('');
@@ -188,6 +188,10 @@ export default function ApplyPage() {
     return i / (a.size + b.size - i);
   };
   const _seen: { p: string; t: Set<string> }[] = [];
+  const _bs: { p: string; t: Set<string> }[] = [];
+  const base = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (r.fit_score || 0) >= 20)
+    .sort((x, y) => (tier(x.verdict) - tier(y.verdict)) || ((y.fit_score || 0) - (x.fit_score || 0)))
+    .filter((r) => { const t = TOKS(r.product); if (_bs.some(k => k.p === r.provider && JAC(k.t, t) >= 0.6)) return false; _bs.push({ p: r.provider, t }); return true; });
   const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || (ag(a.apply_channel) - ag(b.apply_channel)) || (own(a.product) - own(b.product)) || ((b.fit_score || 0) - (a.fit_score || 0)))
     .filter((r) => {
@@ -197,8 +201,8 @@ export default function ApplyPage() {
       _seen.push({ p: r.provider, t });
       return true;
     });
-  const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
-  const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
+  const count = (s: string) => rows.filter(r => (!co || r.company_name === co) && (r.fit_score || 0) >= 20 && norm(r.apply_status) === s).length;
+
   const RISKY = /حساب\s+(لدى|في)\s+(?:البنك|بنك|مصرف|شركة|جهت|لديكم)|علاقة\s+(مصرفية|مسبقة|قائمة)\s+مع|عميل\s+(حالي\s+)?لديكم|سبق\s+(أن\s+)?(تعامل|حصل|موّل|منحتم)|تعامل\s+سابق\s+مع|اتفاق\s+(قائم|سابق)\s+مع|وعد|نضمن|نتعهد|بضمان\s+مُرضي/;
 
   return (
@@ -223,7 +227,7 @@ export default function ApplyPage() {
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {PRODUCTS.map(p => {
-            const n = rows.filter(r => new RegExp(p.re, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))).length;
+            const n = base.filter(r => new RegExp(p.re, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))).length;
             if (!n) return null;
             return (
               <button key={p.id} onClick={() => setProd(prod === p.re ? '' : p.re)}
@@ -242,14 +246,6 @@ export default function ApplyPage() {
           ))}
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
-          <button onClick={() => setCollapse(v => !v)}
-            style={{ background: collapse ? C.ink : '#fff', color: collapse ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
-            {collapse ? 'طيّ المتشابه' : 'اعرض المتشابهة'}
-          </button>
-          <button onClick={() => setShowWeak(v => !v)}
-            style={{ background: showWeak ? C.ink : '#fff', color: showWeak ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
-            {showWeak ? 'اعرض الكل' : 'الأقوى فقط (' + weakCount + ')'}
-          </button>
           <select value={co} onChange={e => setCo(e.target.value)}
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 14px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5 }}>
             <option value="">كل العملاء</option>
@@ -258,7 +254,7 @@ export default function ApplyPage() {
         </div>
 
         {(() => {
-          const src = rows.filter(r => (!co || r.company_name === co));
+          const src = base;
           const txt = (r: Row) => String(r.requirements || '') + ' ' + String(r.required_docs || '');
           const counts = NEEDS.map(n => ({ ...n, count: src.filter(r => new RegExp(n.rx).test(txt(r))).length })).filter(x => x.count > 0).sort((a, b) => b.count - a.count);
           if (counts.length === 0) return null;
