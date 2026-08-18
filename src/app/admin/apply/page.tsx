@@ -309,6 +309,26 @@ export default function ApplyPage() {
               {r.required_docs && <div style={{ color: C.gray, fontWeight: 700, fontSize: 12, marginTop: 8, lineHeight: 1.8 }}>المستندات: {r.required_docs}</div>}
 
               <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', fontSize: 11.5, fontWeight: 900 }}>
+                {(() => {
+                  const t = String(r.requirements || '') + ' ' + String(r.required_docs || '');
+                  const hits = NEEDS.filter(n => new RegExp(n.rx).test(t)).slice(0, 3);
+                  const mm = t.match(/(?:حد أدنى|الحد الأدنى|الصفقة الدنيا)[^0-9]{0,25}([\d.]+)\s*(?:م|مليون)\s*(دولار|ريال)?/);
+                  const big = mm ? Math.round(parseFloat(mm[1]) * ((mm[2] || 'دولار') === 'دولار' ? 3.75 : 1)) : 0;
+                  return (
+                    <>
+                      {hits.map(n => (
+                        <span key={n.label} title={'خدمة: ' + n.svc} style={{ background: '#F7F1DF', color: '#8A6D1A', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
+                          {'\u062a\u0637\u0644\u0628: ' + n.label}
+                        </span>
+                      ))}
+                      {big > 0 && (
+                        <span title="هذه الجهة تناسب عميلاً بحجم أكبر — احتفظ بها" style={{ background: '#FBE9E7', color: '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
+                          {'\u062d\u062f \u0623\u062f\u0646\u0649 ~' + big + '\u0645'}
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
                 {r.evidence_grade && (
                   <span title={r.gulf_presence || ''} style={{ background: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? '#E8F5EF' : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#F7F1DF' : '#FBE9E7', color: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? C.ink : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#8A6D1A' : '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
                     {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade + (r.link_status ? ' \u00b7 ' + r.link_status : '')}
