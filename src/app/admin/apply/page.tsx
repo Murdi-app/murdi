@@ -329,6 +329,21 @@ export default function ApplyPage() {
                     </>
                   );
                 })()}
+                {(() => {
+                  const x = String(r.apply_channel || '');
+                  if (!x) return null;
+                  const kind = (/بوابة|منصة|أونلاين|تطبيق|إلكترون|نموذج/.test(x) && r.apply_url) ? 'بوابة إلكترونية'
+                    : /موقع|website|www\.|\.com|\.sa/.test(x) ? 'موقع الجهة'
+                    : /بريد|إيميل|@/.test(x) ? 'بريد إلكتروني'
+                    : /وكيل|موزّع|موزع|شريك|بنك محلي|بنك شريك/.test(x) ? 'عبر وكيل أو شريك'
+                    : /فرع|فروع|مكاتب|مكتب|هاتف|مدير علاقات|مستشار|زيارة/.test(x) ? 'فرع أو هاتف'
+                    : 'تواصل مباشر';
+                  return (
+                    <span title={x.slice(0, 220)} style={{ background: '#EEF3F1', color: '#1A3D34', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
+                      {'\u0627\u0644\u062f\u062e\u0648\u0644: ' + kind}
+                    </span>
+                  );
+                })()}
                 {r.evidence_grade && (
                   <span title={r.gulf_presence || ''} style={{ background: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? '#E8F5EF' : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#F7F1DF' : '#FBE9E7', color: r.evidence_grade.indexOf('\u0645\u0624\u0643') === 0 ? C.ink : r.evidence_grade.indexOf('\u0645\u0631\u062c') === 0 ? '#8A6D1A' : '#C0392B', borderRadius: 20, padding: '2px 10px', fontSize: 11 }}>
                     {'\u0631\u0627\u0628\u0637 \u0627\u0644\u062c\u0647\u0629: ' + r.evidence_grade + (r.link_status ? ' \u00b7 ' + r.link_status : '')}
@@ -336,10 +351,10 @@ export default function ApplyPage() {
                 )}
                 <span style={{ color: r.file_ready ? C.green : '#C0392B' }}>{r.file_ready ? '\u2713 الملف جاهز' : '\u2715 الملف غير جاهز'}</span>
                 <span style={{ color: r.contract_ok ? C.green : '#C0392B' }}>{r.contract_ok ? '\u2713 العقد موقّع' : '\u2715 لا يوجد عقد'}</span>
-                {!r.apply_channel && (
+                {(!r.apply_channel || role === 'admin') && (
                   <button onClick={() => enrich(r)} disabled={busy === r.id}
                     style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 900, fontSize: 11.5, textDecoration: 'underline', cursor: busy === r.id ? 'wait' : 'pointer', padding: 0 }}>
-                    {busy === r.id ? '\u23F3 جارٍ التجهيز… قد يستغرق دقيقتين' : 'جهّز طريق التقديم'}
+                    {busy === r.id ? '\u23F3 جارٍ التجهيز… قد يستغرق دقيقتين' : (r.apply_channel ? '\u21BB أعد تجهيز طريق التقديم' : 'جهّز طريق التقديم')}
                   </button>
                 )}
                 <a href={'/admin/services?company_id=' + r.company_id} style={{ color: C.gold, textDecoration: 'underline' }}>{'خدمات العميل \u2190'}</a>
