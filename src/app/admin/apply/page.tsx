@@ -39,6 +39,8 @@ const norm = (s?: string | null) => {
 
 // «متأهل» قبل «متأهل بشرط» — الأخيرة تحتاج إغلاق عائق قبل التقديم
 // سلّم القرب: الدليل المؤكّد قبل المرجّح قبل ما يحتاج تحققاً
+const own = (p?: string | null) => { const t = String(p || ''); if (/تأجير تشغيلي|إيجار تشغيلي|operating lease|تشغيلي/.test(t)) return 3; if (/منتهي بالتمل|منتهية بالتمل|إجارة|اجارة|lease/.test(t)) return 2; if (/مرابحة|شراء|اقتناء|buyer credit|تمويل المشتري|قرض/.test(t)) return 0; return 1; };
+const ag = (c?: string | null) => /وكيل|موزّع|موزع|شريك محلي|عبر الوكالة/.test(String(c || '')) ? 1 : 0;
 const lk = (s?: string | null) => { const x = String(s || ''); return x === '\u064a\u0639\u0645\u0644' ? 0 : x === '\u0645\u062d\u062c\u0648\u0628 \u0622\u0644\u064a\u0627\u064b' ? 1 : x ? 2 : 1; };
 const ev = (g?: string | null) => { const t = String(g || ''); return t.includes('\u0645\u0624\u0643') ? 0 : t.includes('\u0645\u0631\u062c') ? 1 : t ? 2 : 3; };
 const tier = (v?: string | null) => /بشرط/.test(String(v || '')) ? 1 : 0;
@@ -187,7 +189,7 @@ export default function ApplyPage() {
   };
   const _seen: { p: string; t: Set<string> }[] = [];
   const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (!showWeak || (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
-    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || ((b.fit_score || 0) - (a.fit_score || 0)))
+    .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || (ag(a.apply_channel) - ag(b.apply_channel)) || (own(a.product) - own(b.product)) || ((b.fit_score || 0) - (a.fit_score || 0)))
     .filter((r) => {
       if (!collapse) return true;
       const t = TOKS(r.product);
@@ -311,7 +313,8 @@ export default function ApplyPage() {
               <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', fontSize: 11.5, fontWeight: 900 }}>
                 {(() => {
                   const t = String(r.requirements || '') + ' ' + String(r.required_docs || '');
-                  const hits = NEEDS.filter(n => new RegExp(n.rx).test(t)).slice(0, 3);
+                  const cond = String(r.verdict || '').replace(/[\u064B-\u0652]/g, '').includes('بشرط');
+                  const hits = cond ? NEEDS.filter(n => new RegExp(n.rx).test(t)).slice(0, 3) : [];
                   const mm = t.match(/(?:حد أدنى|الحد الأدنى|الصفقة الدنيا)[^0-9]{0,25}([\d.]+)\s*(?:م|مليون)\s*(دولار|ريال)?/);
                   const big = mm ? Math.round(parseFloat(mm[1]) * ((mm[2] || 'دولار') === 'دولار' ? 3.75 : 1)) : 0;
                   return (
@@ -332,8 +335,11 @@ export default function ApplyPage() {
                 {(() => {
                   const x = String(r.apply_channel || '');
                   if (!x) return null;
-                  const kind = (/بوابة|منصة|أونلاين|تطبيق|إلكترون|نموذج/.test(x) && r.apply_url) ? 'بوابة إلكترونية'
-                    : /موقع|website|www\.|\.com|\.sa/.test(x) ? 'موقع الجهة'
+                  const noPortal = /لا (توجد|يوجد) بوابة|بلا بوابة|ليس لها بوابة|لا تقبل الطلبات عبر/.test(x);
+                  const viaAgent = /وكيل|موزّع|موزع|شريك محلي|بنك محلي|بنك شريك|عبر الوكالة/.test(x);
+                  const kind = viaAgent ? 'عبر وكيل أو شريك'
+                    : (!noPortal && /بوابة|منصة|أونلاين|تطبيق|إلكترون|نموذج/.test(x) && r.apply_url) ? 'بوابة إلكترونية'
+                    : (!noPortal && /موقع|website|www\.|\.com|\.sa/.test(x)) ? 'موقع الجهة'
                     : /بريد|إيميل|@/.test(x) ? 'بريد إلكتروني'
                     : /وكيل|موزّع|موزع|شريك|بنك محلي|بنك شريك/.test(x) ? 'عبر وكيل أو شريك'
                     : /فرع|فروع|مكاتب|مكتب|هاتف|مدير علاقات|مستشار|زيارة/.test(x) ? 'فرع أو هاتف'
