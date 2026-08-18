@@ -56,6 +56,8 @@ const NEEDS: { rx: string; label: string; svc: string }[] = [
 
 export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [clients, setClients] = useState<{ id: string; company_name: string }[]>([]);
+  const [coId, setCoId] = useState('');
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
@@ -76,10 +78,11 @@ export default function ApplyPage() {
   const [due, setDue] = useState<DueFU[]>([]);
   const [fuMsg, setFuMsg] = useState('');
 
-  const load = () => fetch('/api/admin/apply').then(r => r.json()).then(d => {
+  const load = () => fetch('/api/admin/apply' + (coId ? '?co=' + coId : '')).then(r => r.json()).then(d => {
     const rs = d.rows || [];
     setRows(rs);
     if (d.role) setRole(String(d.role));
+    if (d.clients) setClients(d.clients);
     const dr: Record<string, Draft> = {};
     for (const r of rs) {
       const m = r.draft;
@@ -98,6 +101,7 @@ export default function ApplyPage() {
     }
     setDrafts(dr);
   }).catch(() => {});
+  useEffect(() => { load(); }, [coId]);
   useEffect(() => { load(); fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDue(d.due || [])).catch(() => {}); }, []);
 
   async function sendFU(item: DueFU) {
@@ -246,10 +250,10 @@ export default function ApplyPage() {
           ))}
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
-          <select value={co} onChange={e => setCo(e.target.value)}
+          <select value={coId} onChange={e => { setCoId(e.target.value); setCo(''); }}
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 14px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5 }}>
             <option value="">كل العملاء</option>
-            {cos.map(c => <option key={c} value={c}>{c}</option>)}
+            {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
         </div>
 
