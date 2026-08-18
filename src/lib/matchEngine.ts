@@ -433,6 +433,15 @@ const AR_BRANDS: [RegExp, RegExp][] = [
   [/منافع/, /manafa/], [/لندو/, /lendo/], [/تمويل الأولى|الأولى/, /aloula/], [/يانال|ينال/, /yanal/],
   [/عبداللطيف جميل/, /alj|jameel/], [/الجفالي|جفالي/, /jipco|juffali/], [/تعميد/, /tameed/], [/فورس/, /forus/],
 ];
+const BLOCKERS: [RegExp, string][] = [
+  [/لا يمنح (قروضاً|تمويلاً) مباشر|لا تمنح (قروضاً|تمويلاً) مباشر|عبر مؤسسة مالية وسيطة|لا يقبل طلبات فردية|لا يتقدم منفرد|does not lend directly/i, 'لا تموّل مباشرة — عبر وسيط'],
+  [/تصنيف ائتماني (دولي|عالمي)|moody|standard\s*&\s*poor|\bs&p\b|\bfitch\b/i, 'تشترط تصنيفاً ائتمانياً عالمياً'],
+  [/ebitda[^.]{0,40}(لا يقل|لا تقل|minimum|at least)|لا يقل عن\s*\d+\s*مليون دولار/i, 'تشترط حداً أدنى للأرباح'],
+];
+export function blockerFound(text: string): string {
+  for (const [re, label] of BLOCKERS) { if (re.test(text)) return label; }
+  return '';
+}
 export function gradeEvidence(url?: string | null, provider?: string | null): string {
   const u = String(url || '').trim();
   if (!u || u === 'null' || !/^https?:\/\//i.test(u)) return 'يحتاج تحقق';
