@@ -43,9 +43,11 @@ export async function GET() {
     if (!prev || isSent) draft.set(m.match_row_id, m);
   }
   const fileReady = new Map<string, boolean>();
+  const { data: atts } = await a.from('outreach_attachments').select('company_id, file_url_ar, file_url_en').in('company_id', ids2);
+  for (const t of (atts || [])) { if (t.file_url_ar || t.file_url_en) fileReady.set(t.company_id, true); }
   const contractOk = new Map<string, boolean>();
   for (const r of (srv || [])) {
-    if (['delivered', 'completed', 'paid'].includes(String(r.status))) fileReady.set(r.company_id, true);
+    if (['delivered', 'completed', 'paid', 'in_follow_up', 'in_progress'].includes(String(r.status))) fileReady.set(r.company_id, true);
   }
   for (const r of (con || [])) {
     if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);
