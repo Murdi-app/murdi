@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logError } from '@/lib/logError';
-import { gradeEvidence } from '@/lib/matchEngine';
+import { gradeEvidence, blockerFound } from '@/lib/matchEngine';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -78,6 +78,10 @@ export async function POST(req: Request) {
         gulf_presence: it.gulfPresence || null,
         evidence_url: it.evidenceUrl && String(it.evidenceUrl) !== 'null' ? it.evidenceUrl : null,
         evidence_grade: gradeEvidence(it.evidenceUrl, row.provider),
+        ...(() => {
+          const blk = blockerFound(String(it.applyChannel || '') + ' ' + String(it.applySteps || '') + ' ' + String(it.requiredDocs || '') + ' ' + String(it.gulfPresence || ''));
+          return blk ? { fit_score: 1, gaps: [blk] } : {};
+        })(),
       }).eq('id', row.id);
     }
   } catch (e) { await logError('match.enrich', e, { company_id: String(co?.id || ''), entity: track }); }
