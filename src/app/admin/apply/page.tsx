@@ -197,7 +197,7 @@ export default function ApplyPage() {
     });
   const count = (s: string) => rows.filter(r => norm(r.apply_status) === s).length;
   const weakCount = rows.filter(r => (r.fit_score || 0) >= 20).length;
-  const RISKY = /حساب\s+(لدى|في)\s|موثّق|موثقة|سبق\s+(أن|له)|علاقة\s+مسبقة|عميل\s+لديكم/;
+  const RISKY = /حساب\s+(لدى|في)\s+(?:البنك|بنك|مصرف|شركة|جهت|لديكم)|علاقة\s+(مصرفية|مسبقة|قائمة)\s+مع|عميل\s+(حالي\s+)?لديكم|سبق\s+(أن\s+)?(تعامل|حصل|موّل|منحتم)|تعامل\s+سابق\s+مع|اتفاق\s+(قائم|سابق)\s+مع|وعد|نضمن|نتعهد|بضمان\s+مُرضي/;
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo, sans-serif', background: '#FBFCFB', minHeight: '100vh' }}>
