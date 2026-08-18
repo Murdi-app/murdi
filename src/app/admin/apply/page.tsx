@@ -251,7 +251,7 @@ export default function ApplyPage() {
           ))}
           <button onClick={() => setBig(v => !v)}
             style={{ background: big ? '#C0392B' : '#fff', color: big ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '7px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
-            {'\u062a\u0630\u0643\u0631\u0629 \u0623\u0643\u0628\u0631 (' + rows.filter(r => (!coId || true) && (r.fit_score || 0) > 0 && (r.fit_score || 0) < 20).length + ')'}
+            {'\u062a\u0630\u0643\u0631\u0629 \u0623\u0643\u0628\u0631 (' + rows.filter(r => (r.fit_score || 0) > 0 && (r.fit_score || 0) < 20).length + ')'}
           </button>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة أو المنتج…"
             style={{ border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 12.5, minWidth: 220 }} />
