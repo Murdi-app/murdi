@@ -103,6 +103,13 @@ export default function OutreachPage() {
         process.env.NEXT_PUBLIC_SUPABASE_URL as string,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
       );
+      const co = companies.find(c => c.id === companyId.trim());
+      const arName = String(co?.company_name || '').replace(/[\\/:*?"<>|]/g, '').trim().replace(/\s+/g, '-');
+      const yr = new Date().getFullYear();
+      const latin = arName.replace(/[^\x20-\x7E-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const displayName = lang === 'ar'
+        ? ('\u0627\u0644\u0645\u0644\u0641-\u0627\u0644\u062a\u0645\u0648\u064a\u0644\u064a-' + (arName || 'العميل') + '.pdf')
+        : ('Financing-Proposal-' + (latin || String(co?.cr_number || 'Client')) + '-' + yr + '.pdf');
       const safeName = (file.name || 'file.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_');
       const path = companyId.trim() + '/outreach_' + lang + '_' + Date.now() + '_' + safeName;
       const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
@@ -110,13 +117,13 @@ export default function OutreachPage() {
       const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
       const r = await fetch('/api/admin/outreach/attachment', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_id: companyId.trim(), lang, track: tab, file_url: pub.publicUrl, file_name: file.name }),
+        body: JSON.stringify({ company_id: companyId.trim(), lang, track: tab, file_url: pub.publicUrl, file_name: displayName }),
       });
       const d = await r.json();
       if (d.ok) {
         flash('✓ رُفعت ' + (lang === 'ar' ? 'النسخة العربية' : 'النسخة الإنجليزية'));
-        if (lang === 'ar') setAttAr({ file_url: pub.publicUrl, file_name: file.name });
-        else setAttEn({ file_url: pub.publicUrl, file_name: file.name });
+        if (lang === 'ar') setAttAr({ file_url: pub.publicUrl, file_name: displayName });
+        else setAttEn({ file_url: pub.publicUrl, file_name: displayName });
       } else flash(d.error || 'خطأ');
     } catch {
       flash('تعذّر الرفع');
