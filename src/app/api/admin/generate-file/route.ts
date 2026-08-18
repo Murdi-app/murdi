@@ -121,6 +121,23 @@ export async function POST(req: Request) {
     readinessScore: rr?.readiness_score ?? undefined,
     verdict: rr?.verdict ?? undefined,
     valuationEstimate: rr?.valuation_estimate ?? undefined,
+    fundingPurpose: purpose || (effective as { funding_purpose?: string }).funding_purpose || undefined,
+    majorBuyers: (effective as { major_buyers?: string }).major_buyers || undefined,
+    clientType: (effective as { client_type?: string }).client_type || undefined,
+    collectionCycle: (effective as { collection_cycle?: string }).collection_cycle || undefined,
+    hasFleet: (effective as { has_fleet?: boolean }).has_fleet || undefined,
+    issuesInvoices: (effective as { issues_invoices?: boolean }).issues_invoices || undefined,
+    hasCollateral: (effective as { has_collateral?: string }).has_collateral || undefined,
+    yearsOperating: (effective as { years_operating?: number }).years_operating || undefined,
+    debtDetail: (() => {
+      const e = effective as { lender_name?: string; monthly_installment?: number; debt_type?: string; debt_status?: string };
+      const parts: string[] = [];
+      if (dn.remaining) parts.push('المتبقي ' + Number(dn.remaining).toLocaleString('en-US') + ' ريال');
+      if (e.monthly_installment) parts.push('قسط شهري ' + Number(e.monthly_installment).toLocaleString('en-US') + ' ريال');
+      if (e.lender_name) parts.push('لدى ' + e.lender_name);
+      if (e.debt_status === 'committed') parts.push('منتظم السداد');
+      return parts.length ? parts.join(' · ') : undefined;
+    })(),
   };
 
   try {
