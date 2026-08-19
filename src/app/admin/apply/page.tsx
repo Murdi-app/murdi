@@ -10,6 +10,7 @@ type Row = {
   verdict?: string | null; region?: string | null;
   requirements?: string | null;
   evidence_grade?: string | null; gulf_presence?: string | null;
+  amount_range?: string | null;
   link_status?: string | null;
   incomplete?: boolean; file_ready?: boolean; contract_ok?: boolean;
 };
@@ -59,6 +60,8 @@ export default function ApplyPage() {
   const [clients, setClients] = useState<{ id: string; company_name: string }[]>([]);
   const [coId, setCoId] = useState('');
   const [big, setBig] = useState(false);
+  const [fitOnly, setFitOnly] = useState(false);
+  const [ask, setAsk] = useState(0);
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
@@ -84,6 +87,7 @@ export default function ApplyPage() {
     setRows(rs);
     if (d.role) setRole(String(d.role));
     if (d.clients) setClients(d.clients);
+    setAsk(Number(d.ask || 0));
     const dr: Record<string, Draft> = {};
     for (const r of rs) {
       const m = r.draft;
@@ -194,10 +198,18 @@ export default function ApplyPage() {
   };
   const _seen: { p: string; t: Set<string> }[] = [];
   const _bs: { p: string; t: Set<string> }[] = [];
-  const base = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20))
+  const fitOk = (r: Row) => { if (!fitOnly || !ask) return true; const lo = minTicket(r.amount_range); return lo > 0 && lo <= ask; };
+  const base = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20) && fitOk(r))
     .sort((x, y) => (tier(x.verdict) - tier(y.verdict)) || ((y.fit_score || 0) - (x.fit_score || 0)))
     .filter((r) => { const t = TOKS(r.product); if (_bs.some(k => k.p === r.provider && JAC(k.t, t) >= 0.6)) return false; _bs.push({ p: r.provider, t }); return true; });
-  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
+  const minTicket = (t?: string | null) => {
+    const s = String(t || ''); const n = (s.match(/[\d.,]+/g) || []).map(x => Number(x.replace(/,/g, ''))).filter(v => v > 0);
+    if (!n.length) return 0;
+    let lo = n[0]; const mul = /مليار/.test(s) ? 1e9 : (/مليون/.test(s) ? 1e6 : 1);
+    lo *= mul; if (/دولار|USD/i.test(s)) lo *= 3.75;
+    return lo;
+  };
+  const shown = rows.filter(r => (!co || r.company_name === co) && (!st || norm(r.apply_status) === st) && (!qq || [r.provider, r.product, r.company_name, r.apply_channel].some(v => String(v || '').toLowerCase().includes(qq))) && (big ? (r.fit_score || 0) < 20 : (r.fit_score || 0) >= 20) && fitOk(r) && (!need || new RegExp(need).test(String(r.requirements || '') + ' ' + String(r.required_docs || ''))) && (!prod || new RegExp(prod, 'i').test(String(r.product || '') + ' ' + String(r.requirements || ''))))
     .sort((a, b) => ((norm(a.apply_status) === 'قُدِّم' ? 1 : 0) - (norm(b.apply_status) === 'قُدِّم' ? 1 : 0)) || (tier(a.verdict) - tier(b.verdict)) || (ev(a.evidence_grade) - ev(b.evidence_grade)) || (lk(a.link_status) - lk(b.link_status)) || (ag(a.apply_channel) - ag(b.apply_channel)) || (own(a.product) - own(b.product)) || ((b.fit_score || 0) - (a.fit_score || 0)))
     .filter((r) => {
       if (!collapse) return true;
@@ -249,6 +261,12 @@ export default function ApplyPage() {
               {s} ({count(s)})
             </button>
           ))}
+          {ask > 0 && (
+            <button onClick={() => setFitOnly(v => !v)}
+              style={{ background: fitOnly ? C.green : '#fff', color: fitOnly ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '7px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+              {'\u062a\u0646\u0627\u0633\u0628 \u0645\u0628\u0644\u063a\u0643 (' + rows.filter(r => { const lo = minTicket(r.amount_range); return (r.fit_score || 0) > 0 && lo > 0 && lo <= ask; }).length + ')'}
+            </button>
+          )}
           <button onClick={() => setBig(v => !v)}
             style={{ background: big ? '#C0392B' : '#fff', color: big ? '#fff' : C.gray, border: '1.5px solid ' + C.mint, borderRadius: 30, padding: '7px 14px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
             {'\u062a\u0630\u0643\u0631\u0629 \u0623\u0643\u0628\u0631 (' + rows.filter(r => (r.fit_score || 0) > 0 && (r.fit_score || 0) < 20).length + ')'}
