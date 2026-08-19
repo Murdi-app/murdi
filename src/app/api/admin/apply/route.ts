@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     if (!mine.length) return NextResponse.json({ ok: true, rows: [], role: who.role, can_send: who.canSend });
   }
   let q = a.from('match_results')
-    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements, evidence_grade, gulf_presence, link_status')
+    .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements, evidence_grade, gulf_presence, link_status, amount_range')
     .eq('status', 'new').gt('fit_score', 0)
     .order('fit_score', { ascending: false });
   if (mine) q = q.in('company_id', mine);
@@ -30,6 +30,11 @@ export async function GET(req: Request) {
   let cq = a.from('companies').select('id, company_name').order('company_name');
   if (mine) cq = cq.in('id', mine);
   const { data: allCos } = await cq;
+  let ask = 0;
+  if (only) {
+    const { data: fdr } = await a.from('financial_data').select('requested_amount').eq('company_id', only).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    ask = Number(fdr?.requested_amount || 0);
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const ids = Array.from(new Set((rows || []).map(r => r.company_id)));
   const { data: cos } = await a.from('companies').select('id, company_name, match_progress').in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
@@ -58,7 +63,7 @@ export async function GET(req: Request) {
   for (const r of (con || [])) {
     if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);
   }
-  return NextResponse.json({ ok: true, clients: allCos || [], rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false, draft: draft.get(r.id) || null })), role: who.role, can_send: who.canSend });
+  return NextResponse.json({ ok: true, ask, clients: allCos || [], rows: (rows || []).map(r => ({ ...r, company_name: map.get(r.company_id) || '', incomplete: inc.get(r.company_id) || false, file_ready: fileReady.get(r.company_id) || false, contract_ok: contractOk.get(r.company_id) || false, draft: draft.get(r.id) || null })), role: who.role, can_send: who.canSend });
 }
 
 export async function PATCH(req: Request) {
