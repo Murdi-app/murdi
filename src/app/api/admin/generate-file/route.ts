@@ -27,6 +27,9 @@ async function getAdmin() {
 }
 
 // POST { company_id, track } : يولّد ملف HTML احترافي
+export const maxDuration = 300;
+export const runtime = 'nodejs';
+
 export async function POST(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
