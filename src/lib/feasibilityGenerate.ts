@@ -1,0 +1,117 @@
+// مولّد دراسة الجدوى الاقتصادية — مُرضي
+// الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
+import { computeFeasibility, renderProjectionTable, renderFeasibilitySummary, type FeasibilityInputs, type FeasibilityResult } from './feasibilityCompute';
+
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+const MODEL = 'claude-sonnet-4-6';
+
+export interface FeasibilityContext {
+  companyName: string;
+  crNumber?: string;
+  city?: string;
+  projectDescription: string;      // وصف المشروع
+  sectorText: string;              // القطاع بنص حر
+  audience: 'financier' | 'investor' | 'regulator' | 'internal';
+  projectKind: 'new' | 'expansion';
+  location?: string;
+  capacityNote?: string;           // الطاقة المستهدفة
+  staffNote?: string;              // العمالة
+  existingRevenue?: number;        // للتوسعة فقط
+  inputs: FeasibilityInputs;
+}
+
+export interface FeasibilitySections {
+  executiveSummary: string;
+  marketStudy: string;
+  competition: string;
+  technicalStudy: string;
+  assumptionsNote: string;
+  risks: string;
+  conclusion: string;
+  sources: string[];
+}
+
+const AUD: Record<FeasibilityContext['audience'], string> = {
+  financier: 'جهة تمويل — ركّز على القدرة على السداد وتغطية الأقساط والضمانات وحساسية التدفق النقدي',
+  investor: 'مستثمر — ركّز على حجم السوق والنمو والعائد وفرصة التوسع وميزة المشروع التنافسية',
+  regulator: 'جهة حكومية أو ترخيص — ركّز على الامتثال والاشتراطات والأثر الاقتصادي والتوطين',
+  internal: 'استخدام داخلي لصاحب المشروع — ركّز على الواقعية وما يجب التحقق منه قبل الالتزام',
+};
+
+export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ sections: FeasibilitySections; result: FeasibilityResult; error?: string }> {
+  const result = computeFeasibility(ctx.inputs);
+  const n = (v: number) => Math.round(v).toLocaleString('en-US');
+
+  const prompt = 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
+    + 'بيانات المشروع كما قدّمها العميل:\n'
+    + '- المنشأة: ' + ctx.companyName + (ctx.crNumber ? ' (سجل ' + ctx.crNumber + ')' : '') + '\n'
+    + '- المدينة: ' + (ctx.city || 'غير محدد') + (ctx.location ? ' | موقع المشروع: ' + ctx.location : '') + '\n'
+    + '- القطاع: ' + ctx.sectorText + '\n'
+    + '- وصف المشروع: ' + ctx.projectDescription + '\n'
+    + '- نوعه: ' + (ctx.projectKind === 'new' ? 'مشروع جديد من الصفر' : 'توسعة نشاط قائم') + (ctx.existingRevenue ? ' — إيراد النشاط القائم ' + n(ctx.existingRevenue) + ' ريال' : '') + '\n'
+    + (ctx.capacityNote ? '- الطاقة المستهدفة: ' + ctx.capacityNote + '\n' : '')
+    + (ctx.staffNote ? '- العمالة: ' + ctx.staffNote + '\n' : '')
+    + '- التكلفة الرأسمالية: ' + n(ctx.inputs.capex) + ' ريال | رأس المال العامل: ' + n(ctx.inputs.workingCapital) + ' ريال\n'
+    + '- التمويل المطلوب: ' + n(ctx.inputs.financingAmount) + ' ريال على ' + ctx.inputs.financingYears + ' سنوات | مساهمة المؤسس: ' + n(ctx.inputs.ownFunds) + ' ريال\n\n'
+    + 'الأرقام المحسوبة (محسوبة برمجياً — لا تعد حسابها ولا تخالفها):\n'
+    + '- إجمالي الاستثمار ' + n(result.totalInvestment) + ' ريال | فجوة التمويل ' + n(result.fundingGap) + ' ريال\n'
+    + '- هامش المساهمة ' + result.contributionMarginPct.toFixed(1) + '% | نقطة التعادل ' + n(result.breakEvenRevenue) + ' ريال سنوياً\n'
+    + '- فترة الاسترداد: ' + (result.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : result.paybackYears.toFixed(1) + ' سنة') + '\n'
+    + '- صافي ربح السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n\n'
+    + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
+    + 'قواعد إلزامية:\n'
+    + '(ج١) قاعدة الصدق: كل رقم سوقي تذكره يجب أن يكون له مصدر منشور باسمه وسنته ضمن قائمة sources. وما لا تجد له مصدراً موثوقاً اكتب بجانبه صراحة «يلزم التحقق» ولا تقدّر رقماً من عندك.\n'
+    + '(ج٢) لا تعد بعائد ولا تكتب أي عبارة ضمان للنجاح أو للربح، ولا تصف المشروع بأنه مضمون أو مؤكد.\n'
+    + '(ج٣) لا تخالف الأرقام المحسوبة أعلاه ولا تعيد حسابها. وإن كانت النتيجة ضعيفة (تعادل مرتفع أو استرداد بعيد) فاذكر ذلك بوضوح ولا تجمّله.\n'
+    + '(ج٤) لا تنسب للمنشأة أي صفة لم ترد أعلاه — لا خبرة ولا عملاء ولا تراخيص ولا أصول.\n'
+    + '(ج٥) ابحث في الويب عن حجم السوق السعودي لهذا القطاع ونموه وأبرز المنافسين والاتجاهات التنظيمية الحديثة.\n\n'
+    + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
+    + '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسون وموقع المشروع بينهم","technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"أبرز المخاطر وإجراءات تخفيفها","conclusion":"الخلاصة والتوصية بصراحة","sources":["اسم المصدر — الرابط — السنة"]}';
+
+  try {
+    const r = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }], tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }] }),
+    });
+    if (!r.ok) return { sections: empty(), result, error: 'HTTP ' + r.status };
+    const d = await r.json();
+    const txt = (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('');
+    const clean = txt.replace(/```json|```/g, '').trim();
+    const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
+    const parsed = JSON.parse(start >= 0 ? clean.slice(start, end + 1) : clean);
+    return { sections: { ...empty(), ...parsed }, result };
+  } catch (e) {
+    return { sections: empty(), result, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+function empty(): FeasibilitySections {
+  return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', sources: [] };
+}
+
+export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult): string {
+  const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + String(body).replace(/\n/g, '<br>') + '</div>' : '';
+  const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
+  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>دراسة جدوى — ' + ctx.companyName + '</title>'
+    + '<style>body{font-family:Arial,sans-serif;color:#1F2A44;line-height:1.9;padding:32px;max-width:900px;margin:auto}'
+    + 'h1{color:#B8860B;font-size:26px}h2{color:#1F2A44;border-bottom:2px solid #B8860B;padding-bottom:6px;margin-top:28px;font-size:19px}'
+    + '.bd{font-size:15px}table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
+    + 'table.fz th,table.fz td{border:1px solid #E0E0E0;padding:7px;text-align:right}table.fz th{background:#EFE6D0;font-weight:bold}'
+    + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}</style></head><body>'
+    + '<h1>دراسة الجدوى الاقتصادية</h1><p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
+    + '<p>' + ctx.projectDescription + '</p>'
+    + sec('الملخص التنفيذي', s.executiveSummary)
+    + '<h2>المؤشرات المالية</h2>' + renderFeasibilitySummary(r)
+    + '<h2>التوقعات المالية لخمس سنوات</h2>' + renderProjectionTable(r)
+    + '<div class="note">الأرقام أعلاه محسوبة من افتراضات العميل المذكورة في جدول الافتراضات، وليست وعداً بعائد. وأي تغيّر في السعر أو حجم المبيعات أو التكاليف يغيّر النتائج.</div>'
+    + sec('دراسة السوق', s.marketStudy)
+    + sec('المنافسون', s.competition)
+    + sec('الدراسة الفنية', s.technicalStudy)
+    + sec('جدول الافتراضات', s.assumptionsNote)
+    + sec('المخاطر وإجراءات التخفيف', s.risks)
+    + sec('الخلاصة والتوصية', s.conclusion)
+    + srcList
+    + '<p style="margin-top:30px;font-size:12px;color:#666">أُعدّت بواسطة حلول المرضي للاستشارات المالية — ترخيص FL-457927015</p>'
+    + '</body></html>';
+}
