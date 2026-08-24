@@ -178,4 +178,5 @@ export const COMMISSION_SERVICES: Record<string, 'funding' | 'investment' | 'acq
   'تجهيز ملف التمويل والتفاوض': 'funding',
   'تجهيز ملف عرض المستثمر والتفاوض': 'investment',
   'تجهيز صفقة التملّك والتفاوض': 'acquisition',
+  'ملف الممر الأجنبي': 'funding',
 };
