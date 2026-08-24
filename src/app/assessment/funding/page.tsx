@@ -71,6 +71,12 @@ export default function FundingAssessment() {
   const [fundPurpose, setFundPurpose] = useState('');
   const [crossBorder, setCrossBorder] = useState('');
   const [clientType, setClientType] = useState('');
+  const [ownership, setOwnership] = useState('');
+  const [ownerNationality, setOwnerNationality] = useState('');
+  const [hasParentCo, setHasParentCo] = useState('');
+  const [parentCountry, setParentCountry] = useState('');
+  const [parentGuarantee, setParentGuarantee] = useState('');
+  const [supplierCountries, setSupplierCountries] = useState('');
   const [collectionCycle, setCollectionCycle] = useState('');
   const [collateral, setCollateral] = useState('');
 
@@ -132,6 +138,12 @@ export default function FundingAssessment() {
           funding_purpose: fundPurpose.trim() || null,
           trades_cross_border: crossBorder || null,
           client_type: clientType || null,
+          ownership_type: ownership || null,
+          owner_nationality: ownerNationality.trim() || null,
+          has_parent_company: hasParentCo || null,
+          parent_company_country: parentCountry.trim() || null,
+          parent_can_guarantee: parentGuarantee || null,
+          supplier_countries: supplierCountries.trim() || null,
           collection_cycle: collectionCycle || null,
           has_collateral: collateral || null,
         }),
@@ -379,6 +391,44 @@ export default function FundingAssessment() {
                   <select value={crossBorder} onChange={e => setCrossBorder(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
                     <option value="">— اختر —</option><option value="none">لا</option><option value="import">أستورد</option><option value="export">أصدّر</option><option value="both">الاثنان</option>
                   </select>
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">ملكية المنشأة</label>
+                  <select value={ownership} onChange={e => setOwnership(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="saudi">سعودية بالكامل</option><option value="mixed">مختلطة (سعودي + أجنبي)</option><option value="foreign">أجنبية بالكامل</option>
+                  </select>
+                </div>
+                {ownership && ownership !== 'saudi' && (
+                  <>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">جنسية المستثمر الرئيسي</label>
+                  <input type="text" value={ownerNationality} onChange={e => setOwnerNationality(e.target.value)} placeholder="مثال: باكستان، الهند، الصين" className={inputCls} />
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">هل للمالك شركة أم أو كيان قائم خارج السعودية؟</label>
+                  <select value={hasParentCo} onChange={e => setHasParentCo(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="yes">نعم</option><option value="no">لا</option>
+                  </select>
+                </div>
+                    {hasParentCo === 'yes' && (
+                      <>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">في أي دولة الشركة الأم؟</label>
+                  <input type="text" value={parentCountry} onChange={e => setParentCountry(e.target.value)} placeholder="دولة الشركة الأم" className={inputCls} />
+                </div>
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">هل يمكنها مبدئياً ضمان المنشأة السعودية أمام جهة تمويل؟</label>
+                  <select value={parentGuarantee} onChange={e => setParentGuarantee(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                    <option value="">— اختر —</option><option value="yes">نعم</option><option value="no">لا</option><option value="unsure">غير متأكد</option>
+                  </select>
+                </div>
+                      </>
+                    )}
+                  </>
+                )}
+                <div style={{ marginTop: 18 }}>
+                  <label className="block font-black text-[#1A3D34] mb-2">من أي دول تشترون وتستوردون بشكل رئيسي؟</label>
+                  <input type="text" value={supplierCountries} onChange={e => setSupplierCountries(e.target.value)} placeholder="مثال: محلي فقط — أو: الصين والهند" className={inputCls} />
                 </div>
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">من عملاؤك غالباً؟</label>
