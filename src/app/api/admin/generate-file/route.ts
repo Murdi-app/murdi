@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateFileContent, buildFileHTML, type FileClientData } from '@/lib/fileGenerate';
 import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
+import { generateFeasibility, buildFeasibilityHTML, type FeasibilityContext } from '@/lib/feasibilityGenerate';
 import { logError } from '@/lib/logError';
 import { requireAdmin } from '@/lib/requireAdmin';
 
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   let fundingAmount: number | undefined;
   let reqId = '';
   let purpose = '';
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); }
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'feasibility' || b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake' || b.track === 'feasibility') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
   if (reqId && (fundingAmount || purpose)) {
@@ -148,6 +149,45 @@ export async function POST(req: Request) {
     if (pv && typeof pv === 'object') client.pitchNums = pv;
   } catch {}
 
+  if (track === 'feasibility') {
+    try {
+      const { data: fz } = await admin.from('service_inputs')
+        .select('inputs, updated_at').eq('company_id', companyId).eq('activity_kind', 'feasibility')
+        .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      const raw = (fz?.inputs as Record<string, unknown> | null) || null;
+      if (!raw) return NextResponse.json({ error: 'لا توجد مدخلات دراسة جدوى محفوظة لهذه الشركة' }, { status: 400 });
+      const num = (k: string) => Number(String((raw as Record<string, unknown>)[k] ?? '').replace(/,/g, '')) || 0;
+      const str = (k: string) => String((raw as Record<string, unknown>)[k] ?? '');
+      const aud = ['financier', 'investor', 'regulator', 'internal'].includes(str('audience')) ? str('audience') : 'financier';
+      const ctx: FeasibilityContext = {
+        companyName: client.companyName,
+        crNumber: client.crNumber,
+        city: client.city,
+        projectDescription: str('projectDescription') || 'مشروع غير موصوف',
+        sectorText: str('sectorText') || String(client.sector || 'غير محدد'),
+        audience: aud as FeasibilityContext['audience'],
+        projectKind: str('projectKind') === 'expansion' ? 'expansion' : 'new',
+        location: str('location') || undefined,
+        capacityNote: str('capacityNote') || undefined,
+        staffNote: str('staffNote') || undefined,
+        existingRevenue: num('existingRevenue') || undefined,
+        inputs: {
+          capex: num('capex'), workingCapital: num('workingCapital'),
+          unitPrice: num('unitPrice'), unitsYear1: num('unitsYear1'),
+          growthRate: num('growthRate'), variableCostPct: num('variableCostPct'),
+          fixedCostsAnnual: num('fixedCostsAnnual'), inflationRate: num('inflationRate') || 3,
+          ownFunds: num('ownFunds'), financingAmount: num('financingAmount'),
+          financingYears: num('financingYears') || 5, financingRate: num('financingRate'),
+        },
+      };
+      const { sections, result, error } = await generateFeasibility(ctx);
+      const html = buildFeasibilityHTML(ctx, sections, result);
+      return NextResponse.json({ ok: true, html, warn: error || undefined });
+    } catch (e) {
+      await logError('feasibility.generate', e, {});
+      return NextResponse.json({ error: 'تعذر توليد الجدوى: ' + String(e).slice(0, 120) }, { status: 500 });
+    }
+  }
   try {
     try {
       const _adm = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
