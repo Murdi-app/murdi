@@ -110,10 +110,11 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     }
   };
 
-  const a = await attempt(true, 240000);
-  if (a) return { sections: a, result };
-  const b = await attempt(false, 90000);
-  if (b) return { sections: b, result, error: 'تعذّر بحث السوق — الأقسام بلا مصادر ويلزم التحقق من أرقام السوق' };
+  // السرعة أولاً: بلا بحث (~30 ثانية) فتخرج الدراسة كاملة دائماً. البحث محاولة إضافية قصيرة فقط.
+  const fast = await attempt(false, 100000);
+  if (fast) return { sections: fast, result, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
+  const withSearch = await attempt(true, 150000);
+  if (withSearch) return { sections: withSearch, result };
   return { sections: empty(), result, error: 'تعذّر توليد الأقسام النصية — الجداول المحسوبة فقط' };
 }
 
