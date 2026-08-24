@@ -29,6 +29,7 @@ export default function AdminServicesPage() {
 const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (ر.س)'},{k:'branch_cost',t:'تكلفة افتتاح الفرع (ر.س)'},{k:'payback',t:'استرداد رأس مال الفرع (شهر)'},{k:'branches_now',t:'عدد الفروع الحالية'},{k:'branches_target',t:'عدد الفروع الجديدة من الجولة'},{k:'headcount',t:'عدد الموظفين'},{k:'equity_offered',t:'الحصة المعروضة (%)'},{k:'pre_money',t:'التقييم قبل الجولة (ر.س)'},{k:'target_return',t:'مضاعف العائد المستهدف وأفقه'},{k:'round_size',t:'حجم الجولة المطلوب (ر.س)'}]
   const [loading, setLoading] = useState(true)
   const [pitchIn, setPitchIn] = useState<Record<string, Record<string, string>>>({})
+  const [fzIn, setFzIn] = useState<Record<string, Record<string, string>>>({})
   const [reqs, setReqs] = useState<any[]>([])
   const [busy, setBusy] = useState('')
   const [fundAmt, setFundAmt] = useState<Record<string, string>>({})
@@ -317,6 +318,25 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     setBusy('')
   }
 
+  async function saveFeasibility(id: string, companyId: string) {
+    setBusy('fz' + id)
+    const res = await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: id, company_id: companyId, activity_kind: 'feasibility', inputs: fzIn[id] || {} }) })
+    const d = await res.json()
+    setBusy('')
+    alert(d.ok ? 'تم حفظ مدخلات دراسة الجدوى.' : ('تعذّر الحفظ: ' + (d.error || '')))
+  }
+  async function genFeasibility(companyId: string) {
+    setBusy('gfz' + companyId)
+    try {
+      const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, track: 'feasibility' }) })
+      const d = await res.json()
+      if (!d.ok) { alert('تعذّر التوليد: ' + (d.error || res.status)); setBusy(''); return }
+      const w = window.open('', '_blank')
+      if (w) { w.document.write(d.html); w.document.close() }
+      if (d.warn) alert('تنبيه: تعذّر بحث السوق (' + d.warn + ') — الجداول المحسوبة ظهرت، وأقسام السوق قد تكون ناقصة.')
+    } catch (e) { alert('خطأ: ' + String(e)) }
+    setBusy('')
+  }
   async function savePitchNums(id: string, companyId: string) {
     setBusy('pn' + id)
     const res = await fetch('/api/admin/service-inputs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ service_request_id: id, company_id: companyId, activity_kind: 'pitch', inputs: { pitch: pitchIn[id] || {} } }) })
