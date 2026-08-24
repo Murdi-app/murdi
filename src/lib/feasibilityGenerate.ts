@@ -68,22 +68,53 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
     + '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسون وموقع المشروع بينهم","technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"أبرز المخاطر وإجراءات تخفيفها","conclusion":"الخلاصة والتوصية بصراحة","sources":["اسم المصدر — الرابط — السنة"]}';
 
-  try {
-    const r = await fetch(ANTHROPIC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 8000, messages: [{ role: 'user', content: prompt }], tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }] }),
-    });
-    if (!r.ok) return { sections: empty(), result, error: 'HTTP ' + r.status };
-    const d = await r.json();
-    const txt = (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('');
-    const clean = txt.replace(/```json|```/g, '').trim();
-    const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
-    const parsed = JSON.parse(start >= 0 ? clean.slice(start, end + 1) : clean);
-    return { sections: { ...empty(), ...parsed }, result };
-  } catch (e) {
-    return { sections: empty(), result, error: e instanceof Error ? e.message : String(e) };
-  }
+  // استخراج JSON من نص قد يحوي مقدمة أو عدة كتل — نجرب من آخر '{' للخلف
+  const pick = (raw: string): Record<string, unknown> | null => {
+    const c = raw.replace(/```json|```/g, '').trim();
+    const starts: number[] = [];
+    for (let k = 0; k < c.length; k++) if (c[k] === '{') starts.push(k);
+    const end = c.lastIndexOf('}');
+    if (end < 0) return null;
+    for (const st of starts) {
+      try {
+        const o = JSON.parse(c.slice(st, end + 1));
+        if (o && typeof o === 'object' && o.executiveSummary) return o as Record<string, unknown>;
+      } catch { /* جرّب القوس التالي */ }
+    }
+    return null;
+  };
+
+  const attempt = async (withSearch: boolean, ms: number): Promise<FeasibilitySections | null> => {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), ms);
+    try {
+      const body: Record<string, unknown> = {
+        model: MODEL, max_tokens: 8000,
+        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\n\nملاحظة: البحث غير متاح الآن. اكتب الأقسام من معرفتك العامة، ولا تذكر رقماً سوقياً بلا مصدر — اكتب مكانه «يلزم التحقق»، واترك sources فارغة.' }],
+      };
+      if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
+      const r = await fetch(ANTHROPIC_URL, {
+        method: 'POST', signal: ac.signal,
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify(body),
+      });
+      clearTimeout(to);
+      if (!r.ok) return null;
+      const d = await r.json();
+      const txt = (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n');
+      const parsed = pick(txt);
+      return parsed ? { ...empty(), ...parsed } as FeasibilitySections : null;
+    } catch {
+      clearTimeout(to);
+      return null;
+    }
+  };
+
+  const a = await attempt(true, 240000);
+  if (a) return { sections: a, result };
+  const b = await attempt(false, 90000);
+  if (b) return { sections: b, result, error: 'تعذّر بحث السوق — الأقسام بلا مصادر ويلزم التحقق من أرقام السوق' };
+  return { sections: empty(), result, error: 'تعذّر توليد الأقسام النصية — الجداول المحسوبة فقط' };
 }
 
 function empty(): FeasibilitySections {
