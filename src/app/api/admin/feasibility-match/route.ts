@@ -40,11 +40,14 @@ export async function POST(req: Request) {
     const num = (k: string) => Number(String(raw[k] ?? '').replace(/,/g, '')) || 0;
     const str = (k: string) => String(raw[k] ?? '').trim();
 
-    // الإيراد المرجعي: إيراد النشاط القائم للتوسعة، وإلا إيراد السنة الأولى المتوقع
     const projected = num('unitPrice') * num('unitsYear1');
     const existing = num('existingRevenue');
-    const rev = existing > 0 ? existing : projected;
     const isNew = str('projectKind') !== 'expansion';
+    // إيراد اليوم: صفر للمشروع الجديد مهما بلغ المتوقع — وإلا اختار المحرك نطاقات الشركات القائمة
+    // (وكالات ائتمان التصدير وصناديق الدين الخاص) لمنشأة لم تبع بعد
+    const rev = existing > 0 ? existing : 0;
+    // حجم المشروع يُقاس بالمتوقع أو بالمطلوب — وهو ما تُقاس عليه تذكرة كل جهة
+    const scaleRev = existing > 0 ? existing : Math.max(projected, num('financingAmount'));
 
     // الملف المالي المُركَّب: كل حقل إما من المدخلات أو «غير محدد» — لا نخترع صفة للعميل
     const fd: Record<string, unknown> = {
@@ -56,6 +59,9 @@ export async function POST(req: Request) {
       activity_other: str('sectorText') || String(company.sector || ''),
       has_debt: false,
       net_profit: undefined,
+      // القالب ثنائي بلا خيار «غير معروف»، فترك الحقل فارغاً يُطبع «غير ساري» — نفياً مفبركاً
+      cr_valid: Boolean(company.cr_number),
+      has_financial_statements: !isNew,
       // ملكية المنشأة تُقرأ من ملف الشركة إن وُجدت — تفتح ممر المستثمر الأجنبي تلقائياً
       ownership_type: company.ownership_type,
       owner_nationality: company.owner_nationality,
@@ -66,7 +72,11 @@ export async function POST(req: Request) {
     const from = (batch === undefined ? 0 : batch) * SIZE;
     const r = await runScopedMatch({
       company, fd,
-      typeLabel: isNew ? 'تمويل تأسيس مشروع جديد' : 'تمويل توسعة نشاط قائم',
+      // الإيراد صفر للمشروع الجديد، فحجمه يُبلَّغ هنا حتى لا يقيسه النموذج على منشأة بلا حجم
+      typeLabel: (isNew ? 'تمويل تأسيس مشروع جديد' : 'تمويل توسعة نشاط قائم')
+        + ' — إجمالي استثمار ' + Math.round(num('capex') + num('workingCapital')).toLocaleString('en-US')
+        + ' ريال، المطلوب تمويله ' + Math.round(num('financingAmount')).toLocaleString('en-US')
+        + ' ريال، ومساهمة المؤسس ' + Math.round(num('ownFunds')).toLocaleString('en-US') + ' ريال',
       rev, years: isNew ? 0 : 1,
       debtDesc: 'لا توجد ديون قائمة',
       isInvest: false, budget: 'full',
@@ -78,7 +88,7 @@ export async function POST(req: Request) {
     const done = batch === undefined || (nextB * SIZE) >= r.totalScopes;
     if (r.offers.length) {
       // keepPrev على الدفعات التالية حتى لا تلغي الدفعة الثانية نتائج الأولى
-      await saveMatchResults(companyId, 'feasibility', r.offers, rev, batch !== undefined && batch > 0, '');
+      await saveMatchResults(companyId, 'feasibility', r.offers, scaleRev, batch !== undefined && batch > 0, '');
     }
 
     const { count } = await admin.from('match_results')

@@ -117,6 +117,7 @@ export async function runScopedMatch(args: {
       'اقتصر على شركات التمويل السعودية التي تمول المنشآت الصغيرة بمبالغ محدودة: نايفات، أمكان، تمويل الأولى، سلفة، تمام، وما شابهها.',
       'اقتصر على برامج الضمان الحكومية وضمانات كفالة والجهات التي تسهّل وصول المنشآت الصغيرة للتمويل البنكي.',
       'اقتصر على تمويل الموردين والدفع الآجل بين الشركات والمنصات التي تموّل المشتريات التشغيلية.',
+      'اقتصر على شركات الإجارة وتمويل المعدات والأصول للمنشآت الصغيرة في السعودية: إجارة منتهية بالتمليك لمعدات التشغيل والتجهيزات والمركبات، وبرامج تمويل الأصول لدى البنوك وشركات التمويل المرخّصة.',
     ];
     const FUND_SCOPES = [
       'اقتصر على البنوك السعودية المرخّصة من البنك المركزي السعودي فقط.',
@@ -252,6 +253,8 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       fit: o.verdict || null,
       fit_score: (() => {
         const inst = String(o.instrument || '');
+        // اعتراف النموذج نفسه بعدم المناسبة يُصفّر الصف — حقل المبلغ نصي أحياناً فلا يلتقطه المحلل الرقمي
+        if (/غير مناسب|لا يناسب|أقل بكثير|أعلى بكثير|خارج نطاق/.test(String(o.amountRange || ''))) return 0;
         const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '') + ' ' + String(o.provider || '') + ' ' + (Array.isArray(o.gaps) ? o.gaps.join(' ') : '')).toLowerCase();
         if (scoreTrack === 'funding' && /الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
         if (scoreTrack === 'funding' && /تمويل موردي|موردّي|supplier finance|supply chain finance|تمويل سلاسل الإمداد|سلاسل الامداد|reverse factoring|payables finance|receivables finance|early payment|dynamic discounting|taulia|\bscf\b/.test(txt2) && buyers !== undefined && !String(buyers).trim()) return 0;
