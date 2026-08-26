@@ -43,7 +43,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
   const credit = computeCredit(ctx.inputs, result);
   const n = (v: number) => Math.round(v).toLocaleString('en-US');
 
-  const prompt = 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
+  const mkPrompt = (marketBlock: string) => 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
     + 'بيانات المشروع كما قدّمها العميل:\n'
     + '- المنشأة: ' + ctx.companyName + (ctx.crNumber ? ' (سجل ' + ctx.crNumber + ')' : '') + '\n'
     + '- المدينة: ' + (ctx.city || 'غير محدد') + (ctx.location ? ' | موقع المشروع: ' + ctx.location : '') + '\n'
@@ -53,6 +53,9 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + (ctx.capacityNote ? '- الطاقة المستهدفة: ' + ctx.capacityNote + '\n' : '')
     + (ctx.staffNote ? '- العمالة: ' + ctx.staffNote + '\n' : '')
     + '- التكلفة الرأسمالية: ' + n(ctx.inputs.capex) + ' ريال | رأس المال العامل: ' + n(ctx.inputs.workingCapital) + ' ريال\n'
+    + '- افتراضات التشغيل كما قدّمها العميل: سعر الوحدة ' + n(ctx.inputs.unitPrice) + ' ريال | وحدات السنة الأولى ' + n(ctx.inputs.unitsYear1)
+      + ' | نمو المبيعات ' + ctx.inputs.growthRate + '% سنوياً | التكلفة المتغيرة ' + ctx.inputs.variableCostPct + '% من الإيراد | المصاريف الثابتة '
+      + n(ctx.inputs.fixedCostsAnnual) + ' ريال سنوياً تنمو ' + ctx.inputs.inflationRate + '% سنوياً\n'
     + '- التمويل المطلوب: ' + n(ctx.inputs.financingAmount) + ' ريال على ' + ctx.inputs.financingYears + ' سنوات بكلفة سنوية ' + ctx.inputs.financingRate + '% | مساهمة المؤسس: ' + n(ctx.inputs.ownFunds) + ' ريال\n\n'
     + 'الأرقام المحسوبة (محسوبة برمجياً — لا تعد حسابها ولا تخالفها):\n'
     + '- إجمالي الاستثمار ' + n(result.totalInvestment) + ' ريال | فجوة التمويل ' + n(result.fundingGap) + ' ريال\n'
@@ -67,20 +70,21 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- التدفق المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال = صافي الربح + الاستهلاك ' + n(credit.years[0].depreciation) + ' + كلفة التمويل ' + n(credit.years[0].financeCharge) + '\n'
     + '- التدفق الشهري للسنة الأولى يبلغ أعمق نقطة نقدية في الشهر ' + (credit.deepestMonth ? credit.deepestMonth.month : 0) + '، فرأس المال العامل الفعلي اللازم ' + n(credit.workingCapitalNeeded) + ' ريال\n'
     + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n\n'
+    + marketBlock
     + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
     + 'قواعد إلزامية:\n'
-    + '(ج١) أرقام السوق: اذكر أرقاماً كمّية فعلية لحجم السوق ونموه ومتوسط الإنفاق ومؤشرات القطاع — لا تترك القسم بلا أرقام. وكل رقم يقترن بأساسه في نفس الجملة: إمّا مصدر منشور باسمه وسنته، أو صياغة «تقدير استرشادي مبني على مؤشرات القطاع المعلنة». ولا تنسب رقماً إلى جهة بعينها ما لم تكن قد اطّلعت عليه فعلاً.\n'
+    + '(ج١) أرقام السوق: اذكر أرقاماً كمّية فعلية لحجم السوق ونموه ومتوسط الإنفاق ومؤشرات القطاع — لا تترك القسم بلا أرقام. ما ورد في «نتائج بحث السوق» أعلاه انسبه إلى مصدره باسمه وسنته، وما لم يرد فيه اكتبه بصياغة «تقدير استرشادي مبني على مؤشرات القطاع المعلنة». ولا تنسب رقماً إلى جهة بعينها ما لم يرد في نتائج البحث أعلاه.\n'
     + '(ج١ب) في الخلاصة والمخاطر: علّق صراحةً على نسبة تغطية خدمة الدين وعلى السيناريو المتحفظ، وبيّن ما إذا كان الهيكل المطلوب يتحمّل، وإن كانت التغطية دون 1.25× فاقترح معالجة محددة (تمديد الأجل أو رفع المساهمة أو خفض المطلوب).\n'
     + '(ج٢) لا تعد بعائد ولا تكتب أي عبارة ضمان للنجاح أو للربح، ولا تصف المشروع بأنه مضمون أو مؤكد.\n'
     + '(ج٣) لا تخالف الأرقام المحسوبة أعلاه ولا تعيد حسابها. وإن كانت النتيجة ضعيفة (تعادل مرتفع أو استرداد بعيد) فاذكر ذلك بوضوح ولا تجمّله.\n'
     + '(ج٤) لا تنسب للمنشأة أي صفة لم ترد أعلاه — لا خبرة ولا عملاء ولا تراخيص ولا أصول.\n'
     + '(ج٤ب) لا تكرر عنوان القسم في أول سطر من نصه. وإن احتجت جدولاً فاكتبه بصيغة الأنبوب | فقط، ولا تستخدم ** ولا # ولا أي ترميز آخر.\n'
-    + '(ج٥) ابحث في الويب عن حجم السوق السعودي لهذا القطاع ونموه وأبرز المنافسين والاتجاهات التنظيمية الحديثة.\n\n'
+    + '(ج٥) في حقل sources أدرج المصادر الواردة في نتائج البحث أعلاه فقط، ولا تخترع مصدراً ولا رابطاً.\n\n'
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
     + '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسون وموقع المشروع بينهم","technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"أبرز المخاطر وإجراءات تخفيفها","conclusion":"الخلاصة والتوصية بصراحة","sources":["اسم المصدر — الرابط — السنة"]}';
 
   // استخراج JSON من نص قد يحوي مقدمة أو عدة كتل — نجرب من آخر '{' للخلف
-  const pick = (raw: string): Record<string, unknown> | null => {
+  const pick = (raw: string, need = 'executiveSummary'): Record<string, unknown> | null => {
     const c = raw.replace(/```json|```/g, '').trim();
     const starts: number[] = [];
     for (let k = 0; k < c.length; k++) if (c[k] === '{') starts.push(k);
@@ -92,58 +96,73 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
         if (en <= st) break;
         try {
           const o = JSON.parse(c.slice(st, en + 1));
-          if (o && typeof o === 'object' && o.executiveSummary) return o as Record<string, unknown>;
+          if (o && typeof o === 'object' && o[need]) return o as Record<string, unknown>;
         } catch { /* جرّب نهاية أقصر */ }
       }
     }
     // رد مقطوع: نلتقط الحقول النصية المكتملة يدوياً حتى لا تضيع الأقسام
-    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion'];
+    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'facts'];
     const out: Record<string, unknown> = {};
     for (const k of keys) {
       const m = c.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
       if (m) out[k] = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
     }
-    return out.executiveSummary ? out : null;
+    return out[need] ? out : null;
   };
 
   let diag = '';
-  const attempt = async (withSearch: boolean, ms: number): Promise<FeasibilitySections | null> => {
+  const call = async (body: Record<string, unknown>, ms: number, tag: string): Promise<string | null> => {
     const ac = new AbortController();
     const to = setTimeout(() => ac.abort(), ms);
     try {
-      const body: Record<string, unknown> = {
-        model: MODEL, max_tokens: 12000,
-        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\n\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
-      };
-      if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
       const r = await fetch(ANTHROPIC_URL, {
         method: 'POST', signal: ac.signal,
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ model: MODEL, ...body }),
       });
       clearTimeout(to);
-      const tag = withSearch ? ' | بالبحث: ' : ' | بلا بحث: ';
       if (!r.ok) { diag += tag + 'HTTP ' + r.status + ' — ' + (await r.text()).slice(0, 200); return null; }
       const d = await r.json();
-      const txt = (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n');
-      const parsed = pick(txt);
-      if (!parsed) { diag += tag + 'الرد وصل بطول ' + txt.length + ' حرفاً لكن تعذّر استخراج JSON — بدايته: ' + txt.slice(0, 120); return null; }
-      return { ...empty(), ...parsed } as FeasibilitySections;
+      return (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n');
     } catch (e) {
       clearTimeout(to);
-      diag += (withSearch ? ' | بالبحث: ' : ' | بلا بحث: ') + 'استثناء — ' + (e instanceof Error ? e.name + ': ' + e.message : String(e)).slice(0, 200);
+      diag += tag + 'استثناء — ' + (e instanceof Error ? e.name + ': ' + e.message : String(e)).slice(0, 200);
       return null;
     }
   };
 
-  // السرعة أولاً: بلا بحث (~30 ثانية) فتخرج الدراسة كاملة دائماً. البحث محاولة إضافية قصيرة فقط.
+  // ═══ النداء الأول: بحث سوق فقط، مخرجاته قصيرة فيبقى سريعاً ═══
+  const researchPrompt = 'ابحث في الويب عن مؤشرات السوق السعودي لهذا النشاط: ' + ctx.sectorText
+    + (ctx.city ? ' في ' + ctx.city : '') + '. وصف المشروع: ' + ctx.projectDescription + '\n'
+    + 'اجمع تحديداً: حجم السوق ونموه المتوقع · متوسط إنفاق العميل أو متوسط قيمة الطلب · أبرز المنافسين بالأسماء · أحدث الاشتراطات التنظيمية المؤثرة.\n'
+    + 'أرجع JSON فقط بلا أي نص آخر: {"facts":"نقاط مرقّمة، كل نقطة رقم واحد مع اسم مصدره وسنته","sources":["اسم المصدر — الرابط — السنة"]}\n'
+    + 'لا تكتب رقماً لم تره في نتيجة بحث فعلية، ولا تنسب رقماً لمصدر لم تفتحه.';
   const t0 = Date.now();
-  const fast = await attempt(false, 230000);
-  if (fast) return { sections: fast, result, credit, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
-  const left = 275000 - (Date.now() - t0);
-  const withSearch = left > 60000 ? await attempt(true, left) : null;
-  if (withSearch) return { sections: withSearch, result, credit };
-  return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
+  const rTxt = await call({
+    max_tokens: 2500,
+    tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+    messages: [{ role: 'user', content: researchPrompt }],
+  }, 95000, ' | بحث السوق: ');
+  const rJson = rTxt ? pick(rTxt, 'facts') as { facts?: string; sources?: string[] } | null : null;
+  const facts = rJson && typeof rJson.facts === 'string' ? rJson.facts.trim() : '';
+  const foundSources = rJson && Array.isArray(rJson.sources) ? rJson.sources.filter(x => typeof x === 'string') : [];
+  const marketBlock = facts
+    ? 'نتائج بحث السوق (من بحث فعلي — استند إليها وانسب كل رقم لمصدره):\n' + facts + '\n\nالمصادر المتاحة: ' + foundSources.join(' | ') + '\n\n'
+    : 'لم تصل نتائج بحث سوق لهذه التشغيلة — اكتب أرقام السوق من معرفتك بالسوق السعودي بصفتها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي، واترك sources فارغة.\n\n';
+
+  // ═══ النداء الثاني: كتابة الأقسام بلا أدوات — وهو النداء الذي ينجح دائماً ═══
+  const txt = await call({
+    max_tokens: 12000,
+    messages: [{ role: 'user', content: mkPrompt(marketBlock) }],
+  }, Math.max(60000, 265000 - (Date.now() - t0)), ' | كتابة الأقسام: ');
+  const parsed = txt ? pick(txt) : null;
+  if (!parsed) {
+    if (txt) diag += ' | الرد وصل بطول ' + txt.length + ' حرفاً لكن تعذّر استخراج JSON — بدايته: ' + txt.slice(0, 120);
+    return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
+  }
+  const sections = { ...empty(), ...parsed } as FeasibilitySections;
+  if (!sections.sources?.length && foundSources.length) sections.sources = foundSources;
+  return { sections, result, credit, error: facts ? undefined : 'أرقام السوق تقديرات استرشادية — لم تصل نتائج البحث في هذه التشغيلة' + diag };
 }
 
 function empty(): FeasibilitySections {
@@ -152,10 +171,12 @@ function empty(): FeasibilitySections {
 
 // النموذج يكتب markdown أحياناً رغم المنع — نحوّله بدل أن يظهر خاماً في وثيقة تُسلَّم لبنك
 function mdToHtml(body: string, title: string): string {
-  const inline = (t: string) => t
-    .replace(/^\s*#{1,6}\s*/, '')
+  // داخل الخلايا: تشديد فقط — لا نحذف '#' لأنه قد يكون عنوان عمود «رقم»
+  const cell = (t: string) => t
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>');
+  const inline = (t: string) => cell(t)
+    .replace(/^\s*#{1,6}\s+/, '')
     .replace(/^\s*[-*]\s+/, '• ');
   const bare = (t: string) => t.replace(/[*_#:：\s]/g, '');
   const parts: string[] = [];
@@ -167,8 +188,8 @@ function mdToHtml(body: string, title: string): string {
     const rows = tbl.filter(r => !r.every(c => /^:?-{2,}:?$/.test(c)));
     if (rows.length) {
       const head = rows[0], rest = rows.slice(1);
-      parts.push('<table class="fz"><thead><tr><th>' + head.map(inline).join('</th><th>') + '</th></tr></thead><tbody>'
-        + rest.map(r => '<tr><td>' + r.map(inline).join('</td><td>') + '</td></tr>').join('') + '</tbody></table>');
+      parts.push('<table class="fz"><thead><tr><th>' + head.map(cell).join('</th><th>') + '</th></tr></thead><tbody>'
+        + rest.map(r => '<tr><td>' + r.map(cell).join('</td><td>') + '</td></tr>').join('') + '</tbody></table>');
     }
     tbl = [];
   };
