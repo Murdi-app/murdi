@@ -502,9 +502,12 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       <option value="">— نوع المشروع —</option><option value="new">مشروع جديد</option><option value="expansion">توسعة نشاط قائم</option>
                     </select>
                     {[...FZ_TEXT, ...FZ_NUM].map((f) => (
-                      <input key={f.k} placeholder={f.t} value={(fzIn[r.id] || {})[f.k] || ''}
-                        onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), [f.k]: e.target.value } }))}
-                        style={IN_STYLE} />
+                      <div key={f.k}>
+                        <div style={{ fontSize:11, color:'#9A7B2E', fontWeight:900, marginBottom:3 }}>{f.t}</div>
+                        <input value={(fzIn[r.id] || {})[f.k] || ''}
+                          onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), [f.k]: e.target.value } }))}
+                          style={{ ...IN_STYLE, width:'100%', boxSizing:'border-box' }} />
+                      </div>
                     ))}
                   </div>
                   <button onClick={() => saveFeasibility(r.id, r.company_id)} disabled={busy === 'fz' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginLeft:8 }}>{busy === 'fz' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ المدخلات'}</button>
