@@ -21,6 +21,8 @@ export async function GET(req: Request) {
   let q = a.from('match_results')
     .select('id, company_id, track, provider, product, fit_score, apply_channel, apply_url, apply_steps, required_docs, apply_status, apply_note, verdict, region, requirements, evidence_grade, gulf_presence, link_status, amount_range')
     .eq('status', 'new').gt('fit_score', 0)
+    // لوحة التقديم لمساري التمويل والاستثمار فقط — صفوف دراسة الجدوى لها مسارها الخاص
+    .in('track', ['funding', 'investment'])
     .order('fit_score', { ascending: false });
   if (mine) q = q.in('company_id', mine);
   const only = new URL(req.url).searchParams.get('co');

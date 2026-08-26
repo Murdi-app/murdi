@@ -25,7 +25,9 @@ export async function POST(req: Request) {
   const appr = Array.isArray((co as Record<string, unknown>).approved_tracks) ? ((co as Record<string, unknown>).approved_tracks as string[]) : [];
   if (!appr.includes(tk)) {
     const { data: prev } = await admin.from('match_results')
-      .select('track').eq('company_id', co.id).neq('track', tk).limit(1);
+      .select('track').eq('company_id', co.id)
+      // المسار الآخر الحقيقي فقط — صفوف دراسة الجدوى كانت تُقرأ هنا فتمنع العميل من فتح مساره
+      .eq('track', tk === 'funding' ? 'investment' : 'funding').limit(1);
     if (prev && prev.length > 0) {
       await admin.from('companies')
         .update({ track_request: tk, track_request_at: new Date().toISOString() }).eq('id', co.id);

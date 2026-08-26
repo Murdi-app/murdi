@@ -19,7 +19,8 @@ export async function GET() {
   const { data: co } = await ad.from('companies').select('id').eq('user_id', user.id).maybeSingle();
   if (!co) return NextResponse.json({ count: 0 });
   const { count } = await ad.from('match_results').select('id', { count: 'exact', head: true })
-    .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0);
+    .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0)
+    .in('track', ['funding', 'investment']);
   const { data: rr0 } = await ad.from('readiness_results').select('result_type').eq('company_id', co.id);
   const tracks0 = Array.from(new Set((rr0 || []).map((x: { result_type: string }) => x.result_type)
     .filter((t: string) => t === 'funding' || t === 'investment')));
@@ -77,7 +78,8 @@ export async function POST(req: Request) {
 
   const { count } = await admin.from('match_results')
     .select('id', { count: 'exact', head: true })
-    .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0);
+    .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0)
+    .in('track', ['funding', 'investment']);
 
   return NextResponse.json({ ok: true, count: count || 0, done: res.done, next: res.next, total: res.total, track: t });
 }
