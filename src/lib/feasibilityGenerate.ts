@@ -98,7 +98,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     const to = setTimeout(() => ac.abort(), ms);
     try {
       const body: Record<string, unknown> = {
-        model: MODEL, max_tokens: 8000,
+        model: MODEL, max_tokens: 6000,
         messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\\n\\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
       };
       if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
@@ -123,9 +123,11 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
   };
 
   // السرعة أولاً: بلا بحث (~30 ثانية) فتخرج الدراسة كاملة دائماً. البحث محاولة إضافية قصيرة فقط.
-  const fast = await attempt(false, 100000);
+  const t0 = Date.now();
+  const fast = await attempt(false, 230000);
   if (fast) return { sections: fast, result, credit, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
-  const withSearch = await attempt(true, 150000);
+  const left = 275000 - (Date.now() - t0);
+  const withSearch = left > 60000 ? await attempt(true, left) : null;
   if (withSearch) return { sections: withSearch, result, credit };
   return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
 }
