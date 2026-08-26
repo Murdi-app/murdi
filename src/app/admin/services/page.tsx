@@ -53,6 +53,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   const [loading, setLoading] = useState(true)
   const [pitchIn, setPitchIn] = useState<Record<string, Record<string, string>>>({})
   const [fzIn, setFzIn] = useState<Record<string, Record<string, string>>>({})
+  const [fzMatch, setFzMatch] = useState<Record<string, string>>({})
   const [reqs, setReqs] = useState<any[]>([])
   const [busy, setBusy] = useState('')
   const [fundAmt, setFundAmt] = useState<Record<string, string>>({})
@@ -348,6 +349,29 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     setBusy('')
     alert(d.ok ? 'تم حفظ مدخلات دراسة الجدوى.' : ('تعذّر الحفظ: ' + (d.error || '')))
   }
+  // مطابقة الجهات الخاصة بالدراسة — تعمل على دفعات وتُحدّث الزر بالتقدم
+  async function matchFeasibility(companyId: string) {
+    setBusy('mfz' + companyId)
+    try {
+      let batch = 0
+      let total = 0
+      let count = 0
+      for (let guard = 0; guard < 40; guard++) {
+        const res = await fetch('/api/admin/feasibility-match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, batch }) })
+        const d = await res.json()
+        if (!d.ok) { alert('تعذّرت المطابقة: ' + (d.error || res.status)); setBusy(''); return }
+        total = d.total || total
+        count = d.count || count
+        setFzMatch((p) => ({ ...p, [companyId]: 'جارٍ المطابقة… ' + Math.min((batch + 1) * 5, total) + '/' + total + ' — ' + count + ' جهة' }))
+        if (d.done) break
+        batch = d.next
+      }
+      setFzMatch((p) => ({ ...p, [companyId]: 'اكتملت المطابقة — ' + count + ' جهة مرشّحة' }))
+      alert('اكتملت مطابقة الجهات: ' + count + ' جهة مرشّحة. ولّد الدراسة الآن لتظهر داخلها.')
+    } catch (e) { alert('خطأ: ' + String(e)) }
+    setBusy('')
+  }
+
   async function genFeasibility(companyId: string) {
     setBusy('gfz' + companyId)
     // النافذة تُفتح داخل نقرة المستخدم — فتحها بعد await يجعل المتصفح يمنعها فتضيع الدراسة
@@ -530,6 +554,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   </div>
                   <button onClick={() => saveFeasibility(r.id, r.company_id)} disabled={busy === 'fz' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginLeft:8 }}>{busy === 'fz' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ المدخلات'}</button>
                   <button onClick={() => genFeasibility(r.company_id)} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
+                  <button onClick={() => matchFeasibility(r.company_id)} disabled={busy === 'mfz' + r.company_id} title="تبحث عن الجهات التي تنطبق شروطها على هذه الدراسة، وتُحفظ فتظهر داخلها" style={{ background:'#5C4A16', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>{busy === 'mfz' + r.company_id ? 'جارٍ البحث عن الجهات...' : '🏦 طابق الجهات لهذه الدراسة'}</button>
+                  {fzMatch[r.company_id] && (<div style={{ fontSize:12, color:'#5C4A16', marginTop:6, fontWeight:700 }}>{fzMatch[r.company_id]}</div>)}
                 </div>
               )}
               {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && (

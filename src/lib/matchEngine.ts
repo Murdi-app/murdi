@@ -234,6 +234,8 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.SUPABASE_SERVICE_ROLE_KEY as string
     );
+    // مسار الجدوى يُقيَّم بمعايير التمويل نفسها (المرشّحات أدناه كلها للتمويل) مع بقاء صفوفه في مساره الخاص
+    const scoreTrack = track === 'feasibility' ? 'funding' : track;
     if (!keepPrev) {
       await admin.from('match_results')
         .update({ status: 'superseded' })
@@ -251,22 +253,22 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       fit_score: (() => {
         const inst = String(o.instrument || '');
         const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '') + ' ' + String(o.provider || '') + ' ' + (Array.isArray(o.gaps) ? o.gaps.join(' ') : '')).toLowerCase();
-        if (track === 'funding' && /الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
-        if (track === 'funding' && /تمويل موردي|موردّي|supplier finance|supply chain finance|تمويل سلاسل الإمداد|سلاسل الامداد|reverse factoring|payables finance|receivables finance|early payment|dynamic discounting|taulia|\bscf\b/.test(txt2) && buyers !== undefined && !String(buyers).trim()) return 0;
-        if (track === 'funding' && /transaction banking|تمويل المعاملات|إدارة السيولة|treasury|gtb/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /تمويل موردي|موردّي|supplier finance|supply chain finance|تمويل سلاسل الإمداد|سلاسل الامداد|reverse factoring|payables finance|receivables finance|early payment|dynamic discounting|taulia|\bscf\b/.test(txt2) && buyers !== undefined && !String(buyers).trim()) return 0;
+        if (scoreTrack === 'funding' && /transaction banking|تمويل المعاملات|إدارة السيولة|treasury|gtb/.test(txt2)) return 0;
         if (/أُغلق فعلي|أغلق فعلا|مغلق|توقفت|تحت الحراسة|in administration/.test(txt2)) return 0;
-        if (track === 'funding' && /مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance|تمويل المشاريع|مؤسسة الخليج للاستثمار/.test(txt2)) return 0;
-        if (track === 'funding' && /مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /مشاريع الطاقة|البترول|النفط والغاز|البنية التحتية الكبرى|project finance|تمويل المشاريع|مؤسسة الخليج للاستثمار/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /مخصص للمستثمرين|وحدات استثمارية|اشتراك في الصندوق|limited partner/.test(txt2)) return 0;
         // وكالات ائتمان التصدير بالاسم — تموّل مشتري منتج بلدها لا تمويلاً عاماً
-        if (track === 'funding' && /trade credit insurance|credit reinsurance|تأمين ائتماني|تأمين الذمم|إعادة تأمين|غير قابل للتطبيق/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /trade credit insurance|credit reinsurance|تأمين ائتماني|تأمين الذمم|إعادة تأمين|غير قابل للتطبيق/.test(txt2)) return 0;
         // صناديق الدين الخاص — تذاكرها كبيرة؛ لا تُرشّح إلا لمنشأة إيرادها مناسب
         // حظر فئة الائتمان الخاص أُزيل — قاعدة (mid > cap*2) أدناه تتكفّل بحجم التذكرة لكل جهة على حدة
-        if (track === 'funding' && /venture debt|\u062f\u064a\u0646 \u0645\u062e\u0627\u0637\u0631|non-dilutive|growth credit|vc-backed|\u0645\u062f\u0639\u0648\u0645\u0629 \u0628\u0631\u0623\u0633 \u0645\u0627\u0644 \u062c\u0631\u064a\u0621/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /venture debt|\u062f\u064a\u0646 \u0645\u062e\u0627\u0637\u0631|non-dilutive|growth credit|vc-backed|\u0645\u062f\u0639\u0648\u0645\u0629 \u0628\u0631\u0623\u0633 \u0645\u0627\u0644 \u062c\u0631\u064a\u0621/.test(txt2)) return 0;
         if (/\u063a\u064a\u0631 \u0645\u0624\u0647\u0644|\u0645\u0633\u062a\u0628\u0639\u062f|\u063a\u064a\u0631 \u0645\u062a\u0627\u062d/.test(txt2)) return 0;
-        if (track === 'funding' && /\u0645\u0624\u0633\u0633\u0627\u062a \u0645\u0627\u0644\u064a\u0629|\u0645\u0624\u0633\u0633\u0629 \u0648\u0633\u064a\u0637\u0629|on-lending|wholesale|\u0644\u0628\u0646\u0648\u0643|financial institution/.test(txt2)) return 0;
-        if (track === 'funding' && /private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
-        if (track === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
-        if (track === 'funding' && (inst.includes('تأمين') || inst.includes('دعم'))) return 0;
+        if (scoreTrack === 'funding' && /\u0645\u0624\u0633\u0633\u0627\u062a \u0645\u0627\u0644\u064a\u0629|\u0645\u0624\u0633\u0633\u0629 \u0648\u0633\u064a\u0637\u0629|on-lending|wholesale|\u0644\u0628\u0646\u0648\u0643|financial institution/.test(txt2)) return 0;
+        if (scoreTrack === 'funding' && /private equity|\u0645\u0644\u0643\u064a\u0629 \u062e\u0627\u0635\u0629|\u0625\u062f\u0627\u0631\u0629 \u0623\u0635\u0648\u0644|\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0628\u062f\u064a\u0644|\u062d\u0635\u0635 \u0623\u0642\u0644\u064a\u0629|\u062d\u0635\u0629 \u0623\u063a\u0644\u0628\u064a\u0629/.test(txt2)) return 0;
+        if (scoreTrack === 'investment' && inst.includes('دين') && !inst.includes('مساند')) return 0;
+        if (scoreTrack === 'funding' && (inst.includes('تأمين') || inst.includes('دعم'))) return 0;
         // بنوك التنمية التي ولايتها الدول النامية — المملكة خارج نطاقها
         if (/proparco|oe-?eb|oesterreichische entwicklungsbank|\bfmo\b|\bdeg\b|british international investment|\bbii\b|norfund|swedfund|finnfund|cofides|\bsimest\b|entwicklungsbank|\bbio\b|bio-invest|الدول النامية|دول نامية|developing countries|oda|dac|أقل نمواً|الأسواق الحدودية|تمويل تنموي/.test(txt2)) return 0;
         // السابقة الخليجية أو المسار القانوني — نُقلت من البرومبت إلى الكود
@@ -278,10 +280,10 @@ export async function saveMatchResults(companyId: string, track: string, offers:
               const t = String(x || '').trim();
               return t.length < 12 || /^(لا يوجد|لا توجد|غير معروف|غير متاح|غير محدد|none|n\/a|-)$/i.test(t);
             };
-            if (track === 'funding' && weak(o.saudiPrecedent) && weak(o.legalPath)) return 0;
+            if (scoreTrack === 'funding' && weak(o.saudiPrecedent) && weak(o.legalPath)) return 0;
           }
         }
-        if (track === 'investment' && /لا تستثمر مباشرة|لا يستثمر مباشرة|صناديق البحث|دعم الباحثين|صندوق وسيط|صناديق وسيطة|fund of funds|لا يناسب التواصل المباشر|مستثمر \(lp\)|كمستثمر lp/i.test(txt2)) return 0;
+        if (scoreTrack === 'investment' && /لا تستثمر مباشرة|لا يستثمر مباشرة|صناديق البحث|دعم الباحثين|صندوق وسيط|صناديق وسيطة|fund of funds|لا يناسب التواصل المباشر|مستثمر \(lp\)|كمستثمر lp/i.test(txt2)) return 0;
         const v = String(o.verdict || '');
         if (/غير مؤهل|مستبعد|غير متاح/.test(v)) return 0;
         const prob = v.includes('بشرط') ? 0.3 : 0.6;
@@ -298,7 +300,7 @@ export async function saveMatchResults(companyId: string, track: string, offers:
         const one = tl.match(/(\d+)\s*(?:شهر|أشهر|شهرا|شهراً)/);
         const months = rng ? (Number(rng[1]) + Number(rng[2])) / 2 : (one ? Number(one[1]) : 12);
         const cap = (clientRev && clientRev > 0) ? clientRev : 0;
-        if (track === 'funding' && cap > 0 && mid > cap * 2) return 0;
+        if (scoreTrack === 'funding' && cap > 0 && mid > cap * 2) return 0;
         const fit = cap > 0 ? Math.min(1, cap / Math.max(mid, 1)) : 1;
         const ev = prob * fit * (Math.min(mid, cap > 0 ? cap : mid) / 1000000) / Math.max(1, months) * 10;
         return ev;

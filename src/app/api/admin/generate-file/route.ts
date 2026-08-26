@@ -184,10 +184,13 @@ export async function POST(req: Request) {
         },
       };
       // الجهات المرشحة تُقرأ من نتائج المطابقة المحفوظة — قراءة واحدة بلا أي نداء نموذج
-      const { data: fnd } = await admin.from('match_results')
-        .select('provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, gaps, fit_score, verdict')
-        .eq('company_id', companyId).eq('track', 'funding').eq('status', 'new').gt('fit_score', 0)
+      // مسار الجدوى أولاً (مطابقة مستقلة تُشغَّل من بطاقة الدراسة)، فإن لم يوجد فمطابقة التمويل إن سبق تشغيلها
+      const cols = 'provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, gaps, fit_score, verdict';
+      const pull = (t: string) => admin.from('match_results').select(cols)
+        .eq('company_id', companyId).eq('track', t).eq('status', 'new').gt('fit_score', 0)
         .order('fit_score', { ascending: false }).limit(40);
+      let { data: fnd } = await pull('feasibility');
+      if (!fnd || !fnd.length) ({ data: fnd } = await pull('funding'));
       const { sections, result, credit, error } = await generateFeasibility(ctx);
       const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'), credit, (fnd || []) as never);
       return NextResponse.json({ ok: true, html, warn: error || undefined });
