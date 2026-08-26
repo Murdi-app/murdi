@@ -350,14 +350,32 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   }
   async function genFeasibility(companyId: string) {
     setBusy('gfz' + companyId)
+    // النافذة تُفتح داخل نقرة المستخدم — فتحها بعد await يجعل المتصفح يمنعها فتضيع الدراسة
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>جارٍ توليد دراسة الجدوى…</title></head>'
+        + '<body style="font-family:Arial,sans-serif;color:#1F2A44;text-align:center;padding:60px 24px">'
+        + '<h2 style="color:#B8860B">جارٍ توليد دراسة الجدوى…</h2>'
+        + '<p>التوليد يمر بمرحلتين: بحث السوق ثم كتابة الأقسام، ويستغرق عادةً دقيقة إلى دقيقتين.</p>'
+        + '<p style="font-size:13px;color:#666">لا تغلق هذه الصفحة — ستُستبدل بالدراسة تلقائياً.</p></body></html>')
+      w.document.close()
+    }
     try {
       const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, track: 'feasibility' }) })
       const d = await res.json()
-      if (!d.ok) { alert('تعذّر التوليد: ' + (d.error || res.status)); setBusy(''); return }
-      const w = window.open('', '_blank')
-      if (w) { w.document.write(d.html); w.document.close() }
-      if (d.warn) alert('تنبيه: تعذّر بحث السوق (' + d.warn + ') — الجداول المحسوبة ظهرت، وأقسام السوق قد تكون ناقصة.')
-    } catch (e) { alert('خطأ: ' + String(e)) }
+      if (!d.ok) { w?.close(); alert('تعذّر التوليد: ' + (d.error || res.status)); setBusy(''); return }
+      if (w) { w.document.open(); w.document.write(d.html); w.document.close(); w.focus() }
+      else {
+        // المتصفح منع النافذة — ننزّل الدراسة كملف بدل أن تضيع
+        const url = URL.createObjectURL(new Blob([d.html], { type: 'text/html;charset=utf-8' }))
+        const a = document.createElement('a')
+        a.href = url; a.download = 'دراسة-جدوى.html'
+        document.body.appendChild(a); a.click(); a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+        alert('المتصفح منع فتح نافذة جديدة، فنُزّلت الدراسة كملف. للفتح المباشر مستقبلاً اسمح بالنوافذ المنبثقة لموقع murdi.sa.')
+      }
+      if (d.warn) alert('تنبيه: ' + d.warn + ' — الجداول المحسوبة والائتمانية ظهرت كاملة.')
+    } catch (e) { w?.close(); alert('خطأ: ' + String(e)) }
     setBusy('')
   }
   async function savePitchNums(id: string, companyId: string) {
