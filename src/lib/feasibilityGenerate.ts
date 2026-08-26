@@ -61,7 +61,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- صافي ربح السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n\n'
     + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
     + 'قواعد إلزامية:\n'
-    + '(ج١) قاعدة الصدق: كل رقم سوقي تذكره يجب أن يكون له مصدر منشور باسمه وسنته ضمن قائمة sources. وما لا تجد له مصدراً موثوقاً اكتب بجانبه صراحة «يلزم التحقق» ولا تقدّر رقماً من عندك.\n'
+    + '(ج١) أرقام السوق: اذكر أرقاماً كمّية فعلية لحجم السوق ونموه ومتوسط الإنفاق ومؤشرات القطاع — لا تترك القسم بلا أرقام. وكل رقم يقترن بأساسه في نفس الجملة: إمّا مصدر منشور باسمه وسنته، أو صياغة «تقدير استرشادي مبني على مؤشرات القطاع المعلنة». ولا تنسب رقماً إلى جهة بعينها ما لم تكن قد اطّلعت عليه فعلاً.\n'
     + '(ج٢) لا تعد بعائد ولا تكتب أي عبارة ضمان للنجاح أو للربح، ولا تصف المشروع بأنه مضمون أو مؤكد.\n'
     + '(ج٣) لا تخالف الأرقام المحسوبة أعلاه ولا تعيد حسابها. وإن كانت النتيجة ضعيفة (تعادل مرتفع أو استرداد بعيد) فاذكر ذلك بوضوح ولا تجمّله.\n'
     + '(ج٤) لا تنسب للمنشأة أي صفة لم ترد أعلاه — لا خبرة ولا عملاء ولا تراخيص ولا أصول.\n'
@@ -92,7 +92,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     try {
       const body: Record<string, unknown> = {
         model: MODEL, max_tokens: 8000,
-        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\n\nملاحظة: البحث غير متاح الآن. اكتب الأقسام من معرفتك العامة، ولا تذكر رقماً سوقياً بلا مصدر — اكتب مكانه «يلزم التحقق»، واترك sources فارغة.' }],
+        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\\n\\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
       };
       if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
       const r = await fetch(ANTHROPIC_URL, {
@@ -138,7 +138,6 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}</style></head><body>'
     + '<h1>دراسة الجدوى الاقتصادية</h1><p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
     + '<p>' + ctx.projectDescription + '</p>'
-    + (warn ? '<div class="note" style="border-right-color:#9B1C1C;background:#FDF0F0"><b>تنبيه للمستشار (يُحذف قبل التسليم):</b> ' + warn + '</div>' : '')
     + sec('الملخص التنفيذي', s.executiveSummary)
     + '<h2>المؤشرات المالية</h2>' + renderFeasibilitySummary(r)
     + '<h2>التوقعات المالية لخمس سنوات</h2>' + renderProjectionTable(r)
