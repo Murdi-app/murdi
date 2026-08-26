@@ -50,7 +50,9 @@ export async function POST(req: Request) {
 
   const { data: company } = await admin.from('companies').select('company_name, sector, city, cr_number').eq('id', companyId).single();
   const { data: fd } = await admin.from('financial_data').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
-  const { data: matches } = await admin.from('match_results').select('track, region, provider, product, requirements, fit, source').eq('company_id', companyId).order('created_at', { ascending: false });
+  const { data: matches } = await admin.from('match_results').select('track, region, provider, product, requirements, fit, source').eq('company_id', companyId)
+    // المسارات الثلاثة التي كانت موجودة قبل مسار الجدوى — حتى لا يتغيّر ما يراه هذا المساعد
+    .in('track', ['funding', 'investment', 'ipo']).order('created_at', { ascending: false });
   const { data: history } = await admin.from('admin_research_chat').select('role, content').eq('company_id', companyId).order('created_at', { ascending: true });
 
   const matchesText = (matches || []).map((m, i) =>
