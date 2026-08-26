@@ -81,15 +81,26 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     const c = raw.replace(/```json|```/g, '').trim();
     const starts: number[] = [];
     for (let k = 0; k < c.length; k++) if (c[k] === '{') starts.push(k);
-    const end = c.lastIndexOf('}');
-    if (end < 0) return null;
+    // نجرب كل بداية مع كل نهاية محتملة، من الأطول للأقصر
+    const ends: number[] = [];
+    for (let k = c.length - 1; k >= 0; k--) if (c[k] === '}') ends.push(k);
     for (const st of starts) {
-      try {
-        const o = JSON.parse(c.slice(st, end + 1));
-        if (o && typeof o === 'object' && o.executiveSummary) return o as Record<string, unknown>;
-      } catch { /* جرّب القوس التالي */ }
+      for (const en of ends) {
+        if (en <= st) break;
+        try {
+          const o = JSON.parse(c.slice(st, en + 1));
+          if (o && typeof o === 'object' && o.executiveSummary) return o as Record<string, unknown>;
+        } catch { /* جرّب نهاية أقصر */ }
+      }
     }
-    return null;
+    // رد مقطوع: نلتقط الحقول النصية المكتملة يدوياً حتى لا تضيع الأقسام
+    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion'];
+    const out: Record<string, unknown> = {};
+    for (const k of keys) {
+      const m = c.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+      if (m) out[k] = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    }
+    return out.executiveSummary ? out : null;
   };
 
   let diag = '';
@@ -98,7 +109,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     const to = setTimeout(() => ac.abort(), ms);
     try {
       const body: Record<string, unknown> = {
-        model: MODEL, max_tokens: 6000,
+        model: MODEL, max_tokens: 12000,
         messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\\n\\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
       };
       if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
