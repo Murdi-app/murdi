@@ -184,7 +184,7 @@ export async function POST(req: Request) {
         },
       };
       const { sections, result, error } = await generateFeasibility(ctx);
-      const html = buildFeasibilityHTML(ctx, sections, result);
+      const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'));
       return NextResponse.json({ ok: true, html, warn: error || undefined });
     } catch (e) {
       await logError('feasibility.generate', e, {});

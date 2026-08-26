@@ -73,7 +73,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
   async function load() {
     const res = await fetch('/api/admin/service-requests')
-    if (res.ok) { const d = await res.json(); setReqs(d.requests || []); loadPitchNums((d.requests || []).filter((x: { service_title?: string }) => String(x.service_title || '').includes('\u0627\u0644\u0645\u0633\u062a\u062b\u0645\u0631')).map((x: { id: string }) => x.id)) }
+    if (res.ok) { const d = await res.json(); setReqs(d.requests || []); loadFeasibility((d.requests || []).map((x: { id: string }) => x.id)); loadPitchNums((d.requests || []).filter((x: { service_title?: string }) => String(x.service_title || '').includes('\u0627\u0644\u0645\u0633\u062a\u062b\u0645\u0631')).map((x: { id: string }) => x.id)) }
     const cr = await fetch('/api/admin/contracts')
     if (cr.ok) { const cd = await cr.json(); const map: Record<string, any> = {}; for (const c of (cd.contracts || [])) { if (c.service_request_id && !map[c.service_request_id]) map[c.service_request_id] = c; } setContracts(map); }
     setLoading(false)
@@ -368,6 +368,18 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     alert(d.ok ? 'تم حفظ أرقام العرض.' : ('تعذّر الحفظ: ' + (d.error || '')))
   }
 
+  async function loadFeasibility(ids: string[]) {
+    for (const id of ids) {
+      try {
+        const res = await fetch('/api/admin/service-inputs?service_request_id=' + id)
+        const d = await res.json()
+        const v = d?.record?.inputs
+        if (v && typeof v === 'object' && !Array.isArray(v) && !('pitch' in v)) {
+          setFzIn((prev) => ({ ...prev, [id]: { ...(v as Record<string, string>), ...(prev[id] || {}) } }))
+        }
+      } catch {}
+    }
+  }
   async function loadPitchNums(ids: string[]) {
     for (const id of ids) {
       try {

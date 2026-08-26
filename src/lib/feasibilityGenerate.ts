@@ -122,7 +122,7 @@ function empty(): FeasibilitySections {
   return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', sources: [] };
 }
 
-export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult): string {
+export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string): string {
   const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + String(body).replace(/\n/g, '<br>') + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
   return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>دراسة جدوى — ' + ctx.companyName + '</title>'
@@ -133,6 +133,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}</style></head><body>'
     + '<h1>دراسة الجدوى الاقتصادية</h1><p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
     + '<p>' + ctx.projectDescription + '</p>'
+    + (warn ? '<div class="note" style="border-right-color:#9B1C1C;background:#FDF0F0"><b>تنبيه للمستشار (يُحذف قبل التسليم):</b> ' + warn + '</div>' : '')
     + sec('الملخص التنفيذي', s.executiveSummary)
     + '<h2>المؤشرات المالية</h2>' + renderFeasibilitySummary(r)
     + '<h2>التوقعات المالية لخمس سنوات</h2>' + renderProjectionTable(r)
