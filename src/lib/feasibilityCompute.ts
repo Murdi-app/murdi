@@ -16,7 +16,13 @@ export interface FeasibilityInputs {
 
 export interface YearProjection {
   year: number; revenue: number; variableCosts: number; contribution: number;
-  fixedCosts: number; ebitda: number; financingCost: number; netProfit: number; cumulativeCash: number;
+  fixedCosts: number; ebitda: number;
+  depreciation: number;    // استهلاك الأصول الرأسمالية — مصروف غير نقدي
+  financeCharge: number;   // كلفة التمويل وحدها (ربح المرابحة) — مصروف في قائمة الدخل
+  debtService: number;     // القسط السنوي كاملاً (أصل + كلفة) — خروج نقدي
+  netProfit: number;       // صافي الربح المحاسبي = ebitda − استهلاك − كلفة تمويل
+  cashFlow: number;        // صافي التدفق النقدي = ebitda − القسط الكامل
+  cumulativeCash: number;
 }
 
 export interface FeasibilityResult {
@@ -44,6 +50,11 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
   const principal = n(i.financingAmount);
   const annualInstalment = principal > 0 ? (principal * (1 + rate * yrs)) / yrs : 0;
 
+  // الاستهلاك: التكلفة الرأسمالية على خمس سنوات (قسط ثابت) — مصروف غير نقدي
+  const depreciation = capex / 5;
+  // كلفة التمويل وحدها في المرابحة المسطّحة = الأصل × النسبة، والباقي من القسط سداد أصل
+  const annualCharge = principal > 0 ? principal * rate : 0;
+
   const years: YearProjection[] = [];
   let cumulative = -(n(i.ownFunds) > 0 ? totalInvestment - principal : totalInvestment);
   for (let y = 1; y <= 5; y++) {
@@ -53,10 +64,12 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
     const contribution = revenue - variableCosts;
     const fixedCosts = n(i.fixedCostsAnnual) * Math.pow(1 + n(i.inflationRate) / 100, y - 1);
     const ebitda = contribution - fixedCosts;
-    const financingCost = y <= yrs ? annualInstalment : 0;
-    const netProfit = ebitda - financingCost;
-    cumulative += netProfit;
-    years.push({ year: y, revenue, variableCosts, contribution, fixedCosts, ebitda, financingCost, netProfit, cumulativeCash: cumulative });
+    const financeCharge = y <= yrs ? annualCharge : 0;
+    const debtService = y <= yrs ? annualInstalment : 0;
+    const netProfit = ebitda - depreciation - financeCharge;
+    const cashFlow = ebitda - debtService;
+    cumulative += cashFlow;
+    years.push({ year: y, revenue, variableCosts, contribution, fixedCosts, ebitda, depreciation, financeCharge, debtService, netProfit, cashFlow, cumulativeCash: cumulative });
   }
 
   const firstFixed = n(i.fixedCostsAnnual);
@@ -66,8 +79,8 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
   let paybackYears: number | null = null;
   for (let k = 0; k < years.length; k++) {
     if (years[k].cumulativeCash >= 0) {
-      const prev = k === 0 ? years[0].cumulativeCash - years[0].netProfit : years[k - 1].cumulativeCash;
-      const need = -prev, gain = years[k].netProfit;
+      const prev = k === 0 ? years[0].cumulativeCash - years[0].cashFlow : years[k - 1].cumulativeCash;
+      const need = -prev, gain = years[k].cashFlow;
       paybackYears = gain > 0 ? k + need / gain : k + 1;
       break;
     }
@@ -78,11 +91,12 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
 const f = (v: number) => Math.round(v).toLocaleString('en-US');
 
 export function renderProjectionTable(r: FeasibilityResult): string {
-  const head = ['السنة', 'الإيرادات', 'التكاليف المتغيرة', 'هامش المساهمة', 'المصاريف الثابتة', 'الأرباح قبل التمويل', 'كلفة التمويل', 'صافي الربح', 'النقد التراكمي'];
+  const head = ['السنة', 'الإيرادات', 'التكاليف المتغيرة', 'المصاريف الثابتة', 'الأرباح قبل الاستهلاك والتمويل', 'الاستهلاك', 'كلفة التمويل', 'صافي الربح', 'قسط السداد', 'صافي التدفق النقدي', 'النقد التراكمي'];
   const rows = r.years.map(y => '<tr><td>' + [
-    'السنة ' + y.year, f(y.revenue), f(y.variableCosts), f(y.contribution), f(y.fixedCosts), f(y.ebitda), f(y.financingCost), f(y.netProfit), f(y.cumulativeCash),
+    'السنة ' + y.year, f(y.revenue), f(y.variableCosts), f(y.fixedCosts), f(y.ebitda), f(y.depreciation), f(y.financeCharge), f(y.netProfit), f(y.debtService), f(y.cashFlow), f(y.cumulativeCash),
   ].join('</td><td>') + '</td></tr>').join('');
-  return '<table class="fz"><thead><tr><th>' + head.join('</th><th>') + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  return '<table class="fz sm"><thead><tr><th>' + head.join('</th><th>') + '</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="note"><b>قراءة الجدول:</b> «صافي الربح» ربح محاسبي بعد خصم الاستهلاك وكلفة التمويل وحدها، أما «قسط السداد» فيشمل سداد أصل التمويل وهو خروج نقدي لا مصروف — ولذلك يُخصم في عمود التدفق النقدي فقط. الاستهلاك محسوب على التكلفة الرأسمالية بقسط ثابت على خمس سنوات.</div>';
 }
 
 export function renderFeasibilitySummary(r: FeasibilityResult): string {
@@ -99,7 +113,7 @@ export function renderFeasibilitySummary(r: FeasibilityResult): string {
 }
 
 // ═══ طبقة الائتمان: ما يقرؤه محلل التمويل قبل أي شيء ═══
-export interface CreditYear { year: number; ebitda: number; depreciation: number; cfads: number; debtService: number; dscr: number | null }
+export interface CreditYear { year: number; netProfit: number; depreciation: number; financeCharge: number; cfads: number; debtService: number; dscr: number | null }
 export interface MonthRow { month: number; revenue: number; variable: number; fixed: number; net: number; cumulative: number }
 export interface Scenario { name: string; year1Net: number; dscrY1: number | null; breakEvenRevenue: number; verdict: string }
 export interface CreditPack {
@@ -110,10 +124,12 @@ export interface CreditPack {
 
 export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): CreditPack {
   const dep = n(i.capex) / 5; // استهلاك على خمس سنوات
+  // التدفق المتاح لخدمة الدين = صافي الربح + الاستهلاك (غير نقدي) + كلفة التمويل (لأنها جزء من القسط)
+  // وهو يساوي الأرباح قبل الاستهلاك والتمويل — فلا يُضاف الاستهلاك إلا بعد أن يكون قد خُصم
   const years: CreditYear[] = r.years.map(y => {
-    const cfads = y.ebitda + dep;              // التدفق المتاح لخدمة الدين
-    const ds = y.financingCost;
-    return { year: y.year, ebitda: y.ebitda, depreciation: dep, cfads, debtService: ds, dscr: ds > 0 ? cfads / ds : null };
+    const cfads = y.netProfit + y.depreciation + y.financeCharge;
+    const ds = y.debtService;
+    return { year: y.year, netProfit: y.netProfit, depreciation: y.depreciation, financeCharge: y.financeCharge, cfads, debtService: ds, dscr: ds > 0 ? cfads / ds : null };
   });
   const ds = years.map(y => y.dscr).filter((x): x is number => x !== null);
   const minDscr = ds.length ? Math.min(...ds) : null;
@@ -135,7 +151,7 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
     const revenue = y1.revenue * share;
     const variable = y1.variableCosts * share;
     const fixed = y1.fixedCosts / 12;                 // الثابتة لا تتصاعد
-    const net = revenue - variable - fixed - (y1.financingCost / 12);
+    const net = revenue - variable - fixed - (y1.debtService / 12);
     cum += net;
     months.push({ month: m, revenue, variable, fixed, net, cumulative: cum });
   }
@@ -148,12 +164,12 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
     const varc = y1.variableCosts * revMul * costMul;
     const fixed = y1.fixedCosts * costMul;
     const eb = rev - varc - fixed;
-    const cfads = eb + dep;
-    const svc = y1.financingCost;
+    const cfads = eb;                 // نفس أساس الجدول الرئيسي: لا إضافة استهلاك لم يُخصم
+    const svc = y1.debtService;
     const cm = rev > 0 ? (rev - varc) / rev : 0;
     const be = cm > 0 ? fixed / cm : 0;
     const d = svc > 0 ? cfads / svc : null;
-    return { name, year1Net: eb - svc, dscrY1: d,
+    return { name, year1Net: eb - dep - y1.financeCharge, dscrY1: d,
       breakEvenRevenue: be,
       verdict: d === null ? '—' : d >= 1.25 ? 'يتحمّل' : d >= 1 ? 'حدّي' : 'لا يتحمّل' };
   };
@@ -162,10 +178,10 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
 }
 
 export function renderCreditTable(c: CreditPack): string {
-  const rows = c.years.map(y => '<tr><td>' + ['السنة ' + y.year, f(y.ebitda), f(y.depreciation), f(y.cfads), f(y.debtService),
+  const rows = c.years.map(y => '<tr><td>' + ['السنة ' + y.year, f(y.netProfit), f(y.depreciation), f(y.financeCharge), f(y.cfads), f(y.debtService),
     y.dscr === null ? '—' : y.dscr.toFixed(2) + '×'].join('</td><td>') + '</td></tr>').join('');
-  return '<table class="fz"><thead><tr><th>السنة</th><th>الأرباح التشغيلية</th><th>الاستهلاك</th><th>التدفق المتاح للسداد</th><th>خدمة الدين</th><th>نسبة التغطية</th></tr></thead><tbody>' + rows + '</tbody></table>'
-    + '<div class="note"><b>نسبة تغطية خدمة الدين (DSCR):</b> ' + (c.minDscr === null ? '—' : 'أدناها ' + c.minDscr.toFixed(2) + '× ومتوسطها ' + (c.avgDscr as number).toFixed(2) + '×') + ' — ' + c.verdict + '. الحد المتعارف عليه لدى جهات التمويل هو 1.25×.</div>';
+  return '<table class="fz"><thead><tr><th>السنة</th><th>صافي الربح</th><th>+ الاستهلاك</th><th>+ كلفة التمويل</th><th>التدفق المتاح للسداد</th><th>خدمة الدين (القسط)</th><th>نسبة التغطية</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="note"><b>نسبة تغطية خدمة الدين (DSCR):</b> ' + (c.minDscr === null ? '—' : 'أدناها ' + c.minDscr.toFixed(2) + '× ومتوسطها ' + (c.avgDscr as number).toFixed(2) + '×') + ' — ' + c.verdict + '. الحد المتعارف عليه لدى جهات التمويل هو 1.25×. التدفق المتاح للسداد يُبنى بإرجاع المصروفات غير النقدية (الاستهلاك) وكلفة التمويل إلى صافي الربح، فيقابَل بالقسط كاملاً أصلاً وكلفةً.</div>';
 }
 
 export function renderMonthlyTable(c: CreditPack): string {
@@ -176,5 +192,5 @@ export function renderMonthlyTable(c: CreditPack): string {
 
 export function renderScenarioTable(c: CreditPack): string {
   const rows = c.scenarios.map(s => '<tr><td>' + [s.name, f(s.year1Net), s.dscrY1 === null ? '—' : s.dscrY1.toFixed(2) + '×', f(s.breakEvenRevenue), s.verdict].join('</td><td>') + '</td></tr>').join('');
-  return '<table class="fz"><thead><tr><th>السيناريو</th><th>صافي السنة الأولى</th><th>نسبة التغطية</th><th>نقطة التعادل</th><th>الحكم</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  return '<table class="fz"><thead><tr><th>السيناريو</th><th>صافي ربح السنة الأولى</th><th>نسبة التغطية</th><th>نقطة التعادل</th><th>الحكم</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }

@@ -59,10 +59,12 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- هامش المساهمة ' + result.contributionMarginPct.toFixed(1) + '% | نقطة التعادل ' + n(result.breakEvenRevenue) + ' ريال سنوياً\n'
     + '- فترة الاسترداد: ' + (result.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : result.paybackYears.toFixed(1) + ' سنة') + '\n'
     + '- القسط السنوي للتمويل ' + n(result.annualInstalment) + ' ريال (محسوب — لا تقل إنه غير محدد ولا تفترض غيره)\n'
-    + '- صافي ربح السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n\n'
+    + '- صافي الربح المحاسبي (بعد الاستهلاك وكلفة التمويل): السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n'
+    + '- صافي التدفق النقدي بعد القسط الكامل: السنة الأولى ' + n(result.years[0].cashFlow) + ' ريال، والسنة الخامسة ' + n(result.years[4].cashFlow) + ' ريال\n'
+    + '- الاستهلاك السنوي ' + n(result.years[0].depreciation) + ' ريال، وكلفة التمويل السنوية ' + n(result.years[0].financeCharge) + ' ريال من أصل قسط ' + n(result.years[0].debtService) + ' ريال (الباقي سداد أصل)\n\n'
     + '\nمؤشرات الائتمان (محسوبة برمجياً — استند إليها ولا تعِد حسابها):\n'
     + '- نسبة تغطية خدمة الدين: أدناها ' + (credit.minDscr === null ? 'لا تنطبق' : credit.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.avgDscr as number).toFixed(2) + '×') + ' — ' + credit.verdict + '\n'
-    + '- التدفق النقدي المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال (يشمل استهلاكاً سنوياً ' + n(credit.years[0].depreciation) + ' ريال)\n'
+    + '- التدفق المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال = صافي الربح + الاستهلاك ' + n(credit.years[0].depreciation) + ' + كلفة التمويل ' + n(credit.years[0].financeCharge) + '\n'
     + '- التدفق الشهري للسنة الأولى يبلغ أعمق نقطة نقدية في الشهر ' + (credit.deepestMonth ? credit.deepestMonth.month : 0) + '، فرأس المال العامل الفعلي اللازم ' + n(credit.workingCapitalNeeded) + ' ريال\n'
     + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n\n'
     + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
@@ -72,6 +74,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '(ج٢) لا تعد بعائد ولا تكتب أي عبارة ضمان للنجاح أو للربح، ولا تصف المشروع بأنه مضمون أو مؤكد.\n'
     + '(ج٣) لا تخالف الأرقام المحسوبة أعلاه ولا تعيد حسابها. وإن كانت النتيجة ضعيفة (تعادل مرتفع أو استرداد بعيد) فاذكر ذلك بوضوح ولا تجمّله.\n'
     + '(ج٤) لا تنسب للمنشأة أي صفة لم ترد أعلاه — لا خبرة ولا عملاء ولا تراخيص ولا أصول.\n'
+    + '(ج٤ب) لا تكرر عنوان القسم في أول سطر من نصه. وإن احتجت جدولاً فاكتبه بصيغة الأنبوب | فقط، ولا تستخدم ** ولا # ولا أي ترميز آخر.\n'
     + '(ج٥) ابحث في الويب عن حجم السوق السعودي لهذا القطاع ونموه وأبرز المنافسين والاتجاهات التنظيمية الحديثة.\n\n'
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
     + '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسون وموقع المشروع بينهم","technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"أبرز المخاطر وإجراءات تخفيفها","conclusion":"الخلاصة والتوصية بصراحة","sources":["اسم المصدر — الرابط — السنة"]}';
@@ -110,7 +113,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     try {
       const body: Record<string, unknown> = {
         model: MODEL, max_tokens: 12000,
-        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\\n\\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
+        messages: [{ role: 'user', content: withSearch ? prompt : prompt + '\n\nملاحظة: اكتب الأقسام من معرفتك بالسوق السعودي. أعطِ أرقاماً كمّية استرشادية لحجم السوق ونموه ومتوسط الإنفاق، وصِفها في نصها بأنها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي. لا تنسب رقماً لجهة بعينها، واترك sources فارغة.' }],
       };
       if (withSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }];
       const r = await fetch(ANTHROPIC_URL, {
@@ -147,14 +150,52 @@ function empty(): FeasibilitySections {
   return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', sources: [] };
 }
 
+// النموذج يكتب markdown أحياناً رغم المنع — نحوّله بدل أن يظهر خاماً في وثيقة تُسلَّم لبنك
+function mdToHtml(body: string, title: string): string {
+  const inline = (t: string) => t
+    .replace(/^\s*#{1,6}\s*/, '')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/^\s*[-*]\s+/, '• ');
+  const bare = (t: string) => t.replace(/[*_#:：\s]/g, '');
+  const parts: string[] = [];
+  let text: string[] = [];
+  let tbl: string[][] = [];
+  const flushText = () => { if (text.length) { parts.push(text.join('<br>')); text = []; } };
+  const flushTable = () => {
+    if (!tbl.length) return;
+    const rows = tbl.filter(r => !r.every(c => /^:?-{2,}:?$/.test(c)));
+    if (rows.length) {
+      const head = rows[0], rest = rows.slice(1);
+      parts.push('<table class="fz"><thead><tr><th>' + head.map(inline).join('</th><th>') + '</th></tr></thead><tbody>'
+        + rest.map(r => '<tr><td>' + r.map(inline).join('</td><td>') + '</td></tr>').join('') + '</tbody></table>');
+    }
+    tbl = [];
+  };
+  let first = true;
+  for (const ln of String(body).split('\n')) {
+    if (/^\s*\|.*\|\s*$/.test(ln)) {
+      flushText();
+      tbl.push(ln.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim()));
+      continue;
+    }
+    flushTable();
+    if (first && ln.trim()) { first = false; if (bare(ln) === bare(title)) continue; }
+    text.push(inline(ln));
+  }
+  flushTable(); flushText();
+  return parts.join('');
+}
+
 export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack): string {
-  const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + String(body).replace(/\n/g, '<br>') + '</div>' : '';
+  const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + mdToHtml(body, title) + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
   return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>دراسة جدوى — ' + ctx.companyName + '</title>'
     + '<style>body{font-family:Arial,sans-serif;color:#1F2A44;line-height:1.9;padding:32px;max-width:900px;margin:auto}'
     + 'h1{color:#B8860B;font-size:26px}h2{color:#1F2A44;border-bottom:2px solid #B8860B;padding-bottom:6px;margin-top:28px;font-size:19px}'
     + '.bd{font-size:15px}table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
     + 'table.fz th,table.fz td{border:1px solid #E0E0E0;padding:7px;text-align:right}table.fz th{background:#EFE6D0;font-weight:bold}'
+    + 'table.fz.sm{font-size:11px}table.fz.sm th,table.fz.sm td{padding:5px}'
     + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}</style></head><body>'
     + '<h1>دراسة الجدوى الاقتصادية</h1><p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
     + '<p>' + ctx.projectDescription + '</p>'
