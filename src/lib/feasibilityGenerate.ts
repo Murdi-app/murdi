@@ -84,6 +84,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     return null;
   };
 
+  let diag = '';
   const attempt = async (withSearch: boolean, ms: number): Promise<FeasibilitySections | null> => {
     const ac = new AbortController();
     const to = setTimeout(() => ac.abort(), ms);
@@ -99,13 +100,16 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
         body: JSON.stringify(body),
       });
       clearTimeout(to);
-      if (!r.ok) return null;
+      const tag = withSearch ? ' | بالبحث: ' : ' | بلا بحث: ';
+      if (!r.ok) { diag += tag + 'HTTP ' + r.status + ' — ' + (await r.text()).slice(0, 200); return null; }
       const d = await r.json();
       const txt = (d.content || []).filter((c: { type: string }) => c.type === 'text').map((c: { text: string }) => c.text).join('\n');
       const parsed = pick(txt);
-      return parsed ? { ...empty(), ...parsed } as FeasibilitySections : null;
-    } catch {
+      if (!parsed) { diag += tag + 'الرد وصل بطول ' + txt.length + ' حرفاً لكن تعذّر استخراج JSON — بدايته: ' + txt.slice(0, 120); return null; }
+      return { ...empty(), ...parsed } as FeasibilitySections;
+    } catch (e) {
       clearTimeout(to);
+      diag += (withSearch ? ' | بالبحث: ' : ' | بلا بحث: ') + 'استثناء — ' + (e instanceof Error ? e.name + ': ' + e.message : String(e)).slice(0, 200);
       return null;
     }
   };
@@ -115,7 +119,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
   if (fast) return { sections: fast, result, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
   const withSearch = await attempt(true, 150000);
   if (withSearch) return { sections: withSearch, result };
-  return { sections: empty(), result, error: 'تعذّر توليد الأقسام النصية — الجداول المحسوبة فقط' };
+  return { sections: empty(), result, error: 'تعذّر توليد الأقسام النصية' + diag };
 }
 
 function empty(): FeasibilitySections {
