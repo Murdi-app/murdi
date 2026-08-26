@@ -183,8 +183,13 @@ export async function POST(req: Request) {
           financingYears: num('financingYears') || 5, financingRate: num('financingRate'),
         },
       };
+      // الجهات المرشحة تُقرأ من نتائج المطابقة المحفوظة — قراءة واحدة بلا أي نداء نموذج
+      const { data: fnd } = await admin.from('match_results')
+        .select('provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, gaps, fit_score, verdict')
+        .eq('company_id', companyId).eq('track', 'funding').eq('status', 'new').gt('fit_score', 0)
+        .order('fit_score', { ascending: false }).limit(40);
       const { sections, result, credit, error } = await generateFeasibility(ctx);
-      const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'), credit);
+      const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'), credit, (fnd || []) as never);
       return NextResponse.json({ ok: true, html, warn: error || undefined });
     } catch (e) {
       await logError('feasibility.generate', e, {});

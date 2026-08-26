@@ -1,6 +1,13 @@
 // مولّد دراسة الجدوى الاقتصادية — مُرضي
 // الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
-import { computeFeasibility, renderProjectionTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
+import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, computeBreakPoints, renderBreakPointsTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
+
+// صف جهة تمويل مرشحة — يُقرأ من match_results ولا يُولَّد بنموذج
+export interface FunderRow {
+  provider: string; product?: string; region?: string; requirements?: string;
+  amount_range?: string; timeline?: string; apply_channel?: string; apply_url?: string;
+  gaps?: string[] | null; fit_score?: number; verdict?: string;
+}
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
@@ -28,6 +35,7 @@ export interface FeasibilitySections {
   assumptionsNote: string;
   risks: string;
   conclusion: string;
+  funderQA: string;
   sources: string[];
 }
 
@@ -41,6 +49,7 @@ const AUD: Record<FeasibilityContext['audience'], string> = {
 export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ sections: FeasibilitySections; result: FeasibilityResult; credit: CreditPack; error?: string }> {
   const result = computeFeasibility(ctx.inputs);
   const credit = computeCredit(ctx.inputs, result);
+  const bp = computeBreakPoints(ctx.inputs, result, credit);
   const n = (v: number) => Math.round(v).toLocaleString('en-US');
 
   // حجم المشروع يحدد نطاقه التنافسي — منشأة بمليون ريال منافسها الحي لا السلاسل الوطنية
@@ -77,7 +86,15 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- نسبة تغطية خدمة الدين: أدناها ' + (credit.minDscr === null ? 'لا تنطبق' : credit.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.avgDscr as number).toFixed(2) + '×') + ' — ' + credit.verdict + '\n'
     + '- التدفق المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال = صافي الربح + الاستهلاك ' + n(credit.years[0].depreciation) + ' + كلفة التمويل ' + n(credit.years[0].financeCharge) + '\n'
     + '- التدفق الشهري للسنة الأولى يبلغ أعمق نقطة نقدية في الشهر ' + (credit.deepestMonth ? credit.deepestMonth.month : 0) + '، فرأس المال العامل الفعلي اللازم ' + n(credit.workingCapitalNeeded) + ' ريال\n'
-    + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n\n'
+    + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n'
+    + '- زكاة تقديرية 2.5% مخصومة في الأرقام أعلاه: ' + n(result.years[0].zakat) + ' ريال في السنة الأولى (الوعاء الفعلي وفق قواعد هيئة الزكاة والضريبة والجمارك)\n'
+    + '- حدود الأمان: الإيراد اللازم لتغطية 1.25× هو ' + n(bp.requiredRevenue) + ' ريال، أي '
+      + (bp.headroomPct === null ? '—' : bp.headroomPct >= 0
+        ? 'أن المشروع يحتمل تراجعاً في المبيعات حتى ' + bp.headroomPct.toFixed(1) + '% قبل النزول عن الحد'
+        : 'أن المبيعات تحتاج زيادة ' + Math.abs(bp.headroomPct).toFixed(1) + '% لبلوغ الحد')
+      + ' | المطلوب ' + Math.ceil(bp.requiredUnitsDay) + ' وحدة/يوم مقابل ' + Math.round(bp.plannedUnitsDay) + ' مخططة'
+      + ' | أقصى مصاريف ثابتة ' + n(bp.maxFixedCosts) + ' ريال | أدنى سعر وحدة ' + n(bp.minUnitPrice) + ' ريال'
+      + ' | التشغيل يتحول إلى تدفق موجب في ' + (bp.operatingBreakEvenMonth === null ? 'ما بعد السنة الأولى' : 'الشهر ' + bp.operatingBreakEvenMonth) + '\n\n'
     + marketBlock
     + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
     + 'قواعد إلزامية:\n'
@@ -95,7 +112,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 
   // القسمان يُكتبان في نداءين متوازيين: نصف المخرجات لكل نداء فينتصف زمن الانتظار
   const SPEC_A = '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسة عند حجم المشروع ونطاقه: بنية المنافسة في النطاق ومستوى الأسعار والقنوات، ثم موقع المشروع وعوامل تمايزه ونقاط ضعفه","sources":["اسم المصدر — الرابط — السنة"]}';
-  const SPEC_B = '{"technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً، كل خطر بإجراء تخفيفي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة"}';
+  const SPEC_B = '{"technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً، كل خطر بإجراء تخفيفي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة","funderQA":"ثمانية أسئلة تطرحها لجنة الائتمان على هذا الملف تحديداً وإجابة كل سؤال من أرقام الدراسة — بصيغة جدول بعمودين: السؤال | الإجابة. ابدأ بأصعبها: ضيق التغطية، وسقوط السيناريو المتحفظ، وغياب السجل التشغيلي، وارتفاع سعر الوحدة عن السوق، والضمان. لا تُجمّل، وأجب برقم لا بعبارة عامة"}';
 
   // استخراج JSON من نص قد يحوي مقدمة أو عدة كتل — نجرب من آخر '{' للخلف
   const pick = (raw: string, need = 'executiveSummary'): Record<string, unknown> | null => {
@@ -115,7 +132,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
       }
     }
     // رد مقطوع: نلتقط الحقول النصية المكتملة يدوياً حتى لا تضيع الأقسام
-    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'facts'];
+    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'funderQA', 'facts'];
     const out: Record<string, unknown> = {};
     for (const k of keys) {
       const m = c.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
@@ -191,7 +208,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 
   // من «ب» نأخذ حقوله الأربعة فقط — حتى لا يطمس حقل sources القادم من «أ»
   const bOnly: Record<string, unknown> = {};
-  for (const k of ['technicalStudy', 'assumptionsNote', 'risks', 'conclusion']) if (b && b[k]) bOnly[k] = b[k];
+  for (const k of ['technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'funderQA']) if (b && b[k]) bOnly[k] = b[k];
   const sections = { ...empty(), ...(a || {}), ...bOnly } as FeasibilitySections;
   // قائمة المصادر تُؤخذ من البحث الفعلي لا من كتابة النموذج — هو يعيد صياغتها فتتكرر وتفقد روابطها
   if (foundSources.length) sections.sources = foundSources;
@@ -201,7 +218,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 }
 
 function empty(): FeasibilitySections {
-  return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', sources: [] };
+  return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', funderQA: '', sources: [] };
 }
 
 // النموذج يكتب markdown أحياناً رغم المنع — نحوّله بدل أن يظهر خاماً في وثيقة تُسلَّم لبنك
@@ -243,29 +260,78 @@ function mdToHtml(body: string, title: string): string {
   return parts.join('');
 }
 
-export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack): string {
+// صفحة القرار: ما يقرؤه محلل الائتمان في دقيقة قبل أن يقرر إكمال الملف من عدمه
+function decisionPage(ctx: FeasibilityContext, r: FeasibilityResult, credit?: CreditPack, bp?: ReturnType<typeof computeBreakPoints>): string {
+  const m = (v: number) => Math.round(v).toLocaleString('en-US');
+  const eq = r.totalInvestment > 0 ? (ctx.inputs.ownFunds / r.totalInvestment) * 100 : 0;
+  const row = (k: string, v: string) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
+  return '<div class="dp"><div class="dph">ملخص للجهة الممولة — صفحة القرار</div><table class="fz">'
+    + row('الطلب', m(ctx.inputs.financingAmount) + ' ريال على ' + ctx.inputs.financingYears + ' سنوات بكلفة سنوية ' + ctx.inputs.financingRate + '%')
+    + row('الغرض', ctx.projectKind === 'new' ? 'تأسيس مشروع جديد — ' + ctx.sectorText : 'توسعة نشاط قائم — ' + ctx.sectorText)
+    + row('استخدامات التمويل', 'تكلفة رأسمالية ' + m(ctx.inputs.capex) + ' ريال + رأس مال عامل ' + m(ctx.inputs.workingCapital) + ' ريال = ' + m(r.totalInvestment) + ' ريال')
+    + row('مساهمة المؤسس', m(ctx.inputs.ownFunds) + ' ريال (' + eq.toFixed(0) + '% من إجمالي الاستثمار) — فجوة التمويل ' + m(r.fundingGap) + ' ريال')
+    + row('القسط السنوي', m(r.annualInstalment) + ' ريال')
+    + (credit && credit.minDscr !== null ? row('تغطية خدمة الدين', 'أدناها ' + credit.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.avgDscr as number).toFixed(2) + '× — ' + credit.verdict) : '')
+    + (bp && bp.headroomPct !== null ? row(bp.headroomPct >= 0 ? 'هامش التراجع المحتمل في المبيعات' : 'الزيادة المطلوبة في المبيعات لبلوغ 1.25×', Math.abs(bp.headroomPct).toFixed(1) + '%') : '')
+    + (credit && credit.deepestMonth ? row('أعمق نقطة نقدية في السنة الأولى', 'الشهر ' + credit.deepestMonth.month + ' عند ' + m(credit.deepestMonth.cumulative) + ' ريال — رأس مال عامل فعلي لا يقل عن ' + m(credit.workingCapitalNeeded) + ' ريال') : '')
+    + (credit && credit.scenarios[0] ? row('السيناريو المتحفظ (−20% مبيعات، +10% تكاليف)', (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict) : '')
+    + row('نقطة التعادل السنوية', m(r.breakEvenRevenue) + ' ريال — أي ' + (r.years[0].revenue > 0 ? ((r.breakEvenRevenue / r.years[0].revenue) * 100).toFixed(0) + '% من إيراد السنة الأولى المخطط' : '—'))
+    + row('فترة استرداد مساهمة المؤسس', r.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : r.paybackYears.toFixed(1) + ' سنة')
+    + '</table><div class="note">هذه الصفحة خلاصة محسوبة من الجداول التالية، وليست بديلاً عنها. الدراسة كاملةً تسند كل رقم فيها.</div></div>';
+}
+
+// الجهات المرشحة — تُقرأ من نتائج المطابقة المحفوظة للعميل، ولا يولّدها نموذج
+function funderTable(funders?: FunderRow[]): string {
+  if (!funders || !funders.length) {
+    return '<h2>الجهات التمويلية المرشحة</h2><div class="note">لم تُشغَّل مطابقة الجهات لهذا العميل بعد. تُشغَّل من لوحة التقديم، وعندها تظهر هنا الجهات التي تنطبق شروطها على هذا الملف ومتطلبات كل واحدة منها.</div>';
+  }
+  const esc = (v: unknown) => v === null || v === undefined || v === '' ? '—' : String(v);
+  const rows = funders.map(x => '<tr><td>' + [
+    '<b>' + esc(x.provider) + '</b>' + (x.product ? '<br><span style="font-size:11px;color:#666">' + x.product + '</span>' : ''),
+    esc(x.region),
+    esc(x.amount_range),
+    esc(x.requirements).slice(0, 240),
+    (x.gaps && x.gaps.length ? x.gaps.slice(0, 3).join(' · ') : '—'),
+    esc(x.apply_channel),
+  ].join('</td><td>') + '</td></tr>').join('');
+  return '<h2>الجهات التمويلية المرشحة لهذا الملف</h2>'
+    + '<table class="fz sm"><thead><tr><th>الجهة</th><th>النطاق</th><th>حدود المبلغ</th><th>أبرز المتطلبات</th><th>الفجوات قبل التقديم</th><th>طريقة التقديم</th></tr></thead><tbody>'
+    + rows + '</tbody></table>'
+    + '<div class="note">الترتيب بحسب مطابقة شروط كل جهة لبيانات هذا الملف. عمود «الفجوات» هو ما يلزم استكماله قبل التقديم لتلك الجهة تحديداً، وهو خارطة العمل التنفيذية للمرحلة التالية. ولا تُعد هذه القائمة وعداً بموافقة — القرار للجهة وحدها بعد دراستها للملف.</div>';
+}
+
+export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack, funders?: FunderRow[]): string {
   const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + mdToHtml(body, title) + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
+  const bp = credit ? computeBreakPoints(ctx.inputs, r, credit) : undefined;
   return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>دراسة جدوى — ' + ctx.companyName + '</title>'
     + '<style>body{font-family:Arial,sans-serif;color:#1F2A44;line-height:1.9;padding:32px;max-width:900px;margin:auto}'
     + 'h1{color:#B8860B;font-size:26px}h2{color:#1F2A44;border-bottom:2px solid #B8860B;padding-bottom:6px;margin-top:28px;font-size:19px}'
     + '.bd{font-size:15px}table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
     + 'table.fz th,table.fz td{border:1px solid #E0E0E0;padding:7px;text-align:right}table.fz th{background:#EFE6D0;font-weight:bold}'
     + 'table.fz.sm{font-size:11px}table.fz.sm th,table.fz.sm td{padding:5px}'
-    + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}</style></head><body>'
+    + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}'
+    + '.dp{border:2px solid #B8860B;border-radius:8px;padding:14px 16px;margin:18px 0}'
+    + '.dph{color:#B8860B;font-weight:bold;font-size:17px;margin-bottom:6px}'
+    + '.dp table.fz th{width:38%}</style></head><body>'
     + '<h1>دراسة الجدوى الاقتصادية</h1><p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
     + '<p>' + ctx.projectDescription + '</p>'
+    + decisionPage(ctx, r, credit, bp)
     + sec('الملخص التنفيذي', s.executiveSummary)
     + '<h2>المؤشرات المالية</h2>' + renderFeasibilitySummary(r)
-    + '<h2>التوقعات المالية لخمس سنوات</h2>' + renderProjectionTable(r)
+    + '<h2>قائمة الدخل المتوقعة لخمس سنوات</h2>' + renderProjectionTable(r)
+    + '<h2>التدفق النقدي المتوقع لخمس سنوات</h2>' + renderCashflowTable(r)
     + '<div class="note">الأرقام أعلاه محسوبة من افتراضات العميل المذكورة في جدول الافتراضات، وليست وعداً بعائد. وأي تغيّر في السعر أو حجم المبيعات أو التكاليف يغيّر النتائج.</div>'
     + (credit ? '<h2>ملف الائتمان — تغطية خدمة الدين</h2>' + renderCreditTable(credit) + '<h2>التدفق النقدي الشهري للسنة الأولى</h2>' + renderMonthlyTable(credit) + '<h2>تحليل الحساسية — ثلاثة سيناريوهات</h2>' + renderScenarioTable(credit) : '')
+    + (bp ? '<h2>حدود الأمان — ما الذي يجب أن يكون صحيحاً</h2>' + renderBreakPointsTable(bp, r) : '')
     + sec('دراسة السوق', s.marketStudy)
     + sec('المنافسون', s.competition)
     + sec('الدراسة الفنية', s.technicalStudy)
     + sec('جدول الافتراضات', s.assumptionsNote)
     + sec('المخاطر وإجراءات التخفيف', s.risks)
     + sec('الخلاصة والتوصية', s.conclusion)
+    + funderTable(funders)
+    + sec('أسئلة الجهة الممولة المتوقعة وإجاباتها', s.funderQA)
     + srcList
     + '<p style="margin-top:30px;font-size:12px;color:#666">أُعدّت بواسطة حلول المرضي للاستشارات المالية — ترخيص FL-457927015</p>'
     + '</body></html>';

@@ -20,10 +20,13 @@ export interface YearProjection {
   depreciation: number;    // استهلاك الأصول الرأسمالية — مصروف غير نقدي
   financeCharge: number;   // كلفة التمويل وحدها (ربح المرابحة) — مصروف في قائمة الدخل
   debtService: number;     // القسط السنوي كاملاً (أصل + كلفة) — خروج نقدي
-  netProfit: number;       // صافي الربح المحاسبي = ebitda − استهلاك − كلفة تمويل
-  cashFlow: number;        // صافي التدفق النقدي = ebitda − القسط الكامل
+  zakat: number;           // زكاة تقديرية — خروج نقدي حقيقي فتُخصم قبل قياس القدرة على السداد
+  netProfit: number;       // صافي الربح بعد الاستهلاك وكلفة التمويل والزكاة
+  cashFlow: number;        // صافي التدفق النقدي = ebitda − القسط الكامل − الزكاة
   cumulativeCash: number;
 }
+
+export const ZAKAT_RATE = 0.025; // تقدير مبسّط؛ الوعاء الزكوي الفعلي وفق قواعد هيئة الزكاة والضريبة والجمارك
 
 export interface FeasibilityResult {
   years: YearProjection[];
@@ -66,10 +69,12 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
     const ebitda = contribution - fixedCosts;
     const financeCharge = y <= yrs ? annualCharge : 0;
     const debtService = y <= yrs ? annualInstalment : 0;
-    const netProfit = ebitda - depreciation - financeCharge;
-    const cashFlow = ebitda - debtService;
+    const beforeZakat = ebitda - depreciation - financeCharge;
+    const zakat = Math.max(0, beforeZakat) * ZAKAT_RATE;
+    const netProfit = beforeZakat - zakat;
+    const cashFlow = ebitda - debtService - zakat;
     cumulative += cashFlow;
-    years.push({ year: y, revenue, variableCosts, contribution, fixedCosts, ebitda, depreciation, financeCharge, debtService, netProfit, cashFlow, cumulativeCash: cumulative });
+    years.push({ year: y, revenue, variableCosts, contribution, fixedCosts, ebitda, depreciation, financeCharge, debtService, zakat, netProfit, cashFlow, cumulativeCash: cumulative });
   }
 
   const firstFixed = n(i.fixedCostsAnnual);
@@ -91,12 +96,22 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
 const f = (v: number) => Math.round(v).toLocaleString('en-US');
 
 export function renderProjectionTable(r: FeasibilityResult): string {
-  const head = ['السنة', 'الإيرادات', 'التكاليف المتغيرة', 'المصاريف الثابتة', 'الأرباح قبل الاستهلاك والتمويل', 'الاستهلاك', 'كلفة التمويل', 'صافي الربح', 'قسط السداد', 'صافي التدفق النقدي', 'النقد التراكمي'];
+  const head = ['السنة', 'الإيرادات', 'التكاليف المتغيرة', 'المصاريف الثابتة', 'الأرباح قبل الاستهلاك والتمويل', 'الاستهلاك', 'كلفة التمويل', 'الزكاة التقديرية', 'صافي الربح'];
   const rows = r.years.map(y => '<tr><td>' + [
-    'السنة ' + y.year, f(y.revenue), f(y.variableCosts), f(y.fixedCosts), f(y.ebitda), f(y.depreciation), f(y.financeCharge), f(y.netProfit), f(y.debtService), f(y.cashFlow), f(y.cumulativeCash),
+    'السنة ' + y.year, f(y.revenue), f(y.variableCosts), f(y.fixedCosts), f(y.ebitda), f(y.depreciation), f(y.financeCharge), f(y.zakat), f(y.netProfit),
   ].join('</td><td>') + '</td></tr>').join('');
   return '<table class="fz sm"><thead><tr><th>' + head.join('</th><th>') + '</th></tr></thead><tbody>' + rows + '</tbody></table>'
-    + '<div class="note"><b>قراءة الجدول:</b> «صافي الربح» ربح محاسبي بعد خصم الاستهلاك وكلفة التمويل وحدها، أما «قسط السداد» فيشمل سداد أصل التمويل وهو خروج نقدي لا مصروف — ولذلك يُخصم في عمود التدفق النقدي فقط. الاستهلاك محسوب على التكلفة الرأسمالية بقسط ثابت على خمس سنوات.</div>';
+    + '<div class="note">«كلفة التمويل» هي ربح التمويل وحده — أما سداد أصل التمويل فخروج نقدي لا مصروف، ويظهر في جدول التدفق النقدي. الاستهلاك بقسط ثابت على خمس سنوات. الزكاة تقدير مبسّط بنسبة '
+    + (ZAKAT_RATE * 100).toFixed(1) + '% من الربح قبل الزكاة، والوعاء الزكوي الفعلي يُحتسب وفق قواعد هيئة الزكاة والضريبة والجمارك وقد يختلف. وضريبة القيمة المضافة غير مدرجة لأنها تُحصّل لحساب الهيئة ولا تُعد تكلفة، وإن كان لها أثر على توقيت السيولة.</div>';
+}
+
+export function renderCashflowTable(r: FeasibilityResult): string {
+  const head = ['السنة', 'الأرباح قبل الاستهلاك والتمويل', 'الزكاة', 'قسط السداد (أصل + كلفة)', 'صافي التدفق النقدي', 'النقد التراكمي'];
+  const rows = r.years.map(y => '<tr><td>' + [
+    'السنة ' + y.year, f(y.ebitda), f(y.zakat), f(y.debtService), f(y.cashFlow), f(y.cumulativeCash),
+  ].join('</td><td>') + '</td></tr>').join('');
+  return '<table class="fz"><thead><tr><th>' + head.join('</th><th>') + '</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="note">النقد التراكمي يبدأ سالباً بمقدار ما ضخّه المؤسس من ماله، فبلوغه الصفر هو استرداد المؤسس لمساهمته — وهو أساس فترة الاسترداد أعلاه.</div>';
 }
 
 export function renderFeasibilitySummary(r: FeasibilityResult): string {
@@ -164,12 +179,13 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
     const varc = y1.variableCosts * revMul * costMul;
     const fixed = y1.fixedCosts * costMul;
     const eb = rev - varc - fixed;
-    const cfads = eb;                 // نفس أساس الجدول الرئيسي: لا إضافة استهلاك لم يُخصم
+    const zk = Math.max(0, eb - dep - y1.financeCharge) * ZAKAT_RATE;
+    const cfads = eb - zk;            // نفس أساس الجدول الرئيسي: لا إضافة استهلاك لم يُخصم
     const svc = y1.debtService;
     const cm = rev > 0 ? (rev - varc) / rev : 0;
     const be = cm > 0 ? fixed / cm : 0;
     const d = svc > 0 ? cfads / svc : null;
-    return { name, year1Net: eb - dep - y1.financeCharge, dscrY1: d,
+    return { name, year1Net: eb - dep - y1.financeCharge - zk, dscrY1: d,
       breakEvenRevenue: be,
       verdict: d === null ? '—' : d >= 1.25 ? 'يتحمّل' : d >= 1 ? 'حدّي' : 'لا يتحمّل' };
   };
@@ -188,6 +204,64 @@ export function renderMonthlyTable(c: CreditPack): string {
   const rows = c.months.map(m => '<tr><td>' + ['الشهر ' + m.month, f(m.revenue), f(m.variable), f(m.fixed), f(m.net), f(m.cumulative)].join('</td><td>') + '</td></tr>').join('');
   return '<table class="fz"><thead><tr><th>الشهر</th><th>الإيرادات</th><th>التكاليف المتغيرة</th><th>المصاريف الثابتة</th><th>صافي الشهر</th><th>النقد التراكمي</th></tr></thead><tbody>' + rows + '</tbody></table>'
     + '<div class="note"><b>أعمق نقطة نقدية:</b> الشهر ' + (c.deepestMonth?.month || '—') + ' عند ' + f(c.deepestMonth?.cumulative || 0) + ' ريال — أي أن رأس المال العامل اللازم لتجاوز السنة الأولى لا يقل عن <b>' + f(c.workingCapitalNeeded) + ' ريال</b>. التصاعد المفترض: 50% من الطاقة في الشهر الأول وبلوغ الطاقة الكاملة في الشهر السادس.</div>';
+}
+
+// ═══ نقاط الانكسار: «ما الذي يجب أن يكون صحيحاً» — الجواب الذي يبحث عنه محلل الائتمان ═══
+export interface BreakPoints {
+  targetDscr: number;
+  requiredRevenue: number;      // الإيراد السنوي اللازم لبلوغ التغطية المستهدفة
+  headroomPct: number | null;   // نسبة التراجع المحتملة في المبيعات قبل النزول عن الهدف (سالبة = يلزم زيادة)
+  requiredUnitsDay: number;     // الوحدات اليومية اللازمة
+  plannedUnitsDay: number;      // الوحدات اليومية المخططة
+  maxFixedCosts: number;        // أقصى مصاريف ثابتة يتحملها الهيكل عند الحجم المخطط
+  minUnitPrice: number;         // أدنى سعر وحدة عند الحجم المخطط
+  operatingBreakEvenMonth: number | null; // أول شهر يصير فيه صافي الشهر موجباً
+}
+
+export function computeBreakPoints(i: FeasibilityInputs, r: FeasibilityResult, c: CreditPack, targetDscr = 1.25): BreakPoints {
+  const y1 = r.years[0];
+  const cm = r.contributionMarginPct / 100;
+  const dep = y1.depreciation, fc = y1.financeCharge, ds = y1.debtService;
+  // التدفق المتاح = ebitda − زكاة، والزكاة = ن×(ebitda − استهلاك − كلفة) ⇒ نحل لـ ebitda المطلوب
+  const requiredEbitda = ds > 0
+    ? (targetDscr * ds - ZAKAT_RATE * (dep + fc)) / (1 - ZAKAT_RATE)
+    : 0;
+  const requiredRevenue = cm > 0 ? (requiredEbitda + y1.fixedCosts) / cm : 0;
+  const headroomPct = y1.revenue > 0 && ds > 0 ? (1 - requiredRevenue / y1.revenue) * 100 : null;
+  const price = n(i.unitPrice);
+  const days = 360;
+  return {
+    targetDscr,
+    requiredRevenue,
+    headroomPct,
+    requiredUnitsDay: price > 0 ? requiredRevenue / price / days : 0,
+    plannedUnitsDay: n(i.unitsYear1) / days,
+    maxFixedCosts: y1.revenue * cm - requiredEbitda,
+    minUnitPrice: n(i.unitsYear1) > 0 ? (requiredEbitda + y1.fixedCosts) / n(i.unitsYear1) : 0,
+    operatingBreakEvenMonth: (c.months.find(m => m.net >= 0)?.month) ?? null,
+  };
+}
+
+export function renderBreakPointsTable(b: BreakPoints, r: FeasibilityResult): string {
+  const y1 = r.years[0];
+  const pct = (v: number) => v.toFixed(1) + '%';
+  const rows: [string, string][] = [
+    ['الإيراد السنوي اللازم لبلوغ تغطية ' + b.targetDscr.toFixed(2) + '×', f(b.requiredRevenue) + ' ريال (المخطط ' + f(y1.revenue) + ')'],
+    [b.headroomPct !== null && b.headroomPct >= 0 ? 'هامش التراجع المحتمل في المبيعات قبل النزول عن التغطية' : 'الزيادة المطلوبة في المبيعات لبلوغ التغطية',
+      b.headroomPct === null ? '—' : pct(Math.abs(b.headroomPct))],
+    ['الوحدات اليومية اللازمة', Math.ceil(b.requiredUnitsDay).toLocaleString('en-US') + ' وحدة/يوم (المخطط ' + Math.round(b.plannedUnitsDay).toLocaleString('en-US') + ')'],
+    ['أقصى مصاريف ثابتة سنوية يتحملها الهيكل', f(b.maxFixedCosts) + ' ريال (المخطط ' + f(y1.fixedCosts) + ')'],
+    ['أدنى سعر للوحدة عند الحجم المخطط', f(b.minUnitPrice) + ' ريال'],
+    ['أول شهر يتحول فيه التشغيل إلى تدفق موجب', b.operatingBreakEvenMonth === null ? 'لا يتحول خلال السنة الأولى بهذه الافتراضات' : 'الشهر ' + b.operatingBreakEvenMonth],
+  ];
+  const verdict = b.headroomPct === null ? 'لا يوجد تمويل بأقساط — لا تنطبق نقاط الانكسار'
+    : b.headroomPct >= 25 ? 'هامش مريح: المشروع يحتمل تراجعاً كبيراً قبل أن تتأثر قدرته على السداد'
+    : b.headroomPct >= 10 ? 'هامش معقول لكنه ليس واسعاً — يُنصح بمراقبة المبيعات شهرياً مقابل الحد أعلاه'
+    : b.headroomPct >= 0 ? 'هامش ضيق: أي تراجع محدود يُنزل التغطية عن الحد المقبول، ويُنصح بمعالجة هيكلية قبل الصرف'
+    : 'الهيكل الحالي لا يبلغ التغطية المستهدفة أصلاً — الزيادة المطلوبة في المبيعات مذكورة أعلاه';
+  return '<table class="fz"><tbody>' + rows.map(([k, v]) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>'
+    + '<div class="note"><b>كيف تُقرأ:</b> هذه ليست توقعات، بل الحدود التي يجب أن يبقى المشروع داخلها ليظل قادراً على خدمة الدين عند '
+    + b.targetDscr.toFixed(2) + '×. ' + verdict + '. وتصلح هذه الأرقام تعهداتٍ تشغيلية تُقاس شهرياً، ومؤشراتٍ يشترطها الممول قبل الصرف.</div>';
 }
 
 export function renderScenarioTable(c: CreditPack): string {
