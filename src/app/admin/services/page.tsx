@@ -30,9 +30,9 @@ const IN_STYLE = { padding:'8px 10px', borderRadius:8, border:'1.5px solid #E8D9
 const FZ_TEXT = [
   { k: 'projectDescription', t: 'وصف المشروع' },
   { k: 'sectorText', t: 'القطاع' },
-  { k: 'location', t: 'موقع المشروع' },
-  { k: 'capacityNote', t: 'الطاقة المستهدفة' },
-  { k: 'staffNote', t: 'العمالة المتوقعة' },
+  { k: 'location', t: 'موقع المشروع — الحي أو النطاق' },
+  { k: 'capacityNote', t: 'الطاقة المستهدفة (وحدات/يوم أو مساحة)' },
+  { k: 'staffNote', t: 'العمالة المتوقعة (عدد ووظائف)' },
   { k: 'existingRevenue', t: 'إيراد النشاط القائم (للتوسعة)' },
 ]
 const FZ_NUM = [
@@ -351,6 +351,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   }
   // مطابقة الجهات الخاصة بالدراسة — تعمل على دفعات وتُحدّث الزر بالتقدم
   async function matchFeasibility(companyId: string) {
+    // بحث فعلي على كل النطاقات — يستغرق دقائق وله كلفة، فلا يُشغَّل بنقرة عابرة
+    if (!confirm('مطابقة الجهات بحث فعلي على كل النطاقات: تستغرق عدة دقائق ولها كلفة على كل تشغيلة.\n\nيُنصح بتشغيلها لعميل حقيقي لا لملف تجريبي. أُكمل؟')) return
     setBusy('mfz' + companyId)
     try {
       let batch = 0
@@ -553,8 +555,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                     ))}
                   </div>
                   <button onClick={() => saveFeasibility(r.id, r.company_id)} disabled={busy === 'fz' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginLeft:8 }}>{busy === 'fz' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ المدخلات'}</button>
-                  <button onClick={() => genFeasibility(r.company_id)} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
                   <button onClick={() => matchFeasibility(r.company_id)} disabled={busy === 'mfz' + r.company_id} title="تبحث عن الجهات التي تنطبق شروطها على هذه الدراسة، وتُحفظ فتظهر داخلها" style={{ background:'#5C4A16', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>{busy === 'mfz' + r.company_id ? 'جارٍ البحث عن الجهات...' : '🏦 طابق الجهات لهذه الدراسة'}</button>
+                  <button onClick={() => genFeasibility(r.company_id)} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
                   {fzMatch[r.company_id] && (<div style={{ fontSize:12, color:'#5C4A16', marginTop:6, fontWeight:700 }}>{fzMatch[r.company_id]}</div>)}
                 </div>
               )}
