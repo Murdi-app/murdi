@@ -97,3 +97,84 @@ export function renderFeasibilitySummary(r: FeasibilityResult): string {
   ];
   return '<table class="fz"><tbody>' + rows.map(([k, v]) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
 }
+
+// ═══ طبقة الائتمان: ما يقرؤه محلل التمويل قبل أي شيء ═══
+export interface CreditYear { year: number; ebitda: number; depreciation: number; cfads: number; debtService: number; dscr: number | null }
+export interface MonthRow { month: number; revenue: number; variable: number; fixed: number; net: number; cumulative: number }
+export interface Scenario { name: string; year1Net: number; dscrY1: number | null; breakEvenRevenue: number; verdict: string }
+export interface CreditPack {
+  years: CreditYear[]; minDscr: number | null; avgDscr: number | null; verdict: string;
+  months: MonthRow[]; deepestMonth: MonthRow | null; workingCapitalNeeded: number;
+  scenarios: Scenario[];
+}
+
+export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): CreditPack {
+  const dep = n(i.capex) / 5; // استهلاك على خمس سنوات
+  const years: CreditYear[] = r.years.map(y => {
+    const cfads = y.ebitda + dep;              // التدفق المتاح لخدمة الدين
+    const ds = y.financingCost;
+    return { year: y.year, ebitda: y.ebitda, depreciation: dep, cfads, debtService: ds, dscr: ds > 0 ? cfads / ds : null };
+  });
+  const ds = years.map(y => y.dscr).filter((x): x is number => x !== null);
+  const minDscr = ds.length ? Math.min(...ds) : null;
+  const avgDscr = ds.length ? ds.reduce((a, b) => a + b, 0) / ds.length : null;
+  const verdict = minDscr === null ? 'لا يوجد تمويل بأقساط — لا تنطبق نسبة التغطية'
+    : minDscr >= 1.5 ? 'تغطية مريحة: التدفق يغطي القسط بفارق واضح في كل السنوات'
+    : minDscr >= 1.25 ? 'تغطية مقبولة ائتمانياً: أدنى نسبة ضمن الحد المتعارف عليه'
+    : minDscr >= 1 ? 'تغطية حدّية: التدفق يغطي القسط بهامش ضيق، ويُنصح بتمديد الأجل أو رفع المساهمة'
+    : 'تغطية غير كافية: التدفق أقل من القسط في سنة واحدة على الأقل — يلزم إعادة هيكلة الطلب';
+
+  // تدفق شهري للسنة الأولى: تصاعد من 50% إلى الطاقة الكاملة بالشهر السادس
+  const ramp = (m: number) => m >= 6 ? 1 : 0.5 + 0.1 * (m - 1);
+  const rampSum = Array.from({ length: 12 }, (_, k) => ramp(k + 1)).reduce((a, b) => a + b, 0);
+  const y1 = r.years[0];
+  const months: MonthRow[] = [];
+  let cum = -(n(i.capex) + n(i.workingCapital) - n(i.financingAmount) - n(i.ownFunds));
+  for (let m = 1; m <= 12; m++) {
+    const share = ramp(m) / rampSum;
+    const revenue = y1.revenue * share;
+    const variable = y1.variableCosts * share;
+    const fixed = y1.fixedCosts / 12;                 // الثابتة لا تتصاعد
+    const net = revenue - variable - fixed - (y1.financingCost / 12);
+    cum += net;
+    months.push({ month: m, revenue, variable, fixed, net, cumulative: cum });
+  }
+  const deepestMonth = months.reduce((a, b) => (b.cumulative < a.cumulative ? b : a), months[0]);
+  const workingCapitalNeeded = Math.max(0, -deepestMonth.cumulative);
+
+  // ثلاثة سيناريوهات
+  const mk = (name: string, revMul: number, costMul: number): Scenario => {
+    const rev = y1.revenue * revMul;
+    const varc = y1.variableCosts * revMul * costMul;
+    const fixed = y1.fixedCosts * costMul;
+    const eb = rev - varc - fixed;
+    const cfads = eb + dep;
+    const svc = y1.financingCost;
+    const cm = rev > 0 ? (rev - varc) / rev : 0;
+    const be = cm > 0 ? fixed / cm : 0;
+    const d = svc > 0 ? cfads / svc : null;
+    return { name, year1Net: eb - svc, dscrY1: d,
+      breakEvenRevenue: be,
+      verdict: d === null ? '—' : d >= 1.25 ? 'يتحمّل' : d >= 1 ? 'حدّي' : 'لا يتحمّل' };
+  };
+  return { years, minDscr, avgDscr, verdict, months, deepestMonth, workingCapitalNeeded,
+    scenarios: [mk('متحفّظ: مبيعات −20% وتكاليف +10%', 0.8, 1.1), mk('أساسي: كما قُدّم', 1, 1), mk('متفائل: مبيعات +15%', 1.15, 1)] };
+}
+
+export function renderCreditTable(c: CreditPack): string {
+  const rows = c.years.map(y => '<tr><td>' + ['السنة ' + y.year, f(y.ebitda), f(y.depreciation), f(y.cfads), f(y.debtService),
+    y.dscr === null ? '—' : y.dscr.toFixed(2) + '×'].join('</td><td>') + '</td></tr>').join('');
+  return '<table class="fz"><thead><tr><th>السنة</th><th>الأرباح التشغيلية</th><th>الاستهلاك</th><th>التدفق المتاح للسداد</th><th>خدمة الدين</th><th>نسبة التغطية</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="note"><b>نسبة تغطية خدمة الدين (DSCR):</b> ' + (c.minDscr === null ? '—' : 'أدناها ' + c.minDscr.toFixed(2) + '× ومتوسطها ' + (c.avgDscr as number).toFixed(2) + '×') + ' — ' + c.verdict + '. الحد المتعارف عليه لدى جهات التمويل هو 1.25×.</div>';
+}
+
+export function renderMonthlyTable(c: CreditPack): string {
+  const rows = c.months.map(m => '<tr><td>' + ['الشهر ' + m.month, f(m.revenue), f(m.variable), f(m.fixed), f(m.net), f(m.cumulative)].join('</td><td>') + '</td></tr>').join('');
+  return '<table class="fz"><thead><tr><th>الشهر</th><th>الإيرادات</th><th>التكاليف المتغيرة</th><th>المصاريف الثابتة</th><th>صافي الشهر</th><th>النقد التراكمي</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="note"><b>أعمق نقطة نقدية:</b> الشهر ' + (c.deepestMonth?.month || '—') + ' عند ' + f(c.deepestMonth?.cumulative || 0) + ' ريال — أي أن رأس المال العامل اللازم لتجاوز السنة الأولى لا يقل عن <b>' + f(c.workingCapitalNeeded) + ' ريال</b>. التصاعد المفترض: 50% من الطاقة في الشهر الأول وبلوغ الطاقة الكاملة في الشهر السادس.</div>';
+}
+
+export function renderScenarioTable(c: CreditPack): string {
+  const rows = c.scenarios.map(s => '<tr><td>' + [s.name, f(s.year1Net), s.dscrY1 === null ? '—' : s.dscrY1.toFixed(2) + '×', f(s.breakEvenRevenue), s.verdict].join('</td><td>') + '</td></tr>').join('');
+  return '<table class="fz"><thead><tr><th>السيناريو</th><th>صافي السنة الأولى</th><th>نسبة التغطية</th><th>نقطة التعادل</th><th>الحكم</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
