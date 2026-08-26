@@ -38,7 +38,7 @@ const AUD: Record<FeasibilityContext['audience'], string> = {
   internal: 'استخدام داخلي لصاحب المشروع — ركّز على الواقعية وما يجب التحقق منه قبل الالتزام',
 };
 
-export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ sections: FeasibilitySections; result: FeasibilityResult; error?: string }> {
+export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ sections: FeasibilitySections; result: FeasibilityResult; credit: CreditPack; error?: string }> {
   const result = computeFeasibility(ctx.inputs);
   const credit = computeCredit(ctx.inputs, result);
   const n = (v: number) => Math.round(v).toLocaleString('en-US');
@@ -124,10 +124,10 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 
   // السرعة أولاً: بلا بحث (~30 ثانية) فتخرج الدراسة كاملة دائماً. البحث محاولة إضافية قصيرة فقط.
   const fast = await attempt(false, 100000);
-  if (fast) return { sections: fast, result, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
+  if (fast) return { sections: fast, result, credit, error: 'أرقام السوق تحتاج تحققاً — لم يُشغَّل بحث المصادر' };
   const withSearch = await attempt(true, 150000);
-  if (withSearch) return { sections: withSearch, result };
-  return { sections: empty(), result, error: 'تعذّر توليد الأقسام النصية' + diag };
+  if (withSearch) return { sections: withSearch, result, credit };
+  return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
 }
 
 function empty(): FeasibilitySections {

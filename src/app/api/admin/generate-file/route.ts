@@ -183,8 +183,8 @@ export async function POST(req: Request) {
           financingYears: num('financingYears') || 5, financingRate: num('financingRate'),
         },
       };
-      const { sections, result, error } = await generateFeasibility(ctx);
-      const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'));
+      const { sections, result, credit, error } = await generateFeasibility(ctx);
+      const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'), credit);
       return NextResponse.json({ ok: true, html, warn: error || undefined });
     } catch (e) {
       await logError('feasibility.generate', e, {});
