@@ -28,6 +28,9 @@ export async function runScopedMatch(args: {
   company: Rec; fd: Rec; typeLabel: string; rev: number;
   years: number; debtDesc: string; isInvest: boolean; budget?: 'light' | 'full';
   scopeFrom?: number; scopeTo?: number;
+  // اختياري بالكامل: قائمة نطاقات جاهزة تحل محل الاختيار الداخلي.
+  // لا يمرّرها مسار التمويل ولا الاستثمار إطلاقاً، فسلوكهما لا يتغيّر بحرف
+  scopes?: string[];
 }): Promise<{ offers: WebOffer[]; ok: boolean; error: string; totalScopes: number }> {
   let totalScopes = 0;
   const { company, fd, typeLabel, rev, years, debtDesc, isInvest, budget } = args;
@@ -117,7 +120,6 @@ export async function runScopedMatch(args: {
       'اقتصر على شركات التمويل السعودية التي تمول المنشآت الصغيرة بمبالغ محدودة: نايفات، أمكان، تمويل الأولى، سلفة، تمام، وما شابهها.',
       'اقتصر على برامج الضمان الحكومية وضمانات كفالة والجهات التي تسهّل وصول المنشآت الصغيرة للتمويل البنكي.',
       'اقتصر على تمويل الموردين والدفع الآجل بين الشركات والمنصات التي تموّل المشتريات التشغيلية.',
-      'اقتصر على شركات الإجارة وتمويل المعدات والأصول للمنشآت الصغيرة في السعودية: إجارة منتهية بالتمليك لمعدات التشغيل والتجهيزات والمركبات، وبرامج تمويل الأصول لدى البنوك وشركات التمويل المرخّصة.',
     ];
     const FUND_SCOPES = [
       'اقتصر على البنوك السعودية المرخّصة من البنك المركزي السعودي فقط.',
@@ -177,7 +179,7 @@ export async function runScopedMatch(args: {
       : intent === 'partner' ? EQUITY_SET
       : EQUITY_SET.concat(ACQ_SCOPES);
     const FUND_ALL = rev < 1000000 ? MICRO_SCOPES : FUND_SCOPES;
-    const ALL_SCOPES = (isInvest ? INVEST_ALL : FUND_ALL);
+    const ALL_SCOPES = (args.scopes && args.scopes.length) ? args.scopes : (isInvest ? INVEST_ALL : FUND_ALL);
     totalScopes = ALL_SCOPES.length;
     const SCOPES = (args.scopeFrom !== undefined || args.scopeTo !== undefined)
       ? ALL_SCOPES.slice(args.scopeFrom || 0, args.scopeTo === undefined ? 99 : args.scopeTo)
@@ -253,8 +255,9 @@ export async function saveMatchResults(companyId: string, track: string, offers:
       fit: o.verdict || null,
       fit_score: (() => {
         const inst = String(o.instrument || '');
-        // اعتراف النموذج نفسه بعدم المناسبة يُصفّر الصف — حقل المبلغ نصي أحياناً فلا يلتقطه المحلل الرقمي
-        if (/غير مناسب|لا يناسب|أقل بكثير|أعلى بكثير|خارج نطاق/.test(String(o.amountRange || ''))) return 0;
+        // مسار الجدوى وحده: اعتراف النموذج بعدم المناسبة يُصفّر الصف — حقل المبلغ نصي أحياناً فلا يلتقطه المحلل الرقمي.
+        // مسار التمويل لا يتأثر: قراره «أوسِم ولا تحذف» يبقى كما هو
+        if (track === 'feasibility' && /غير مناسب|لا يناسب|أقل بكثير|أعلى بكثير|خارج نطاق/.test(String(o.amountRange || ''))) return 0;
         const txt2 = (String(o.product || '') + ' ' + String(o.requirements || '') + ' ' + String(o.region || '') + ' ' + String(o.verdict || '') + ' ' + String(o.provider || '') + ' ' + (Array.isArray(o.gaps) ? o.gaps.join(' ') : '')).toLowerCase();
         if (scoreTrack === 'funding' && /الشركات الكبرى والمؤسسات|كبرى فقط|المجموعات العائلية الكبرى|large corporates|multinational/.test(txt2)) return 0;
         if (scoreTrack === 'funding' && /تمويل موردي|موردّي|supplier finance|supply chain finance|تمويل سلاسل الإمداد|سلاسل الامداد|reverse factoring|payables finance|receivables finance|early payment|dynamic discounting|taulia|\bscf\b/.test(txt2) && buyers !== undefined && !String(buyers).trim()) return 0;

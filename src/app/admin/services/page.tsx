@@ -34,6 +34,8 @@ const FZ_TEXT = [
   { k: 'capacityNote', t: 'الطاقة المستهدفة (وحدات/يوم أو مساحة)' },
   { k: 'staffNote', t: 'العمالة المتوقعة (عدد ووظائف)' },
   { k: 'existingRevenue', t: 'إيراد النشاط القائم (للتوسعة)' },
+  { k: 'importCountries', t: 'دول الاستيراد (إن وُجد)' },
+  { k: 'largeBuyers', t: 'عملاء كبار بالاسم (إن وُجدوا)' },
 ]
 const FZ_NUM = [
   { k: 'capex', t: 'التكلفة الرأسمالية (ريال)' },
@@ -364,7 +366,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
         if (!d.ok) { alert('تعذّرت المطابقة: ' + (d.error || res.status)); setBusy(''); return }
         total = d.total || total
         count = d.count || count
-        setFzMatch((p) => ({ ...p, [companyId]: 'جارٍ المطابقة… ' + Math.min((batch + 1) * 5, total) + '/' + total + ' — ' + count + ' جهة' }))
+        setFzMatch((p) => ({ ...p, [companyId]: 'جارٍ المطابقة… ' + Math.min((batch + 1) * 5, total) + '/' + total + ' — ' + count + ' جهة' + (d.gate ? ' | البوابة: ' + d.gate : '') }))
         if (d.done) break
         batch = d.next
       }
@@ -544,6 +546,16 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                     </select>
                     <select value={(fzIn[r.id] || {}).projectKind || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), projectKind: e.target.value } }))} style={IN_STYLE}>
                       <option value="">— نوع المشروع —</option><option value="new">مشروع جديد</option><option value="expansion">توسعة نشاط قائم</option>
+                    </select>
+                    {/* هذه الثلاثة تحدد أي أبواب تمويل تُفتح أصلاً — لا تدخل الدراسة فقط بل بوابة المطابقة */}
+                    <select value={(fzIn[r.id] || {}).capexKind || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), capexKind: e.target.value } }))} style={IN_STYLE}>
+                      <option value="">— أكبر بند رأسمالي —</option><option value="equipment">معدات وتجهيزات</option><option value="property">عقار</option><option value="vehicles">مركبات وأساطيل</option><option value="fitout">تشطيبات وديكور</option><option value="tech">تقنية وأنظمة</option><option value="inventory">بضاعة ومخزون</option><option value="mixed">متنوع</option>
+                    </select>
+                    <select value={(fzIn[r.id] || {}).propertyMode || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), propertyMode: e.target.value } }))} style={IN_STYLE}>
+                      <option value="">— الموقع: إيجار أم تملّك —</option><option value="rent">إيجار</option><option value="buy">شراء عقار ضمن المشروع</option><option value="own">عقار مملوك مسبقاً</option>
+                    </select>
+                    <select value={(fzIn[r.id] || {}).imports || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), imports: e.target.value } }))} style={IN_STYLE}>
+                      <option value="">— استيراد من الخارج؟ —</option><option value="no">لا يستورد</option><option value="yes">يستورد</option>
                     </select>
                     {[...FZ_TEXT, ...FZ_NUM].map((f) => (
                       <div key={f.k}>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { runScopedMatch, saveMatchResults } from '@/lib/matchEngine';
+import { buildFeasibilityScopes, describeGate, type FzMatchProfile, type PropertyMode, type CapexKind } from '@/lib/feasibilityScopes';
 import { logError } from '@/lib/logError';
 import { requireAdmin } from '@/lib/requireAdmin';
 
@@ -67,6 +68,24 @@ export async function POST(req: Request) {
       owner_nationality: company.owner_nationality,
     };
 
+    // ═══ البوابة: النطاقات تُبنى من خصائص المشروع لا من رقم الإيراد ═══
+    const prof: FzMatchProfile = {
+      ask: num('financingAmount'),
+      totalInvestment: num('capex') + num('workingCapital'),
+      isNew,
+      imports: str('imports') === 'yes' || Boolean(str('importCountries')),
+      importCountries: str('importCountries'),
+      property: (['rent', 'buy', 'own'].includes(str('propertyMode')) ? str('propertyMode') : 'rent') as PropertyMode,
+      capexKind: (['equipment', 'property', 'vehicles', 'fitout', 'tech', 'inventory', 'mixed'].includes(str('capexKind')) ? str('capexKind') : 'mixed') as CapexKind,
+      foreignOwner: ['foreign', 'mixed'].includes(String(company.ownership_type || '')),
+      ownerNationality: String(company.owner_nationality || ''),
+      largeBuyers: Boolean(str('largeBuyers')),
+      sectorText: str('sectorText') || String(company.sector || ''),
+    };
+    // شراء العقار خاصية مستقلة عن بند الإنفاق الأكبر — فإن كان العقار هو البند فهو شراء
+    if (prof.capexKind === 'property' && prof.property === 'rent') prof.property = 'buy';
+    const scopes = buildFeasibilityScopes(prof);
+
     // نفس تقسيم runAutoMatch: خمسة نطاقات لكل دفعة، والعميل يكرر حتى done
     const SIZE = 5;
     const from = (batch === undefined ? 0 : batch) * SIZE;
@@ -80,6 +99,7 @@ export async function POST(req: Request) {
       rev, years: isNew ? 0 : 1,
       debtDesc: 'لا توجد ديون قائمة',
       isInvest: false, budget: 'full',
+      scopes,
       scopeFrom: batch === undefined ? undefined : from,
       scopeTo: batch === undefined ? undefined : from + SIZE,
     });
@@ -98,6 +118,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true, done, next: nextB, total: r.totalScopes,
       found: r.offers.length, count: count || 0,
+      gate: describeGate(prof, scopes.length),
       warn: r.ok ? undefined : (r.error || undefined),
     });
   } catch (e) {
