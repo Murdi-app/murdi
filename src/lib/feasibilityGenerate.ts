@@ -1,6 +1,6 @@
 // مولّد دراسة الجدوى الاقتصادية — مُرضي
 // الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
-import { computeFeasibility, renderProjectionTable, renderFeasibilitySummary, type FeasibilityInputs, type FeasibilityResult } from './feasibilityCompute';
+import { computeFeasibility, renderProjectionTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
@@ -40,6 +40,7 @@ const AUD: Record<FeasibilityContext['audience'], string> = {
 
 export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ sections: FeasibilitySections; result: FeasibilityResult; error?: string }> {
   const result = computeFeasibility(ctx.inputs);
+  const credit = computeCredit(ctx.inputs, result);
   const n = (v: number) => Math.round(v).toLocaleString('en-US');
 
   const prompt = 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
@@ -59,9 +60,15 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- فترة الاسترداد: ' + (result.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : result.paybackYears.toFixed(1) + ' سنة') + '\n'
     + '- القسط السنوي للتمويل ' + n(result.annualInstalment) + ' ريال (محسوب — لا تقل إنه غير محدد ولا تفترض غيره)\n'
     + '- صافي ربح السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n\n'
+    + '\nمؤشرات الائتمان (محسوبة برمجياً — استند إليها ولا تعِد حسابها):\n'
+    + '- نسبة تغطية خدمة الدين: أدناها ' + (credit.minDscr === null ? 'لا تنطبق' : credit.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.avgDscr as number).toFixed(2) + '×') + ' — ' + credit.verdict + '\n'
+    + '- التدفق النقدي المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال (يشمل استهلاكاً سنوياً ' + n(credit.years[0].depreciation) + ' ريال)\n'
+    + '- التدفق الشهري للسنة الأولى يبلغ أعمق نقطة نقدية في الشهر ' + (credit.deepestMonth ? credit.deepestMonth.month : 0) + '، فرأس المال العامل الفعلي اللازم ' + n(credit.workingCapitalNeeded) + ' ريال\n'
+    + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n\n'
     + 'الجمهور المستهدف للدراسة: ' + AUD[ctx.audience] + '\n\n'
     + 'قواعد إلزامية:\n'
     + '(ج١) أرقام السوق: اذكر أرقاماً كمّية فعلية لحجم السوق ونموه ومتوسط الإنفاق ومؤشرات القطاع — لا تترك القسم بلا أرقام. وكل رقم يقترن بأساسه في نفس الجملة: إمّا مصدر منشور باسمه وسنته، أو صياغة «تقدير استرشادي مبني على مؤشرات القطاع المعلنة». ولا تنسب رقماً إلى جهة بعينها ما لم تكن قد اطّلعت عليه فعلاً.\n'
+    + '(ج١ب) في الخلاصة والمخاطر: علّق صراحةً على نسبة تغطية خدمة الدين وعلى السيناريو المتحفظ، وبيّن ما إذا كان الهيكل المطلوب يتحمّل، وإن كانت التغطية دون 1.25× فاقترح معالجة محددة (تمديد الأجل أو رفع المساهمة أو خفض المطلوب).\n'
     + '(ج٢) لا تعد بعائد ولا تكتب أي عبارة ضمان للنجاح أو للربح، ولا تصف المشروع بأنه مضمون أو مؤكد.\n'
     + '(ج٣) لا تخالف الأرقام المحسوبة أعلاه ولا تعيد حسابها. وإن كانت النتيجة ضعيفة (تعادل مرتفع أو استرداد بعيد) فاذكر ذلك بوضوح ولا تجمّله.\n'
     + '(ج٤) لا تنسب للمنشأة أي صفة لم ترد أعلاه — لا خبرة ولا عملاء ولا تراخيص ولا أصول.\n'
@@ -127,7 +134,7 @@ function empty(): FeasibilitySections {
   return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', sources: [] };
 }
 
-export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string): string {
+export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack): string {
   const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + String(body).replace(/\n/g, '<br>') + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
   return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>دراسة جدوى — ' + ctx.companyName + '</title>'
@@ -142,6 +149,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + '<h2>المؤشرات المالية</h2>' + renderFeasibilitySummary(r)
     + '<h2>التوقعات المالية لخمس سنوات</h2>' + renderProjectionTable(r)
     + '<div class="note">الأرقام أعلاه محسوبة من افتراضات العميل المذكورة في جدول الافتراضات، وليست وعداً بعائد. وأي تغيّر في السعر أو حجم المبيعات أو التكاليف يغيّر النتائج.</div>'
+    + (credit ? '<h2>ملف الائتمان — تغطية خدمة الدين</h2>' + renderCreditTable(credit) + '<h2>التدفق النقدي الشهري للسنة الأولى</h2>' + renderMonthlyTable(credit) + '<h2>تحليل الحساسية — ثلاثة سيناريوهات</h2>' + renderScenarioTable(credit) : '')
     + sec('دراسة السوق', s.marketStudy)
     + sec('المنافسون', s.competition)
     + sec('الدراسة الفنية', s.technicalStudy)
