@@ -50,7 +50,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
   const scaleRadius = inv <= 3_000_000 ? 'الحي أو النطاق الجغرافي المباشر داخل المدينة، مع قنوات التوصيل الرقمية التي تصل إلى هذا النطاق'
     : inv <= 20_000_000 ? 'المدينة أو المنطقة' : 'السوق الوطني';
 
-  const mkPrompt = (marketBlock: string) => 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
+  const mkPrompt = (marketBlock: string, jsonSpec: string) => 'أنت خبير دراسات جدوى في السوق السعودي. اكتب أقسام دراسة جدوى لمشروع محدد أدناه.\n\n'
     + 'بيانات المشروع كما قدّمها العميل:\n'
     + '- المنشأة: ' + ctx.companyName + (ctx.crNumber ? ' (سجل ' + ctx.crNumber + ')' : '') + '\n'
     + '- المدينة: ' + (ctx.city || 'غير محدد') + (ctx.location ? ' | موقع المشروع: ' + ctx.location : '') + '\n'
@@ -91,7 +91,11 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '(ج٧) المخاطر تخص هذا المشروع وحده: كل خطر يُشتق من أرقامه أو موقعه أو تراخيصه أو هيكل تمويله، ويقترن بإجراء تخفيفي ينفّذه المشروع فعلاً. ويُمنع منعاً باتاً إدراج معدلات تعثّر أو إغلاق أو خروج عامة للقطاع (نسبة المنشآت التي أُغلقت خلال مدة ونحوها) — فهي حكم على القطاع لا على المشروع، ولا يملك المشروع إجراءً يخفّضها، فتضر الدراسة دون أن تضيف معلومة. وهذا لا يُخلّ بالقاعدة (ج١ب): نسبة التغطية المحسوبة والسيناريو المتحفظ يبقيان إلزاميين لأنهما مشتقان من أرقام العميل نفسه ولهما معالجات محددة.\n'
     + '(ج٥) في حقل sources أدرج المصادر الواردة في نتائج البحث أعلاه فقط، ولا تخترع مصدراً ولا رابطاً.\n\n'
     + 'أرجع JSON فقط بلا أي نص آخر وبلا markdown:\n'
-    + '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسة عند حجم المشروع ونطاقه: بنية المنافسة في النطاق ومستوى الأسعار والقنوات، ثم موقع المشروع وعوامل تمايزه ونقاط ضعفه","technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً، كل خطر بإجراء تخفيفي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة","sources":["اسم المصدر — الرابط — السنة"]}';
+    + jsonSpec;
+
+  // القسمان يُكتبان في نداءين متوازيين: نصف المخرجات لكل نداء فينتصف زمن الانتظار
+  const SPEC_A = '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسة عند حجم المشروع ونطاقه: بنية المنافسة في النطاق ومستوى الأسعار والقنوات، ثم موقع المشروع وعوامل تمايزه ونقاط ضعفه","sources":["اسم المصدر — الرابط — السنة"]}';
+  const SPEC_B = '{"technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً، كل خطر بإجراء تخفيفي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة"}';
 
   // استخراج JSON من نص قد يحوي مقدمة أو عدة كتل — نجرب من آخر '{' للخلف
   const pick = (raw: string, need = 'executiveSummary'): Record<string, unknown> | null => {
@@ -150,11 +154,18 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + 'أرجع JSON فقط بلا أي نص آخر: {"facts":"نقاط مرقّمة، كل نقطة رقم واحد مع اسم مصدره وسنته","sources":["اسم المصدر — الرابط — السنة"]}\n'
     + 'لا تكتب رقماً لم تره في نتيجة بحث فعلية، ولا تنسب رقماً لمصدر لم تفتحه.';
   const t0 = Date.now();
+
+  // القسم «ب» لا يحتاج نتائج البحث، فيُطلق فوراً ويعمل بالتوازي مع البحث — هذا ما يقصّ زمن الانتظار فعلاً
+  const pB = call({
+    max_tokens: 7000,
+    messages: [{ role: 'user', content: mkPrompt('أقسام السوق والمنافسة تُكتب في مهمة منفصلة — لا تكتبها هنا.\n\n', SPEC_B) }],
+  }, 215000, ' | الأقسام الفنية: ');
+
   const rTxt = await call({
     max_tokens: 2500,
     tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
     messages: [{ role: 'user', content: researchPrompt }],
-  }, 95000, ' | بحث السوق: ');
+  }, 85000, ' | بحث السوق: ');
   const rJson = rTxt ? pick(rTxt, 'facts') as { facts?: string; sources?: string[] } | null : null;
   const facts = rJson && typeof rJson.facts === 'string' ? rJson.facts.trim() : '';
   const foundSources = rJson && Array.isArray(rJson.sources) ? rJson.sources.filter(x => typeof x === 'string') : [];
@@ -162,19 +173,27 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     ? 'نتائج بحث السوق (من بحث فعلي — استند إليها وانسب كل رقم لمصدره):\n' + facts + '\n\nالمصادر المتاحة: ' + foundSources.join(' | ') + '\n\n'
     : 'لم تصل نتائج بحث سوق لهذه التشغيلة — اكتب أرقام السوق من معرفتك بالسوق السعودي بصفتها تقديرات استرشادية مبنية على مؤشرات القطاع تُحدَّث بمصادر منشورة قبل الاعتماد النهائي، واترك sources فارغة.\n\n';
 
-  // ═══ النداء الثاني: كتابة الأقسام بلا أدوات — وهو النداء الذي ينجح دائماً ═══
-  const txt = await call({
-    max_tokens: 12000,
-    messages: [{ role: 'user', content: mkPrompt(marketBlock) }],
-  }, Math.max(60000, 265000 - (Date.now() - t0)), ' | كتابة الأقسام: ');
-  const parsed = txt ? pick(txt) : null;
-  if (!parsed) {
-    if (txt) diag += ' | الرد وصل بطول ' + txt.length + ' حرفاً لكن تعذّر استخراج JSON — بدايته: ' + txt.slice(0, 120);
-    return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
-  }
-  const sections = { ...empty(), ...parsed } as FeasibilitySections;
+  // ═══ القسم «أ»: يبدأ فور وصول البحث، ويُنتظر مع «ب» معاً ═══
+  const pA = call({
+    max_tokens: 7000,
+    messages: [{ role: 'user', content: mkPrompt(marketBlock, SPEC_A) }],
+  }, Math.max(60000, 235000 - (Date.now() - t0)), ' | أقسام السوق: ');
+
+  const [aTxt, bTxt] = await Promise.all([pA, pB]);
+  const a = aTxt ? pick(aTxt, 'executiveSummary') : null;
+  const b = bTxt ? pick(bTxt, 'technicalStudy') : null;
+  if (aTxt && !a) diag += ' | أقسام السوق: وصل رد بطول ' + aTxt.length + ' حرفاً بلا JSON صالح — بدايته: ' + aTxt.slice(0, 100);
+  if (bTxt && !b) diag += ' | الأقسام الفنية: وصل رد بطول ' + bTxt.length + ' حرفاً بلا JSON صالح — بدايته: ' + bTxt.slice(0, 100);
+  if (!a && !b) return { sections: empty(), result, credit, error: 'تعذّر توليد الأقسام النصية' + diag };
+
+  // من «ب» نأخذ حقوله الأربعة فقط — حتى لا يطمس حقل sources القادم من «أ»
+  const bOnly: Record<string, unknown> = {};
+  for (const k of ['technicalStudy', 'assumptionsNote', 'risks', 'conclusion']) if (b && b[k]) bOnly[k] = b[k];
+  const sections = { ...empty(), ...(a || {}), ...bOnly } as FeasibilitySections;
   if (!sections.sources?.length && foundSources.length) sections.sources = foundSources;
-  return { sections, result, credit, error: facts ? undefined : 'أرقام السوق تقديرات استرشادية — لم تصل نتائج البحث في هذه التشغيلة' + diag };
+  const missing = !a ? 'أقسام السوق والمنافسة لم تصل' : !b ? 'الأقسام الفنية والمخاطر والخلاصة لم تصل' : '';
+  const warn = missing || (facts ? '' : 'أرقام السوق تقديرات استرشادية — لم تصل نتائج البحث في هذه التشغيلة');
+  return { sections, result, credit, error: warn ? warn + diag : undefined };
 }
 
 function empty(): FeasibilitySections {
