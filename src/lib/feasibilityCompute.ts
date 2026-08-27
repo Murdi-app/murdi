@@ -12,6 +12,10 @@ export interface FeasibilityInputs {
   financingAmount: number;  // التمويل المطلوب
   financingYears: number;   // مدة السداد
   financingRate: number;    // كلفة التمويل السنوية (نسبة مئوية)
+  // ═══ للتوسعة فقط: النشاط القائم يدخل قياس القدرة على السداد ═══
+  // بدونهما تُقاس التغطية على الفرع الجديد معزولاً، والممول يقيسها على المنشأة كلها
+  existingEbitda?: number;       // الأرباح التشغيلية الحالية سنوياً قبل خدمة الدين
+  existingDebtService?: number;  // أقساط التمويل القائمة سنوياً
 }
 
 export interface YearProjection {
@@ -131,10 +135,18 @@ export function renderFeasibilitySummary(r: FeasibilityResult): string {
 export interface CreditYear { year: number; netProfit: number; depreciation: number; financeCharge: number; cfads: number; debtService: number; dscr: number | null }
 export interface MonthRow { month: number; revenue: number; variable: number; fixed: number; net: number; cumulative: number }
 export interface Scenario { name: string; year1Net: number; dscrY1: number | null; breakEvenRevenue: number; verdict: string }
+// التغطية المجمّعة: النشاط القائم + المشروع الجديد مقابل خدمة الدين كلها — وهي الرقم الذي يقرؤه محلل الائتمان في التوسعة
+export interface CombinedYear { year: number; projectCfads: number; existingEbitda: number; totalCfads: number; totalDebtService: number; dscr: number | null }
+export interface CombinedPack {
+  years: CombinedYear[]; minDscr: number | null; avgDscr: number | null; verdict: string;
+  existingEbitda: number; existingDebtService: number;
+}
+
 export interface CreditPack {
   years: CreditYear[]; minDscr: number | null; avgDscr: number | null; verdict: string;
   months: MonthRow[]; deepestMonth: MonthRow | null; workingCapitalNeeded: number;
   scenarios: Scenario[];
+  combined?: CombinedPack;   // يظهر في التوسعة فقط، وحين تُدخل أرباح النشاط القائم
 }
 
 export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): CreditPack {
@@ -189,7 +201,33 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
       breakEvenRevenue: be,
       verdict: d === null ? '—' : d >= 1.25 ? 'يتحمّل' : d >= 1 ? 'حدّي' : 'لا يتحمّل' };
   };
-  return { years, minDscr, avgDscr, verdict, months, deepestMonth, workingCapitalNeeded,
+  // ═══ التغطية المجمّعة — تُحسب فقط حين يُدخل المستشار أرباح النشاط القائم ═══
+  const exEbitda = n(i.existingEbitda), exDs = n(i.existingDebtService);
+  let combined: CombinedPack | undefined;
+  if (exEbitda > 0) {
+    const cy: CombinedYear[] = years.map((y, k) => {
+      const totalCfads = y.cfads + exEbitda;
+      const totalDebtService = y.debtService + exDs;
+      return {
+        year: y.year, projectCfads: y.cfads, existingEbitda: exEbitda, totalCfads, totalDebtService,
+        dscr: totalDebtService > 0 ? totalCfads / totalDebtService : null,
+        ...(k < 0 ? {} : {}),
+      };
+    });
+    const cd = cy.map(y => y.dscr).filter((x): x is number => x !== null);
+    const cmin = cd.length ? Math.min(...cd) : null;
+    const cavg = cd.length ? cd.reduce((a, b) => a + b, 0) / cd.length : null;
+    combined = {
+      years: cy, minDscr: cmin, avgDscr: cavg, existingEbitda: exEbitda, existingDebtService: exDs,
+      verdict: cmin === null ? 'لا تنطبق'
+        : cmin >= 1.5 ? 'تغطية مريحة على مستوى المنشأة: النشاط القائم يحمل القسط الجديد بفارق واضح'
+        : cmin >= 1.25 ? 'تغطية مقبولة ائتمانياً على مستوى المنشأة'
+        : cmin >= 1 ? 'تغطية حدّية على مستوى المنشأة — يُنصح بتمديد الأجل أو رفع المساهمة'
+        : 'التدفق المجمّع لا يغطي خدمة الدين الكاملة — يلزم إعادة هيكلة الطلب',
+    };
+  }
+
+  return { years, minDscr, avgDscr, verdict, months, deepestMonth, workingCapitalNeeded, combined,
     scenarios: [mk('متحفّظ: مبيعات −20% وتكاليف +10%', 0.8, 1.1), mk('أساسي: كما قُدّم', 1, 1), mk('متفائل: مبيعات +15%', 1.15, 1)] };
 }
 
@@ -262,6 +300,16 @@ export function renderBreakPointsTable(b: BreakPoints, r: FeasibilityResult): st
   return '<table class="fz"><tbody>' + rows.map(([k, v]) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>'
     + '<div class="note"><b>كيف تُقرأ:</b> هذه ليست توقعات، بل الحدود التي يجب أن يبقى المشروع داخلها ليظل قادراً على خدمة الدين عند '
     + b.targetDscr.toFixed(2) + '×. ' + verdict + '. وتصلح هذه الأرقام تعهداتٍ تشغيلية تُقاس شهرياً، ومؤشراتٍ يشترطها الممول قبل الصرف.</div>';
+}
+
+export function renderCombinedTable(k: CombinedPack): string {
+  const rows = k.years.map(y => '<tr><td>' + ['السنة ' + y.year, f(y.projectCfads), f(y.existingEbitda), f(y.totalCfads), f(y.totalDebtService),
+    y.dscr === null ? '—' : y.dscr.toFixed(2) + '×'].join('</td><td>') + '</td></tr>').join('');
+  return '<table class="fz"><thead><tr><th>السنة</th><th>تدفق المشروع الجديد</th><th>الأرباح التشغيلية القائمة</th><th>إجمالي المتاح للسداد</th><th>خدمة الدين كاملة</th><th>التغطية المجمّعة</th></tr></thead><tbody>'
+    + rows + '</tbody></table>'
+    + '<div class="note"><b>لماذا هذا الجدول هو الحاسم في التوسعة:</b> جدول الائتمان أعلاه يقيس الفرع الجديد معزولاً، وهو قياس متحفّظ يفيد في معرفة هل يعيل الفرع نفسه. أما جهة التمويل فتقرض المنشأة لا الفرع، فتقيس تدفقها كله مقابل التزاماتها كلها — وهو ما يظهر هنا: أدنى تغطية '
+    + (k.minDscr === null ? '—' : k.minDscr.toFixed(2) + '× ومتوسطها ' + (k.avgDscr as number).toFixed(2) + '×') + ' — ' + k.verdict
+    + '. الأرباح التشغيلية القائمة وأقساط التمويل القائمة كما أفاد بها العميل، ويلزم إسنادها بقوائمه المالية.</div>';
 }
 
 export function renderScenarioTable(c: CreditPack): string {

@@ -181,6 +181,8 @@ export async function POST(req: Request) {
           fixedCostsAnnual: num('fixedCostsAnnual'), inflationRate: num('inflationRate') || 3,
           ownFunds: num('ownFunds'), financingAmount: num('financingAmount'),
           financingYears: num('financingYears') || 5, financingRate: num('financingRate'),
+          // التوسعة: النشاط القائم يدخل قياس القدرة على السداد بدل أن يُقاس الفرع معزولاً
+          existingEbitda: num('existingEbitda'), existingDebtService: num('existingDebtService'),
         },
       };
       // الجهات المرشحة تُقرأ من نتائج المطابقة المحفوظة — قراءة واحدة بلا أي نداء نموذج

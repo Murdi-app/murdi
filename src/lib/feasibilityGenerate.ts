@@ -1,6 +1,6 @@
 // مولّد دراسة الجدوى الاقتصادية — مُرضي
 // الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
-import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, computeBreakPoints, renderBreakPointsTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
+import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, computeBreakPoints, renderBreakPointsTable, renderCombinedTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
 
 // صف جهة تمويل مرشحة — يُقرأ من match_results ولا يُولَّد بنموذج
 export interface FunderRow {
@@ -87,6 +87,9 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- التدفق المتاح لخدمة الدين في السنة الأولى ' + n(credit.years[0].cfads) + ' ريال = صافي الربح + الاستهلاك ' + n(credit.years[0].depreciation) + ' + كلفة التمويل ' + n(credit.years[0].financeCharge) + '\n'
     + '- التدفق الشهري للسنة الأولى يبلغ أعمق نقطة نقدية في الشهر ' + (credit.deepestMonth ? credit.deepestMonth.month : 0) + '، فرأس المال العامل الفعلي اللازم ' + n(credit.workingCapitalNeeded) + ' ريال\n'
     + '- السيناريو المتحفظ (مبيعات -20% وتكاليف +10%): تغطية ' + (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict + '\n'
+    + (credit.combined ? '- التغطية المجمّعة للمنشأة بعد التوسعة (النشاط القائم + المشروع مقابل خدمة الدين كلها): أدناها '
+      + (credit.combined.minDscr === null ? '—' : credit.combined.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.combined.avgDscr as number).toFixed(2) + '×')
+      + ' — ' + credit.combined.verdict + '. وهذا هو الرقم الذي تقرؤه جهة التمويل، لأنها تقرض المنشأة لا الفرع.\n' : '')
     + '- زكاة تقديرية 2.5% مخصومة في الأرقام أعلاه: ' + n(result.years[0].zakat) + ' ريال في السنة الأولى (الوعاء الفعلي وفق قواعد هيئة الزكاة والضريبة والجمارك)\n'
     + '- حدود الأمان: الإيراد اللازم لتغطية 1.25× هو ' + n(bp.requiredRevenue) + ' ريال، أي '
       + (bp.headroomPct === null ? '—' : bp.headroomPct >= 0
@@ -272,6 +275,7 @@ function decisionPage(ctx: FeasibilityContext, r: FeasibilityResult, credit?: Cr
     + row('مساهمة المؤسس', m(ctx.inputs.ownFunds) + ' ريال (' + eq.toFixed(0) + '% من إجمالي الاستثمار) — فجوة التمويل ' + m(r.fundingGap) + ' ريال')
     + row('القسط السنوي', m(r.annualInstalment) + ' ريال')
     + (credit && credit.minDscr !== null ? row('تغطية خدمة الدين', 'أدناها ' + credit.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.avgDscr as number).toFixed(2) + '× — ' + credit.verdict) : '')
+    + (credit && credit.combined && credit.combined.minDscr !== null ? row('التغطية المجمّعة للمنشأة بعد التوسعة', 'أدناها ' + credit.combined.minDscr.toFixed(2) + '× ومتوسطها ' + (credit.combined.avgDscr as number).toFixed(2) + '× — ' + credit.combined.verdict) : '')
     + (bp && bp.headroomPct !== null ? row(bp.headroomPct >= 0 ? 'هامش التراجع المحتمل في المبيعات' : 'الزيادة المطلوبة في المبيعات لبلوغ 1.25×', Math.abs(bp.headroomPct).toFixed(1) + '%') : '')
     + (credit && credit.deepestMonth ? row('أعمق نقطة نقدية في السنة الأولى', 'الشهر ' + credit.deepestMonth.month + ' عند ' + m(credit.deepestMonth.cumulative) + ' ريال — رأس مال عامل فعلي لا يقل عن ' + m(credit.workingCapitalNeeded) + ' ريال') : '')
     + (credit && credit.scenarios[0] ? row('السيناريو المتحفظ (−20% مبيعات، +10% تكاليف)', (credit.scenarios[0].dscrY1 === null ? '—' : credit.scenarios[0].dscrY1.toFixed(2) + '×') + ' — ' + credit.scenarios[0].verdict) : '')
@@ -322,7 +326,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + '<h2>قائمة الدخل المتوقعة لخمس سنوات</h2>' + renderProjectionTable(r)
     + '<h2>التدفق النقدي المتوقع لخمس سنوات</h2>' + renderCashflowTable(r)
     + '<div class="note">الأرقام أعلاه محسوبة من افتراضات العميل المذكورة في جدول الافتراضات، وليست وعداً بعائد. وأي تغيّر في السعر أو حجم المبيعات أو التكاليف يغيّر النتائج.</div>'
-    + (credit ? '<h2>ملف الائتمان — تغطية خدمة الدين</h2>' + renderCreditTable(credit) + '<h2>التدفق النقدي الشهري للسنة الأولى</h2>' + renderMonthlyTable(credit) + '<h2>تحليل الحساسية — ثلاثة سيناريوهات</h2>' + renderScenarioTable(credit) : '')
+    + (credit ? '<h2>ملف الائتمان — تغطية خدمة الدين</h2>' + renderCreditTable(credit) + (credit.combined ? '<h2>التغطية المجمّعة — المنشأة كلها بعد التوسعة</h2>' + renderCombinedTable(credit.combined) : '') + '<h2>التدفق النقدي الشهري للسنة الأولى</h2>' + renderMonthlyTable(credit) + '<h2>تحليل الحساسية — ثلاثة سيناريوهات</h2>' + renderScenarioTable(credit) : '')
     + (bp ? '<h2>حدود الأمان — ما الذي يجب أن يكون صحيحاً</h2>' + renderBreakPointsTable(bp, r) : '')
     + sec('دراسة السوق', s.marketStudy)
     + sec('المنافسون', s.competition)

@@ -50,6 +50,8 @@ const FZ_NUM = [
   { k: 'financingAmount', t: 'التمويل المطلوب (ريال)' },
   { k: 'financingYears', t: 'مدة السداد (سنوات)' },
   { k: 'financingRate', t: 'كلفة التمويل السنوية %' },
+  { k: 'existingEbitda', t: 'الأرباح التشغيلية الحالية سنوياً (للتوسعة)' },
+  { k: 'existingDebtService', t: 'أقساط التمويل القائمة سنوياً (للتوسعة)' },
 ]
 const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (ر.س)'},{k:'branch_cost',t:'تكلفة افتتاح الفرع (ر.س)'},{k:'payback',t:'استرداد رأس مال الفرع (شهر)'},{k:'branches_now',t:'عدد الفروع الحالية'},{k:'branches_target',t:'عدد الفروع الجديدة من الجولة'},{k:'headcount',t:'عدد الموظفين'},{k:'equity_offered',t:'الحصة المعروضة (%)'},{k:'pre_money',t:'التقييم قبل الجولة (ر.س)'},{k:'target_return',t:'مضاعف العائد المستهدف وأفقه'},{k:'round_size',t:'حجم الجولة المطلوب (ر.س)'}]
   const [loading, setLoading] = useState(true)
