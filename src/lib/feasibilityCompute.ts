@@ -140,6 +140,7 @@ export interface CombinedYear { year: number; projectCfads: number; existingEbit
 export interface CombinedPack {
   years: CombinedYear[]; minDscr: number | null; avgDscr: number | null; verdict: string;
   existingEbitda: number; existingDebtService: number;
+  stressDscr: number | null;   // السيناريو المتحفظ على مستوى المنشأة لا الفرع
 }
 
 export interface CreditPack {
@@ -217,8 +218,15 @@ export function computeCredit(i: FeasibilityInputs, r: FeasibilityResult): Credi
     const cd = cy.map(y => y.dscr).filter((x): x is number => x !== null);
     const cmin = cd.length ? Math.min(...cd) : null;
     const cavg = cd.length ? cd.reduce((a, b) => a + b, 0) / cd.length : null;
+    // السيناريو المتحفظ نفسه (−20% مبيعات، +10% تكاليف) لكن على تدفق المنشأة كلها
+    const sRev = y1.revenue * 0.8, sVar = y1.variableCosts * 0.8 * 1.1, sFix = y1.fixedCosts * 1.1;
+    const sEb = sRev - sVar - sFix;
+    const sZk = Math.max(0, sEb - dep - y1.financeCharge) * ZAKAT_RATE;
+    const sTotalDs = y1.debtService + exDs;
+    const stressDscr = sTotalDs > 0 ? (sEb - sZk + exEbitda) / sTotalDs : null;
+
     combined = {
-      years: cy, minDscr: cmin, avgDscr: cavg, existingEbitda: exEbitda, existingDebtService: exDs,
+      years: cy, minDscr: cmin, avgDscr: cavg, existingEbitda: exEbitda, existingDebtService: exDs, stressDscr,
       verdict: cmin === null ? 'لا تنطبق'
         : cmin >= 1.5 ? 'تغطية مريحة على مستوى المنشأة: النشاط القائم يحمل القسط الجديد بفارق واضح'
         : cmin >= 1.25 ? 'تغطية مقبولة ائتمانياً على مستوى المنشأة'
@@ -309,6 +317,10 @@ export function renderCombinedTable(k: CombinedPack): string {
     + rows + '</tbody></table>'
     + '<div class="note"><b>لماذا هذا الجدول هو الحاسم في التوسعة:</b> جدول الائتمان أعلاه يقيس الفرع الجديد معزولاً، وهو قياس متحفّظ يفيد في معرفة هل يعيل الفرع نفسه. أما جهة التمويل فتقرض المنشأة لا الفرع، فتقيس تدفقها كله مقابل التزاماتها كلها — وهو ما يظهر هنا: أدنى تغطية '
     + (k.minDscr === null ? '—' : k.minDscr.toFixed(2) + '× ومتوسطها ' + (k.avgDscr as number).toFixed(2) + '×') + ' — ' + k.verdict
+    + (k.stressDscr === null ? '' : '. <b>وتحت السيناريو المتحفظ نفسه (مبيعات −20% وتكاليف +10% على المشروع الجديد)</b> تبلغ التغطية على مستوى المنشأة '
+      + k.stressDscr.toFixed(2) + '× — ' + (k.stressDscr >= 1.25 ? 'أي أن النشاط القائم يمتصّ الصدمة ويبقى الهيكل ضمن الحد المقبول'
+        : k.stressDscr >= 1 ? 'أي أن الهيكل يصمد بهامش ضيق لا يحتمل صدمة إضافية'
+        : 'أي أن الصدمة تتجاوز قدرة المنشأة مجتمعةً، وهي مخاطرة تستوجب معالجة قبل الصرف'))
     + '. الأرباح التشغيلية القائمة وأقساط التمويل القائمة كما أفاد بها العميل، ويلزم إسنادها بقوائمه المالية.</div>';
 }
 

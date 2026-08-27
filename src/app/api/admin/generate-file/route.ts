@@ -190,7 +190,7 @@ export async function POST(req: Request) {
       const cols = 'provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, required_docs, gaps, fit_score, verdict';
       const pull = (t: string) => admin.from('match_results').select(cols)
         .eq('company_id', companyId).eq('track', t).eq('status', 'new').gt('fit_score', 0)
-        .order('fit_score', { ascending: false }).limit(40);
+        .order('fit_score', { ascending: false }).limit(24);  // = سقف مرحلة الإثراء، فلا يظهر صف بلا طريقة تقديم
       let { data: fnd } = await pull('feasibility');
       if (!fnd || !fnd.length) ({ data: fnd } = await pull('funding'));
       const { sections, result, credit, error } = await generateFeasibility(ctx);

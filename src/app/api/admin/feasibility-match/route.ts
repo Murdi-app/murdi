@@ -79,7 +79,8 @@ export async function POST(req: Request) {
       ask: num('financingAmount'),
       totalInvestment: num('capex') + num('workingCapital'),
       isNew,
-      imports: str('imports') === 'yes' || Boolean(str('importCountries')),
+      // «لا يستورد» صريحةً تتقدّم على وجود نص قديم في خانة الدول
+      imports: str('imports') === 'no' ? false : (str('imports') === 'yes' || Boolean(str('importCountries'))),
       importCountries: str('importCountries'),
       property: (['rent', 'buy', 'own'].includes(str('propertyMode')) ? str('propertyMode') : 'rent') as PropertyMode,
       capexKind: (['equipment', 'property', 'vehicles', 'fitout', 'tech', 'inventory', 'mixed'].includes(str('capexKind')) ? str('capexKind') : 'mixed') as CapexKind,

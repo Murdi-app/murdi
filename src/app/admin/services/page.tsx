@@ -364,13 +364,15 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       let batch = 0
       let total = 0
       let count = 0
+      let drops = 0
       for (let guard = 0; guard < 40; guard++) {
         const res = await fetch('/api/admin/feasibility-match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, batch }) })
         const d = await res.json()
         if (!d.ok) { alert('تعذّرت المطابقة: ' + (d.error || res.status)); setBusy(''); return }
         total = d.total || total
         count = d.count || count
-        setFzMatch((p) => ({ ...p, [companyId]: 'جارٍ المطابقة… ' + Math.min((batch + 1) * 5, total) + '/' + total + ' — ' + count + ' جهة' + (d.gate ? ' | البوابة: ' + d.gate : '') }))
+        drops += d.dropped || 0
+        setFzMatch((p) => ({ ...p, [companyId]: 'جارٍ المطابقة… ' + Math.min((batch + 1) * 5, total) + '/' + total + ' — ' + count + ' جهة' + (drops ? ' (استُبعدت ' + drops + ' غير مناسبة)' : '') + (d.gate ? ' | البوابة: ' + d.gate : '') }))
         if (d.done) break
         batch = d.next
       }

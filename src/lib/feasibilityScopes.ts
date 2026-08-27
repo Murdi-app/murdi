@@ -30,6 +30,7 @@ export function buildFeasibilityScopes(p: FzMatchProfile): string[] {
   // ═══ دائماً: الأبواب التي لا تشترط خاصية ═══
   s.push('اقتصر على البنوك السعودية المرخّصة من البنك المركزي السعودي وبرامجها لتمويل المنشآت الصغيرة والمتوسطة، وبيّن لكل بنك حده الأدنى والأعلى وشروط الضمان.');
   s.push('اقتصر على شركات التمويل المرخّصة من البنك المركزي السعودي التي تموّل المنشآت الصغيرة والمتوسطة — لا بنوك.');
+  s.push('اقتصر على بيوت التمويل الإسلامي وشركات المرابحة والإجارة الخليجية التي تموّل المنشآت السعودية عبر فروعها أو شركاتها التابعة في المملكة.');
   if (!p.foreignOwner) {
     s.push('اقتصر على برامج الضمان الحكومية وضمانات كفالة والجهات التي تسهّل وصول المنشآت الصغيرة للتمويل البنكي، وبيّن نسبة التغطية وشروط الأهلية.');
   }
@@ -49,6 +50,11 @@ export function buildFeasibilityScopes(p: FzMatchProfile): string[] {
   }
   if (p.capexKind === 'vehicles') {
     s.push('اقتصر على شركات تمويل وتأجير المركبات وإدارة الأساطيل العاملة في السعودية.');
+    if (ask >= 3 * M) s.push('اقتصر على شركات التأجير وإدارة الأساطيل الدولية العاملة في الخليج والسعودية: Ayvens وALD وArval وElement وما شابهها.');
+  }
+  // ═══ خاصية: المخزون هو البند الأكبر — تجارة تجزئة أو جملة ═══
+  if (p.capexKind === 'inventory') {
+    s.push('اقتصر على تمويل المخزون والبضائع ورأس المال العامل التجاري للمنشآت السعودية: تمويل المشتريات والدفع الآجل ومنصات تمويل الموردين.');
   }
   if ((p.capexKind === 'equipment' || p.capexKind === 'vehicles') && ask >= 2 * M) {
     s.push('اقتصر على أذرعة التمويل التابعة لمصنّعي المعدات (Vendor وCaptive Finance) التي تموّل المشترين في السعودية والخليج.');
@@ -108,6 +114,7 @@ export function describeGate(p: FzMatchProfile, n: number): string {
   const on: string[] = [];
   if (p.ask <= 5_000_000) on.push('حجم صغير');
   if (p.capexKind === 'equipment' || p.capexKind === 'vehicles' || p.capexKind === 'mixed' || p.capexKind === 'tech') on.push('تمويل معدات');
+  if (p.capexKind === 'inventory') on.push('تمويل مخزون');
   if (p.property === 'buy') on.push('شراء عقار');
   if (p.property === 'own') on.push('عقار مملوك');
   if (p.imports) on.push('استيراد' + (p.importCountries.trim() ? ' من ' + p.importCountries.trim() : ''));
