@@ -2,7 +2,28 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { fundingContract, investmentContract, acquisitionContract, ContractFields } from '@/lib/contracts';
+import { fundingContract, investmentContract, acquisitionContract, ContractFields, type FeeType } from '@/lib/contracts';
+
+// آلية الأتعاب تُقرأ من صفوف العقد ذاتها، فنص العقد يتبع الحقول ولا يُكتب يدوياً
+const FEE_COLS = ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr',
+                  'fee_percent', 'deal_value', 'fee_type', 'fixed_amount', 'success_min', 'success_base'];
+
+function toFields(r: Record<string, unknown>): ContractFields {
+  return {
+    clientName: r.client_name as string,
+    clientIdNumber: r.client_id_number as string,
+    establishmentName: r.establishment_name as string,
+    establishmentCr: r.establishment_cr as string,
+    feePercent: r.fee_percent as number,
+    feeType: (r.fee_type as FeeType) || 'percent',
+    fixedAmount: r.fixed_amount as number,
+    successMin: r.success_min as number,
+  };
+}
+
+function render(type: string, f: ContractFields): string {
+  return type === 'acquisition' ? acquisitionContract(f) : type === 'investment' ? investmentContract(f) : fundingContract(f);
+}
 import { requireAdmin } from '@/lib/requireAdmin';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
@@ -44,8 +65,21 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { serviceRequestId, companyId, contractType } = body;
 
-  const fields: ContractFields = {};
-  const text = contractType === 'acquisition' ? acquisitionContract(fields) : contractType === 'investment' ? investmentContract(fields) : fundingContract(fields);
+  // آلية الأتعاب المبدئية: تُورَّث من طلب الخدمة إن حُدِّدت فيه، وإلا نسبة نجاح
+  let seed: Record<string, unknown> = { fee_type: 'percent' };
+  if (serviceRequestId) {
+    const { data: sr } = await admin.from('service_requests')
+      .select('fee_type, success_pct, success_min, success_base, quoted_price')
+      .eq('id', serviceRequestId).maybeSingle();
+    if (sr) seed = {
+      fee_type: sr.fee_type || 'percent',
+      fee_percent: sr.success_pct ?? null,
+      success_min: sr.success_min ?? null,
+      success_base: sr.success_base ?? null,
+      fixed_amount: (sr.fee_type === 'fixed' || sr.fee_type === 'both') ? (sr.quoted_price ?? null) : null,
+    };
+  }
+  const text = render(String(contractType), toFields(seed));
 
   const { data, error } = await admin.from('contracts').insert({
     company_id: companyId,
@@ -53,6 +87,7 @@ export async function POST(req: Request) {
     contract_type: contractType,
     status: 'draft',
     contract_body: text,
+    ...seed,
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, contract: data });
@@ -66,20 +101,19 @@ export async function PATCH(req: Request) {
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json();
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const k of ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr', 'fee_percent', 'deal_value', 'status']) {
-    if (body[k] !== undefined) updates[k] = body[k];
+  for (const k of [...FEE_COLS, 'status']) {
+    if (body[k] !== undefined) updates[k] = body[k] === '' ? null : body[k];
   }
-  // إعادة توليد نص العقد بالحقول المعبأة (الحقول هي المصدر)
-  const { data: existing } = await admin.from('contracts').select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent').eq('id', body.id).single();
+  // إعادة توليد نص العقد بالحقول المعبأة (الحقول هي المصدر، لا النص)
+  // السلسلة مكتوبة حرفياً لا مبنيةً من مصفوفة — وإلا فقد Supabase استنتاج النوع وعاد GenericStringError
+  const { data: existingRaw } = await admin.from('contracts')
+    .select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent, deal_value, fee_type, fixed_amount, success_min, success_base')
+    .eq('id', body.id).single();
+  const existing = existingRaw as unknown as Record<string, unknown> | null;
   if (existing) {
-    const fields: ContractFields = {
-      clientName: body.client_name ?? existing.client_name,
-      clientIdNumber: body.client_id_number ?? existing.client_id_number,
-      establishmentName: body.establishment_name ?? existing.establishment_name,
-      establishmentCr: body.establishment_cr ?? existing.establishment_cr,
-      feePercent: body.fee_percent ?? existing.fee_percent,
-    };
-    updates.contract_body = existing.contract_type === 'acquisition' ? acquisitionContract(fields) : existing.contract_type === 'investment' ? investmentContract(fields) : fundingContract(fields);
+    const merged: Record<string, unknown> = { ...existing };
+    for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
+    updates.contract_body = render(String(merged.contract_type), toFields(merged));
   }
   if (body.status === 'issued') updates.issued_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();

@@ -477,7 +477,20 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   async function saveContract(c: any, status?: string) {
     setBusy(c.service_request_id)
     const e = cEdits[c.id] || {}
-    await fetch('/api/admin/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, contract_body: e.contract_body ?? c.contract_body, client_name: e.client_name ?? c.client_name, client_id_number: e.client_id_number ?? c.client_id_number, establishment_name: e.establishment_name ?? c.establishment_name, establishment_cr: e.establishment_cr ?? c.establishment_cr, fee_percent: (e.fee_percent ?? c.fee_percent) ? Number(e.fee_percent ?? c.fee_percent) : null, status }) })
+    const pick = (k: string) => e[k] !== undefined ? e[k] : c[k]
+    const numOrNull = (k: string) => { const v = pick(k); return v === '' || v === null || v === undefined ? null : Number(v) }
+    // نص العقد لا يُرسل: الخادم يعيد توليده من الحقول، فلا يفترق النص عن الأرقام أبداً
+    await fetch('/api/admin/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      id: c.id,
+      client_name: pick('client_name'), client_id_number: pick('client_id_number'),
+      establishment_name: pick('establishment_name'), establishment_cr: pick('establishment_cr'),
+      fee_type: pick('fee_type') || 'percent',
+      fee_percent: numOrNull('fee_percent'),
+      fixed_amount: numOrNull('fixed_amount'),
+      success_min: numOrNull('success_min'),
+      success_base: pick('success_base') || null,
+      status,
+    }) })
     if (status === 'issued') {
       await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'in_follow_up' }) })
     }
@@ -823,9 +836,43 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       <input value={val('client_id_number')} onChange={e=>setC('client_id_number', e.target.value)} placeholder="رقم الهوية" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                       <input value={val('establishment_name')} onChange={e=>setC('establishment_name', e.target.value)} placeholder="اسم المنشأة" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                       <input value={val('establishment_cr')} onChange={e=>setC('establishment_cr', e.target.value)} placeholder="السجل التجاري" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
-                      <input value={val('fee_percent')} onChange={e=>setC('fee_percent', e.target.value)} type="number" placeholder="نسبة الأتعاب ٪" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                     </div>
-                    <textarea value={val('contract_body')} onChange={e=>setC('contract_body', e.target.value)} style={{ width:'100%', minHeight:160, border:'1.5px solid #EAF2EE', borderRadius:12, padding:12, fontFamily:'Cairo', fontSize:12, lineHeight:1.9, color:'#1A3D34', marginBottom:10, whiteSpace:'pre-wrap' }} />
+                    {(() => {
+                      const ft = String(val('fee_type') || 'percent')
+                      const showPct = ft === 'percent' || ft === 'both'
+                      const showFix = ft === 'fixed' || ft === 'both'
+                      const BASE: Record<string, string> = { financing: 'التمويل المنفَّذ', deal: 'قيمة الصفقة', saving: 'الوفر المتحقق', round: 'قيمة الجولة' }
+                      const defBase = c.contract_type === 'acquisition' ? 'deal' : c.contract_type === 'investment' ? 'round' : 'financing'
+                      const inp = { border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 } as const
+                      return (
+                        <div style={{ background:'#FBFAF5', border:'1px solid #EAD9A8', borderRadius:12, padding:'12px 14px', marginBottom:10 }}>
+                          <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>آلية الأتعاب — أنت تحددها، والعقد يُكتب منها</div>
+                          <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' }}>
+                            {([['percent','نسبة نجاح فقط'],['fixed','مبلغ ثابت فقط'],['both','ثابت + نسبة نجاح']] as const).map(([k, lb]) => (
+                              <button key={k} onClick={()=>setC('fee_type', k)} style={{ padding:'7px 14px', borderRadius:30, cursor:'pointer', fontFamily:'Cairo', fontWeight:900, fontSize:12,
+                                background: ft === k ? '#1A3D34' : '#fff', color: ft === k ? '#fff' : '#6B8A80', border: ft === k ? '1.5px solid #1A3D34' : '1.5px solid #EAF2EE' }}>{lb}</button>
+                            ))}
+                          </div>
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                            {showFix && <input value={val('fixed_amount')} onChange={e=>setC('fixed_amount', e.target.value)} type="number" placeholder="المبلغ الثابت (ريال)" style={inp} />}
+                            {showPct && <input value={val('fee_percent')} onChange={e=>setC('fee_percent', e.target.value)} type="number" step="0.1" placeholder="نسبة النجاح ٪" style={inp} />}
+                            {showPct && <input value={val('success_min')} onChange={e=>setC('success_min', e.target.value)} type="number" placeholder="حد أدنى لأتعاب النجاح (اختياري)" style={inp} />}
+                            {showPct && (
+                              <select value={String(val('success_base') || defBase)} onChange={e=>setC('success_base', e.target.value)} style={{ ...inp, background:'#fff' }}>
+                                {Object.entries(BASE).map(([k, lb]) => <option key={k} value={k}>النسبة على: {lb}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          <div style={{ color:'#6B8A80', fontSize:11.5, lineHeight:1.8, marginTop:8 }}>
+                            {ft === 'both' ? 'الثابت يُستحق عند التوقيع ولا يُخصم من نسبة النجاح — ويُنص على ذلك في العقد صراحةً.'
+                              : ft === 'fixed' ? 'مبلغ واحد عند التوقيع، وينص العقد على ألا نسبة نجاح فيه.'
+                              : 'لا مقدّم — لا تُستحق الأتعاب إلا بعد وصول التمويل أو إتمام الصفقة.'}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                    <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:700, marginBottom:4 }}>نص العقد يُولَّد من الحقول أعلاه عند الحفظ — عدّل الحقول لا النص</div>
+                    <textarea readOnly value={String(c.contract_body || '')} style={{ width:'100%', minHeight:160, border:'1.5px solid #EAF2EE', borderRadius:12, padding:12, fontFamily:'Cairo', fontSize:12, lineHeight:1.9, color:'#1A3D34', marginBottom:10, whiteSpace:'pre-wrap', background:'#FCFDFC' }} />
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                       <button onClick={() => saveContract(c)} disabled={busy === r.id} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'8px 18px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:12.5, cursor:'pointer' }}>حفظ المسودّة</button>
                       <button onClick={() => saveContract(c, 'issued')} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'8px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>📤 إصدار العقد للعميل</button>
