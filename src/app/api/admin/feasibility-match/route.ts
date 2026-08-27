@@ -53,13 +53,19 @@ export async function POST(req: Request) {
     // الملف المالي المُركَّب: كل حقل إما من المدخلات أو «غير محدد» — لا نخترع صفة للعميل
     const fd: Record<string, unknown> = {
       annual_revenue: rev,
-      years_operating: isNew ? 0 : undefined,
+      years_operating: isNew ? 0 : (num('existingYears') || undefined),
       funding_type: 'project',
       funding_type_other: isNew ? 'تمويل تأسيس مشروع جديد' : 'تمويل توسعة نشاط قائم',
       activity_type: 'other',
       activity_other: str('sectorText') || String(company.sector || ''),
-      has_debt: false,
-      net_profit: undefined,
+      // الديون تُقرأ من مدخلات التوسعة لا تُفترض — وجود أقساط قائمة إقرارٌ بوجود دين
+      has_debt: num('existingDebtService') > 0,
+      net_profit: num('existingEbitda') > 0 ? num('existingEbitda') : undefined,
+      // أصول قابلة للرهن: يُطبع نصّه كما هو، فيبقى «غير محدد» إن لم يُدخل
+      has_collateral: str('collateralNote') || undefined,
+      // القالب ثنائي بلا «غير معروف»: نُقرّ بالالتزام فقط حين يُصرّح به، وننبّه في وصف الطلب إن لم يُفصح
+      tax_compliant: str('compliance') === 'ok',
+      zakat_compliant: str('compliance') === 'ok',
       // القالب ثنائي بلا خيار «غير معروف»، فترك الحقل فارغاً يُطبع «غير ساري» — نفياً مفبركاً
       cr_valid: Boolean(company.cr_number),
       has_financial_statements: !isNew,
@@ -95,9 +101,13 @@ export async function POST(req: Request) {
       typeLabel: (isNew ? 'تمويل تأسيس مشروع جديد' : 'تمويل توسعة نشاط قائم')
         + ' — إجمالي استثمار ' + Math.round(num('capex') + num('workingCapital')).toLocaleString('en-US')
         + ' ريال، المطلوب تمويله ' + Math.round(num('financingAmount')).toLocaleString('en-US')
-        + ' ريال، ومساهمة المؤسس ' + Math.round(num('ownFunds')).toLocaleString('en-US') + ' ريال',
-      rev, years: isNew ? 0 : 1,
-      debtDesc: 'لا توجد ديون قائمة',
+        + ' ريال، ومساهمة المؤسس ' + Math.round(num('ownFunds')).toLocaleString('en-US') + ' ريال'
+        + (str('compliance') === 'ok' ? '' : ' — ملاحظة: لم يُفصح بعد عن الالتزام الزكوي والضريبي ولا عن سجل السداد، فلا يُبنى عليهما استبعاد ويُذكران فجوةً يلزم استكمالها')
+        + (isNew ? '' : (num('existingYears') > 0 ? ' — عمر النشاط القائم ' + num('existingYears') + ' سنوات' : '')),
+      rev, years: isNew ? 0 : num('existingYears'),
+      debtDesc: num('existingDebtService') > 0
+        ? 'يوجد تمويل قائم بأقساط سنوية ' + Math.round(num('existingDebtService')).toLocaleString('en-US') + ' ريال'
+        : (isNew ? 'مشروع جديد — لا توجد ديون قائمة' : 'لم يُفصح عن ديون قائمة'),
       isInvest: false, budget: 'full',
       scopes,
       scopeFrom: batch === undefined ? undefined : from,

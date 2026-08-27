@@ -36,6 +36,7 @@ const FZ_TEXT = [
   { k: 'existingRevenue', t: 'إيراد النشاط القائم (للتوسعة)' },
   { k: 'importCountries', t: 'دول الاستيراد (إن وُجد)' },
   { k: 'largeBuyers', t: 'عملاء كبار بالاسم (إن وُجدوا)' },
+  { k: 'collateralNote', t: 'أصول قابلة للرهن (وصفها إن وُجدت)' },
 ]
 const FZ_NUM = [
   { k: 'capex', t: 'التكلفة الرأسمالية (ريال)' },
@@ -52,6 +53,7 @@ const FZ_NUM = [
   { k: 'financingRate', t: 'كلفة التمويل السنوية %' },
   { k: 'existingEbitda', t: 'الأرباح التشغيلية الحالية سنوياً (للتوسعة)' },
   { k: 'existingDebtService', t: 'أقساط التمويل القائمة سنوياً (للتوسعة)' },
+  { k: 'existingYears', t: 'عمر النشاط القائم بالسنوات (للتوسعة)' },
 ]
 const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (ر.س)'},{k:'branch_cost',t:'تكلفة افتتاح الفرع (ر.س)'},{k:'payback',t:'استرداد رأس مال الفرع (شهر)'},{k:'branches_now',t:'عدد الفروع الحالية'},{k:'branches_target',t:'عدد الفروع الجديدة من الجولة'},{k:'headcount',t:'عدد الموظفين'},{k:'equity_offered',t:'الحصة المعروضة (%)'},{k:'pre_money',t:'التقييم قبل الجولة (ر.س)'},{k:'target_return',t:'مضاعف العائد المستهدف وأفقه'},{k:'round_size',t:'حجم الجولة المطلوب (ر.س)'}]
   const [loading, setLoading] = useState(true)
@@ -555,6 +557,9 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                     </select>
                     <select value={(fzIn[r.id] || {}).propertyMode || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), propertyMode: e.target.value } }))} style={IN_STYLE}>
                       <option value="">— الموقع: إيجار أم تملّك —</option><option value="rent">إيجار</option><option value="buy">شراء عقار ضمن المشروع</option><option value="own">عقار مملوك مسبقاً</option>
+                    </select>
+                    <select value={(fzIn[r.id] || {}).compliance || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), compliance: e.target.value } }))} style={IN_STYLE}>
+                      <option value="">— الالتزام الزكوي والضريبي —</option><option value="ok">مكتمل ومصرَّح به</option><option value="unknown">لم يُفصح عنه بعد</option>
                     </select>
                     <select value={(fzIn[r.id] || {}).imports || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), imports: e.target.value } }))} style={IN_STYLE}>
                       <option value="">— استيراد من الخارج؟ —</option><option value="no">لا يستورد</option><option value="yes">يستورد</option>
