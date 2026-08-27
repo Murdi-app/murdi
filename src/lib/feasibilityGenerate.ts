@@ -5,7 +5,7 @@ import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderF
 // صف جهة تمويل مرشحة — يُقرأ من match_results ولا يُولَّد بنموذج
 export interface FunderRow {
   provider: string; product?: string; region?: string; requirements?: string;
-  amount_range?: string; timeline?: string; apply_channel?: string; apply_url?: string;
+  amount_range?: string; timeline?: string; apply_channel?: string; apply_url?: string; required_docs?: string;
   gaps?: string[] | null; fit_score?: number; verdict?: string;
 }
 
@@ -294,14 +294,15 @@ function funderTable(funders?: FunderRow[]): string {
     '<b>' + esc(x.provider) + '</b>' + (x.product ? '<br><span style="font-size:11px;color:#666">' + x.product + '</span>' : ''),
     esc(x.region),
     esc(x.amount_range),
-    esc(x.requirements).slice(0, 240),
+    esc(x.requirements).slice(0, 190)
+      + (x.required_docs ? '<br><span style="font-size:11px;color:#666"><b>المستندات:</b> ' + String(x.required_docs).slice(0, 190) + '</span>' : ''),
     (x.gaps && x.gaps.length ? x.gaps.slice(0, 3).join(' · ') : '—'),
     esc(x.apply_channel),
   ].join('</td><td>') + '</td></tr>').join('');
   return '<h2>الجهات التمويلية المرشحة لهذا الملف</h2>'
-    + '<table class="fz sm"><thead><tr><th>الجهة</th><th>النطاق</th><th>حدود المبلغ</th><th>أبرز المتطلبات</th><th>الفجوات قبل التقديم</th><th>طريقة التقديم</th></tr></thead><tbody>'
+    + '<table class="fz sm"><thead><tr><th>الجهة</th><th>النطاق</th><th>حدود المبلغ</th><th>المتطلبات والمستندات</th><th>الفجوات قبل التقديم</th><th>طريقة التقديم</th></tr></thead><tbody>'
     + rows + '</tbody></table>'
-    + '<div class="note">الترتيب بحسب مطابقة شروط كل جهة لبيانات هذا الملف. عمود «الفجوات» هو ما يلزم استكماله قبل التقديم لتلك الجهة تحديداً، وهو خارطة العمل التنفيذية للمرحلة التالية. ولا تُعد هذه القائمة وعداً بموافقة — القرار للجهة وحدها بعد دراستها للملف.</div>';
+    + '<div class="note">الترتيب بحسب مطابقة شروط كل جهة لبيانات هذا الملف. عمود «الفجوات» هو ما يلزم استكماله قبل التقديم لتلك الجهة تحديداً، وهو خارطة العمل التنفيذية للمرحلة التالية. ولا تُعد هذه القائمة وعداً بموافقة — القرار للجهة وحدها بعد دراستها للملف. وتُذكر هنا قناة التقديم والمستندات المطلوبة؛ أما روابط التقديم المباشرة ونصوص المخاطبة والمتابعة حتى الرد فتُنفَّذ ضمن خدمة مخاطبة الجهات.</div>';
 }
 
 export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack, funders?: FunderRow[]): string {

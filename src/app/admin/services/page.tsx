@@ -374,8 +374,22 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
         if (d.done) break
         batch = d.next
       }
-      setFzMatch((p) => ({ ...p, [companyId]: 'اكتملت المطابقة — ' + count + ' جهة مرشّحة' }))
-      alert('اكتملت مطابقة الجهات: ' + count + ' جهة مرشّحة. ولّد الدراسة الآن لتظهر داخلها.')
+      setFzMatch((p) => ({ ...p, [companyId]: 'اكتملت المطابقة — ' + count + ' جهة · جارٍ تجهيز طرق التقديم…' }))
+
+      // المرحلة الثانية: قناة التقديم والمستندات المطلوبة لأعلى الجهات — هي ما يحوّل القائمة إلى خارطة طريق
+      let off = 0
+      let filled = 0
+      for (let guard = 0; guard < 12; guard++) {
+        const er = await fetch('/api/admin/feasibility-enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, offset: off }) })
+        const ed = await er.json()
+        if (!ed.ok) { setFzMatch((p) => ({ ...p, [companyId]: 'اكتملت المطابقة — ' + count + ' جهة · تعذّر تجهيز طرق التقديم' })); break }
+        filled += ed.filled || 0
+        setFzMatch((p) => ({ ...p, [companyId]: 'اكتملت المطابقة — ' + count + ' جهة · طرق التقديم ' + filled + '/' + (ed.top || 24) }))
+        if (ed.done) break
+        off = ed.next
+      }
+      setFzMatch((p) => ({ ...p, [companyId]: 'جاهزة — ' + count + ' جهة مرشّحة، وطريقة التقديم مجهّزة لأعلى ' + filled + ' جهة' }))
+      alert('اكتمل التجهيز: ' + count + ' جهة مرشّحة، وطرق التقديم والمستندات جاهزة لأعلى ' + filled + ' جهة.\n\nولّد الدراسة الآن لتظهر داخلها.')
     } catch (e) { alert('خطأ: ' + String(e)) }
     setBusy('')
   }

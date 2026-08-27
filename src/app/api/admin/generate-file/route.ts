@@ -187,7 +187,7 @@ export async function POST(req: Request) {
       };
       // الجهات المرشحة تُقرأ من نتائج المطابقة المحفوظة — قراءة واحدة بلا أي نداء نموذج
       // مسار الجدوى أولاً (مطابقة مستقلة تُشغَّل من بطاقة الدراسة)، فإن لم يوجد فمطابقة التمويل إن سبق تشغيلها
-      const cols = 'provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, gaps, fit_score, verdict';
+      const cols = 'provider, product, region, requirements, amount_range, timeline, apply_channel, apply_url, required_docs, gaps, fit_score, verdict';
       const pull = (t: string) => admin.from('match_results').select(cols)
         .eq('company_id', companyId).eq('track', t).eq('status', 'new').gt('fit_score', 0)
         .order('fit_score', { ascending: false }).limit(40);
