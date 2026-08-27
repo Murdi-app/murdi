@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
+import { priceFor } from '@/lib/servicePricing';
+import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE } from '@/lib/serviceCatalog';
 
 const TRACKS = [
   { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -33,6 +35,13 @@ export default function GoalPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
+  const [openDetails, setOpenDetails] = useState<string>('');
+  const [orderFor, setOrderFor] = useState<string>('');       // الخدمة المفتوح لها نموذج الطلب
+  const [orderInvest, setOrderInvest] = useState<string>('');  // حجم الاستثمار كما أدخله العميل
+  const [orderKind, setOrderKind] = useState<'new' | 'expansion'>('new');
+  const [orderOption, setOrderOption] = useState<string>('');
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [orderCategory, setOrderCategory] = useState<string>('');
 
   useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
 
@@ -79,7 +88,8 @@ export default function GoalPage() {
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
       const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null }> = {};
-      for (const r of (reqs || [])) { if (!reqMap[r.service_title]) reqMap[r.service_title] = { id: r.id, status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
+      // العناوين القديمة تُردّ إلى عنوانها الحالي حتى يظل طلب العميل ظاهراً بعد دمج الخدمات
+      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
       setServiceRequests(reqMap);
       const { data: ctrs } = await supabase
         .from('contracts')
@@ -102,20 +112,59 @@ export default function GoalPage() {
   const overall = doneScores.length ? Math.round(doneScores.reduce((a, b) => a + b, 0) / doneScores.length) : 0;
   const pct = overall >= 75 ? 90 : overall >= 70 ? 82 : overall >= 65 ? 74 : overall >= 55 ? 60 : overall >= 45 ? 45 : overall >= 35 ? 30 : 18;
 
-  const submitServiceRequest = async (title: string, category: string) => {
+  const submitServiceRequest = async (
+    title: string,
+    category: string,
+    extra?: { optionKey?: string; quotedPrice?: number | null; clientInputs?: Record<string, unknown> }
+  ) => {
     if (!companyId) return;
-    setServiceRequests((prev) => ({ ...prev, [title]: { id: '', status: 'submitted', price: null, deliverable: null } }));
+    const optimisticPrice = extra?.quotedPrice ?? null;
+    setServiceRequests((prev) => ({ ...prev, [title]: { id: '', status: 'submitted', price: optimisticPrice, deliverable: null } }));
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL as string,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
     );
+    // السعر المعروض لحظة الطلب يُحفظ مع الطلب، فلا يتغيّر على العميل لو عُدّلت الأسعار لاحقاً
     const { error } = await supabase.from('service_requests').insert({
       company_id: companyId,
       service_title: title,
       service_category: category,
       status: 'submitted',
+      option_key: extra?.optionKey || null,
+      quoted_price: extra?.quotedPrice ?? null,
+      client_inputs: extra?.clientInputs || null,
     });
     if (error) { console.error('فشل حفظ طلب الخدمة:', error); setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; }); }
+  };
+
+  // نموذج الطلب: الخدمات ذات الشرائح أو الخيارات تحتاج سؤالين قبل أن يظهر السعر
+  const needsForm = (title: string) => {
+    const c = commercialFor(title);
+    return Boolean(c && (c.tiersBy === 'investment' || (c.options && c.options.length)));
+  };
+
+  const openOrder = (title: string) => {
+    const c = commercialFor(title);
+    setOrderFor(title);
+    setOrderInvest('');
+    setOrderKind('new');
+    setOrderOption(c?.options?.[0]?.key || '');
+  };
+
+  const confirmOrder = async (category: string) => {
+    if (!orderFor || orderBusy) return;
+    setOrderBusy(true);
+    const c = commercialFor(orderFor);
+    const investment = Number(String(orderInvest).replace(/[^\d]/g, '')) || 0;
+    const opt = c?.options?.find((o) => o.key === orderOption);
+    // خيار له سعر معلن يأخذ سعره، وإلا فسعر الشريحة بحسب حجم الاستثمار
+    const quoted = opt && opt.price != null ? opt.price : priceFor(canonicalTitle(orderFor), investment).amount;
+    const inputs: Record<string, unknown> = {};
+    if (c?.tiersBy === 'investment') { inputs.totalInvestment = investment; inputs.projectKind = orderKind; }
+    if (orderOption) inputs.option = orderOption;
+    await submitServiceRequest(orderFor, category, { optionKey: orderOption || undefined, quotedPrice: quoted, clientInputs: inputs });
+    setOrderBusy(false);
+    setOrderFor('');
   };
 
   const uploadSignedContract = async (contractId: string, contractType: string, file: File) => {
@@ -350,51 +399,76 @@ export default function GoalPage() {
         <div className="mb-16">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Amiri, serif' }}>من التوصية إلى التنفيذ</h2>
-            <p className="text-[#6B8A80] font-bold text-sm leading-relaxed max-w-xl mx-auto">المنصة تكشف لك ما تحتاجه شركتك. وفريق د. عبدالحكيم المرضي ينفّذه معك خطوةً بخطوة. هذه خدمات التنفيذ المتاحة:</p>
+            <p className="text-[#6B8A80] font-bold text-sm leading-relaxed max-w-xl mx-auto mb-4">المنصة تكشف لك ما تحتاجه شركتك. وفريق د. عبدالحكيم المرضي ينفّذه معك خطوةً بخطوة — بسعر معلن ومدة معلومة، بلا مكالمة ولا مساومة.</p>
+            <div className="inline-flex flex-col items-center gap-1 px-6 py-3 rounded-2xl bg-[#F7FBF9] border border-[#EAF2EE]">
+              <div className="text-[#1A3D34] font-black text-sm">{SERVICE_COUNT} خدمة تؤهّل منشأتك لرأس المال</div>
+              <div className="text-[#9DB3AB] text-xs font-bold">كل واحدة منها تُزيل عائقاً بعينه بين ملفك وبين الجهة التي تموّله</div>
+            </div>
           </div>
-          {[
-            { label: 'خدمات أساسية', note: 'تخدم المسارات الثلاثة', items: [
-              { icon: '', title: 'إعداد القوائم المالية المعتمدة', display: 'تجهيز ملف القوائم المالية الجاهز للاعتماد', desc: 'قوائم مالية وفق المعايير المحاسبية المعتمدة، جاهزة للعرض على الممولين والمستثمرين والجهات الرقابية.' },
-              { icon: '', title: 'بناء الحوكمة المؤسسية', display: 'إعداد لوائح الحوكمة ومسوّداتها الجاهزة', desc: 'لوائح الحوكمة ومجلس الإدارة واللجان، وفصل الملكية عن الإدارة لترتقي شركتك لمستوى مؤسسي.' },
-              { icon: '', title: 'التقييم العادل المعمّق', display: 'تقرير تقييم القيمة العادلة المعمّق', desc: 'تقدير قيمة شركتك بمنهجية متكاملة تعتمد على أرقامك وقطاعك، لتتفاوض من موقع قوة.' },
-              { icon: '', title: 'إعادة الهيكلة المالية ومعالجة التعثّر', display: 'خطة إعادة الهيكلة المالية ومعالجة التعثّر', desc: 'إعادة جدولة الديون، وقف النزيف النقدي، واستعادة انتظام السداد لتمهيد تعافٍ حقيقي.' },
-            ]},
-            { label: 'مسار التمويل', note: 'للوصول إلى التمويل المناسب', items: [
-              { icon: '', title: 'تجهيز ملف التمويل والتفاوض', desc: 'إعداد ملفك التمويلي بصورة تُقنع البنوك وجهات التمويل، ومرافقتك في التفاوض حتى الحصول على التمويل.' },
-              { icon: '', title: 'إعادة جدولة الديون', display: 'خطة إعادة جدولة الديون', desc: 'إعادة ترتيب التزاماتك القائمة بما يخفّف الضغط النقدي ويحسّن قدرتك على السداد.' },
-            ]},
-            { label: 'مسار الاستثمار', note: 'لجعل شركتك جاذبة للمستثمر', items: [
-              { icon: '', title: 'تجهيز ملف عرض المستثمر والتفاوض', desc: 'تتم على مرحلتين: (١) إعداد العرض التقديمي (Pitch) الذي يُبرز قيمة شركتك للمستثمر المؤسسي — برسوم محدّدة. (٢) بعد اعتماد العرض، نُبرم عقد تجهيز الملف الكامل ودعم التفاوض حتى إتمام الصفقة — بعمولة نجاح. للشركات التي بلغت جاهزيتها.' },
-              { icon: '', title: 'تجهيز صفقة التملّك والتفاوض', desc: 'حين يتقدّم مشترٍ للاستحواذ على شركتك كاملة أو على حصة أغلبية: نراجع اتفاقية عدم الإفصاح قبل توقيعك، ونُعدّ تقييماً مستقلاً موثّقاً يحدّد ما تساويه شركتك فعلاً، ونصمّم بنية الصفقة ونقف معك في التفاوض حتى الإغلاق — بعمولة نجاح.' },
-              { icon: '', title: 'بناء خطة جذب المستثمر', desc: 'الخطوة التمهيدية: نعالج الفجوات التي تخفض جاذبية شركتك (الحوكمة، تركّز العملاء، وضوح الأرقام) ونرفع جاهزيتها — قبل أن تُعرض على المستثمر. تأتي قبل تجهيز ملف العرض.' },
-            ]},
-            { label: 'مسار الطرح والإدراج', note: 'الطريق المؤسسي نحو السوق المالية', items: [
-              { icon: '', title: 'تجهيز ملف هيئة السوق المالية', desc: 'خدمة استشارية ترافقك في التهيؤ للإدراج: تحديد متطلبات الهيئة النظامية وتجهيز ملف الشركة، والتنسيق مع مستشار مالي مرخّص يتولّى الإجراءات الخاضعة للترخيص.' },
-              { icon: '', title: 'تشكيل لجنة المراجعة والحوكمة', display: 'خطة تشكيل لجنة المراجعة والحوكمة', desc: 'تأسيس اللجان والهياكل التي يتطلبها الإدراج، وضمان توافقها مع لوائح الهيئة.' },
-              { icon: '', title: 'خارطة طريق الإدراج', desc: 'خطة تنفيذية مرحلية بالمدد والمتطلبات، تقودك من وضعك الحالي حتى لحظة الإدراج.' },
-            ]},
-          ].map((cat, ci) => (
+          {CATALOG.map((cat, ci) => (
             <div key={ci} className="mb-7">
               <div className="flex items-baseline gap-3 mb-4 border-b-2 border-[#EAF2EE] pb-2">
                 <span className="text-lg font-black text-[#1A3D34]">{cat.label}</span>
                 <span className="text-[#9DB3AB] text-xs font-bold">{cat.note}</span>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
-                {cat.items.map((it, ii) => {
-                  const isHighlighted = highlightService === it.title;
+                {cat.items.map((title, ii) => {
+                  const c = commercialFor(title);
+                  const label = displayName(title);
+                  const isHighlighted = highlightService === title;
+                  const pr = priceFor(canonicalTitle(title));
+                  const isOpen = openDetails === title;
                   return (
                   <div key={ii}
                     ref={isHighlighted ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); } : undefined}
                     className="bg-white rounded-2xl p-6 flex flex-col"
                     style={{ border: isHighlighted ? '2.5px solid #C9A84C' : '2px solid #EAF2EE', boxShadow: isHighlighted ? '0 0 0 4px rgba(201,168,76,0.15)' : undefined }}>
                     {isHighlighted && <div style={{ background: '#C9A84C', color: '#fff', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 999, alignSelf: 'flex-start', marginBottom: 10 }}>⭐ الخدمة المقترحة لك</div>}
-                    <div className="text-2xl mb-2">{it.icon}</div>
-                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{(it as any).display || it.title}</h4>
-                    <p className="text-[#6B8A80] text-sm font-bold leading-relaxed flex-1 mb-4">{it.desc}</p>
+                    <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{label}</h4>
+
+                    {/* الألم أولاً: العميل يعرف نفسه في السطر قبل أن يعرف الخدمة */}
+                    <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">{c?.pain || ''}</p>
+
+                    {/* السعر والمدة — معلنان، فلا يحتاج العميل مكالمة ليعرفهما */}
+                    <div className="flex items-baseline justify-between gap-2 mb-1 pb-3 border-b border-dashed border-[#EAF2EE]">
+                      <span className="text-[#1A3D34] font-black text-lg">{pr.amount != null ? pr.amount.toLocaleString('ar-SA') + ' ر.س' : (pr.label || 'بعرض خاص')}</span>
+                      <span className="text-[#9DB3AB] text-xs font-bold">{c?.days || ''}</span>
+                    </div>
+                    {c?.successFee && <div className="text-[#9A7B2E] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.successFee.replace(/\*\*/g, '')}</div>}
+                    {c?.quoteBasis && pr.amount == null && <div className="text-[#9DB3AB] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.quoteBasis}</div>}
+
+                    {/* التفاصيل الكاملة داخل البطاقة — لا صفحة أخرى ولا مكالمة */}
+                    {c && (
+                      <>
+                        <button onClick={() => setOpenDetails(isOpen ? '' : title)}
+                          className="text-[#1A7A5A] font-black text-xs py-2 text-right">
+                          {isOpen ? 'إخفاء التفاصيل ▲' : 'ما الذي نفعله بالضبط؟ ▼'}
+                        </button>
+                        {isOpen && (
+                          <div className="rounded-2xl bg-[#F7FBF9] border border-[#EAF2EE] p-4 mb-3 text-right">
+                            {c.level && <div className="text-[#9A7B2E] text-xs font-black mb-3">{c.level}</div>}
+                            <div className="text-[#1A3D34] text-xs font-black mb-1.5">ماذا نفعل</div>
+                            <ul className="mb-3 pr-4" style={{ listStyle: 'disc' }}>
+                              {c.whatWeDo.map((x, k) => <li key={k} className="text-[#4A6A60] text-xs font-bold leading-relaxed mb-1">{x}</li>)}
+                            </ul>
+                            <div className="text-[#1A3D34] text-xs font-black mb-1.5">ما تستلمه</div>
+                            <ul className="mb-3 pr-4" style={{ listStyle: 'disc' }}>
+                              {c.deliverables.map((x, k) => <li key={k} className="text-[#4A6A60] text-xs font-bold leading-relaxed mb-1">{x}</li>)}
+                            </ul>
+                            <div className="text-[#1A3D34] text-xs font-black mb-1.5">ما الذي يتغيّر</div>
+                            <p className="text-[#4A6A60] text-xs font-bold leading-relaxed mb-3">{c.afterwards}</p>
+                            <div className="text-[#4A6A60] text-xs font-bold leading-relaxed mb-1"><span className="text-[#1A3D34] font-black">لمن: </span>{c.forWho}</div>
+                            {c.notForWho && <div className="text-[#9A7B2E] text-xs font-bold leading-relaxed mb-1"><span className="font-black">ليست لمن: </span>{c.notForWho}</div>}
+                            {c.objection && <div className="mt-3 pt-3 border-t border-dashed border-[#DCEBE4] text-[#4A6A60] text-xs font-bold leading-relaxed">{c.objection.replace(/\*\*/g, '')}</div>}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div className="flex-1"></div>
                     {(() => {
-                      const req = serviceRequests[it.title];
-                      const def = SERVICES[it.title];
-                      const neededTracks = def?.tracks || [];
+                      const req = serviceRequests[title];
+                      const def = SERVICES[title];
+                      const neededTracks = TRACKS_OVERRIDE[title] || def?.tracks || [];
                       const hasTrack = neededTracks.length === 0 || neededTracks.some((tk) => scores[tk] !== undefined);
                       if (!req && !hasTrack) {
                         const missing = neededTracks.map((tk) => TRACK_LABEL[tk]).join(' أو ');
@@ -412,8 +486,8 @@ export default function GoalPage() {
                       if (!req) {
                         return (
                           <div className="flex flex-col gap-2">
-                            <button onClick={() => submitServiceRequest(it.title, cat.label)} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">تقديم طلب الخدمة</button>
-                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + ((it as any).display || it.title))} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
+                            <button onClick={() => { if (needsForm(title)) { setOrderCategory(cat.label); openOrder(title); } else { submitServiceRequest(title, cat.label); } }} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">{needsForm(title) ? 'اطلبها — واعرف سعرك الآن' : 'تقديم طلب الخدمة'}</button>
+                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + label)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
                           </div>
                         );
                       }
@@ -423,6 +497,10 @@ export default function GoalPage() {
                         priced: { t: 'جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
                         paid: { t: 'تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
                         delivered: { t: 'جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
+                        // الأدمن يضع هذه الحالة فعلاً، وغيابها هنا كان يُظهر للعميل «بانتظار الفريق»
+                        // بينما ملفه يُتابَع لدى الجهات — إخبارٌ بغير الواقع
+                        in_follow_up: { t: 'ملفك قيد المتابعة مع الجهات', bg: '#EAF7F0', fg: '#9A7B2E' },
+                        rejected: { t: 'لم تُقبل — راجعنا للتفاصيل', bg: '#FBEEEC', fg: '#C0564B' },
                         completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
                       };
                       const st = STAT[req.status] || STAT.submitted;
@@ -436,13 +514,13 @@ export default function GoalPage() {
                             </div>
                           )}
                           {(req.status === 'delivered' || req.status === 'completed') && req.deliverable && (
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + ((it as any).display || it.title) + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
+                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + label + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
                           )}
                         </div>
                       );
                     })()}
-                    {COMMISSION_SERVICES[it.title] && (() => {
-                      const ctype = COMMISSION_SERVICES[it.title];
+                    {COMMISSION_SERVICES[title] && (() => {
+                      const ctype = COMMISSION_SERVICES[title];
                       const ctr = clientContracts[ctype];
                       if (!ctr) return null;
                       return (
@@ -492,6 +570,87 @@ export default function GoalPage() {
         </>)}
 
       </div>
+
+      {orderFor && (() => {
+        const c = commercialFor(orderFor);
+        const investment = Number(String(orderInvest).replace(/[^\d]/g, '')) || 0;
+        const opt = c?.options?.find((o) => o.key === orderOption);
+        const tiered = c?.tiersBy === 'investment';
+        const shown = opt && opt.price != null
+          ? { amount: opt.price, label: opt.price.toLocaleString('ar-SA') + ' ر.س' }
+          : priceFor(canonicalTitle(orderFor), investment);
+        const needInvestment = tiered && (!opt || opt.price == null);
+        const ready = !needInvestment || investment > 0;
+        return (
+        <div onClick={() => setOrderFor('')} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 480, width: '100%', maxHeight: '88vh', overflowY: 'auto', padding: '28px 26px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            <h2 style={{ color: '#1A3D34', fontSize: 19, fontWeight: 900, margin: '0 0 4px' }}>{displayName(orderFor)}</h2>
+            <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, margin: '0 0 18px' }}>سؤالان فقط، ويظهر سعرك فوراً.</p>
+
+            {c?.options && c.options.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ color: '#1A3D34', fontSize: 13, fontWeight: 900, marginBottom: 8 }}>١ · ما الذي تريده الآن؟</div>
+                {c.options.map((o) => (
+                  <button key={o.key} onClick={() => setOrderOption(o.key)}
+                    style={{ display: 'block', width: '100%', textAlign: 'right', marginBottom: 8, padding: '12px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: 'Cairo',
+                      background: orderOption === o.key ? '#F2FAF6' : '#fff',
+                      border: orderOption === o.key ? '2px solid #1A7A5A' : '2px solid #EAF2EE' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                      <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>{o.label}</span>
+                      <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 13 }}>{o.price != null ? o.price.toLocaleString('ar-SA') + ' ر.س' : 'بحسب حجمك'}</span>
+                    </div>
+                    <div style={{ color: '#9DB3AB', fontSize: 11, fontWeight: 700, marginTop: 3 }}>{o.days}</div>
+                    {orderOption === o.key && (
+                      <div style={{ marginTop: 8 }}>
+                        {o.includes.map((x, k) => <div key={k} style={{ color: '#4A6A60', fontSize: 11.5, fontWeight: 700, lineHeight: 1.9 }}>✓ {x}</div>)}
+                        {(o.excludes || []).map((x, k) => <div key={k} style={{ color: '#C3908F', fontSize: 11.5, fontWeight: 700, lineHeight: 1.9 }}>✕ {x}</div>)}
+                        {o.note && <div style={{ color: '#9A7B2E', fontSize: 11.5, fontWeight: 800, lineHeight: 1.8, marginTop: 6 }}>{o.note}</div>}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {tiered && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ color: '#1A3D34', fontSize: 13, fontWeight: 900, marginBottom: 8 }}>٢ · مشروعك</div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  {([['new', 'مشروع جديد'], ['expansion', 'توسعة نشاط قائم']] as const).map(([k, lb]) => (
+                    <button key={k} onClick={() => setOrderKind(k)}
+                      style={{ flex: 1, padding: '10px', borderRadius: 999, cursor: 'pointer', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5,
+                        background: orderKind === k ? '#1A3D34' : '#fff', color: orderKind === k ? '#fff' : '#6B8A80',
+                        border: orderKind === k ? '2px solid #1A3D34' : '2px solid #EAF2EE' }}>{lb}</button>
+                  ))}
+                </div>
+                <input value={orderInvest} onChange={(e) => setOrderInvest(e.target.value)}
+                  inputMode="numeric" placeholder="إجمالي الاستثمار التقديري بالريال — مثال: 1,500,000"
+                  style={{ width: '100%', padding: '13px 14px', borderRadius: 14, border: '2px solid #EAF2EE', fontFamily: 'Cairo', fontWeight: 800, fontSize: 13.5, color: '#1A3D34', outline: 'none' }} />
+                <div style={{ color: '#9DB3AB', fontSize: 11, fontWeight: 700, marginTop: 6 }}>رقم تقديري يكفي — يشمل التجهيز والمعدات ورأس المال العامل للسنة الأولى.</div>
+              </div>
+            )}
+
+            <div style={{ background: '#F7FBF9', border: '1px solid #EAF2EE', borderRadius: 16, padding: '14px 16px', marginBottom: 16, textAlign: 'center' }}>
+              <div style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 800, marginBottom: 4 }}>سعرك</div>
+              <div style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900 }}>
+                {ready ? (shown.amount != null ? shown.amount.toLocaleString('ar-SA') + ' ر.س' : 'بعرض خاص') : '—'}
+              </div>
+              {!ready && <div style={{ color: '#9A7B2E', fontSize: 11.5, fontWeight: 800, marginTop: 4 }}>أدخل حجم استثمارك ليظهر سعرك</div>}
+              {ready && shown.amount == null && c?.quoteBasis && <div style={{ color: '#6B8A80', fontSize: 11.5, fontWeight: 700, marginTop: 6, lineHeight: 1.8 }}>{c.quoteBasis}</div>}
+            </div>
+
+            <button disabled={!ready || orderBusy} onClick={() => confirmOrder(orderCategory)}
+              style={{ width: '100%', background: ready ? '#1A3D34' : '#C7D8D2', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: ready ? 'pointer' : 'not-allowed', marginBottom: 8 }}>
+              {orderBusy ? 'جارٍ الإرسال…' : 'تأكيد الطلب'}
+            </button>
+            <button onClick={() => setOrderFor('')}
+              style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              إغلاق
+            </button>
+          </div>
+        </div>
+        );
+      })()}
 
       {showPaywall && (
         <div onClick={() => setShowPaywall(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
