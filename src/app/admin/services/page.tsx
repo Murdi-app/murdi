@@ -396,20 +396,22 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     setBusy('')
   }
 
-  async function genFeasibility(companyId: string) {
+  const genFeasibilityQuick = (companyId: string) => genFeasibility(companyId, true)
+
+  async function genFeasibility(companyId: string, quick = false) {
     setBusy('gfz' + companyId)
     // النافذة تُفتح داخل نقرة المستخدم — فتحها بعد await يجعل المتصفح يمنعها فتضيع الدراسة
     const w = window.open('', '_blank')
     if (w) {
       w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>جارٍ توليد دراسة الجدوى…</title></head>'
         + '<body style="font-family:Arial,sans-serif;color:#1F2A44;text-align:center;padding:60px 24px">'
-        + '<h2 style="color:#B8860B">جارٍ توليد دراسة الجدوى…</h2>'
+        + '<h2 style="color:#B8860B">' + (quick ? 'جارٍ إعداد الفحص الائتماني السريع…' : 'جارٍ توليد دراسة الجدوى…') + '</h2>'
         + '<p>التوليد يمر بمرحلتين: بحث السوق ثم كتابة الأقسام، ويستغرق عادةً دقيقة إلى دقيقتين.</p>'
         + '<p style="font-size:13px;color:#666">لا تغلق هذه الصفحة — ستُستبدل بالدراسة تلقائياً.</p></body></html>')
       w.document.close()
     }
     try {
-      const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, track: 'feasibility' }) })
+      const res = await fetch('/api/admin/generate-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_id: companyId, track: 'feasibility', mode: quick ? 'quick' : 'full' }) })
       const d = await res.json()
       if (!d.ok) { w?.close(); alert('تعذّر التوليد: ' + (d.error || res.status)); setBusy(''); return }
       if (w) { w.document.open(); w.document.write(d.html); w.document.close(); w.focus() }
@@ -592,6 +594,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   <button onClick={() => saveFeasibility(r.id, r.company_id)} disabled={busy === 'fz' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginLeft:8 }}>{busy === 'fz' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ المدخلات'}</button>
                   <button onClick={() => matchFeasibility(r.company_id)} disabled={busy === 'mfz' + r.company_id} title="تبحث عن الجهات التي تنطبق شروطها على هذه الدراسة، وتُحفظ فتظهر داخلها" style={{ background:'#5C4A16', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>{busy === 'mfz' + r.company_id ? 'جارٍ البحث عن الجهات...' : '🏦 طابق الجهات لهذه الدراسة'}</button>
                   <button onClick={() => genFeasibility(r.company_id)} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
+                  <button onClick={() => genFeasibilityQuick(r.company_id)} disabled={busy === 'gfz' + r.company_id} title="الأرقام المحسوبة وحدها — بلا بحث سوق وبلا جهات، يخرج في ثوانٍ" style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>⚡ فحص ائتماني سريع</button>
                   {fzMatch[r.company_id] && (<div style={{ fontSize:12, color:'#5C4A16', marginTop:6, fontWeight:700 }}>{fzMatch[r.company_id]}</div>)}
                 </div>
               )}

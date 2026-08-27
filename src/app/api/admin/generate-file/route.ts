@@ -40,7 +40,8 @@ export async function POST(req: Request) {
   let fundingAmount: number | undefined;
   let reqId = '';
   let purpose = '';
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'feasibility' || b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake' || b.track === 'feasibility') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); }
+  let quickMode = false;
+  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'feasibility' || b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake' || b.track === 'feasibility') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); quickMode = b.mode === 'quick'; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
   if (reqId && (fundingAmount || purpose)) {
@@ -174,6 +175,7 @@ export async function POST(req: Request) {
         capacityNote: str('capacityNote') || undefined,
         staffNote: str('staffNote') || undefined,
         existingRevenue: num('existingRevenue') || undefined,
+        quick: quickMode,
         inputs: {
           capex: num('capex'), workingCapital: num('workingCapital'),
           unitPrice: num('unitPrice'), unitsYear1: num('unitsYear1'),
