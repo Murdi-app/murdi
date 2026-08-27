@@ -104,11 +104,22 @@ export async function POST(req: Request) {
       scopeTo: batch === undefined ? undefined : from + SIZE,
     });
 
+    // ═══ مرشّحان قبل الحفظ — خاصان بالجدوى ولا يمسّان أي مسار آخر ═══
+    const kept = r.offers.filter((o) => {
+      const t = [o.provider, o.product, o.requirements, Array.isArray(o.gaps) ? o.gaps.join(' ') : ''].join(' ');
+      // (١) المشروع الجديد بلا سجل تشغيلي: اشتراط سنوات تشغيل أو قوائم تاريخية ليس فجوة تُسدّ بل جدار
+      if (isNew && /(لا تقل|لا يقل|على الأقل).{0,20}(سنت|سنوات|أعوام)|(ثلاث|سنتان|سنتين|٣|3|٢|2)\s*(سنوات|سنين|أعوام)\s*(تشغيل|نشاط|خبرة|عمل)|سجل تشغيلي|قوائم مالية مدققة لآخر|آخر (ثلاث|٣|3) سنوات|تاريخ ائتماني سابق/.test(t)) return false;
+      // (٢) قاعدته المعتمدة: لا ضمان حكومي ولا برنامج مدعوم يُعرض لمملوك أجنبي بلا تحقق مكتوب من شروط الملكية
+      if (prof.foreignOwner && /كفالة|منشآت|بنك التنمية الاجتماعية|صندوق التنمية|الصندوق الصناعي|برنامج حكومي|مدعوم حكومي/.test(t)) return false;
+      return true;
+    });
+    const dropped = r.offers.length - kept.length;
+
     const nextB = (batch === undefined ? 0 : batch) + 1;
     const done = batch === undefined || (nextB * SIZE) >= r.totalScopes;
-    if (r.offers.length) {
+    if (kept.length) {
       // keepPrev على الدفعات التالية حتى لا تلغي الدفعة الثانية نتائج الأولى
-      await saveMatchResults(companyId, 'feasibility', r.offers, scaleRev, batch !== undefined && batch > 0, '');
+      await saveMatchResults(companyId, 'feasibility', kept, scaleRev, batch !== undefined && batch > 0, '');
     }
 
     const { count } = await admin.from('match_results')
@@ -117,7 +128,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true, done, next: nextB, total: r.totalScopes,
-      found: r.offers.length, count: count || 0,
+      found: kept.length, dropped, count: count || 0,
       gate: describeGate(prof, scopes.length),
       warn: r.ok ? undefined : (r.error || undefined),
     });
