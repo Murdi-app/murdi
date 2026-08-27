@@ -33,7 +33,14 @@ export interface ServiceReason {
   service: string;
   urgency: 'blocking' | 'strong' | 'fit';   // يمنع التقديم · دليل قوي · مناسب لحالته
   evidence: string;                          // الجملة التي تظهر للعميل
+  hook?: string;                             // قبل المطابقة: السؤال الذي لا تجيبه إلا المطابقة
 }
+
+// موجتا الدليل:
+//   pre  = بعد التقييم المجاني مباشرة — دليل من إجابات العميل نفسه، بلا أرقام سوق
+//   post = بعد المطابقة — نفس العائق وقد صار عدداً من السوق: «21 جهة من أصل 40»
+// الأولى تخلق السؤال، والثانية وحدها تجيبه — وهذا ما يبيع فتح المطابقة.
+export type EvidencePhase = 'pre' | 'post';
 
 const pct = (n: number, of: number) => of > 0 ? Math.round((n / of) * 100) : 0;
 
@@ -45,10 +52,11 @@ function gapHits(g: Record<string, number> | undefined, words: string[]): number
   return n;
 }
 
-export function reasonsFor(s: ClientSignals): ServiceReason[] {
+export function reasonsFor(s: ClientSignals, phase: EvidencePhase = 'post'): ServiceReason[] {
   const out: ServiceReason[] = [];
-  const total = s.totalFunders || 0;
-  const add = (service: string, urgency: ServiceReason['urgency'], evidence: string) => out.push({ service, urgency, evidence });
+  const total = phase === 'pre' ? 0 : (s.totalFunders || 0);
+  const add = (service: string, urgency: ServiceReason['urgency'], evidence: string, hook?: string) =>
+    out.push({ service, urgency, evidence, ...(phase === 'pre' && hook ? { hook } : {}) });
   const ofList = (n: number) => total > 0 ? n + ' جهة من أصل ' + total + ' في قائمتك (' + pct(n, total) + '%)' : n + ' جهة في قائمتك';
 
   // ═══ الدليل الأقوى: فجوات الجهات نفسها ═══
@@ -57,7 +65,8 @@ export function reasonsFor(s: ClientSignals): ServiceReason[] {
     add('إعداد القوائم المالية المعتمدة', gStatements > 0 ? 'blocking' : 'strong',
       gStatements > 0
         ? ofList(gStatements) + ' تشترط قوائم مالية. بلا هذي الخطوة يتوقف ملفك عندها قبل أن يُقرأ.'
-        : 'ملفك بلا قوائم مالية منظّمة — وهذا أكثر شرط يتكرر عند جهات التمويل.');
+        : 'ملفك بلا قوائم مالية منظّمة — وهذا أكثر شرط يتكرر عند جهات التمويل.',
+      'افتح المطابقة لتعرف كم جهة من جهاتك تشترطها بالضبط.');
   }
 
   const gCollateral = gapHits(s.gapCounts, ['ضمان', 'رهن', 'كفالة عينية', 'أصول']);
@@ -65,14 +74,16 @@ export function reasonsFor(s: ClientSignals): ServiceReason[] {
     add('تجهيز ملف الضمانات والرهن', gCollateral > 0 ? 'blocking' : 'strong',
       gCollateral > 0
         ? ofList(gCollateral) + ' تطلب ضماناً. وأغلب من يتوقف هنا يملك ضماناً مقبولاً ولا يعرف أنه مقبول.'
-        : 'لم تُسجَّل لديك أصول قابلة للضمان — وهذا أكثر ما يوقف الملفات الجيدة.');
+        : 'لم تُسجَّل لديك أصول قابلة للضمان — وهذا أكثر ما يوقف الملفات الجيدة.',
+      'افتح المطابقة لتعرف كم جهة تطلب ضماناً وأي نوع تقبله كل واحدة.');
   }
 
   // ═══ الممر الأجنبي: تُفتح بملكيته لا بطلبه ═══
   if (s.foreignOwner) {
     add('ملف الممر الأجنبي', 'strong',
       'منشأتك مملوكة لمستثمر' + (s.ownerNationality ? ' من ' + s.ownerNationality : ' أجنبي')
-      + '، والجهات السعودية تتعامل مع هذا الملف بحذر. مسارك مختلف: بنوك بلد المالك وفروعها الخليجية، والفروع الأجنبية المرخّصة في المملكة.');
+      + '، والجهات السعودية تتعامل مع هذا الملف بحذر. مسارك مختلف: بنوك بلد المالك وفروعها الخليجية، والفروع الأجنبية المرخّصة في المملكة.',
+      'افتح المطابقة لترى أبواب ممرك مفتوحةً بالأسماء — ولن نعرض عليك برنامجاً حكومياً لا تنطبق شروط ملكيته عليك.');
     if (s.hasParentCompany) {
       add('ملف ضمان الشركة الأم', 'strong',
         'لديك شركة أم قادرة على الضمان — وهي أقوى ورقة في ملفك، وأكثرها إهمالاً. وضعها داخل الملف يغيّر قراءته كلها.');
@@ -145,3 +156,35 @@ export const URGENCY_LABEL: Record<ServiceReason['urgency'], string> = {
   strong: 'ظهر في ملفك',
   fit: 'يرفع فرصتك',
 };
+
+// أهم جملة في المنصة: ما يُقال للعميل بعد التقييم المجاني ليفتح المطابقة.
+// تُبنى من إشاراته هو — فهي وعدٌ بجواب لسؤالٍ صنعته بياناته، لا عرضٌ لخدمة.
+export function unlockPitch(s: ClientSignals): { headline: string; lines: string[]; cta: string } {
+  const pre = reasonsFor(s, 'pre');
+  const blocking = pre.filter(r => r.urgency === 'blocking').length;
+  const lines: string[] = [];
+
+  if (s.foreignOwner) {
+    lines.push('ملكيتك أجنبية — ولهذا مسارك ليس مسار غيرك: بنوك بلد المالك وفروعها الخليجية، والفروع الأجنبية المرخّصة في المملكة، وضمان الشركة الأم إن وُجدت.');
+  }
+  if (s.imports) lines.push('أنت تستورد — وهذا يفتح لك أبواب تمويل التجارة والاعتمادات التي لا تُعرض على غيرك.');
+  if (s.projectKind === 'new') lines.push('مشروعك جديد — فالأبواب المفتوحة لك تختلف عن أبواب منشأة قائمة، ولا فائدة من طرق ما يشترط سجلاً تشغيلياً.');
+
+  // العربية تعدّ ثلاثة أعداد لا عدداً واحداً — والخطأ النحوي في أول سطر يُفقد الثقة قبل السعر
+  const count = blocking === 1 ? 'عائقاً واحداً يقف'
+    : blocking === 2 ? 'عائقين يقفان'
+    : blocking + ' عوائق تقف';
+  const headline = blocking > 0
+    ? 'بياناتك تُظهر ' + count + ' بين ملفك وبين الموافقة'
+    : 'ملفك مؤهَّل — والسؤال الآن: من يموّلك بالضبط؟';
+
+  lines.push(blocking > 0
+    ? 'والمطابقة تحوّل هذي العوائق من كلام إلى أرقام: كم جهة تشترط كل واحدة منها، وأيّها يقبلك رغمها.'
+    : 'المطابقة تعطيك الجهات التي تنطبق شروطها عليك بالاسم، وحدود مبالغها، وما ينقصك عند كل واحدة، وطريقة التقديم إليها.');
+
+  return {
+    headline,
+    lines,
+    cta: 'افتح المطابقة — 990 ريال، وتُخصم بالكامل من ملفك التمويلي',
+  };
+}
