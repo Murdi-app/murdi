@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import MiniAssessment from '@/components/MiniAssessment'
+import ServicesBand from '@/components/ServicesBand'
 
 export default function Home() {
   const router = useRouter()
@@ -288,6 +289,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+
+        <ServicesBand onStart={go} />
 
         <div className="mist">
           <section className="sec">
