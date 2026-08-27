@@ -1,6 +1,7 @@
 // مولّد دراسة الجدوى الاقتصادية — مُرضي
 // الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
 import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, computeBreakPoints, renderBreakPointsTable, renderCombinedTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
+import { orderForClient, familyOf, pledgeWarning, FAMILY_LABEL } from './productPreference';
 
 // صف جهة تمويل مرشحة — يُقرأ من match_results ولا يُولَّد بنموذج
 export interface FunderRow {
@@ -290,23 +291,33 @@ function decisionPage(ctx: FeasibilityContext, r: FeasibilityResult, credit?: Cr
 
 // الجهات المرشحة — تُقرأ من نتائج المطابقة المحفوظة للعميل، ولا يولّدها نموذج
 function funderTable(funders?: FunderRow[]): string {
+  if (funders && funders.length) funders = orderForClient(funders as never) as never;
   if (!funders || !funders.length) {
     return '<h2>الجهات التمويلية المرشحة</h2><div class="note">لم تُشغَّل مطابقة الجهات لهذا العميل بعد. تُشغَّل من لوحة التقديم، وعندها تظهر هنا الجهات التي تنطبق شروطها على هذا الملف ومتطلبات كل واحدة منها.</div>';
   }
   const esc = (v: unknown) => v === null || v === undefined || v === '' ? '—' : String(v);
-  const rows = funders.map(x => '<tr><td>' + [
-    '<b>' + esc(x.provider) + '</b>' + (x.product ? '<br><span style="font-size:11px;color:#666">' + x.product + '</span>' : ''),
+  // وسم عائلة المنتج، وتنبيه مكتوب على كل إجارة بأن الأصل يبقى مرهوناً —
+  // فيقرأ العميل الفرق بين «يملك» و«يستأجر» قبل أن يسأل عنه
+  const rows = funders.map(x => {
+    const fam = familyOf(x as never);
+    const pledge = pledgeWarning(x as never);
+    return '<tr><td>' + [
+    '<b>' + esc(x.provider) + '</b>'
+      + '<br><span style="font-size:10.5px;color:' + (pledge ? '#9A5B25' : '#1E7A5A') + ';font-weight:bold">' + FAMILY_LABEL[fam] + '</span>'
+      + (x.product ? '<br><span style="font-size:11px;color:#666">' + x.product + '</span>' : '')
+      + (pledge ? '<br><span style="font-size:10.5px;color:#9A5B25">⚠︎ ' + pledge + '</span>' : ''),
     esc(x.region),
     esc(x.amount_range),
     esc(x.requirements).slice(0, 190)
       + (x.required_docs ? '<br><span style="font-size:11px;color:#666"><b>المستندات:</b> ' + String(x.required_docs).slice(0, 190) + '</span>' : ''),
     (x.gaps && x.gaps.length ? x.gaps.slice(0, 3).join(' · ') : '—'),
     esc(x.apply_channel),
-  ].join('</td><td>') + '</td></tr>').join('');
+    ].join('</td><td>') + '</td></tr>';
+  }).join('');
   return '<h2>الجهات التمويلية المرشحة لهذا الملف</h2>'
     + '<table class="fz sm"><thead><tr><th>الجهة</th><th>النطاق</th><th>حدود المبلغ</th><th>المتطلبات والمستندات</th><th>الفجوات قبل التقديم</th><th>طريقة التقديم</th></tr></thead><tbody>'
     + rows + '</tbody></table>'
-    + '<div class="note">الترتيب بحسب مطابقة شروط كل جهة لبيانات هذا الملف. عمود «الفجوات» هو ما يلزم استكماله قبل التقديم لتلك الجهة تحديداً، وهو خارطة العمل التنفيذية للمرحلة التالية. ولا تُعد هذه القائمة وعداً بموافقة — القرار للجهة وحدها بعد دراستها للملف. وتُذكر هنا قناة التقديم والمستندات المطلوبة؛ أما روابط التقديم المباشرة ونصوص المخاطبة والمتابعة حتى الرد فتُنفَّذ ضمن خدمة مخاطبة الجهات.</div>';
+    + '<div class="note">الترتيب يقدّم ما يمنحك سيولة أو ملكية على ما يبقي الأصل مرهوناً، ثم بحسب مطابقة شروط كل جهة لبيانات هذا الملف. عمود «الفجوات» هو ما يلزم استكماله قبل التقديم لتلك الجهة تحديداً، وهو خارطة العمل التنفيذية للمرحلة التالية. ولا تُعد هذه القائمة وعداً بموافقة — القرار للجهة وحدها بعد دراستها للملف. وتُذكر هنا قناة التقديم والمستندات المطلوبة؛ أما روابط التقديم المباشرة ونصوص المخاطبة والمتابعة حتى الرد فتُنفَّذ ضمن خدمة مخاطبة الجهات.</div>';
 }
 
 export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySections, r: FeasibilityResult, warn?: string, credit?: CreditPack, funders?: FunderRow[]): string {

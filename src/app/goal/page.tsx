@@ -497,13 +497,20 @@ export default function GoalPage() {
                         priced: { t: 'جاهزة — بانتظار الدفع', bg: '#FBF3DC', fg: '#B8860B' },
                         paid: { t: 'تم الدفع — يُجهَّز التسليم', bg: '#E8F5EF', fg: '#1A7A4C' },
                         delivered: { t: 'جاهزة — يمكنك طباعتها', bg: '#EAF7F0', fg: '#1E7A5A' },
-                        // الأدمن يضع هذه الحالة فعلاً، وغيابها هنا كان يُظهر للعميل «بانتظار الفريق»
-                        // بينما ملفه يُتابَع لدى الجهات — إخبارٌ بغير الواقع
-                        in_follow_up: { t: 'ملفك قيد المتابعة مع الجهات', bg: '#EAF7F0', fg: '#9A7B2E' },
+                        // in_follow_up تُوضع لحظة إصدار العقد، لا لحظة مخاطبة الجهات.
+                        // فلا يُكتب هنا ما يوهم العميل أن ملفه عند جهة تمويل قبل أن يصل إليها فعلاً.
+                        in_follow_up: { t: 'صدر عقدك', bg: '#EAF7F0', fg: '#9A7B2E' },
                         rejected: { t: 'لم تُقبل — راجعنا للتفاصيل', bg: '#FBEEEC', fg: '#C0564B' },
                         completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
                       };
-                      const st = STAT[req.status] || STAT.submitted;
+                      let st = STAT[req.status] || STAT.submitted;
+                      if (req.status === 'in_follow_up') {
+                        const ct = COMMISSION_SERVICES[title];
+                        const signed = ct ? clientContracts[ct]?.status === 'signed' : false;
+                        st = signed
+                          ? { t: 'عقدك موقّع — ملفك في الترتيب للمخاطبة', bg: '#EAF7F0', fg: '#1E7A5A' }
+                          : { t: 'صدر عقدك — بانتظار توقيعك لتبدأ المخاطبة', bg: '#FBF5E8', fg: '#9A7B2E' };
+                      }
                       return (
                         <div className="flex flex-col gap-2">
                           <div className="text-center py-2.5 rounded-full font-black text-sm" style={{ background: st.bg, color: st.fg }}>{st.t}</div>

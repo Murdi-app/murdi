@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { orderForClient, pledgeWarning, familyOf, FAMILY_LABEL } from '@/lib/productPreference';
 
 type MatchRow = Record<string, unknown> & { id: string; track: string | null; status: string | null; created_at: string };
 
@@ -69,9 +70,10 @@ function MatchesPrintInner() {
       </p>
 
       {(['funding', 'investment', 'ipo'] as const).map((tr) => {
-        const group = matches
-          .filter((m) => (m.track || '') === tr)
-          .sort((x, y) => (Number(y.fit) || 0) - (Number(x.fit) || 0));
+        // ترتيب العرض لا ترتيب المحرك: السيولة والنقد قبل الإجارة، ثم الملاءمة داخل كل عائلة
+        const group = orderForClient(
+          matches.filter((m) => (m.track || '') === tr) as unknown as (MatchRow & { fit?: number | null })[]
+        ) as unknown as MatchRow[];
         if (group.length === 0) return null;
         return (
           <div key={tr} style={{ marginBottom: 22 }}>
@@ -82,6 +84,8 @@ function MatchesPrintInner() {
               const region = String(m.region || '');
               const fit = Number(m.fit) || 0;
               const req = String(m.requirements || '');
+              const fam = familyOf({ provider, product, instrument: String(m.instrument || '') });
+              const pledge = pledgeWarning({ provider, product, instrument: String(m.instrument || '') });
               return (
                 <div key={m.id} style={{ border: '1px solid #ddd', borderRadius: 10, padding: '13px 16px', marginBottom: 12, pageBreakInside: 'avoid' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
@@ -89,6 +93,8 @@ function MatchesPrintInner() {
                     {fit > 0 && <span style={{ color: '#C9A84C', fontWeight: 800, fontSize: 13.5 }}>الملاءمة: {fit}%</span>}
                   </div>
                   <div style={{ fontSize: 13, color: '#13302A', fontWeight: 700, margin: '6px 0 3px' }}>{[product, region].filter(Boolean).join(' · ')}</div>
+                  <div style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 800, color: pledge ? '#9A5B25' : '#1E7A5A', background: pledge ? '#FBF1E6' : '#EAF7F0', border: '1px solid ' + (pledge ? '#E7CDAC' : '#CBE8DA'), borderRadius: 999, padding: '2px 10px', margin: '2px 0 5px' }}>{FAMILY_LABEL[fam]}</div>
+                  {pledge && <div style={{ fontSize: 12, color: '#9A5B25', lineHeight: 1.85, fontWeight: 700 }}>⚠︎ {pledge}</div>}
                   {req && <div style={{ fontSize: 12.5, color: '#555', lineHeight: 1.9 }}>{req}</div>}
                 </div>
               );
