@@ -25,6 +25,7 @@ function render(type: string, f: ContractFields): string {
   return type === 'acquisition' ? acquisitionContract(f) : type === 'investment' ? investmentContract(f) : fundingContract(f);
 }
 import { requireAdmin } from '@/lib/requireAdmin';
+import { COMMERCIAL } from '@/lib/servicePricing';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -65,19 +66,34 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { serviceRequestId, companyId, contractType } = body;
 
-  // آلية الأتعاب المبدئية: تُورَّث من طلب الخدمة إن حُدِّدت فيه، وإلا نسبة نجاح
-  let seed: Record<string, unknown> = { fee_type: 'percent' };
+  // آلية الأتعاب المبدئية.
+  // كانت تُقرأ من أعمدة في طلب الخدمة لا يكتبها أحد، فتخرج كل مسودّة «نسبة نجاح بلا مقدّم» —
+  // على خدمة مقدّمها معلن. فالمصدر الصحيح هو سجل الأسعار نفسه: إن كان للخدمة سعر معلن،
+  // فهو مقدّم مستحق، ومعه نسبة نجاح إن نصّ عليها السجل.
+  const BASE_BY_TYPE: Record<string, string> = { funding: 'financing', investment: 'round', acquisition: 'deal' };
+  let seed: Record<string, unknown> = { fee_type: 'percent', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
+
   if (serviceRequestId) {
     const { data: sr } = await admin.from('service_requests')
-      .select('fee_type, success_pct, success_min, success_base, quoted_price')
+      .select('service_title, price, quoted_price, fee_type, success_pct, success_min, success_base')
       .eq('id', serviceRequestId).maybeSingle();
-    if (sr) seed = {
-      fee_type: sr.fee_type || 'percent',
-      fee_percent: sr.success_pct ?? null,
-      success_min: sr.success_min ?? null,
-      success_base: sr.success_base ?? null,
-      fixed_amount: (sr.fee_type === 'fixed' || sr.fee_type === 'both') ? (sr.quoted_price ?? null) : null,
-    };
+    if (sr) {
+      const com = COMMERCIAL[String(sr.service_title || '')];
+      // المقدّم: ما سُعّر به الطلب فعلاً، وإلا السعر المعلن للخدمة في السجل
+      const listed = typeof com?.price === 'number' ? com.price : null;
+      const upfront = Number(sr.price ?? sr.quoted_price ?? listed ?? 0) || null;
+      // نسبة نجاح يذكرها السجل صراحةً في خانة successFee
+      const hasSuccess = Boolean(com?.successFee);
+      const inferred = upfront && hasSuccess ? 'both' : upfront ? 'fixed' : 'percent';
+
+      seed = {
+        fee_type: sr.fee_type || inferred,
+        fee_percent: sr.success_pct ?? null,
+        success_min: sr.success_min ?? null,
+        success_base: sr.success_base || BASE_BY_TYPE[String(contractType)] || 'financing',
+        fixed_amount: (sr.fee_type ? (sr.fee_type === 'fixed' || sr.fee_type === 'both') : inferred !== 'percent') ? upfront : null,
+      };
+    }
   }
   const text = render(String(contractType), toFields(seed));
 
