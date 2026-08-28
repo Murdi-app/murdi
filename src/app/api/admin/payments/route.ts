@@ -58,13 +58,31 @@ export async function POST(req: Request) {
       await admin.from('companies').update({ subscription_active: true, subscription_end: until.toISOString(), account_status: 'active' }).eq('id', pay.company_id);
       // المطابقة يُطلقها العميل بنفسه من بوابته بعد التفعيل
     }
-    // عند تأكيد تحويل خدمة: ربط الدفعة بالطلب وتحويله إلى مدفوع
+    // عند تأكيد تحويل خدمة: يُعلَّم الطلب الذي دُفع من أجله وحده.
+    // كان هذا السطر يُحدّث كل طلبات العميل المسعّرة دفعةً واحدة — فيُسلَّم ثلاث خدمات بثمن واحدة.
+    let linkNote: string | undefined;
     if (pay.kind === 'service' && pay.company_id) {
-      await admin.from('service_requests')
-        .update({ status: 'paid', payment_id: id, updated_at: new Date().toISOString() })
-        .eq('company_id', pay.company_id).eq('status', 'priced');
+      const stamp = { status: 'paid', payment_id: id, paid_at: new Date().toISOString(), payment_ref: id, updated_at: new Date().toISOString() };
+      if (pay.service_request_id) {
+        await admin.from('service_requests').update(stamp).eq('id', pay.service_request_id);
+      } else {
+        // دفعات قديمة بلا رقم طلب: نطابق بالمبلغ، ولا نخمّن حين يتعدد المرشّح
+        const { data: cands } = await admin.from('service_requests')
+          .select('id, price, quoted_price')
+          .eq('company_id', pay.company_id).eq('status', 'priced');
+        const amt = Number(pay.amount_sar || 0);
+        const hit = (cands || []).filter((c: { price: number | null; quoted_price: number | null }) =>
+          Number(c.price ?? c.quoted_price ?? -1) === amt);
+        if (hit.length === 1) {
+          await admin.from('service_requests').update(stamp).eq('id', hit[0].id);
+        } else {
+          linkNote = hit.length === 0
+            ? 'لم يُطابق أي طلب مسعّر مبلغَ هذه الدفعة — اربطها بالطلب يدوياً من لوحة الخدمات.'
+            : 'أكثر من طلب مسعّر بنفس المبلغ — لم يُعلَّم أيٌّ منها تلقائياً حتى لا يُسلَّم طلب بلا دفع. اربطها يدوياً.';
+        }
+      }
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, note: linkNote });
   }
   if (action === 'reject') {
     await admin.from('payments').update({ status: 'rejected' }).eq('id', id);

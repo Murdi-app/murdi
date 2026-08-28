@@ -20,6 +20,7 @@ export async function POST(req: Request) {
   const description: string = body?.description || '';
   let receiptUrl: string = body?.receiptUrl || '';
   const note: string = body?.note || '';
+  const serviceRequestId: string = body?.serviceRequestId || '';
 
   if (!companyId) {
     try {
@@ -51,13 +52,17 @@ export async function POST(req: Request) {
   }
 
   const sb = admin();
-  const { data: dup } = await sb.from('payments').select('id')
-    .eq('company_id', companyId).eq('kind', kind).eq('status', 'awaiting_confirmation').maybeSingle();
+  // التكرار يُقاس بالطلب لا بالعميل: عميل له طلبان مسعّران يدفع لكلٍّ منهما دفعةً مستقلة
+  let dupQ = sb.from('payments').select('id')
+    .eq('company_id', companyId).eq('kind', kind).eq('status', 'awaiting_confirmation');
+  dupQ = serviceRequestId ? dupQ.eq('service_request_id', serviceRequestId) : dupQ.is('service_request_id', null);
+  const { data: dup } = await dupQ.maybeSingle();
   if (dup) {
     await sb.from('payments').update({
       amount_sar: amountSar,
       transfer_receipt_url: receiptUrl || null,
       transfer_note: note || null,
+      service_request_id: serviceRequestId || null,
     }).eq('id', dup.id);
     return NextResponse.json({ ok: true, updated: true });
   }
@@ -70,6 +75,7 @@ export async function POST(req: Request) {
     status: 'awaiting_confirmation',
     transfer_receipt_url: receiptUrl || null,
     transfer_note: note || null,
+    service_request_id: serviceRequestId || null,
   });
 
   if (error) return NextResponse.json({ error: 'تعذّر تسجيل التحويل' }, { status: 500 });

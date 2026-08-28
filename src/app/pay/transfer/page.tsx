@@ -11,6 +11,8 @@ function TransferInner() {
   const amountSar = Number(params.get('amount') || '2900');
   const kind = params.get('kind') || 'subscription';
   const companyId = params.get('company_id') || '';
+  // رقم طلب الخدمة — كان يُمرَّر في الرابط ويُهمَل هنا، فتضيع صلة الإيصال بالطلب
+  const serviceRequestId = params.get('sr') || '';
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ function TransferInner() {
       }
       const r = await fetch('/api/payments/transfer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId, amountSar, kind, receiptUrl, note }),
+        body: JSON.stringify({ companyId, amountSar, kind, receiptUrl, note, serviceRequestId }),
       });
       if (r.ok) setDone(true);
     } catch { /* تجاهل */ }

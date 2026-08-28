@@ -26,6 +26,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState('')
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -51,13 +52,17 @@ export default function PaymentsPage() {
   }
 
   async function act(id: string, action: 'confirm' | 'reject') {
+    setNotice('');
     if (action === 'reject' && !confirm('رفض هذا التحويل؟')) return;
     setBusy(id);
     try {
-      await fetch('/api/admin/payments', {
+      const r = await fetch('/api/admin/payments', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action }),
       });
+      // حين يتعذّر ربط الدفعة بطلبها تلقائياً، يُقال ذلك صراحةً بدل أن يُصمَت عنه
+      const d = await r.json().catch(() => ({}));
+      if (d?.note) setNotice(String(d.note));
       await load();
     } catch { /* تجاهل */ }
     setBusy(null);
@@ -104,6 +109,11 @@ export default function PaymentsPage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 900, margin: '0 auto', padding: '28px 20px', background: '#FBFCFB', minHeight: '100vh' }}>
+      {notice && (
+        <div style={{ background:'#FBF3DC', border:'1px solid #E8D9A8', color:'#8A6A1E', borderRadius:12, padding:'12px 16px', margin:'0 0 14px', fontFamily:'Cairo', fontSize:13.5, fontWeight:700, lineHeight:1.9 }}>
+          ⚠︎ {notice}
+        </div>
+      )}
       <div style={{ display:'flex', gap:8, marginBottom:22, borderBottom:'2px solid #EAF2EE', paddingBottom:0, flexWrap:'wrap' }}>
         <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
         <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
