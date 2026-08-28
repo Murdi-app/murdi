@@ -33,7 +33,9 @@ export async function GET(req: Request) {
   if (mine) cq = cq.in('id', mine);
   const { data: allCos } = await cq;
   let ask = 0;
-  if (only) {
+  // مبلغ الطلب رقم تجاري حسّاس: كان يُقرأ بمفتاح الخادم من ?co= بلا قيد ملكية،
+  // فيرى الموظف مبلغ عميل زميله. صفوف المطابقة كانت محمية، وهذا السطر وحده لم يكن.
+  if (only && (!mine || mine.includes(only))) {
     const { data: fdr } = await a.from('financial_data').select('requested_amount').eq('company_id', only).order('created_at', { ascending: false }).limit(1).maybeSingle();
     ask = Number(fdr?.requested_amount || 0);
   }

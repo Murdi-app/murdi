@@ -28,7 +28,11 @@ function TransferInner() {
     try {
       if (file) {
         const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
-        const path = companyId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
+        // بادئة المسار من الجلسة لا من الرابط — وإلا وضع أحدهم ملفاً في مجلد إيصالات عميل آخر
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: own } = await supabase.from('companies').select('id').eq('user_id', user?.id || '').limit(1).maybeSingle();
+        const folder = String(own?.id || user?.id || 'unknown').replace(/[^a-zA-Z0-9-]/g, '');
+        const path = folder + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
         const { error } = await supabase.storage.from('receipts').upload(path, file);
         // دلو الإيصالات خاص — الرابط العام لا يفتح. نحفظ المسار ويُوقَّع عند عرضه للأدمن
         if (!error) receiptUrl = path;

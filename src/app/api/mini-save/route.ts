@@ -19,6 +19,14 @@ export async function POST(req: Request) {
     const src = body.src ? String(body.src) : null
     const completed = Boolean(body.completed)
     if (body.id) {
+      // المسار مفتوح بلا جلسة (التقييم المصغّر يُملأ قبل التسجيل)، فالمعرّف وحده لا يكفي:
+      // كان أي أحد يستبدل إجابات ودرجة أي عميل محتمل بمجرد معرفة رقم الصف.
+      // نشترط تطابق الجوال المحفوظ، ونمنع الكتابة على تقييم اكتمل.
+      const { data: row } = await admin.from('mini_assessments')
+        .select('id, phone, completed').eq('id', String(body.id)).maybeSingle()
+      if (!row || String(row.phone || '') !== phone || row.completed === true) {
+        return NextResponse.json({ error: 'تعذّر التحديث' }, { status: 403 })
+      }
       await admin.from('mini_assessments').update({ answers, score, track, completed }).eq('id', String(body.id))
       return NextResponse.json({ id: String(body.id) })
     }

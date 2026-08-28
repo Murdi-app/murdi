@@ -4,6 +4,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
+import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
+import { canonicalTitle } from '@/lib/serviceCatalog'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 import { buildPdfHtml } from '@/lib/pdfTemplate'
@@ -62,6 +64,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   const [fzMatch, setFzMatch] = useState<Record<string, string>>({})
   const [reqs, setReqs] = useState<any[]>([])
   const [busy, setBusy] = useState('')
+  // رقم طلب الفحص السريع الذي خُصم من كل دراسة — يُرسل مع التسعير
+  const [creditFrom, setCreditFrom] = useState<Record<string, string>>({})
   const [fundAmt, setFundAmt] = useState<Record<string, string>>({})
   const [fundPurpose, setFundPurpose] = useState<Record<string, string>>({})
   const [edits, setEdits] = useState<Record<string, { deliverable: string; price: string }>>({})
@@ -461,7 +465,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
   async function save(id: string, deliverable: string, price: string, status?: string) {
     setBusy(id)
-    await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status }) })
+    await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status, credited_from: creditFrom[id] || undefined }) })
     await load()
     setBusy('')
   }
@@ -567,6 +571,77 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 <span style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:700, background:st.bg, color:st.fg }}>{st.t}</span>
               </div>
 
+              {/* ما اشتراه العميل — كان محفوظاً في القاعدة ولا يظهر هنا،
+                  فيُسلَّم عملٌ بعشرين ألفاً لمن دفع تسعمئة وتسعين */}
+              {(() => {
+                const ci = (r.client_inputs || {}) as { totalInvestment?: number; projectKind?: string; option?: string }
+                const optKey = String(r.option_key || ci.option || '')
+                if (!optKey && r.quoted_price == null && !ci.totalInvestment) return null
+                const com = COMMERCIAL[canonicalTitle(r.service_title)]
+                const optLabel = com?.options?.find(o => o.key === optKey)?.label || (optKey === 'quick' ? 'الفحص السريع' : optKey === 'full' ? 'الخدمة الكاملة' : '')
+                const inv = Number(ci.totalInvestment || 0)
+                const quoted = r.quoted_price == null ? null : Number(r.quoted_price)
+                // إعادة حساب الشريحة على الخادم — العميل يكتب حجم استثماره بنفسه
+                const right = inv > 0 ? priceFor(canonicalTitle(r.service_title), inv).amount : null
+                const mismatch = quoted != null && right != null && quoted !== right
+                const isQuick = optKey === 'quick'
+                return (
+                  <div style={{ background: isQuick ? '#FBF3DC' : '#F4F9F7', border:'1.5px solid ' + (isQuick ? '#E8D9A8' : '#DCEBE4'), borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
+                    <div style={{ color:'#1A3D34', fontWeight:900, fontSize:12.5, marginBottom:6 }}>🧾 ما طلبه العميل</div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 18px', fontSize:12.5, fontWeight:700, color:'#3A4D47' }}>
+                      {optLabel && <span>الخيار: <b style={{ color: isQuick ? '#9A5B25' : '#1A7A5A' }}>{optLabel}</b></span>}
+                      {quoted != null && <span>السعر المعروض عليه: <b>{quoted.toLocaleString('en-US')} ر.س</b></span>}
+                      {inv > 0 && <span>حجم استثماره كما كتبه: <b>{inv.toLocaleString('en-US')} ر.س</b></span>}
+                      {ci.projectKind && <span>النوع: <b>{ci.projectKind === 'expansion' ? 'توسعة نشاط قائم' : 'مشروع جديد'}</b></span>}
+                    </div>
+                    {mismatch && (
+                      <div style={{ color:'#B4544A', fontWeight:800, fontSize:12, marginTop:7, lineHeight:1.8 }}>
+                        ⚠︎ شريحة هذا الحجم سعرها {right!.toLocaleString('en-US')} ر.س لا {quoted!.toLocaleString('en-US')} — راجع الرقم قبل التسعير.
+                      </div>
+                    )}
+                    {isQuick && (
+                      <div style={{ color:'#9A5B25', fontWeight:800, fontSize:12, marginTop:7, lineHeight:1.8 }}>
+                        ⚠︎ دفع ثمن الفحص السريع فقط — لا تُصدر له الدراسة الكاملة.
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* وعد «تُخصم قيمة الفحص من الدراسة» مكتوب في الـPDF الذي يستلمه العميل.
+                  هنا يصير أثراً في القاعدة بدل أن يعتمد على ذاكرتك — أو على نزاع. */}
+              {(() => {
+                const ci = (r.client_inputs || {}) as { option?: string }
+                const isFull = String(r.option_key || ci.option || '') !== 'quick'
+                if (!isFull || canonicalTitle(r.service_title) !== 'دراسة الجدوى الاقتصادية') return null
+                const quick = reqs.find((x: any) => x.company_id === r.company_id && x.id !== r.id
+                  && canonicalTitle(x.service_title) === 'دراسة الجدوى الاقتصادية'
+                  && String(x.option_key || (x.client_inputs || {}).option || '') === 'quick'
+                  && ['paid', 'delivered', 'completed'].includes(String(x.status)))
+                if (!quick) return null
+                const paidAmt = Number(quick.price ?? quick.quoted_price ?? 990) || 990
+                const already = r.credited_from === quick.id || creditFrom[r.id] === quick.id
+                return (
+                  <div style={{ background:'#EAF7F0', border:'1.5px solid #CBE8DA', borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
+                    <div style={{ color:'#1A7A5A', fontWeight:900, fontSize:12.5 }}>
+                      💳 دفع {paidAmt.toLocaleString('en-US')} ر.س للفحص السريع في {fmtDate(quick.created_at)} — ووعدُك في الملف أن تُخصم بالكامل.
+                    </div>
+                    {already ? (
+                      <div style={{ color:'#1A7A5A', fontWeight:800, fontSize:12, marginTop:6 }}>✓ الخصم مسجَّل على هذه الدراسة.</div>
+                    ) : (
+                      <button onClick={() => {
+                        const cur = Number((edits[r.id]?.price ?? (r.price ? String(r.price) : '')) || 0)
+                        if (!cur) { alert('اكتب سعر الدراسة أولاً، ثم اخصم.'); return }
+                        setEdits(p => ({ ...p, [r.id]: { ...(p[r.id] || { deliverable: r.admin_deliverable || '', price: '' }), price: String(Math.max(0, cur - paidAmt)) } }))
+                        setCreditFrom(p => ({ ...p, [r.id]: quick.id }))
+                      }} style={{ marginTop:8, background:'#1A7A5A', color:'#fff', border:'none', padding:'7px 16px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12, cursor:'pointer' }}>
+                        اخصم {paidAmt.toLocaleString('en-US')} من السعر
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
+
               {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && r.status !== 'delivered' && r.status !== 'completed' && (
                 <div style={{ background:'#EAF7F0', border:'1.5px solid #D8E8E0', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:12.5 }}>
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
@@ -606,7 +681,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   </div>
                   <button onClick={() => saveFeasibility(r.id, r.company_id)} disabled={busy === 'fz' + r.id} style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginLeft:8 }}>{busy === 'fz' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ المدخلات'}</button>
                   <button onClick={() => matchFeasibility(r.company_id)} disabled={busy === 'mfz' + r.company_id} title="تبحث عن الجهات التي تنطبق شروطها على هذه الدراسة، وتُحفظ فتظهر داخلها" style={{ background:'#5C4A16', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>{busy === 'mfz' + r.company_id ? 'جارٍ البحث عن الجهات...' : '🏦 طابق الجهات لهذه الدراسة'}</button>
-                  <button onClick={() => genFeasibility(r.company_id)} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
+                  <button onClick={() => { const ci = (r.client_inputs || {}) as { option?: string }; const q = String(r.option_key || ci.option || '') === 'quick'; if (q && !confirm('هذا العميل دفع ثمن الفحص السريع (٩٩٠) لا الدراسة الكاملة.\n\nتوليد الدراسة الكاملة يعني تسليم عمل لم يُدفع ثمنه. متابعة؟')) return; genFeasibility(r.company_id) }} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
                   <button onClick={() => genFeasibilityQuick(r.company_id)} disabled={busy === 'gfz' + r.company_id} title="الأرقام المحسوبة وحدها — بلا بحث سوق وبلا جهات، يخرج في ثوانٍ" style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>⚡ فحص ائتماني سريع</button>
                   {fzMatch[r.company_id] && (<div style={{ fontSize:12, color:'#5C4A16', marginTop:6, fontWeight:700 }}>{fzMatch[r.company_id]}</div>)}
                 </div>

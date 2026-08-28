@@ -64,6 +64,8 @@ export async function PATCH(req: Request) {
   if (body.status) updates.status = body.status;
   if (body.admin_deliverable !== undefined) updates.admin_deliverable = body.admin_deliverable;
   if (body.price !== undefined) updates.price = body.price;
+  // رقم طلب الفحص السريع الذي خُصمت قيمته من هذه الدراسة — أثرٌ مكتوب للوعد لا ذاكرة
+  if (body.credited_from !== undefined) updates.credited_from = body.credited_from || null;
   if (body.status === 'priced') updates.priced_at = new Date().toISOString();
   if (body.status === 'delivered') updates.delivered_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();

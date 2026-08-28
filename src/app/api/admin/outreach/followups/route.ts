@@ -73,6 +73,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const { who, error: denied } = await requireStaff();
   if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  // صلاحية الإرسال كانت مفروضة في مسار الإرسال وحده، وهذا المسار يرسل فعلاً —
+  // فموظف بصلاحية تحضير فقط كان يستطيع مخاطبة جهة تمويل باسم المنصة
+  if (!who.canSend) return NextResponse.json({ error: 'لا تملك صلاحية الإرسال' }, { status: 403 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, company_name } = await req.json();
