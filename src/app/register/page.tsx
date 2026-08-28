@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import { MEMBERSHIP_FEE } from '@/lib/membership';
 
 const IBAN = 'SA3710000026300000961004'
 const BENEFICIARY = 'شركة حلول المرضي للاستشارات المالية'
@@ -98,7 +99,7 @@ export default function RegisterPage() {
     try {
       const r = await fetch('/api/payments/transfer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountSar: 2900, kind: 'subscription' }),
+        body: JSON.stringify({ amountSar: MEMBERSHIP_FEE, kind: 'subscription' }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { alert(d?.error || 'تعذّر إرسال الطلب — حاول مرة أخرى'); setSaving(false); return }

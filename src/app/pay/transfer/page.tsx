@@ -2,14 +2,18 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { MEMBERSHIP_FEE } from '@/lib/membership';
+
+// نوع الدفعة يُقرأ مرة واحدة، ورسم العضوية لا يأتي من الرابط
+const kindOf = (p: URLSearchParams) => p.get('kind') || 'subscription';
 
 const BANK = { name: 'البنك الأهلي السعودي SNB', beneficiary: 'شركة حلول المرضي للإستشارات المالية', iban: 'SA3710000026300000961004' };
 
 function TransferInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const amountSar = Number(params.get('amount') || '2900');
-  const kind = params.get('kind') || 'subscription';
+  const amountSar = kindOf(params) === 'subscription' ? MEMBERSHIP_FEE : Number(params.get('amount') || MEMBERSHIP_FEE);
+  const kind = kindOf(params);
   const companyId = params.get('company_id') || '';
   // رقم طلب الخدمة — كان يُمرَّر في الرابط ويُهمَل هنا، فتضيع صلة الإيصال بالطلب
   const serviceRequestId = params.get('sr') || '';

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { MEMBERSHIP_FEE } from '@/lib/membership';
 
 function admin() {
   return createClient(
@@ -61,6 +62,10 @@ export async function POST(req: Request) {
     if (!due || due <= 0) return NextResponse.json({ error: 'هذه الخدمة لم تُسعَّر بعد' }, { status: 409 });
     amountSar = due;
   }
+
+  // رسم العضوية أيضاً من المصدر لا من الرابط: كان ?amount= يُصدَّق كما هو،
+  // فيدفع أحدهم ريالاً واحداً بإيصال صحيح وتُفتح له المطابقة
+  if (kind === 'subscription') amountSar = MEMBERSHIP_FEE;
 
   if (!companyId || !amountSar) {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });

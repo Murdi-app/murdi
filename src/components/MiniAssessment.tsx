@@ -91,9 +91,12 @@ export default function MiniAssessment() {
       const track = ['تمويل', 'استثمار', 'طرح', 'استكشاف'][goalIdx] || ''
       // Supabase لا يرمي استثناءً عند رفض الصف — يعيد { error }.
       // كان الخطأ يمرّ صامتاً فيرى العميل «وصلَنا طلبك» ولا يُحفظ اسمه ولا جواله.
+      // completed لم تكن تُكتب أبداً، فبقيت خمسون تقييماً تامّاً تظهر في القاعدة «غير مكتملة».
+      // والصف لا يُنشأ أصلاً إلا هنا: بعد الأسئلة الثمانية وبعد الاسم والجوال.
       const { error } = await sb.from('mini_assessments').insert({
         full_name: name.trim(), phone: phone.trim(),
         track, score: pct, answers: ans, src: adSrc || null,
+        completed: ans.length >= QUESTIONS.length,
       })
       if (error) { setErr('تعذّر إرسال بياناتك، حاول مرة أخرى أو راسلنا واتساب'); return }
       setDone(true)

@@ -8,6 +8,7 @@ import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE } from '@/lib/serviceCatalog';
+import { membershipPitch, feeText } from '@/lib/membership';
 
 const TRACKS = [
   { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -748,13 +749,13 @@ export default function GoalPage() {
         <div onClick={() => setShowPaywall(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 44, marginBottom: 8 }}></div>
-            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>افتح كامل منصّة مُرضي</h2>
-            <p style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.9, margin: '0 0 8px' }}>
-              باشتراكك تفتح جميع مسارات الجاهزية (التمويل، الاستثمار، الطرح)، مع التقييم الكامل، خطة التحسين، ومتابعة د. عبدالحكيم المرضي.
-            </p>
-            <div style={{ color: '#1A3D34', fontSize: 28, fontWeight: 900, margin: '14px 0 4px' }}>2,900 <span style={{ fontSize: 15 }}>ر.س</span></div>
-            <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>لكل أربعة أشهر — يشمل كل شيء</div>
-            <button onClick={() => router.push('/pay/transfer?amount=2900&kind=subscription&company_id=' + companyId)}
+            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>{membershipPitch().title}</h2>
+            {membershipPitch().lines.map((ln, i) => (
+              <p key={i} style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.9, margin: '0 0 8px' }}>{ln}</p>
+            ))}
+            <div style={{ color: '#1A3D34', fontSize: 28, fontWeight: 900, margin: '14px 0 4px' }}>{feeText()} <span style={{ fontSize: 15 }}>ر.س</span></div>
+            <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>يُخصم من أول خدمة تطلبها</div>
+            <button onClick={() => router.push('/pay/transfer?kind=subscription&company_id=' + companyId)}
               style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
               إتمام الدفع
             </button>

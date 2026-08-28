@@ -58,18 +58,39 @@ export async function POST(req: Request) {
   let deckEn: Att | null = null;
   const trk = String(msgs[0]?.track) === 'investment' ? 'investment' : 'funding';
   const { data: att } = await admin.from('outreach_attachments').select('*').eq('company_id', companyId).eq('track', trk).maybeSingle();
+  // دلو contracts صار خاصاً — والملفات محفوظة بروابط عامة لم تعد تفتح.
+  // فبدل جلبها عبر HTTP، تُنزَّل من التخزين بمفتاح الخدمة مباشرةً: أسرع، ولا يتوقف على رابط.
+  const STORE = 'contracts';
+  const asPath = (v: string): string | null => {
+    for (const m of ['/object/public/' + STORE + '/', '/object/sign/' + STORE + '/']) {
+      const i = v.indexOf(m);
+      if (i >= 0) return decodeURIComponent(v.slice(i + m.length).split('?')[0]);
+    }
+    return /^https?:/i.test(v) ? null : v.replace(/^\/+/, '');
+  };
+  // سبب الفشل يُحفظ ويُقال: كان الملف يسقط بصمت ويبقى الخطأ «ارفع ملفاً» على ملفٍ مرفوع
+  const attErrors: string[] = [];
   const loadAtt = async (fileUrl?: string, fileName?: string): Promise<Att | null> => {
     if (!fileUrl) return null;
     const bad = /سرّي|سرية|موقف|تقييم|negotiation|valuation|confidential/i;
     if (bad.test(String(fileName || '')) || bad.test(String(fileUrl))) return null;
+    const name = fileName || 'document.pdf';
     try {
-      const fileRes = await fetch(fileUrl);
-      if (fileRes.ok) {
-        const buf = await fileRes.arrayBuffer();
-        return { filename: fileName || 'document.pdf', content: Buffer.from(buf).toString('base64') };
+      const path = asPath(String(fileUrl));
+      if (path) {
+        const { data: blob, error: dErr } = await admin.storage.from(STORE).download(path);
+        if (dErr || !blob) { attErrors.push(name + ': ' + (dErr?.message || 'غير موجود في التخزين')); return null; }
+        const buf = await blob.arrayBuffer();
+        return { filename: name, content: Buffer.from(buf).toString('base64') };
       }
-    } catch {}
-    return null;
+      const fileRes = await fetch(fileUrl);
+      if (!fileRes.ok) { attErrors.push(name + ': تعذّر التحميل (' + fileRes.status + ')'); return null; }
+      const buf = await fileRes.arrayBuffer();
+      return { filename: name, content: Buffer.from(buf).toString('base64') };
+    } catch (e) {
+      attErrors.push(name + ': ' + String(e).slice(0, 80));
+      return null;
+    }
   };
   if (att) {
     // الأعمدة الجديدة، مع دعم القديم (file_url) كنسخة عربية احتياطية
@@ -81,8 +102,14 @@ export async function POST(req: Request) {
 
   // حماية: لا نرسل بدون ملف مرفق (اتفاق: الإرسال لا يتم إلا بملف)
   if (!attAr && !attEn) {
-    return NextResponse.json({ error: 'ارفع ملف المخاطبة (PDF) أولاً قبل الإرسال — الإرسال بدون ملف غير مسموح' }, { status: 400 });
+    return NextResponse.json({
+      error: attErrors.length
+        ? 'الملف مرفوع لكنه لم يُحمَّل: ' + attErrors.join(' · ')
+        : 'ارفع ملف المخاطبة (PDF) أولاً قبل الإرسال — الإرسال بدون ملف غير مسموح',
+    }, { status: 400 });
   }
+  // الشرائح لا تمنع الإرسال، لكن سقوطها يُقال في الرد لا يُبتلع
+  const deckWarn = attErrors.length ? attErrors : null;
 
   let sent = 0;
   let skipped = 0;
@@ -137,5 +164,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, skipped, total: msgs.length });
+  return NextResponse.json({ ok: true, sent, skipped, total: msgs.length, attachmentWarnings: deckWarn });
 }

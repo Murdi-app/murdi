@@ -81,23 +81,26 @@ export async function POST(req: Request) {
     });
     if (up.error) return NextResponse.json({ error: 'تعذر الرفع: ' + up.error.message }, { status: 500 });
 
-    const { data: pub } = admin.storage.from('contracts').getPublicUrl(path);
+    // يُخزَّن المسار لا رابطاً عاماً: الدلو خاص، وهذه ملفات تمويل كاملة للعميل.
+    // والرابط المعاد للعرض الفوري موقَّع وقصير الأجل.
+    const { data: sg } = await admin.storage.from('contracts').createSignedUrl(path, 300);
+    const viewUrl = sg?.signedUrl || '';
     const row: Record<string, unknown> = {
       company_id: companyId,
       uploaded_at: new Date().toISOString(),
-      file_url: pub.publicUrl,
+      file_url: path,
       file_name: fileName,
       track,
     };
     if (kind === 'deck') {
-      if (lang === 'en') { row.deck_url_en = pub.publicUrl; row.deck_name_en = fileName; }
-      else { row.deck_url_ar = pub.publicUrl; row.deck_name_ar = fileName; }
-    } else if (lang === 'en') { row.file_url_en = pub.publicUrl; row.file_name_en = fileName; }
-    else { row.file_url_ar = pub.publicUrl; row.file_name_ar = fileName; }
+      if (lang === 'en') { row.deck_url_en = path; row.deck_name_en = fileName; }
+      else { row.deck_url_ar = path; row.deck_name_ar = fileName; }
+    } else if (lang === 'en') { row.file_url_en = path; row.file_name_en = fileName; }
+    else { row.file_url_ar = path; row.file_name_ar = fileName; }
     const { error } = await admin.from('outreach_attachments').upsert(row, { onConflict: 'company_id,track' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    return NextResponse.json({ ok: true, url: pub.publicUrl, name: fileName });
+    return NextResponse.json({ ok: true, url: viewUrl, path, name: fileName });
   } catch (e) {
     if (browser) { try { await browser.close(); } catch {} }
     return NextResponse.json({ error: 'تعذر التحويل: ' + String(e).slice(0, 160) }, { status: 500 });

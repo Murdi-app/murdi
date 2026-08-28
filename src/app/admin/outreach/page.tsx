@@ -13,6 +13,9 @@ type Msg = {
 
 const C = { ink:'#1A3D34', green:'#2E9E7B', gray:'#6B8A80', mint:'#E8F5EF', bg:'#F0F5F3', card:'#FBFCFB' };
 
+// الملفات لا تُفتح برابط مباشر بعد إغلاق الدلو: تمرّ ببوابة موقّعة تتحقق من الأدمن
+const fileHref = (v: string) => '/api/admin/storage-file?redirect=1&bucket=contracts&path=' + encodeURIComponent(v);
+
 export default function OutreachPage() {
   const [companyId, setCompanyId] = useState('');
   const [companies, setCompanies] = useState<{ id: string; company_name: string | null; cr_number: string | null }[]>([]);
@@ -114,16 +117,16 @@ export default function OutreachPage() {
       const path = companyId.trim() + '/outreach_' + lang + '_' + Date.now() + '_' + safeName;
       const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
       if (upErr) { flash('تعذّر الرفع: ' + upErr.message); setUploading(false); return; }
-      const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
+      // يُخزَّن المسار لا رابطاً عاماً: دلو contracts خاص، وفيه ملفات تمويل كاملة للعملاء
       const r = await fetch('/api/admin/outreach/attachment', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_id: companyId.trim(), lang, track: tab, file_url: pub.publicUrl, file_name: displayName }),
+        body: JSON.stringify({ company_id: companyId.trim(), lang, track: tab, file_url: path, file_name: displayName }),
       });
       const d = await r.json();
       if (d.ok) {
         flash('✓ رُفعت ' + (lang === 'ar' ? 'النسخة العربية' : 'النسخة الإنجليزية'));
-        if (lang === 'ar') setAttAr({ file_url: pub.publicUrl, file_name: displayName });
-        else setAttEn({ file_url: pub.publicUrl, file_name: displayName });
+        if (lang === 'ar') setAttAr({ file_url: path, file_name: displayName });
+        else setAttEn({ file_url: path, file_name: displayName });
       } else flash(d.error || 'خطأ');
     } catch {
       flash('تعذّر الرفع');
@@ -287,8 +290,8 @@ export default function OutreachPage() {
             {(deckAr || deckEn) && (
               <div style={{ marginTop:4, marginBottom:10, padding:'10px 14px', background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10 }}>
                 <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:6 }}>🎞️ الشرائح — تُرفق تلقائياً (تُحدَّث من زر «صدّر الشرائح» في الخدمات)</div>
-                {deckAr && <div style={{ fontSize:12.5, marginBottom:3 }}>📊 {deckAr.file_name} — <a href={deckAr.file_url} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(للجهات المحلية)</span></div>}
-                {deckEn && <div style={{ fontSize:12.5 }}>📊 {deckEn.file_name} — <a href={deckEn.file_url} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(لكل الجهات)</span></div>}
+                {deckAr && <div style={{ fontSize:12.5, marginBottom:3 }}>📊 {deckAr.file_name} — <a href={fileHref(deckAr.file_url)} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(للجهات المحلية)</span></div>}
+                {deckEn && <div style={{ fontSize:12.5 }}>📊 {deckEn.file_name} — <a href={fileHref(deckEn.file_url)} target="_blank" rel="noopener">عرض</a> <span style={{ color:'#6B8A80' }}>(لكل الجهات)</span></div>}
               </div>
             )}
             {([['ar','📄 النسخة العربية (للجهات المحلية/الخليجية)', attAr],['en','📄 English version (for international entities)', attEn]] as const).map(([lang, label, att]) => (
@@ -296,7 +299,7 @@ export default function OutreachPage() {
                 <div style={{ color:'#8A6D1A', fontWeight:900, fontSize:12.5, marginBottom:8 }}>{label}</div>
                 {att ? (
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-                    <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B', fontWeight:700, fontSize:13 }}>📄 {att.file_name} (عرض)</a>
+                    <a href={fileHref(att.file_url)} target="_blank" rel="noopener noreferrer" style={{ color:'#2E9E7B', fontWeight:700, fontSize:13 }}>📄 {att.file_name} (عرض)</a>
                     <button onClick={() => deleteAttachment(lang)} style={{ background:'#FDECEA', color:'#C0392B', border:'none', padding:'6px 16px', borderRadius:8, fontWeight:900, fontSize:12.5, cursor:'pointer' }}>حذف</button>
                   </div>
                 ) : (
