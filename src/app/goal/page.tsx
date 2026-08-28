@@ -84,12 +84,13 @@ export default function GoalPage() {
       setCompanyId(comp.id);
       const { data: reqs } = await supabase
         .from('service_requests')
-        .select('id, service_title, status, price, admin_deliverable')
+        .select('id, service_title, status, price')
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
       const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null }> = {};
       // العناوين القديمة تُردّ إلى عنوانها الحالي حتى يظل طلب العميل ظاهراً بعد دمج الخدمات
-      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: r.admin_deliverable }; }
+      // المحتوى المُسلَّم لا يُقرأ هنا — يُطلب من الخادم عند الطباعة، بعد التحقق من الحالة
+      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null }; }
       setServiceRequests(reqMap);
       const { data: ctrs } = await supabase
         .from('contracts')
@@ -520,8 +521,17 @@ export default function GoalPage() {
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
                             </div>
                           )}
-                          {(req.status === 'delivered' || req.status === 'completed') && req.deliverable && (
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + label + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (req.deliverable || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
+                          {(req.status === 'delivered' || req.status === 'completed') && (
+                            <button onClick={async () => {
+                              const w = window.open('', '', 'width=800');   // يُفتح داخل نقرة المستخدم وإلا حجبه المتصفح
+                              try {
+                                const d = await (await fetch('/api/service-deliverable?id=' + encodeURIComponent(req.id))).json();
+                                if (!w) return;
+                                if (!d?.deliverable) { w.document.write('<p dir=rtl style="font-family:Cairo">تعذّر جلب المحتوى — راجع فريق مُرضي.</p>'); w.document.close(); return; }
+                                w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + label + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + d.deliverable + '</body></html>');
+                                w.document.close(); w.print();
+                              } catch { if (w) { w.document.write('<p dir=rtl style="font-family:Cairo">تعذّر الاتصال.</p>'); w.document.close(); } }
+                            }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
                           )}
                         </div>
                       );

@@ -27,10 +27,12 @@ export async function POST(req: Request) {
   if (offset >= TOP) return NextResponse.json({ ok: true, done: true, next: offset });
 
   const rowId = String((body as { rowId?: string }).rowId || '');
-  if (!rowId && !co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
+  if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
   const base = admin.from('match_results').select('id, provider, product');
+  // فرع rowId كان يستعلم بمفتاح service_role بلا قيد ملكية —
+  // فأي عميل مسجَّل يعدّل صف مطابقة لشركة أخرى ويُسقط تقييمها
   const { data: rows } = rowId
-    ? await base.eq('id', rowId)
+    ? await base.eq('id', rowId).eq('company_id', String(co?.id || '\u0000'))
     : await base.eq('company_id', String(co?.id || '')).eq('track', track).eq('status', 'new').gt('fit_score', 0)
         .order('fit_score', { ascending: false }).range(offset, offset + CHUNK - 1);
 

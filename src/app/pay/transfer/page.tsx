@@ -30,7 +30,8 @@ function TransferInner() {
         const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
         const path = companyId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
         const { error } = await supabase.storage.from('receipts').upload(path, file);
-        if (!error) { const { data } = supabase.storage.from('receipts').getPublicUrl(path); receiptUrl = data.publicUrl; }
+        // دلو الإيصالات خاص — الرابط العام لا يفتح. نحفظ المسار ويُوقَّع عند عرضه للأدمن
+        if (!error) receiptUrl = path;
       }
       const r = await fetch('/api/payments/transfer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

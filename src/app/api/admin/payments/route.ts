@@ -33,7 +33,15 @@ export async function GET() {
     const { data: comps } = await admin.from('companies').select('id, company_name').in('id', ids);
     for (const c of (comps || [])) names[c.id] = c.company_name || '';
   }
-  const rows = (pays || []).map((p) => ({ ...p, company_name: p.company_id ? (names[p.company_id] || '—') : '—' }));
+  // الإيصالات في دلو خاص: يُوقَّع رابط مؤقت لكل واحد وقت العرض، فيفتح فعلاً
+  const rows = await Promise.all((pays || []).map(async (p) => {
+    let receipt: string | null = p.transfer_receipt_url || null;
+    if (receipt && !/^https?:/i.test(receipt)) {
+      const { data: sg } = await admin.storage.from('receipts').createSignedUrl(receipt, 60 * 60);
+      receipt = sg?.signedUrl || null;
+    }
+    return { ...p, transfer_receipt_url: receipt, company_name: p.company_id ? (names[p.company_id] || '—') : '—' };
+  }));
   return NextResponse.json({ payments: rows });
 }
 
@@ -54,7 +62,11 @@ export async function POST(req: Request) {
   if (action === 'confirm') {
     await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
     if (pay.kind === 'subscription' && pay.company_id) {
-      const until = new Date(); until.setMonth(until.getMonth() + 4);
+      // التجديد المبكر يُضاف إلى ما تبقّى، لا يمحوه
+      const { data: curCo } = await admin.from('companies').select('subscription_end').eq('id', pay.company_id).maybeSingle();
+      const cur = curCo?.subscription_end ? new Date(curCo.subscription_end) : null;
+      const until = cur && cur > new Date() ? new Date(cur) : new Date();
+      until.setMonth(until.getMonth() + 4);
       await admin.from('companies').update({ subscription_active: true, subscription_end: until.toISOString(), account_status: 'active' }).eq('id', pay.company_id);
       // المطابقة يُطلقها العميل بنفسه من بوابته بعد التفعيل
     }

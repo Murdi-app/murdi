@@ -15,14 +15,15 @@ function admin() {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   let companyId: string = body?.companyId || '';
-  const amountSar: number = Number(body?.amountSar || 0);
+  let amountSar: number = Number(body?.amountSar || 0);
   const kind: string = body?.kind || 'subscription';
   const description: string = body?.description || '';
   let receiptUrl: string = body?.receiptUrl || '';
   const note: string = body?.note || '';
   const serviceRequestId: string = body?.serviceRequestId || '';
 
-  if (!companyId) {
+  // الهوية تُؤخذ من الجلسة دائماً، لا من الجسم — وإلا أنشأ أي أحد دفعاتٍ باسم عميل آخر
+  {
     try {
       const store = await cookies();
       const ss = createServerClient(
@@ -31,27 +32,41 @@ export async function POST(req: Request) {
         { cookies: { getAll: () => store.getAll(), setAll: () => {} } }
       );
       const { data: au } = await ss.auth.getUser();
-      if (au?.user) {
-        const { data: co } = await admin().from('companies')
-          .select('id, receipt_path').eq('user_id', au.user.id)
-          .order('created_at', { ascending: false }).limit(1).maybeSingle();
-        const row = co as Record<string, unknown> | null;
-        if (row) {
-          companyId = String(row.id || '');
-          const rp = String(row.receipt_path || '');
-          if (!receiptUrl && rp) {
-            const { data: pub } = admin().storage.from('receipts').getPublicUrl(rp);
-            receiptUrl = pub?.publicUrl || '';
-          }
-        }
-      }
-    } catch {}
+      if (!au?.user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+      const { data: co } = await admin().from('companies')
+        .select('id, receipt_path').eq('user_id', au.user.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const row = co as Record<string, unknown> | null;
+      if (!row) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
+      companyId = String(row.id || '');
+      const rp = String(row.receipt_path || '');
+      if (!receiptUrl && rp) receiptUrl = rp;
+    } catch {
+      return NextResponse.json({ error: 'تعذّر التحقق من الجلسة' }, { status: 401 });
+    }
   }
+
+  const sb0 = admin();
+
+  // مبلغ الخدمة يُحسب من سعرها المحفوظ، لا من الرابط.
+  // كان المبلغ يأتي من ?amount=… فيدفع العميل مئة ريال عن خدمة بعشرين ألفاً بإيصال صحيح.
+  if (kind === 'service') {
+    if (!serviceRequestId) return NextResponse.json({ error: 'رقم الطلب مطلوب' }, { status: 400 });
+    const { data: sr } = await sb0.from('service_requests')
+      .select('id, company_id, price, quoted_price, status').eq('id', serviceRequestId).maybeSingle();
+    if (!sr || String(sr.company_id) !== companyId) {
+      return NextResponse.json({ error: 'طلب غير معروف' }, { status: 403 });
+    }
+    const due = Number(sr.price ?? sr.quoted_price ?? 0);
+    if (!due || due <= 0) return NextResponse.json({ error: 'هذه الخدمة لم تُسعَّر بعد' }, { status: 409 });
+    amountSar = due;
+  }
+
   if (!companyId || !amountSar) {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
   }
 
-  const sb = admin();
+  const sb = sb0;
   // التكرار يُقاس بالطلب لا بالعميل: عميل له طلبان مسعّران يدفع لكلٍّ منهما دفعةً مستقلة
   let dupQ = sb.from('payments').select('id')
     .eq('company_id', companyId).eq('kind', kind).eq('status', 'awaiting_confirmation');

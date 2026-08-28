@@ -51,7 +51,10 @@ export async function POST(req: Request) {
 
   // تفعيل الاشتراك تلقائياً عند نجاح دفع الاشتراك
   if (isPaid && kind === 'subscription' && companyId) {
-    const until = new Date();
+    // التجديد المبكر يُضاف إلى ما تبقّى، لا يمحوه
+    const { data: curCo } = await sb.from('companies').select('subscription_end').eq('id', companyId).maybeSingle();
+    const cur = curCo?.subscription_end ? new Date(curCo.subscription_end) : null;
+    const until = cur && cur > new Date() ? new Date(cur) : new Date();
     until.setMonth(until.getMonth() + 4); // اشتراك ربعي (4 أشهر)
     await sb.from('companies')
       .update({ subscription_active: true, subscription_end: until.toISOString() })
