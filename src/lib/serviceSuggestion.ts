@@ -1,4 +1,5 @@
 // منطق اقتراح خدمة مُرضي الأنسب لكل عميل بناءً على وضعه المالي والمسار
+import { canonicalTitle } from './serviceCatalog';
 type Track = 'funding' | 'investment' | 'ipo';
 
 // خريطة الخدمات: لكل خدمة تعريفها الدقيق + ما يجب أن تُخرجه + المسارات التي تخدمها
@@ -203,8 +204,10 @@ export function suggestionBox(s: ServiceSuggestion): string {
 // ════════════════════════════════════════════════════════════════
 export function suggestAllServices(fd: SuggestInput, track: Track, score: number): ServiceSuggestion[] {
   const out: ServiceSuggestion[] = [];
+  // المقارنة بالعنوان المعياري لا بالنص الخام: خدمتا الجدولة والهيكلة دُمجتا في واحدة،
+  // فكان العميل المتعثّر يُقترح عليه سطران يُدرجان طلبين ويُسعَّران ويُحصَّلان مرتين.
   const seen = new Set<string>();
-  const add = (s: ServiceSuggestion) => { if (!seen.has(s.service)) { seen.add(s.service); out.push(s); } };
+  const add = (s: ServiceSuggestion) => { const k = canonicalTitle(s.service); if (!seen.has(k)) { seen.add(k); out.push(s); } };
 
   const isDefaulted = fd?.repayment_status === 'default';
   const isLate = !isDefaulted && (fd?.repayment_status === 'slight' || fd?.debt_status === 'late');

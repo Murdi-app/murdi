@@ -38,6 +38,14 @@ export default function PendingPage() {
     setLoading(false)
   }
 
+  // لكل حالة مخرجها: الصفحة كانت تعرض رسالة وزر خروج فقط،
+  // فيصلها عميل مطلوبٌ منه الدفع أو التسجيل ولا يجد رابطاً واحداً يمضي به.
+  const ACTION: Partial<Record<Status, { label: string; href: string }>> = {
+    none: { label: 'سجّل شركتك الآن ←', href: '/register' },
+    pending_payment: { label: 'أكمل الدفع ←', href: '/pay' },
+    expired: { label: 'جدّد اشتراكك ←', href: '/pay' },
+  }
+  const WHATSAPP = '966570314005'
   const content: Record<Status, { icon: string; title: string; msg: string }> = {
     none: { icon: '', title: 'لم تسجّل شركتك بعد', msg: 'ابدأ بتسجيل شركتك ودفع رسوم الاشتراك لتفعيل حسابك.' },
     pending_payment: { icon: '', title: 'بانتظار الدفع', msg: 'أكمل دفع رسوم الاشتراك ليتم مراجعة طلبك.' },
@@ -78,6 +86,14 @@ export default function PendingPage() {
           <div className="pd-icon">{c.icon}</div>
           <div className="pd-title">{c.title}</div>
           <div className="pd-msg">{c.msg}</div>
+          {ACTION[status] && (
+            <button className="pd-btn" onClick={() => router.push(ACTION[status]!.href)}>{ACTION[status]!.label}</button>
+          )}
+          {(status === 'rejected' || status === 'suspended') && (
+            <a className="pd-btn" style={{ textDecoration: 'none', display: 'inline-block' }}
+               href={'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('السلام عليكم، أستفسر عن حالة حسابي في منصة مُرضي')}
+               target="_blank" rel="noopener noreferrer">تواصل معنا على واتساب</a>
+          )}
           <button className="pd-logout" onClick={async () => { await supabase.auth.signOut(); router.push('/auth/login') }}>تسجيل الخروج</button>
         </div>
       </div>

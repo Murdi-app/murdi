@@ -54,7 +54,10 @@ export default function RegisterPage() {
     const { data: existing } = await supabase
       .from('companies').select('id').eq('user_id', user.id).maybeSingle()
     if (existing) {
-      await supabase.from('companies').update({ ...form, account_status: 'pending_payment' }).eq('id', existing.id)
+      // تحديث بيانات المنشأة لا يمسّ حالة الحساب:
+      // كان يُعيد المشترك المفعّل إلى «بانتظار الدفع» فيقطع وصولاً دفع ثمنه.
+      const { error } = await supabase.from('companies').update({ ...form }).eq('id', existing.id)
+      if (error) { setSaving(false); alert('تعذّر حفظ البيانات — حاول مرة أخرى'); return }
     } else {
       await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'pending_payment' })
     }

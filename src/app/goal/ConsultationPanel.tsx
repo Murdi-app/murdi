@@ -14,6 +14,7 @@ export default function ConsultationPanel() {
   const [editReason, setEditReason] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [sendingE, setSendingE] = useState(false);
+  const [retrying, setRetrying] = useState('');
   const [companyId, setCompanyId] = useState('');
 
   const supabase = createBrowserClient(
@@ -74,10 +75,12 @@ export default function ConsultationPanel() {
   const sendEditRequest = async () => {
     if (editReason.trim() === '' || companyId === '') return;
     setSendingE(true);
-    await supabase.from('edit_requests').insert({ company_id: companyId, reason: editReason.trim() });
+    // كان الخطأ يُبتلع فتُقفل الحالة على pending، فيبقى العميل محبوساً مع رقم خاطئ بلا وسيلة لإعادة الطلب
+    const { error } = await supabase.from('edit_requests').insert({ company_id: companyId, reason: editReason.trim() });
+    setSendingE(false);
+    if (error) { alert('تعذّر إرسال طلب التعديل — حاول مرة أخرى أو راسلنا واتساب على 0570314005'); return; }
     setEditReason('');
     setEditStatus('pending');
-    setSendingE(false);
   };
 
   if (loading) {
@@ -126,7 +129,23 @@ export default function ConsultationPanel() {
               </div>
             )}
 
-            {st !== '' && st !== 'released' && (
+            {/* الحالة failed كانت تُعرض بنفس الدوّارة، فينتظر العميل شهوراً منتجاً لن يصل */}
+            {st === 'failed' && (
+              <div className="bg-[#FBEEEC] rounded-2xl p-5 text-center border border-[#F0D6D2]">
+                <p className="text-[#B4453C] font-black text-sm">تعثّر إعداد استشارة {TRACK_AR[tk]}</p>
+                <p className="text-[#8A5A54] text-xs font-bold mt-1 leading-relaxed">لم تكتمل هذه المحاولة. اضغط لإعادة الإعداد — بلا رسوم إضافية.</p>
+                <button onClick={async () => {
+                  setRetrying(tk);
+                  try { await fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tk }) }); } catch {}
+                  setRetrying('');
+                  location.reload();
+                }} disabled={retrying === tk} className="mt-3 px-6 py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs disabled:opacity-60">
+                  {retrying === tk ? 'جارٍ إعادة الإعداد…' : 'أعد إعداد الاستشارة'}
+                </button>
+              </div>
+            )}
+
+            {st !== '' && st !== 'released' && st !== 'failed' && (
               <div className="bg-[#FBF5E8] rounded-2xl p-5 text-center">
                 <div className="inline-block w-6 h-6 rounded-full border-2 border-[#C9A84C]/30 border-t-[#C9A84C] animate-spin mb-2" />
                 <p className="text-[#9A7B2E] font-black text-sm">استشارتك الخاصة بـ{TRACK_AR[tk]} قيد الإعداد من د. عبدالحكيم المرضي</p>

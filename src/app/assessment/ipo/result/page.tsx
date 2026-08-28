@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { canonicalTitle } from '@/lib/serviceCatalog';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -21,6 +22,8 @@ export default function IpoResult() {
   const [eligLoading, setEligLoading] = useState(true);
   const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
   const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
+  // بطاقة التفعيل كانت تُعرض لكل من يفتح الصفحة — بما فيهم من دفع بالفعل
+  const [subActive, setSubActive] = useState(false);
   const [companyId, setCompanyId] = useState<string>('');
   const [bundleStatus, setBundleStatus] = useState<string>('');
 
@@ -35,11 +38,13 @@ export default function IpoResult() {
 
       const { data: company } = await supabase
         .from('companies')
-        .select('id')
+        .select('id, subscription_active, subscription_end')
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
       setCompanyId(company.id);
+      setSubActive(company.subscription_active === true
+        && (!company.subscription_end || new Date(company.subscription_end) > new Date()));
 
       const { data: fd } = await supabase
         .from('financial_data')
@@ -289,7 +294,7 @@ export default function IpoResult() {
               <div style={{ color: '#1A3D34', fontSize: 18, fontWeight: 900, marginBottom: 8 }}>{sug.icon} {sug.service}</div>
               <p style={{ color: '#5C4A1F', fontSize: 14, lineHeight: 1.9, fontWeight: 700, marginBottom: sug.urgency === 'none' ? 0 : 18 }}>{sug.why}</p>
               {sug.urgency !== 'none' && (
-                <a href={'/goal?tab=services&highlight=' + encodeURIComponent(sug.service)}
+                <a href={'/goal?tab=services&highlight=' + encodeURIComponent(canonicalTitle(sug.service))}
                   style={{ display: 'inline-block', background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 14, padding: '13px 30px', borderRadius: 999, textDecoration: 'none' }}>
                   اطلب هذه الخدمة من فريق مُرضي ←
                 </a>
@@ -398,7 +403,7 @@ export default function IpoResult() {
           <p className="text-[#1A3D34] font-black text-sm">فريق مُرضي استلم نتيجتك وسيتواصل معك لمناقشة خطة الطرح والخطوات التالية.</p>
         </div>
 
-        {fdRaw && (() => {
+        {fdRaw && !subActive && (() => {
           const f = fdRaw as Record<string, unknown>;
           const rev = Number(f.annual_revenue) || 0;
           let n = 38;
@@ -409,7 +414,7 @@ export default function IpoResult() {
           if (f.trades_cross_border && f.trades_cross_border !== 'none') n += 9;
           n += Math.min(9, String(f.funding_type || '').split(',').filter(Boolean).length * 3);
           if (f.issues_invoices === true) n += 4;
-          const lo = n, hi = n + 15;
+          void n;   // الرقم لم يعد يُعرض — لا نعِد بعدد قبل أن نقيسه
           return (
           <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
             <div className="text-3xl mb-3"></div>
@@ -420,8 +425,8 @@ export default function IpoResult() {
               فالعميل قد يُرفض في منتج ويُقبل في آخر داخل البنك نفسه.
             </p>
             <div className="rounded-2xl py-4 px-5 mb-4" style={{ background: 'rgba(201,168,76,0.12)', border: '1.5px solid rgba(201,168,76,0.35)' }}>
-              <div className="text-[#C9A84C] font-black text-2xl">{lo}–{hi} جهة</div>
-              <div className="text-[#CFE0DA] text-xs font-bold mt-1">تقدير مبدئي للجهات المناسبة لملفك</div>
+              <div className="text-[#C9A84C] font-black text-2xl">شبكة مُرضي التمويلية</div>
+              <div className="text-[#CFE0DA] text-xs font-bold mt-1">عدد الجهات المؤهّلة لك يظهر بعد المطابقة — ولا نعِدك برقم قبل أن نقيسه</div>
             </div>
             <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
               ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · رفع ملفك للجهات ومتابعة الرد · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.

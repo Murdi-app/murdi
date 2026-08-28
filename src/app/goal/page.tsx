@@ -42,6 +42,8 @@ export default function GoalPage() {
   const [orderOption, setOrderOption] = useState<string>('');
   const [orderBusy, setOrderBusy] = useState(false);
   const [orderCategory, setOrderCategory] = useState<string>('');
+  // حوالة بانتظار تأكيدك — بدونها كان العميل الذي حوّل يرى «فعّل الآن» فيحوّل مرة ثانية
+  const [pendingTransfer, setPendingTransfer] = useState<{ kind: string; amount: number } | null>(null);
 
   useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
 
@@ -50,7 +52,8 @@ export default function GoalPage() {
     const t = params.get('tab');
     if (t === 'services' || t === 'consult' || t === 'overview') setTab(t);
     const h = params.get('highlight');
-    if (h) setHighlightService(h);
+    // العنوان القادم من صفحة النتيجة قد يكون اسماً قديماً — يُردّ إلى المعياري وإلا لم يُطابق شيئاً
+    if (h) setHighlightService(canonicalTitle(h));
   }, []);
 
   useEffect(() => {
@@ -100,6 +103,12 @@ export default function GoalPage() {
       const ctrMap: Record<string, { id: string; status: string; body: string; signedUrl: string | null }> = {};
       for (const c of (ctrs || [])) { if (c.status !== 'draft' && !ctrMap[c.contract_type]) ctrMap[c.contract_type] = { id: c.id, status: c.status, body: c.contract_body, signedUrl: c.signed_file_url }; }
       setClientContracts(ctrMap);
+      const { data: pays } = await supabase
+        .from('payments').select('kind, amount_sar, status, created_at')
+        .eq('company_id', comp.id).eq('status', 'awaiting_confirmation')
+        .order('created_at', { ascending: false }).limit(1);
+      const pend = (pays || [])[0];
+      if (pend) setPendingTransfer({ kind: String(pend.kind || ''), amount: Number(pend.amount_sar || 0) });
     };
     load();
   }, []);
@@ -262,7 +271,19 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!subscriptionActive && Object.keys(scores || {}).length > 0 && (
+      {!subscriptionActive && pendingTransfer && (
+        <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
+          <div className="max-w-5xl mx-auto text-center">
+            <div className="text-white font-black text-sm">استلمنا تحويلك — قيد المراجعة</div>
+            <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">
+              {pendingTransfer.amount > 0 ? pendingTransfer.amount.toLocaleString('ar-SA') + ' ر.س · ' : ''}
+              يراجعه فريق مُرضي ويُفعَّل ملفك فور التأكد. <b>لا حاجة لتحويل مرة أخرى.</b>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!subscriptionActive && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
@@ -287,7 +308,14 @@ export default function GoalPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/auth/login" className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</a>
+            <button onClick={async () => {
+              // كان رابطاً يُعيد التوجيه بلا إنهاء الجلسة — فمن يفتح الجهاز بعده يدخل على الملف المالي
+              try {
+                const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
+                await sb.auth.signOut();
+              } catch {}
+              router.push('/auth/login');
+            }} className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</button>
           </div>
         </div>
       </nav>
@@ -515,7 +543,10 @@ export default function GoalPage() {
                       return (
                         <div className="flex flex-col gap-2">
                           <div className="text-center py-2.5 rounded-full font-black text-sm" style={{ background: st.bg, color: st.fg }}>{st.t}</div>
-                          {req.status === 'priced' && req.price && (
+                          {req.status === 'priced' && pendingTransfer && pendingTransfer.kind === 'service' && (
+                            <div className="text-center text-[#1A7A5A] font-black text-xs leading-relaxed">استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تُحوّل مرة أخرى.</div>
+                          )}
+                          {req.status === 'priced' && req.price && !(pendingTransfer && pendingTransfer.kind === 'service') && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>

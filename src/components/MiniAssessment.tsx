@@ -85,11 +85,17 @@ export default function MiniAssessment() {
     if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
     setSaving(true)
     try {
-      const track = ['تمويل','استثمار','طرح','استكشاف'][[8,8,8,6].indexOf(ans[7])] || ''
-      await sb.from('mini_assessments').insert({
+      // الهدف يُقرأ بموقع الخيار لا بقيمته: الخيارات الثلاثة الأولى قيمتها 8 جميعاً،
+      // فكان indexOf يعيد صفراً دائماً ويُسجَّل كل ليد «تمويل» — بمن فيهم طالبو الاستثمار والطرح.
+      const goalIdx = (QUESTIONS[7]?.opts || []).findIndex(o => o.v === ans[7])
+      const track = ['تمويل', 'استثمار', 'طرح', 'استكشاف'][goalIdx] || ''
+      // Supabase لا يرمي استثناءً عند رفض الصف — يعيد { error }.
+      // كان الخطأ يمرّ صامتاً فيرى العميل «وصلَنا طلبك» ولا يُحفظ اسمه ولا جواله.
+      const { error } = await sb.from('mini_assessments').insert({
         full_name: name.trim(), phone: phone.trim(),
         track, score: pct, answers: ans, src: adSrc || null,
       })
+      if (error) { setErr('تعذّر إرسال بياناتك، حاول مرة أخرى أو راسلنا واتساب'); return }
       setDone(true)
     } catch {
       setErr('حدث خطأ، حاول مرة أخرى')

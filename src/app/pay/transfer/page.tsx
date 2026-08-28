@@ -17,6 +17,7 @@ function TransferInner() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
 
   const copyIban = () => { navigator.clipboard.writeText(BANK.iban); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -24,6 +25,7 @@ function TransferInner() {
   const submit = async () => {
     if (busy) return;
     setBusy(true);
+    setErr('');
     let receiptUrl = '';
     try {
       if (file) {
@@ -35,14 +37,22 @@ function TransferInner() {
         const path = folder + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
         const { error } = await supabase.storage.from('receipts').upload(path, file);
         // دلو الإيصالات خاص — الرابط العام لا يفتح. نحفظ المسار ويُوقَّع عند عرضه للأدمن
-        if (!error) receiptUrl = path;
+        // فشل رفع الإيصال كان يمضي بصمت: يرى العميل «تم الاستلام» وتصلك دفعة بلا إثبات فلا تُفعَّل
+        if (error) { setErr('تعذّر رفع الإيصال — حاول مرة أخرى أو أرسله واتساب على 0570314005'); setBusy(false); return; }
+        receiptUrl = path;
       }
       const r = await fetch('/api/payments/transfer', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companyId, amountSar, kind, receiptUrl, note, serviceRequestId }),
       });
-      if (r.ok) setDone(true);
-    } catch { /* تجاهل */ }
+      if (r.ok) { setDone(true); }
+      else {
+        const d = await r.json().catch(() => ({}));
+        setErr(d?.error || 'تعذّر تسجيل التحويل — حاول مرة أخرى أو راسلنا واتساب على 0570314005');
+      }
+    } catch {
+      setErr('تعذّر الاتصال — تحقق من الشبكة ثم أعد المحاولة');
+    }
     setBusy(false);
   };
 
@@ -51,7 +61,7 @@ function TransferInner() {
       <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 520, margin: '0 auto', padding: '60px 20px', minHeight: '100vh', background: '#FBFCFB', textAlign: 'center' }}>
         <div style={{ fontSize: 56 }}>✅</div>
         <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900 }}>تم استلام تحويلك</h1>
-        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. جارٍ مراجعة التحويل من فريق مُرضي، وسيتم تفعيل اشتراكك فور التأكد. سيصلك إشعار قريباً.</p>
+        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. يراجع فريق مُرضي التحويل، و{kind === 'service' ? 'تبدأ خدمتك' : 'يُفعَّل اشتراكك'} فور التأكد. <b>لا حاجة للتحويل مرة أخرى</b> — وستجد حالة التحويل في لوحتك.</p>
         <button onClick={() => router.push('/goal')} style={{ marginTop: 20, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px 30px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>العودة للوحة</button>
       </div>
     );
@@ -87,6 +97,7 @@ function TransferInner() {
         {busy ? 'جارٍ الإرسال…' : 'أرسلت الحوالة — أرسل للمراجعة'}
       </button>
       {!file && <p style={{ textAlign: 'center', color: '#9DB3AB', fontSize: 12, marginTop: 8 }}>الرجاء إرفاق الإيصال أولاً</p>}
+      {err && <p style={{ textAlign: 'center', color: '#B4453C', fontSize: 13, fontWeight: 800, marginTop: 10, lineHeight: 1.8 }}>{err}</p>}
     </div>
   );
 }
