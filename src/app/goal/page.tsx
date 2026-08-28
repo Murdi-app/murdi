@@ -44,6 +44,17 @@ export default function GoalPage() {
   const [orderCategory, setOrderCategory] = useState<string>('');
   // حوالة بانتظار تأكيدك — بدونها كان العميل الذي حوّل يرى «فعّل الآن» فيحوّل مرة ثانية
   const [pendingTransfer, setPendingTransfer] = useState<{ kind: string; amount: number } | null>(null);
+  // طبقة الدليل: لماذا هذه الخدمة لك أنت — من بياناتك ومن فجوات جهاتك، لا من وصف تسويقي
+  const [reasons, setReasons] = useState<Record<string, { urgency: 'blocking' | 'strong' | 'fit'; evidence: string; hook?: string }>>({});
+  const [pitch, setPitch] = useState<{ headline: string; lines: string[]; cta: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/service-evidence').then(r => r.json()).then(d => {
+      const m: Record<string, { urgency: 'blocking' | 'strong' | 'fit'; evidence: string; hook?: string }> = {};
+      for (const r of (d.reasons || [])) if (!m[r.service]) m[r.service] = { urgency: r.urgency, evidence: r.evidence, hook: r.hook };
+      setReasons(m); setPitch(d.pitch || null);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
 
@@ -186,9 +197,10 @@ export default function GoalPage() {
     const path = companyId + '/' + contractId + '_' + Date.now() + '_' + safeName;
     const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
     if (upErr) { alert('تعذّر رفع الملف: ' + (upErr.message || JSON.stringify(upErr))); return; }
-    const { data: pub } = supabase.storage.from('contracts').getPublicUrl(path);
-    await supabase.from('contracts').update({ signed_file_url: pub.publicUrl, status: 'signed', signed_at: new Date().toISOString() }).eq('id', contractId);
-    setClientContracts((prev) => ({ ...prev, [contractType]: { ...prev[contractType], status: 'signed', signedUrl: pub.publicUrl } }));
+    // يُخزَّن المسار لا رابطاً عاماً: العقد الموقّع يحمل رقم الهوية،
+    // ولا يُفتح إلا برابط موقّع قصير الأجل عبر /api/contract-file
+    await supabase.from('contracts').update({ signed_file_url: path, status: 'signed', signed_at: new Date().toISOString() }).eq('id', contractId);
+    setClientContracts((prev) => ({ ...prev, [contractType]: { ...prev[contractType], status: 'signed', signedUrl: path } }));
     alert('تم رفع العقد الموقّع بنجاح، شكراً لك');
   };
 
@@ -434,6 +446,17 @@ export default function GoalPage() {
               <div className="text-[#9DB3AB] text-xs font-bold">كل واحدة منها تُزيل عائقاً بعينه بين ملفك وبين الجهة التي تموّله</div>
             </div>
           </div>
+
+          {/* ما يقوله ملفك — دليل من إجاباته يصنع السؤال الذي لا تجيبه إلا المطابقة */}
+          {pitch && !subscriptionActive && (
+            <div className="rounded-2xl p-6 mb-8 text-center" style={{ background: '#1A3D34' }}>
+              <div className="text-white font-black text-base mb-3" style={{ fontFamily: 'Amiri, serif' }}>{pitch.headline}</div>
+              {pitch.lines.map((l, i) => (
+                <p key={i} className="text-[#CFE0DA] text-sm font-bold leading-loose mb-2 max-w-2xl mx-auto text-right">{l}</p>
+              ))}
+              <a href="/pay" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>{pitch.cta} ←</a>
+            </div>
+          )}
           {CATALOG.map((cat, ci) => (
             <div key={ci} className="mb-7">
               <div className="flex items-baseline gap-3 mb-4 border-b-2 border-[#EAF2EE] pb-2">
@@ -441,7 +464,11 @@ export default function GoalPage() {
                 <span className="text-[#9DB3AB] text-xs font-bold">{cat.note}</span>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
-                {cat.items.map((title, ii) => {
+                {[...cat.items].sort((a, b) => {
+                  // ما يوقف ملفه يتقدّم، ثم ما ظهر فيه، ثم الباقي بترتيبه الأصلي
+                  const rk = (t: string) => ({ blocking: 0, strong: 1, fit: 2 } as Record<string, number>)[reasons[t]?.urgency ?? ''] ?? 3;
+                  return rk(a) - rk(b);
+                }).map((title, ii) => {
                   const c = commercialFor(title);
                   const label = displayName(title);
                   const isHighlighted = highlightService === title;
@@ -457,6 +484,23 @@ export default function GoalPage() {
 
                     {/* الألم أولاً: العميل يعرف نفسه في السطر قبل أن يعرف الخدمة */}
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">{c?.pain || ''}</p>
+
+                    {/* الدليل: ما ظهر في ملفه هو — يبيع أكثر من أي وصف، لأنه قياس لا عرض */}
+                    {reasons[title] && (() => {
+                      const rz = reasons[title];
+                      const tone = rz.urgency === 'blocking'
+                        ? { bg: '#FBEEEC', bd: '#F0D6D2', fg: '#B4453C', lb: 'يوقف ملفك الآن' }
+                        : rz.urgency === 'strong'
+                        ? { bg: '#FBF5E8', bd: '#EAD9A8', fg: '#9A7B2E', lb: 'ظهر في ملفك' }
+                        : { bg: '#F2FAF6', bd: '#CBE8DA', fg: '#1A7A5A', lb: 'يرفع فرصتك' };
+                      return (
+                        <div className="rounded-xl p-3 mb-4" style={{ background: tone.bg, border: '1px solid ' + tone.bd }}>
+                          <div className="font-black text-[11px] mb-1" style={{ color: tone.fg }}>● {tone.lb}</div>
+                          <div className="text-[#3A4D47] text-xs font-bold leading-relaxed">{rz.evidence}</div>
+                          {rz.hook && <div className="text-[#6B8A80] text-[11px] font-bold leading-relaxed mt-1.5">{rz.hook}</div>}
+                        </div>
+                      );
+                    })()}
 
                     {/* السعر والمدة — معلنان، فلا يحتاج العميل مكالمة ليعرفهما */}
                     <div className="flex items-baseline justify-between gap-2 mb-1 pb-3 border-b border-dashed border-[#EAF2EE]">

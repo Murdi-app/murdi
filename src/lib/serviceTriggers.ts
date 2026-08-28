@@ -185,6 +185,7 @@ export function unlockPitch(s: ClientSignals): { headline: string; lines: string
   return {
     headline,
     lines,
-    cta: 'افتح المطابقة — 990 ريال، وتُخصم بالكامل من ملفك التمويلي',
+    // بلا رقم هنا: السعر مصدره واحد في الواجهة، وإلا تناقض النص مع ما يُدفع فعلاً
+    cta: 'افتح المطابقة وشاهد جهاتك بالاسم',
   };
 }
