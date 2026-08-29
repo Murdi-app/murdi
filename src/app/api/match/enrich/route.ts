@@ -1,9 +1,24 @@
 import { NextResponse } from 'next/server';
 import { logError } from '@/lib/logError';
+import { parseItemsLenient } from '@/lib/salvageJson';
 import { gradeEvidence, blockerFound } from '@/lib/matchEngine';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+
+// شكل العنصر الواحد كما يعيده النموذج — مكتوب صراحةً كي لا تتسرّب unknown
+// إلى تحديث القاعدة، فيسقط البناء على النوع لا على المنطق.
+type EnrichItem = {
+  n?: number | string;
+  applyChannel?: string;
+  applyUrl?: string | null;
+  applySteps?: string;
+  requiredDocs?: string;
+  gulfPresence?: string;
+  evidenceUrl?: string | null;
+  amountRange?: string;
+  engagement?: string;
+};
 
 const CHUNK = 8;
 const TOP = 50;
@@ -89,16 +104,22 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 8000,
+        // ٨٠٠٠ كانت تُقطع الرد في منتصف المصفوفة فتسقط الدفعة كاملة — أحد عشر مرة في السجل
+        model: 'claude-sonnet-4-6', max_tokens: 16000,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 10 }],
         messages: [{ role: 'user', content: prompt }],
       }),
     });
     const d = await res.json();
     const text = (d.content || []).map((c: { type: string; text?: string }) => c.type === 'text' ? (c.text || '') : '').join('\n');
-    const m = text.match(/\{[\s\S]*\}/);
-    const parsed = m ? JSON.parse(m[0]) : { items: [] };
-    for (const it of (parsed.items || [])) {
+    // كان JSON.parse يرمي على أول ردٍّ مقطوع فتضيع الجهات الثماني كلها.
+    // الآن: العناصر التامّة تُؤخذ، والناقص وحده يُترك — سبعٌ خير من صفر.
+    const salv = parseItemsLenient<EnrichItem>(text, 'items');
+    if (salv.salvaged) {
+      await logError('match.enrich.salvaged', new Error('رد مقطوع: أُنقذ ' + salv.items.length + ' وأُسقط ' + salv.dropped),
+        { company_id: String(co?.id || ''), entity: track });
+    }
+    for (const it of salv.items) {
       const row = rows[Number(it.n) - 1];
       if (!row) continue;
       await admin.from('match_results').update({

@@ -52,9 +52,26 @@ async function probe(url: string): Promise<Verdict> {
   }
 }
 
+// يُنادى بطريقين: المدير من متصفحه، أو القاعدة نفسها على جدول عبر pg_cron.
+// والسرّ محفوظ في app_config لا في متغيرات البيئة — فلا يحتاج المالك إعداداً،
+// ولا يصل السرّ إلى المتصفح لأن الجدول لا يقرؤه إلا service_role.
+async function cronAuthorized(req: Request): Promise<boolean> {
+  const given = req.headers.get('x-cron-secret') || '';
+  if (!given) return false;
+  const { data } = await admin().from('app_config').select('value').eq('key', 'cron_secret').maybeSingle();
+  const want = String(data?.value || '');
+  if (!want || given.length !== want.length) return false;
+  // مقارنة ثابتة الزمن: المقارنة العادية تُسرّب طول البادئة الصحيحة
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= given.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  if (!(await cronAuthorized(req))) {
+    const denied = await requireAdmin();
+    if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const limit = Math.min(Math.max(Number(body?.limit) || 15, 1), 30);
