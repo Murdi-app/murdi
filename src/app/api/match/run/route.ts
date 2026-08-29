@@ -59,11 +59,16 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end').eq('user_id', user.id).maybeSingle();
+    .select('id, subscription_active, subscription_end, match_credits').eq('user_id', user.id).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
 
-  const active = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
-  if (!active) return NextResponse.json({ error: 'يلزم تفعيل الملف أولاً' }, { status: 402 });
+  // نفس بوابة /api/match/start: رصيد تشغيلة، أو اشتراك قديم لم تنتهِ مدته.
+  // الدفعات تُخصم في start؛ وهذا المسار يقرأ الرصيد ولا يخصم، فلا تُحتسب التشغيلة مرتين.
+  const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
+  const credits = Number((co as Record<string, unknown>).match_credits || 0);
+  if (!legacy && credits <= 0) {
+    return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — ادفع رسم التشغيل ثم أعد المحاولة', needsPayment: true }, { status: 402 });
+  }
 
   const { data: rr } = await admin.from('readiness_results').select('result_type').eq('company_id', co.id);
   const tracks = Array.from(new Set((rr || []).map((x: { result_type: string }) => x.result_type)

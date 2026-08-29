@@ -1,194 +1,237 @@
 'use client';
+import { useEffect, useState, useCallback } from 'react';
 import AdminNav from '@/components/AdminNav';
 
-import { useEffect, useState } from 'react';
+// سجلّ الجهات. قبله كانت المنصة تكتشف الجهات لكل عميل ثم تنساها:
+// ٩٤٣ اسماً لأربعة عملاء، ٨٤٥ منها ظهر مرة واحدة فقط. فلا تراكم ولا ذاكرة.
+// هذه الشاشة تجعل ما يتعلّمه المحرك — ثم ما يتعلّمه الواقع من الردود — رأسَ مال يبقى.
 
-const FUNDING_TYPES = ['cash','working_capital','revenue','pos','invoices','assets','vehicles','real_estate','lc','project','tax','payroll','equipment','franchise','other'];
-const FT_LABELS: Record<string,string> = { cash:'نقدي', working_capital:'رأس مال عامل', revenue:'إيرادات', pos:'نقاط بيع', invoices:'فواتير', assets:'أصول', vehicles:'مركبات', real_estate:'عقاري', lc:'اعتمادات', project:'مشاريع', tax:'ضرائب', payroll:'رواتب', equipment:'معدات', franchise:'امتياز تجاري', other:'أخرى' };
-const ISSUES = ['late_debt','no_statements','simah_record','new_company','high_debt_ratio','seasonal_revenue'];
-const ISSUE_LABELS: Record<string,string> = { late_debt:'تعثر سابق', no_statements:'بلا قوائم مالية', simah_record:'ملاحظات سمة', new_company:'شركة حديثة (أقل من سنتين)', high_debt_ratio:'نسبة دين مرتفعة', seasonal_revenue:'إيرادات موسمية' };
-const STAGES = ['seed','growth','expansion','pre_ipo'];
-const ST_LABELS: Record<string,string> = { seed:'تأسيس', growth:'نمو', expansion:'توسع', pre_ipo:'ما قبل الطرح' };
+type Ent = {
+  id: string; display_name: string; tracks: string[]; regions: string[];
+  companies_seen: number; times_matched: number; best_fit_score: number | null;
+  evidence_grade: string | null; apply_url: string | null; apply_channel: string | null;
+  link_status: string | null; gulf_presence: string | null;
+  outreach_sent: number; outreach_replied: number;
+  first_reply_hours: number | null; median_reply_hours: number | null;
+  last_sent_at: string | null; last_reply_at: string | null;
+  verdict: string | null; blocked: boolean; admin_note: string | null;
+};
+type Stats = {
+  total: number; core: number; once: number; confirmed: number; needsCheck: number;
+  broken: number; contacted: number; replied: number; blocked: number; medianReplyHours: number | null;
+};
 
-export default function EntitiesAdmin() {
-  const [tab, setTab] = useState<'fp'|'ie'>('fp');
-  const [products, setProducts] = useState<any[]>([]);
-  const [entities, setEntities] = useState<any[]>([]);
-  const [busy, setBusy] = useState(false);
+const VIEWS: { k: string; t: string }[] = [
+  { k: 'core',    t: 'النواة — ظهرت لأكثر من عميل' },
+  { k: 'replied', t: 'ترد' },
+  { k: 'silent',  t: 'لا ترد' },
+  { k: 'broken',  t: 'رابط مكسور' },
+  { k: 'once',    t: 'ظهرت مرة — تحتاج تحققاً' },
+  { k: 'blocked', t: 'مستبعدة' },
+];
+const VERDICTS = ['معتمدة', 'قيد التحقق', 'لا تُناسبنا', 'لا وجود لها'];
+
+const GRADE_TONE: Record<string, { bg: string; fg: string }> = {
+  'مؤكّد':      { bg: '#EAF7F0', fg: '#1E7A5E' },
+  'مرجّح':      { bg: '#FBF5E8', fg: '#9A7B2E' },
+  'يحتاج تحقق': { bg: '#FDF1E8', fg: '#B4622A' },
+};
+
+// سرعة الرد هي أثمن ما يتراكم: جهة ترد خلال يومين تُقدَّم على جهة ترد بعد شهر
+// ولو تساوى التطابق — لأن وقت العميل جزء من الصفقة.
+function speedLabel(h: number | null): { t: string; c: string } | null {
+  if (h === null || h === undefined || !(h > 0)) return null;
+  if (h <= 48) return { t: 'ترد خلال يومين', c: '#1E7A5E' };
+  if (h <= 168) return { t: 'ترد خلال أسبوع', c: '#9A7B2E' };
+  return { t: 'ترد بعد أسابيع', c: '#B4622A' };
+}
+
+export default function EntitiesPage() {
+  const [ents, setEnts] = useState<Ent[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [view, setView] = useState('core');
+  const [track, setTrack] = useState('');
+  const [q, setQ] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
 
-  // نموذج منتج تمويلي
-  const [fp, setFp] = useState({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[] as string[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true, funding_type_other:'', accepted_issues:[] as string[] });
-  // نموذج جهة استثمار
-  const [ie, setIe] = useState({ entity_name:'', entity_type:'صندوق', sectors:'', min_revenue:'', min_murdi_score:'70', stages:[] as string[], requires_audited:false, requires_governance:false });
+  const load = useCallback(async () => {
+    setLoading(true);
+    const p = new URLSearchParams({ view, ...(track ? { track } : {}), ...(q ? { q } : {}) });
+    const r = await fetch('/api/admin/entities?' + p.toString());
+    const d = await r.json();
+    if (!r.ok) { setMsg(d.error || 'تعذّر التحميل'); setLoading(false); return; }
+    setEnts(d.entities || []); setStats(d.stats || null); setLoading(false);
+  }, [view, track, q]);
+  useEffect(() => { load(); }, [load]);
 
-  const load = async () => {
-    const res = await fetch('/api/admin/entities');
-    const d = await res.json();
-    setProducts(d.products || []);
-    setEntities(d.entities || []);
-  };
-  useEffect(() => { load(); }, []);
-
-  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
-
-  const addProduct = async () => {
-    if (!fp.provider_name || !fp.product_name) { flash('أكمل اسم الجهة والمنتج'); return; }
-    setBusy(true);
-    const row: any = {
-      provider_name: fp.provider_name, product_name: fp.product_name, product_type: fp.product_type,
-      funding_types: fp.funding_types, status: 'active',
-      accepts_late_debt: fp.accepts_late_debt, requires_statements: fp.requires_statements, requires_zakat: fp.requires_zakat,
-      accepted_issues: fp.accepted_issues, funding_type_other: fp.funding_types.includes('other') ? fp.funding_type_other : null,
-    };
-    if (fp.min_revenue !== '') row.min_revenue = Number(fp.min_revenue);
-    if (fp.min_years_operating !== '') row.min_years_operating = Number(fp.min_years_operating);
-    if (fp.accepts_late_debt && fp.max_months_late !== '') row.max_months_late = Number(fp.max_months_late);
-    const res = await fetch('/api/admin/entities', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ table:'financing_products', row }) });
-    const d = await res.json();
-    flash(d.ok ? '✓ أُضيف المنتج' : 'خطأ: ' + d.error);
-    if (d.ok) { setFp({ provider_name:'', product_name:'', product_type:'بنك', min_revenue:'', min_years_operating:'', funding_types:[], accepts_late_debt:false, max_months_late:'', requires_statements:false, requires_zakat:true, funding_type_other:'', accepted_issues:[] }); load(); }
-    setBusy(false);
-  };
-
-  const addEntity = async () => {
-    if (!ie.entity_name) { flash('أكمل اسم الجهة'); return; }
-    setBusy(true);
-    const row: any = {
-      entity_name: ie.entity_name, entity_type: ie.entity_type, status: 'active',
-      sectors: ie.sectors.split(',').map(s => s.trim()).filter(Boolean),
-      stages: ie.stages, requires_audited: ie.requires_audited, requires_governance: ie.requires_governance,
-    };
-    if (ie.min_revenue !== '') row.min_revenue = Number(ie.min_revenue);
-    if (ie.min_murdi_score !== '') row.min_murdi_score = Number(ie.min_murdi_score);
-    const res = await fetch('/api/admin/entities', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ table:'investment_entities', row }) });
-    const d = await res.json();
-    flash(d.ok ? '✓ أُضيفت الجهة' : 'خطأ: ' + d.error);
-    if (d.ok) { setIe({ entity_name:'', entity_type:'صندوق', sectors:'', min_revenue:'', min_murdi_score:'70', stages:[], requires_audited:false, requires_governance:false }); load(); }
-    setBusy(false);
-  };
-
-  const rowAction = async (table: string, id: string, action: string, status?: string) => {
-    await fetch('/api/admin/entities', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ table, id, action, status }) });
+  // الفحص يمشي على دفعات: كل نداء يفحص خمس عشرة جهة، فلا يصطدم بمهلة الدالة السحابية
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState('');
+  const checkLinks = async () => {
+    setChecking(true); setCheckMsg('يفحص…'); setMsg('');
+    let checked = 0, broken = 0, rounds = 0;
+    const names: string[] = [];
+    try {
+      for (;;) {
+        rounds++;
+        if (rounds > 60) { setCheckMsg('توقفت عند حدّ الأمان — اضغط مرة أخرى للمتابعة'); break; }
+        const r = await fetch('/api/admin/entities/check-links', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 15 }),
+        });
+        const d = await r.json();
+        if (!r.ok) { setCheckMsg(d.error || 'تعذّر الفحص'); break; }
+        checked += d.checked || 0;
+        broken += d.broken || 0;
+        for (const n of (d.brokenNames || [])) if (names.length < 12) names.push(n);
+        setCheckMsg('فُحصت ' + checked + ' جهة · مكسور ' + broken + ' · بقي ' + (d.remaining ?? 0));
+        if (d.done || !d.checked) {
+          setCheckMsg('انتهى الفحص: ' + checked + ' جهة، منها ' + broken + ' رابطاً مكسوراً'
+            + (names.length ? ' — ' + names.join('، ') : ''));
+          break;
+        }
+      }
+    } catch { setCheckMsg('انقطع الفحص — اضغط مرة أخرى ويكمل من حيث وقف'); }
+    setChecking(false);
     load();
   };
 
-  const inp = "w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-white text-[#1A3D34] font-bold focus:border-[#2E9E7B] focus:outline-none text-right";
-  const chip = (active: boolean) => 'px-4 py-2 rounded-full text-sm font-black cursor-pointer border-2 ' + (active ? 'bg-[#2E9E7B] text-white border-[#2E9E7B]' : 'bg-white text-[#6B8A80] border-[#E8F5EF]');
+  const rebuild = async () => {
+    setBusy('rebuild'); setMsg('');
+    const r = await fetch('/api/admin/entities', { method: 'POST' });
+    const d = await r.json();
+    setBusy('');
+    setMsg(r.ok ? ('أُعيد البناء — الإجمالي ' + (d.result?.total ?? '؟') + ' جهة') : (d.error || 'تعذّر'));
+    if (r.ok) load();
+  };
+
+  const save = async (id: string, patch: Record<string, unknown>) => {
+    setBusy(id);
+    const r = await fetch('/api/admin/entities', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    setBusy('');
+    if (!r.ok) { const d = await r.json().catch(() => ({})); setMsg(d.error || 'تعذّر الحفظ'); return; }
+    setEnts(prev => prev.map(e => e.id === id ? { ...e, ...(patch as Partial<Ent>) } : e));
+  };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-[#FBFCFB] px-4 py-8" style={{ fontFamily: 'Cairo, sans-serif' }}>
-      <div className="max-w-3xl mx-auto">
-        <AdminNav />
-        <h1 className="text-2xl font-black text-[#1A3D34] mb-6">🏦 إدارة الجهات والمنتجات</h1>
-
-        {msg !== '' && <div className="mb-4 p-3 rounded-xl bg-[#E8F5EF] text-[#2E9E7B] font-black text-sm text-center">{msg}</div>}
-
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setTab('fp')} className={chip(tab==='fp')}>منتجات التمويل ({products.length})</button>
-          <button onClick={() => setTab('ie')} className={chip(tab==='ie')}>جهات الاستثمار ({entities.length})</button>
+    <div dir="rtl" style={{ fontFamily: 'Cairo,sans-serif', maxWidth: 980, margin: '0 auto', padding: '28px 20px', background: '#FBFCFB', minHeight: '100vh' }}>
+      <AdminNav />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, margin: 0 }}>🏦 سجلّ الجهات</h1>
+          <p style={{ color: '#6B8A80', fontSize: 13, marginTop: 6, marginBottom: 0, lineHeight: 1.9, maxWidth: 620 }}>
+            ما اكتشفه المحرك عبر كل عميل، مجموعاً في مكان واحد ولا يُنسى — ومعه ما تعلّمه الواقع: من ردّ، وبعد كم.
+          </p>
         </div>
-
-        {tab === 'fp' && (
-          <>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#E8F5EF] mb-6 space-y-3">
-              <h2 className="font-black text-[#1A3D34]">+ إضافة منتج تمويلي</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <input className={inp} placeholder="اسم الجهة (مثال: البنك الأهلي)" value={fp.provider_name} onChange={e => setFp({...fp, provider_name: e.target.value})} />
-                <input className={inp} placeholder="اسم المنتج (مثال: تمويل كفالة)" value={fp.product_name} onChange={e => setFp({...fp, product_name: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <select className={inp} value={fp.product_type} onChange={e => setFp({...fp, product_type: e.target.value})}>
-                  <option value="بنك">بنك</option><option value="شركة تمويل">شركة تمويل</option><option value="برنامج حكومي">برنامج حكومي</option>
-                </select>
-                <input className={inp} type="number" placeholder="حد أدنى للإيرادات (ريال)" value={fp.min_revenue} onChange={e => setFp({...fp, min_revenue: e.target.value})} />
-                <input className={inp} type="number" placeholder="حد أدنى لسنوات التشغيل" value={fp.min_years_operating} onChange={e => setFp({...fp, min_years_operating: e.target.value})} />
-              </div>
-              <p className="text-xs font-black text-[#6B8A80]">أنواع التمويل التي يغطيها:</p>
-              <div className="flex flex-wrap gap-2">
-                {FUNDING_TYPES.map(t => (
-                  <span key={t} className={chip(fp.funding_types.includes(t))} onClick={() => setFp({...fp, funding_types: fp.funding_types.includes(t) ? fp.funding_types.filter(x => x!==t) : [...fp.funding_types, t]})}>{FT_LABELS[t]}</span>
-                ))}
-              </div>
-              {fp.funding_types.includes('other') && (
-                <input className={inp} placeholder="اكتب نوع التمويل الآخر (مثال: تمويل ضرائب مؤجلة)" value={fp.funding_type_other} onChange={e => setFp({...fp, funding_type_other: e.target.value})} />
-              )}
-              <p className="text-xs font-black text-[#6B8A80]">المشاكل الدارجة التي يقبلها هذا المنتج:</p>
-              <div className="flex flex-wrap gap-2">
-                {ISSUES.map(i => (
-                  <span key={i} className={chip(fp.accepted_issues.includes(i))} onClick={() => setFp({...fp, accepted_issues: fp.accepted_issues.includes(i) ? fp.accepted_issues.filter(x => x!==i) : [...fp.accepted_issues, i]})}>{ISSUE_LABELS[i]}</span>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className={chip(fp.accepts_late_debt)} onClick={() => setFp({...fp, accepts_late_debt: !fp.accepts_late_debt})}>يقبل تعثراً سابقاً</span>
-                {fp.accepts_late_debt && <input className={inp + ' max-w-[200px]'} type="number" placeholder="أقصى أشهر تأخر" value={fp.max_months_late} onChange={e => setFp({...fp, max_months_late: e.target.value})} />}
-                <span className={chip(fp.requires_statements)} onClick={() => setFp({...fp, requires_statements: !fp.requires_statements})}>يشترط قوائم مالية</span>
-                <span className={chip(fp.requires_zakat)} onClick={() => setFp({...fp, requires_zakat: !fp.requires_zakat})}>يشترط شهادة زكاة</span>
-              </div>
-              <button onClick={addProduct} disabled={busy} className="px-8 py-3 rounded-full bg-[#2E9E7B] text-white font-black text-sm disabled:opacity-40">{busy ? 'جارٍ...' : 'إضافة المنتج'}</button>
-            </div>
-
-            {products.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl p-4 mb-3 border border-[#F0F5F3] flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <p className="font-black text-[#1A3D34]">{p.provider_name} — {p.product_name}</p>
-                  <p className="text-xs text-[#6B8A80] font-bold">{(p.funding_types || []).map((t: string) => FT_LABELS[t] || t).join('، ') || 'بدون أنواع'} | {p.status === 'active' ? '🟢 نشط' : '⚪ موقوف'}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => rowAction('financing_products', p.id, 'toggle', p.status === 'active' ? 'inactive' : 'active')} className="px-4 py-2 rounded-full border-2 border-[#E8F5EF] text-[#6B8A80] font-black text-xs">{p.status === 'active' ? 'إيقاف' : 'تفعيل'}</button>
-                  <button onClick={() => { if (confirm('حذف نهائي؟')) rowAction('financing_products', p.id, 'delete'); }} className="px-4 py-2 rounded-full border-2 border-red-100 text-red-400 font-black text-xs">حذف</button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-
-        {tab === 'ie' && (
-          <>
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#E8F5EF] mb-6 space-y-3">
-              <h2 className="font-black text-[#1A3D34]">+ إضافة جهة استثمار</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <input className={inp} placeholder="اسم الجهة" value={ie.entity_name} onChange={e => setIe({...ie, entity_name: e.target.value})} />
-                <select className={inp} value={ie.entity_type} onChange={e => setIe({...ie, entity_type: e.target.value})}>
-                  <option value="صندوق">صندوق استثمار</option><option value="محفظة عائلية">محفظة عائلية (Family Office)</option><option value="محفظة استثمارية">محفظة استثمارية</option><option value="مستثمر فرد">مستثمر فرد</option><option value="مستثمر ملائكي">مستثمر ملائكي</option><option value="شركة استثمار">شركة استثمار</option><option value="جهة حكومية">جهة حكومية</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><p className="text-xs font-black text-[#6B8A80] mb-1">القطاعات (افصل بفاصلة)</p>
-                <input className={inp} placeholder="تقنية، عقار، تجزئة..." value={ie.sectors} onChange={e => setIe({...ie, sectors: e.target.value})} /></div>
-                <div><p className="text-xs font-black text-[#6B8A80] mb-1">حد أدنى للإيرادات (ريال)</p>
-                <input className={inp} type="number" value={ie.min_revenue} onChange={e => setIe({...ie, min_revenue: e.target.value})} /></div>
-                <div><p className="text-xs font-black text-[#6B8A80] mb-1">حد أدنى Murdi Score</p>
-                <input className={inp} type="number" value={ie.min_murdi_score} onChange={e => setIe({...ie, min_murdi_score: e.target.value})} /></div>
-              </div>
-              <p className="text-xs font-black text-[#6B8A80]">المراحل المستهدفة:</p>
-              <div className="flex flex-wrap gap-2">
-                {STAGES.map(s => (
-                  <span key={s} className={chip(ie.stages.includes(s))} onClick={() => setIe({...ie, stages: ie.stages.includes(s) ? ie.stages.filter(x => x!==s) : [...ie.stages, s]})}>{ST_LABELS[s]}</span>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className={chip(ie.requires_audited)} onClick={() => setIe({...ie, requires_audited: !ie.requires_audited})}>يشترط قوائم مدققة</span>
-                <span className={chip(ie.requires_governance)} onClick={() => setIe({...ie, requires_governance: !ie.requires_governance})}>يشترط حوكمة</span>
-              </div>
-              <button onClick={addEntity} disabled={busy} className="px-8 py-3 rounded-full bg-[#2E9E7B] text-white font-black text-sm disabled:opacity-40">{busy ? 'جارٍ...' : 'إضافة الجهة'}</button>
-            </div>
-
-            {entities.map(e2 => (
-              <div key={e2.id} className="bg-white rounded-2xl p-4 mb-3 border border-[#F0F5F3] flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <p className="font-black text-[#1A3D34]">{e2.entity_name} ({e2.entity_type})</p>
-                  <p className="text-xs text-[#6B8A80] font-bold">Murdi Score ≥ {e2.min_murdi_score ?? '—'} | {(e2.sectors || []).join('، ') || 'كل القطاعات'} | {e2.status === 'active' ? '🟢 نشطة' : '⚪ موقوفة'}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => rowAction('investment_entities', e2.id, 'toggle', e2.status === 'active' ? 'inactive' : 'active')} className="px-4 py-2 rounded-full border-2 border-[#E8F5EF] text-[#6B8A80] font-black text-xs">{e2.status === 'active' ? 'إيقاف' : 'تفعيل'}</button>
-                  <button onClick={() => { if (confirm('حذف نهائي؟')) rowAction('investment_entities', e2.id, 'delete'); }} className="px-4 py-2 rounded-full border-2 border-red-100 text-red-400 font-black text-xs">حذف</button>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={rebuild} disabled={busy === 'rebuild' || checking} style={{ background: '#1A3D34', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 30, fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            {busy === 'rebuild' ? 'جارٍ…' : '↻ إعادة البناء من المطابقات'}
+          </button>
+          <button onClick={checkLinks} disabled={checking} style={{ background: 'transparent', color: '#1A3D34', border: '1.5px solid #E8F5EF', padding: '10px 20px', borderRadius: 30, fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            {checking ? 'يفحص…' : '🔗 افحص روابط التقديم'}
+          </button>
+        </div>
       </div>
+
+      {stats && (
+        <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: '14px 18px', margin: '18px 0 14px', display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          <N n={stats.core} t="جهة متكررة (النواة)" tone="#1E7A5E" big />
+          <N n={stats.confirmed} t="إثباتها مؤكّد" tone="#1E7A5E" />
+          <N n={stats.once} t="ظهرت مرة — تحتاج تحققاً" tone="#B4622A" />
+          <N n={stats.broken} t="رابط مكسور" tone="#B4342A" />
+          <N n={stats.contacted} t="خوطبت" />
+          <N n={stats.replied} t="ردّت" tone="#2E9E7B" />
+          <N n={stats.total} t="الإجمالي" />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        {VIEWS.map(v => (
+          <div key={v.k} onClick={() => setView(v.k)} style={{
+            padding: '7px 15px', borderRadius: 30, cursor: 'pointer', fontSize: 12.5, fontWeight: view === v.k ? 900 : 700,
+            background: view === v.k ? '#1A3D34' : '#fff', color: view === v.k ? '#fff' : '#6B8A80',
+            border: '1.5px solid ' + (view === v.k ? '#1A3D34' : '#E8F5EF'),
+          }}>{v.t}</div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث باسم الجهة"
+          style={{ flex: '1 1 240px', padding: '9px 12px', borderRadius: 10, border: '1.5px solid #E8F5EF', fontFamily: 'Cairo', fontSize: 12.5 }} />
+        <select value={track} onChange={e => setTrack(e.target.value)}
+          style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid #E8F5EF', fontFamily: 'Cairo', fontSize: 12.5 }}>
+          <option value="">كل المسارات</option>
+          <option value="funding">تمويل</option>
+          <option value="investment">استثمار</option>
+          <option value="feasibility">جدوى</option>
+        </select>
+      </div>
+
+      {checkMsg && <div style={{ background: '#F7FAF9', border: '1.5px solid #E1EDE8', color: '#1A3D34', borderRadius: 12, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, fontWeight: 700 }}>{checkMsg}</div>}
+      {msg && <div style={{ background: '#F7FAF9', border: '1.5px solid #E1EDE8', color: '#1A3D34', borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 12.5, fontWeight: 700 }}>{msg}</div>}
+
+      {loading ? <div style={{ color: '#9DB3AB', textAlign: 'center', padding: 40 }}>جارٍ التحميل…</div>
+        : ents.length === 0 ? <div style={{ color: '#9DB3AB', textAlign: 'center', padding: 34, background: '#fff', borderRadius: 12, border: '1px solid #EAF2EE' }}>لا جهات في هذا العرض.</div>
+        : ents.map(e => {
+          const sp = speedLabel(e.median_reply_hours ?? e.first_reply_hours);
+          const gt = e.evidence_grade ? GRADE_TONE[e.evidence_grade] : null;
+          return (
+            <div key={e.id} style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: '15px 18px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ flex: '1 1 340px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <span style={{ color: '#1A3D34', fontSize: 15.5, fontWeight: 900 }}>{e.display_name}</span>
+                    {gt && <span style={{ background: gt.bg, color: gt.fg, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 900 }}>{e.evidence_grade}</span>}
+                    {sp && <span style={{ background: '#F4F8F6', color: sp.c, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 900 }}>{sp.t}</span>}
+                    {e.verdict && <span style={{ background: '#1A3D34', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 900 }}>{e.verdict}</span>}
+                  </div>
+                  <div style={{ color: '#6B8A80', fontSize: 12, marginTop: 6, lineHeight: 1.9 }}>
+                    ظهرت لـ<b>{e.companies_seen}</b> عميل · <b>{e.times_matched}</b> مطابقة
+                    {e.tracks?.length ? ' · ' + e.tracks.join(' + ') : ''}
+                    {e.regions?.length ? ' · ' + e.regions.slice(0, 2).join('، ') : ''}
+                    {e.outreach_sent > 0 ? ' · خوطبت ' + e.outreach_sent + '، ردّت ' + e.outreach_replied : ''}
+                    {e.median_reply_hours ? ' · وسيط الرد ' + Math.round(Number(e.median_reply_hours)) + ' ساعة' : ''}
+                  </div>
+                  {e.link_status && e.link_status !== 'يعمل' && (
+                    <div style={{ color: '#B4342A', fontSize: 11.5, fontWeight: 800, marginTop: 4 }}>الرابط: {e.link_status}</div>
+                  )}
+                  {e.apply_url && <a href={e.apply_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2E9E7B', fontSize: 12, fontWeight: 700 }}>قناة التقديم ↗</a>}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {VERDICTS.map(v => (
+                    <button key={v} disabled={busy === e.id} onClick={() => save(e.id, { verdict: e.verdict === v ? '' : v })}
+                      style={{
+                        background: e.verdict === v ? '#1A3D34' : '#fff', color: e.verdict === v ? '#fff' : '#6B8A80',
+                        border: '1.5px solid ' + (e.verdict === v ? '#1A3D34' : '#E8F5EF'), padding: '6px 12px', borderRadius: 30,
+                        fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'Cairo',
+                      }}>{v}</button>
+                  ))}
+                  <button disabled={busy === e.id} onClick={() => save(e.id, { blocked: !e.blocked })}
+                    style={{ background: 'transparent', color: e.blocked ? '#2E9E7B' : '#B4342A', border: '1.5px solid #E8F5EF', padding: '6px 12px', borderRadius: 30, fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'Cairo' }}>
+                    {e.blocked ? 'أعِدها' : 'استبعد'}
+                  </button>
+                </div>
+              </div>
+              <input defaultValue={e.admin_note || ''} placeholder="ملاحظتك عن هذه الجهة: من تكلّمه، ما تشترطه، ما رفضته"
+                onBlur={ev => { if (ev.target.value !== (e.admin_note || '')) save(e.id, { admin_note: ev.target.value }); }}
+                style={{ width: '100%', marginTop: 10, padding: '8px 11px', borderRadius: 10, border: '1.5px solid #F0F5F3', fontFamily: 'Cairo', fontSize: 12 }} />
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
+function N({ n, t, tone, big }: { n: number; t: string; tone?: string; big?: boolean }) {
+  return (
+    <div>
+      <div style={{ fontSize: big ? 26 : 21, fontWeight: 900, color: tone || '#1A3D34', lineHeight: 1.1 }}>{n}</div>
+      <div style={{ fontSize: 11.5, color: '#6B8A80', fontWeight: 700, marginTop: 3 }}>{t}</div>
     </div>
   );
 }

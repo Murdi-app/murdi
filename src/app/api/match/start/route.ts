@@ -16,27 +16,35 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, approved_tracks').eq('user_id', user.id).maybeSingle();
+    .select('id, subscription_active, subscription_end, approved_tracks, match_credits').eq('user_id', user.id).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
-  const active = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
-  if (!active) return NextResponse.json({ error: 'يلزم تفعيل الملف' }, { status: 402 });
 
   const tk = track === 'investment' ? 'investment' : 'funding';
+
+  // الاشتراك الربعي أُلغي، وحلّ محله رسمٌ عن تشغيلة واحدة لأي مسار.
+  // ويبقى المشتركون القدامى على حقهم إلى انتهاء مدتهم — لا يُقطع عليهم ما دفعوه.
+  const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
+  if (!legacy) {
+    // الخصم ذرّي في القاعدة: نقرتان متتاليتان كانتا تُشغّلان مرتين بمقابل واحد
+    const { data: took } = await admin.rpc('consume_match_credit', { p_company: co.id });
+    if (took !== true) {
+      return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — ادفع رسم التشغيل ثم أعد المحاولة', needsPayment: true }, { status: 402 });
+    }
+  }
+
+  // الدفع هو الإذن: لم يعد المسار الثاني يحتاج اعتماداً يدوياً،
+  // فقد كان العميل يدفع ثم يُمنع من مساره حتى يفرغ المستشار لاعتماده.
   const appr = Array.isArray((co as Record<string, unknown>).approved_tracks) ? ((co as Record<string, unknown>).approved_tracks as string[]) : [];
   if (!appr.includes(tk)) {
-    const { data: prev } = await admin.from('match_results')
-      .select('track').eq('company_id', co.id)
-      // المسار الآخر الحقيقي فقط — صفوف دراسة الجدوى كانت تُقرأ هنا فتمنع العميل من فتح مساره
-      .eq('track', tk === 'funding' ? 'investment' : 'funding').limit(1);
-    if (prev && prev.length > 0) {
-      await admin.from('companies')
-        .update({ track_request: tk, track_request_at: new Date().toISOString() }).eq('id', co.id);
-      return NextResponse.json({ error: 'أرسلنا طلبك لفريق مُرضي لفتح هذا المسار — سنبلغك فور الموافقة' }, { status: 403 });
-    }
     await admin.from('companies').update({ approved_tracks: appr.concat([tk]) }).eq('id', co.id);
   }
+
   const url = process.env.WORKER_URL;
-  if (!url) return NextResponse.json({ error: 'المشغّل غير مهيأ' }, { status: 500 });
+  if (!url) {
+    // المشغّل معطّل: تُعاد التشغيلة المخصومة، فلا يدفع العميل ثمن عطلٍ عندنا
+    if (!legacy) await admin.rpc('grant_match_credit', { p_company: co.id, p_n: 1 });
+    return NextResponse.json({ error: 'المشغّل غير مهيأ' }, { status: 500 });
+  }
 
   await admin.from('companies').update({ match_notice: 'running', match_started_at: new Date().toISOString() }).eq('id', co.id);
   fetch(url + '/api/match/worker', {

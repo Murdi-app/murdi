@@ -61,18 +61,16 @@ export async function POST(req: Request) {
 
   if (action === 'confirm') {
     await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
-    if (pay.kind === 'subscription' && pay.company_id) {
-      // التجديد المبكر يُضاف إلى ما تبقّى، لا يمحوه
-      const { data: curCo } = await admin.from('companies').select('subscription_end').eq('id', pay.company_id).maybeSingle();
-      const cur = curCo?.subscription_end ? new Date(curCo.subscription_end) : null;
-      const until = cur && cur > new Date() ? new Date(cur) : new Date();
-      until.setMonth(until.getMonth() + 4);
-      await admin.from('companies').update({ subscription_active: true, subscription_end: until.toISOString(), account_status: 'active' }).eq('id', pay.company_id);
-      // المطابقة يُطلقها العميل بنفسه من بوابته بعد التفعيل
+    // الاشتراك الربعي أُلغي: الدفعة صارت تشتري تشغيلة مطابقة واحدة لأي مسار.
+    // ويبقى المشتركون القدامى على مدتهم — لا نقطع عليهم ما دفعوه قبل التغيير.
+    if ((pay.kind === 'subscription' || pay.kind === 'match_run') && pay.company_id) {
+      await admin.rpc('grant_match_credit', { p_company: pay.company_id, p_n: 1 });
+      // الحساب يُفتح ليدخل العميل ويشغّل، بلا تاريخ انتهاء يُحاسَب عليه
+      await admin.from('companies')
+        .update({ account_status: 'active', payment_confirmed_at: new Date().toISOString() })
+        .eq('id', pay.company_id);
     }
-    // عند تأكيد تحويل خدمة: يُعلَّم الطلب الذي دُفع من أجله وحده.
-    // كان هذا السطر يُحدّث كل طلبات العميل المسعّرة دفعةً واحدة — فيُسلَّم ثلاث خدمات بثمن واحدة.
-    let linkNote: string | undefined;
+
     if (pay.kind === 'service' && pay.company_id) {
       const stamp = { status: 'paid', payment_id: id, paid_at: new Date().toISOString(), payment_ref: id, updated_at: new Date().toISOString() };
       if (pay.service_request_id) {

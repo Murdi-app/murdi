@@ -1,60 +1,102 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 
-async function getAdmin() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  );
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user === null || user.email !== 'hololalmurdi.fs@gmail.com') return null;
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.SUPABASE_SERVICE_ROLE_KEY as string
-  );
-}
+// كانت هذه الشاشة تدير جدولين ميّتين: financing_products (٤ صفوف) و investment_entities (صفر)،
+// ولا يقرأ منهما محرك المطابقة شيئاً — فكان تبويباً يبدو عاملاً ولا أثر له.
+// صارت الآن بوابة سجلّ الجهات: ما اكتشفه المحرك فعلاً، مضافاً إليه ما تعلّمه الواقع من الردود.
 
-export async function GET() {
+const admin = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE_KEY as string
+);
+
+const BROKEN = ['غير موجودة', 'تعذّر الوصول', 'محجوب آلياً'];
+
+export async function GET(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
-  const admin = await getAdmin();
-  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const { data: products } = await admin.from('financing_products').select('*').order('created_at', { ascending: false });
-  const { data: entities } = await admin.from('investment_entities').select('*').order('created_at', { ascending: false });
-  return NextResponse.json({ products: products || [], entities: entities || [] });
-}
+  const a = admin();
+  const q = new URL(req.url).searchParams;
+  const search = String(q.get('q') || '').trim();
+  const track = String(q.get('track') || '');
+  const view = String(q.get('view') || 'core');
 
-export async function POST(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
-  const admin = await getAdmin();
-  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const body = await req.json();
-  const table = body.table === 'investment_entities' ? 'investment_entities' : 'financing_products';
-  const { error } = await admin.from(table).insert(body.row);
+  let sel = a.from('funding_entities').select('*');
+  if (search) sel = sel.ilike('display_name', '%' + search + '%');
+  if (track) sel = sel.contains('tracks', [track]);
+
+  // العرض الافتراضي «النواة»: من ظهر لأكثر من عميل — إشارة أنه جهة حقيقية متكررة
+  // لا اسماً ظهر مرة في بحث واحد.
+  if (view === 'core') sel = sel.gte('companies_seen', 2);
+  if (view === 'once') sel = sel.eq('companies_seen', 1);
+  if (view === 'replied') sel = sel.gt('outreach_replied', 0);
+  if (view === 'silent') sel = sel.gt('outreach_sent', 0).eq('outreach_replied', 0);
+  if (view === 'broken') sel = sel.in('link_status', BROKEN);
+  if (view === 'blocked') sel = sel.eq('blocked', true);
+  else sel = sel.eq('blocked', false);
+
+  const { data, error } = await sel
+    .order('companies_seen', { ascending: false })
+    .order('times_matched', { ascending: false })
+    .limit(600);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+
+  const { data: all } = await a.from('funding_entities')
+    .select('companies_seen, evidence_grade, link_status, outreach_sent, outreach_replied, median_reply_hours, blocked');
+  const rows = all || [];
+  const replied = rows.filter(r => (r.outreach_replied || 0) > 0);
+  const meds = replied.map(r => Number(r.median_reply_hours)).filter(n => n > 0).sort((x, y) => x - y);
+
+  return NextResponse.json({
+    ok: true,
+    entities: data || [],
+    stats: {
+      total: rows.length,
+      core: rows.filter(r => (r.companies_seen || 0) >= 2).length,
+      once: rows.filter(r => (r.companies_seen || 0) === 1).length,
+      confirmed: rows.filter(r => r.evidence_grade === 'مؤكّد').length,
+      needsCheck: rows.filter(r => r.evidence_grade === 'يحتاج تحقق' || !r.evidence_grade).length,
+      broken: rows.filter(r => BROKEN.includes(String(r.link_status))).length,
+      contacted: rows.filter(r => (r.outreach_sent || 0) > 0).length,
+      replied: replied.length,
+      blocked: rows.filter(r => r.blocked).length,
+      medianReplyHours: meds.length ? meds[Math.floor(meds.length / 2)] : null,
+    },
+  });
 }
+
+// إعادة البناء من مخرجات المحرك — لا تمسّ حكم المستشار (verdict / blocked / admin_note)
+export async function POST() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { data, error } = await admin().rpc('rebuild_funding_entities');
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const r = Array.isArray(data) ? data[0] : data;
+  return NextResponse.json({ ok: true, result: r });
+}
+
+const VERDICTS = ['معتمدة', 'قيد التحقق', 'لا تُناسبنا', 'لا وجود لها'];
 
 export async function PATCH(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
-  const admin = await getAdmin();
-  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
-  const body = await req.json();
-  const table = body.table === 'investment_entities' ? 'investment_entities' : 'financing_products';
-  if (body.action === 'toggle') {
-    const { error } = await admin.from(table).update({ status: body.status }).eq('id', body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const b = await req.json().catch(() => ({}));
+  const id = String(b?.id || '');
+  if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (b.verdict !== undefined) {
+    const v = String(b.verdict || '');
+    if (v && !VERDICTS.includes(v)) return NextResponse.json({ error: 'حكم غير معروف' }, { status: 400 });
+    patch.verdict = v || null;
+    // «لا وجود لها» تُقصى من العرض تلقائياً: لا معنى لإبقائها أمام عينك مرة أخرى
+    if (v === 'لا وجود لها') patch.blocked = true;
   }
-  if (body.action === 'delete') {
-    const { error } = await admin.from(table).delete().eq('id', body.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (b.blocked !== undefined) patch.blocked = Boolean(b.blocked);
+  if (b.admin_note !== undefined) patch.admin_note = String(b.admin_note || '').slice(0, 2000) || null;
+
+  const { error } = await admin().from('funding_entities').update(patch).eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
