@@ -60,6 +60,8 @@ export async function POST(req: Request) {
   if (!pay) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
   if (action === 'confirm') {
+    // ملاحظة تُعاد للأدمن حين يتعذّر ربط الدفعة بطلبها تلقائياً
+    let linkNote: string | null = null;
     await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
     // الاشتراك الربعي أُلغي: الدفعة صارت تشتري تشغيلة مطابقة واحدة لأي مسار.
     // ويبقى المشتركون القدامى على مدتهم — لا نقطع عليهم ما دفعوه قبل التغيير.
