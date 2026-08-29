@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { logError } from '@/lib/logError';
+import { parseItemsLenient } from '@/lib/salvageJson';
 
 type Rec = Record<string, any>;
 
@@ -496,15 +497,22 @@ export async function enrichApplyPaths(companyId: string, track: string): Promis
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000,
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 16000,
           tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
           messages: [{ role: 'user', content: prompt }] }),
       });
       const d = await res.json();
       const text = (d.content || []).map((c: { type: string; text?: string }) => c.type === 'text' ? (c.text || '') : '').join('\n');
-      const m = text.match(/\{[\s\S]*\}/);
-      const parsed = m ? JSON.parse(m[0]) : { items: [] };
-      for (const it of (parsed.items || [])) {
+      // كان JSON.parse يرمي حين يُقطع الرد عند سقف الرموز، فتسقط الدفعة كاملة بصمت.
+      // أحد عشر مرة في error_log على أربعة أيام. الآن: التامّ يُؤخذ والناقص وحده يُترك.
+      const salv = parseItemsLenient<{
+        n?: number | string; applyChannel?: string; applyUrl?: string | null;
+        applySteps?: string; requiredDocs?: string; gulfPresence?: string; evidenceUrl?: string | null;
+      }>(text, 'items');
+      if (salv.salvaged) {
+        await logError('match.enrichAll.salvaged', new Error('رد مقطوع: أُنقذ ' + salv.items.length + ' وأُسقط ' + salv.dropped), { company_id: companyId, entity: track });
+      }
+      for (const it of salv.items) {
         const row = chunk[Number(it.n) - 1];
         if (!row) continue;
         await admin.from('match_results').update({
