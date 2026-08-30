@@ -3,6 +3,7 @@ import { useRouter, usePathname } from 'next/navigation'
 
 const LINKS = [
   { href: '/admin', label: 'لوحة التحكم' },
+  { href: '/admin/inbox', label: '✅ صندوق التعميد' },
   { href: '/admin/approvals', label: 'الاعتمادات' },
   { href: '/admin/entities', label: 'الجهات' },
   { href: '/admin/services', label: 'الخدمات' },

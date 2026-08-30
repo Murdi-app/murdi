@@ -27,7 +27,7 @@ export default function RegisterPage() {
 
   const [form, setForm] = useState({
     company_name: '', cr_number: '', tax_number: '',
-    owner_name: '', phone: '', city: '', sector: '',
+    owner_name: '', owner_id_number: '', phone: '', city: '', sector: '',
   })
 
   useEffect(() => { check() }, [])
@@ -46,7 +46,10 @@ export default function RegisterPage() {
 
   function set(key: string, val: string) { setForm({ ...form, [key]: val }) }
 
-  const canProceed = form.company_name && form.cr_number && form.owner_name && form.phone && form.city && form.sector
+  // رقم الهوية إلزامي مع السجل: العقد لا يُصدَر بدونه، وطلبه لاحقاً يعني مطاردة العميل
+  // في اللحظة التي يُفترض أن يوقّع فيها. وهو رقم يكتبه صاحب المنشأة في كل تعامل تجاري.
+  const canProceed = form.company_name && form.cr_number && form.owner_name
+    && form.owner_id_number && form.phone && form.city && form.sector
 
   async function saveCompany() {
     setSaving(true)
@@ -128,7 +131,8 @@ export default function RegisterPage() {
     { key:'company_name', label:'اسم الشركة', ph:'الاسم كما في السجل التجاري' },
     { key:'cr_number', label:'رقم السجل التجاري', ph:'10xxxxxxxx' },
     { key:'tax_number', label:'الرقم الضريبي (اختياري)', ph:'3xxxxxxxxxxxxxx' },
-    { key:'owner_name', label:'اسم المالك / المفوض', ph:'الاسم الكامل' },
+    { key:'owner_name', label:'اسم المالك', ph:'الاسم كما في الهوية' },
+    { key:'owner_id_number', label:'رقم هوية المالك', ph:'1xxxxxxxxx أو 2xxxxxxxxx' },
     { key:'phone', label:'رقم الجوال', ph:'05xxxxxxxx' },
     { key:'city', label:'المدينة', ph:'الرياض' },
     { key:'sector', label:'القطاع', ph:'مقاولات، تجارة، خدمات...' },

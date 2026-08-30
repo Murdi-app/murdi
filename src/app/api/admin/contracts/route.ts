@@ -66,6 +66,18 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { serviceRequestId, companyId, contractType } = body;
 
+  // ثلاثة من حقول العقد الأربعة موجودة في جدول المنشآت منذ التسجيل،
+  // وكانت المسودّة تخرج بخانات نقاط تُملأ يدوياً في كل عقد. الآن تُقرأ.
+  const { data: co } = await admin.from('companies')
+    .select('company_name, cr_number, owner_name, owner_id_number')
+    .eq('id', companyId).maybeSingle();
+  const party: Record<string, unknown> = {
+    client_name: co?.owner_name || null,
+    client_id_number: co?.owner_id_number || null,
+    establishment_name: co?.company_name || null,
+    establishment_cr: co?.cr_number || null,
+  };
+
   // آلية الأتعاب المبدئية.
   // كانت تُقرأ من أعمدة في طلب الخدمة لا يكتبها أحد، فتخرج كل مسودّة «نسبة نجاح بلا مقدّم» —
   // على خدمة مقدّمها معلن. فالمصدر الصحيح هو سجل الأسعار نفسه: إن كان للخدمة سعر معلن،
@@ -95,7 +107,7 @@ export async function POST(req: Request) {
       };
     }
   }
-  const text = render(String(contractType), toFields(seed));
+  const text = render(String(contractType), toFields({ ...seed, ...party }));
 
   const { data, error } = await admin.from('contracts').insert({
     company_id: companyId,
@@ -104,6 +116,7 @@ export async function POST(req: Request) {
     status: 'draft',
     contract_body: text,
     ...seed,
+    ...party,
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, contract: data });
@@ -131,9 +144,51 @@ export async function PATCH(req: Request) {
     for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
     updates.contract_body = render(String(merged.contract_type), toFields(merged));
   }
+  // لا يخرج عقد بخانة نقاط. العقد الذي يصل العميل ناقصَ اسمٍ أو رقم هوية أو سجل
+  // لا يصلح سنداً، ويُحرج المستشار حين يُطلب تنفيذه.
+  if (body.status === 'issued' && existing) {
+    const merged: Record<string, unknown> = { ...existing };
+    for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
+    const LABEL: Record<string, string> = {
+      client_name: 'اسم المالك',
+      client_id_number: 'رقم هوية المالك',
+      establishment_name: 'اسم المنشأة',
+      establishment_cr: 'رقم السجل التجاري',
+    };
+    const missing = Object.keys(LABEL).filter(k => !String(merged[k] ?? '').trim());
+
+    // الأتعاب لا تُصدَر بقيمة ضمنية. كانت المسودّة تخرج بنسبة فارغة فتُقرأ صفراً،
+    // أو بنسبة موروثة من سجل الأسعار لم يقرّها المستشار لهذا العميل بعينه.
+    const ft = String(merged.fee_type || 'percent');
+    const pct = Number(merged.fee_percent ?? 0);
+    const fixed = Number(merged.fixed_amount ?? 0);
+    if ((ft === 'percent' || ft === 'both') && !(pct > 0)) missing.push('__pct');
+    if ((ft === 'fixed'   || ft === 'both') && !(fixed > 0)) missing.push('__fixed');
+    LABEL.__pct = 'نسبة أتعاب النجاح';
+    LABEL.__fixed = 'المبلغ المقدّم';
+
+    if (missing.length) {
+      return NextResponse.json({
+        error: 'لا يمكن إصدار العقد قبل استكمال: ' + missing.map(k => LABEL[k]).join('، '),
+        missing,
+      }, { status: 422 });
+    }
+  }
+
   if (body.status === 'issued') updates.issued_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
   const { error } = await admin.from('contracts').update(updates).eq('id', body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // رقم الهوية يُكتب مرة ويُحفظ على المنشأة، فلا يُطلب مرة أخرى في العقد القادم
+  if (body.client_id_number && String(body.client_id_number).trim()) {
+    const { data: row } = await admin.from('contracts').select('company_id').eq('id', body.id).maybeSingle();
+    if (row?.company_id) {
+      await admin.from('companies')
+        .update({ owner_id_number: String(body.client_id_number).trim() })
+        .eq('id', row.company_id);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
