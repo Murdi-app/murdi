@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import AdminNav from '@/components/AdminNav'
 
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
@@ -58,13 +59,8 @@ export default function AdminPage() {
         <button onClick={()=>router.push('/goal')} style={{ padding:'8px 18px', borderRadius:30, border:'1px solid #E8F5EF', background:'transparent', color:'#6B8A80', cursor:'pointer', fontSize:13, fontFamily:'Cairo', fontWeight:700 }}>المركز الرئيسي</button>
       </div>
 
-      <div style={{ background:'#fff', padding:'0 32px', display:'flex', gap:8, borderBottom:'2px solid #EAF2EE' }}>
-        <div style={{ padding:'14px 22px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B' }}>لوحة التحكم</div>
-        <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الاعتمادات</div>
-        <div onClick={()=>router.push('/admin/entities')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الجهات</div>
-        <div onClick={()=>router.push('/admin/services')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>الخدمات</div>
-        <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>🎯 صيد الفرص</div>
-        <div onClick={()=>router.push('/admin/payments')} style={{ padding:'14px 22px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer' }}>💳 المدفوعات</div>
+      <div style={{ background:'#fff', padding:'14px 24px 2px', borderBottom:'1px solid #EAF2EE' }}>
+        <div style={{ maxWidth:1000, margin:'0 auto' }}><AdminNav /></div>
       </div>
 
       <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 24px' }}>

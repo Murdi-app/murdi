@@ -2,21 +2,26 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
-// شريط الإدارة. كان أحد عشر تبويباً في صفٍّ يلتفّ — على جوال بعرض ٣٧٥ بكسل
-// يصير أربعة صفوف تأكل نصف الشاشة قبل أن يظهر أي محتوى.
-// الآن: صفٌّ واحد يُسحب بالإصبع، والأكثر استعمالاً أولاً — لا الترتيب الذي بُني به.
+// شريط الإدارة — نسخة واحدة تظهر في كل صفحة، وكل التبويبات ظاهرة دائماً.
+// قبلها كان الشريط صفّاً واحداً يُسحب بالإصبع وشريط تمريره مخفي، فكانت
+// التبويبات البعيدة تُقصّ خارج الشاشة بلا أي إشارة تدلّ عليها — تختفي فعلياً.
+// وكانت «لوحة التحكم» و«المدفوعات» تحملان شريطاً خاصاً بستة تبويبات فقط،
+// فيختلف ما يراه المستخدم من صفحة لأخرى. الآن: شريط واحد، يلتفّ في صفوف،
+// لا شيء يُقصّ ولا شيء يُخفى.
+
 const LINKS = [
-  { href: '/admin/inbox', label: '✅ صندوق التعميد', badge: true },
-  { href: '/admin/services', label: 'الخدمات' },
-  { href: '/admin/leads', label: '📋 مكتب المتابعة' },
-  { href: '/admin/payments', label: '💳 المدفوعات' },
-  { href: '/admin/apply', label: '📤 لوحة التقديم' },
-  { href: '/admin/outreach', label: '✉️ المخاطبة' },
-  { href: '/admin/entities', label: '🏦 سجلّ الجهات' },
-  { href: '/admin/approvals', label: 'الاعتمادات' },
-  { href: '/admin/hunt', label: '🎯 صيد الفرص' },
-  { href: '/admin/client-hunt', label: '🪝 صيد العملاء' },
-  { href: '/admin', label: 'لوحة التحكم' },
+  { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
+  { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
+  { href: '/admin/leads', label: 'المتابعة', icon: '📋' },
+  { href: '/admin/payments', label: 'المدفوعات', icon: '💳' },
+  { href: '/admin/payment-links', label: 'روابط الدفع', icon: '📨' },
+  { href: '/admin/apply', label: 'التقديم', icon: '📤' },
+  { href: '/admin/outreach', label: 'المخاطبة', icon: '✉️' },
+  { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
+  { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
+  { href: '/admin/hunt', label: 'صيد الفرص', icon: '🎯' },
+  { href: '/admin/client-hunt', label: 'صيد العملاء', icon: '🪝' },
+  { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 
 export default function AdminNav() {
@@ -35,58 +40,67 @@ export default function AdminNav() {
   }, [pathname])
 
   return (
-    <>
-      <style>{`
-        .mnav::-webkit-scrollbar{display:none}
-        .mnav{-ms-overflow-style:none;scrollbar-width:none}
-      `}</style>
-      <div
-        className="mnav"
-        style={{
-          display: 'flex',
-          gap: 4,
-          marginBottom: 20,
-          borderBottom: '2px solid #EAF2EE',
-          flexWrap: 'nowrap',
-          overflowX: 'auto',
-          overscrollBehaviorX: 'contain',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
-        {LINKS.map((l) => {
-          const active = pathname === l.href
-          const show = l.badge && pending > 0
-          return (
-            <div
-              key={l.href}
-              onClick={() => { if (!active) router.push(l.href) }}
-              style={{
-                padding: '11px 14px',
-                color: active ? '#2E9E7B' : '#6B8A80',
-                fontWeight: active ? 900 : 700,
-                fontSize: 13.5,
-                cursor: active ? 'default' : 'pointer',
-                borderBottom: active ? '2px solid #2E9E7B' : '2px solid transparent',
-                fontFamily: 'Cairo,sans-serif',
-                whiteSpace: 'nowrap',
-                flex: '0 0 auto',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              {l.label}
-              {show && (
-                <span style={{
-                  background: '#B4622A', color: '#fff', borderRadius: 20,
-                  minWidth: 19, height: 19, lineHeight: '19px', textAlign: 'center',
-                  fontSize: 11, fontWeight: 900, padding: '0 5px',
-                }}>{pending}</span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </>
+    <nav
+      dir="rtl"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginBottom: 20,
+        paddingBottom: 12,
+        borderBottom: '1px solid #EAF2EE',
+        fontFamily: 'Cairo,sans-serif',
+      }}
+    >
+      {LINKS.map((l) => {
+        // «/admin» تطابق تامّ فقط، وإلا صارت كل صفحات الإدارة نشطة معاً
+        const active = l.href === '/admin'
+          ? pathname === '/admin'
+          : (pathname || '').startsWith(l.href)
+        const show = l.badge && pending > 0
+        return (
+          <button
+            key={l.href}
+            type="button"
+            onClick={() => { if (!active) router.push(l.href) }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '8px 13px',
+              borderRadius: 999,
+              cursor: active ? 'default' : 'pointer',
+              fontFamily: 'Cairo,sans-serif',
+              fontSize: 12.5,
+              fontWeight: active ? 900 : 700,
+              lineHeight: 1.6,
+              whiteSpace: 'nowrap',
+              transition: 'background .15s ease, color .15s ease, border-color .15s ease',
+              background: active ? '#1A3D34' : '#fff',
+              color: active ? '#fff' : '#5E7C73',
+              border: '1px solid ' + (active ? '#1A3D34' : '#E4EFEA'),
+              boxShadow: active ? '0 1px 3px rgba(26,61,52,.18)' : 'none',
+            }}
+          >
+            <span style={{ fontSize: 12.5, opacity: active ? 1 : .75 }}>{l.icon}</span>
+            <span>{l.label}</span>
+            {show && (
+              <span style={{
+                background: active ? '#C9A84C' : '#B4622A',
+                color: '#fff',
+                borderRadius: 999,
+                minWidth: 18,
+                height: 18,
+                lineHeight: '18px',
+                textAlign: 'center',
+                fontSize: 10.5,
+                fontWeight: 900,
+                padding: '0 5px',
+              }}>{pending}</span>
+            )}
+          </button>
+        )
+      })}
+    </nav>
   )
 }

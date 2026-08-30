@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
+import AdminNav from '@/components/AdminNav';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -114,14 +115,7 @@ export default function PaymentsPage() {
           ⚠︎ {notice}
         </div>
       )}
-      <div style={{ display:'flex', gap:8, marginBottom:22, borderBottom:'2px solid #EAF2EE', paddingBottom:0, flexWrap:'wrap' }}>
-        <div onClick={()=>router.push('/admin')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>لوحة التحكم</div>
-        <div onClick={()=>router.push('/admin/approvals')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الاعتمادات</div>
-        <div onClick={()=>router.push('/admin/entities')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الجهات</div>
-        <div onClick={()=>router.push('/admin/services')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>الخدمات</div>
-        <div onClick={()=>router.push('/admin/hunt')} style={{ padding:'10px 18px', color:'#6B8A80', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Cairo,sans-serif' }}>🎯 صيد الفرص</div>
-        <div style={{ padding:'10px 18px', color:'#2E9E7B', fontWeight:900, fontSize:14, borderBottom:'2px solid #2E9E7B', fontFamily:'Cairo,sans-serif' }}>💳 المدفوعات</div>
-      </div>
+      <AdminNav />
       <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, margin: 0 }}>💳 المدفوعات</h1>
       <p style={{ color: '#6B8A80', fontSize: 13, marginTop: 4, marginBottom: 20 }}>التحويلات البنكية بانتظار تأكيدك، وسجلّ كل المدفوعات.</p>
 
