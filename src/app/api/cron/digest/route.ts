@@ -84,6 +84,10 @@ function html(d: Digest, title: string): string {
     <h1 style="font-size:21px;color:#1A3D34;margin:6px 0 2px">${esc(title)}</h1>
     <div style="font-size:12px;color:#9DB3AB;margin-bottom:18px">${new Date(String(d.at)).toLocaleString('ar-SA')}</div>
 
+    ${num(d, 'approvals_pending') ? `<a href="https://murdi.sa/admin/inbox" style="display:block;text-decoration:none;background:#1A3D34;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:18px">
+      <div style="font-size:15px;font-weight:900">${num(d, 'approvals_pending')} بنداً ينتظر تعميدك</div>
+      <div style="font-size:12px;opacity:.85;margin-top:3px">افتح صندوق التعميد واعتمد بنقرة ←</div></a>` : ''}
+
     <div style="font-size:13px;font-weight:900;color:#1A3D34;margin-bottom:6px">ما ينتظر قرارك</div>
     <table style="width:100%;border-collapse:collapse">${rows}</table>
 
@@ -123,15 +127,23 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const d = (data || {}) as Digest;
 
+  // عدد ما ينتظر كلمته في صندوق التعميد — به تُقفل الحلقة: يقرأ، فيفتح، فينقر
+  const { count: waiting } = await admin().from('approvals')
+    .select('id', { count: 'exact', head: true }).eq('status', 'pending');
+  d.approvals_pending = waiting || 0;
+
   // جولة المساء تصمت إن لم يكن ثمّة قرار — التنبيه الذي يتكرر بلا سبب يُهمَل
   const dec = decisions(d);
-  if (kind === 'evening' && dec.length === 0) {
+  if (kind === 'evening' && dec.length === 0 && !num(d, 'approvals_pending')) {
     return NextResponse.json({ ok: true, sent: false, reason: 'لا جديد يستحق الإشعار' });
   }
 
-  const subject = dec.length
-    ? `${title} — ${dec.length} بند ينتظر قرارك`
-    : `${title} — كل شيء نظيف`;
+  const waitN = num(d, 'approvals_pending');
+  const subject = waitN
+    ? `${title} — ${waitN} بند ينتظر تعميدك`
+    : dec.length
+      ? `${title} — ${dec.length} بند ينتظر قرارك`
+      : `${title} — كل شيء نظيف`;
 
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
