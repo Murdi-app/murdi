@@ -26,8 +26,8 @@ export default function RegisterPage() {
   const [uploadError, setUploadError] = useState('')
 
   const [form, setForm] = useState({
-    company_name: '', cr_number: '', tax_number: '',
-    owner_name: '', owner_id_number: '', phone: '', city: '', sector: '',
+    company_name: '', company_name_en: '', cr_number: '', tax_number: '',
+    owner_name: '', owner_name_en: '', owner_id_number: '', phone: '', city: '', sector: '',
   })
 
   useEffect(() => { check() }, [])
@@ -128,10 +128,12 @@ export default function RegisterPage() {
   )
 
   const fields = [
-    { key:'company_name', label:'اسم الشركة', ph:'الاسم كما في السجل التجاري' },
+    { key:'company_name', label:'اسم المنشأة بالعربي', ph:'كما هو في السجل التجاري' },
+    { key:'company_name_en', label:'اسم المنشأة بالإنجليزي (اختياري)', ph:'للمخاطبات مع الجهات الدولية' },
     { key:'cr_number', label:'رقم السجل التجاري', ph:'10xxxxxxxx' },
     { key:'tax_number', label:'الرقم الضريبي (اختياري)', ph:'3xxxxxxxxxxxxxx' },
-    { key:'owner_name', label:'اسم المالك', ph:'الاسم كما في الهوية' },
+    { key:'owner_name', label:'اسم المالك بالعربي', ph:'كما هو مكتوب في الهوية أو الإقامة' },
+    { key:'owner_name_en', label:'الاسم بالإنجليزي (اختياري)', ph:'للمقيمين — كما في الإقامة' },
     { key:'owner_id_number', label:'رقم هوية المالك', ph:'1xxxxxxxxx أو 2xxxxxxxxx' },
     { key:'phone', label:'رقم الجوال', ph:'05xxxxxxxx' },
     { key:'city', label:'المدينة', ph:'الرياض' },

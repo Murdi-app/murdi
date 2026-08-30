@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   // ثلاثة من حقول العقد الأربعة موجودة في جدول المنشآت منذ التسجيل،
   // وكانت المسودّة تخرج بخانات نقاط تُملأ يدوياً في كل عقد. الآن تُقرأ.
   const { data: co } = await admin.from('companies')
-    .select('company_name, cr_number, owner_name, owner_id_number')
+    .select('company_name, company_name_en, cr_number, owner_name, owner_name_en, owner_id_number')
     .eq('id', companyId).maybeSingle();
   const party: Record<string, unknown> = {
     client_name: co?.owner_name || null,
@@ -142,6 +142,26 @@ export async function PATCH(req: Request) {
   if (existing) {
     const merged: Record<string, unknown> = { ...existing };
     for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
+
+    // مصالحة الأتعاب — أخطر تناقض في العقد وأهدؤه.
+    // كان بالإمكان كتابة مبلغ مقدّم بينما النوع «نسبة»، فيبقى الرقم في الصفّ
+    // والنصّ يقول «ولا يستحق الطرف الأول أي مبلغ مقدّم» — فيوقّع العميل على نفي ما ستطالب به.
+    // القاعدة: اختيارُك الصريح للنوع يحكم ويمسح ما ينفيه؛ فإن لم تختر، تحكم الأرقام.
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    if (body.fee_type !== undefined) {
+      const ft = String(merged.fee_type || 'percent');
+      if (ft === 'percent') merged.fixed_amount = null;
+      if (ft === 'fixed')   merged.fee_percent  = null;
+    } else {
+      const hasFixed = n(merged.fixed_amount) > 0;
+      const hasPct   = n(merged.fee_percent)  > 0;
+      merged.fee_type = hasFixed && hasPct ? 'both' : hasFixed ? 'fixed' : 'percent';
+    }
+    // ما استقرّ عليه المنطق يُحفظ في الصفّ لا في النص وحده، وإلا عاد التناقض في أول تحرير
+    updates.fee_type     = merged.fee_type;
+    updates.fixed_amount = merged.fixed_amount ?? null;
+    updates.fee_percent  = merged.fee_percent  ?? null;
+
     updates.contract_body = render(String(merged.contract_type), toFields(merged));
   }
   // لا يخرج عقد بخانة نقاط. العقد الذي يصل العميل ناقصَ اسمٍ أو رقم هوية أو سجل
@@ -171,6 +191,21 @@ export async function PATCH(req: Request) {
       return NextResponse.json({
         error: 'لا يمكن إصدار العقد قبل استكمال: ' + missing.map(k => LABEL[k]).join('، '),
         missing,
+      }, { status: 422 });
+    }
+
+    // العقد وثيقة عربية، ومحكمة التنفيذ تطابق الاسم العربي في الهوية.
+    // إقامة المستثمر الأجنبي تحمل الاسمين، فيسهل أن يُكتب اللاتيني سهواً —
+    // ولا يظهر الخلل إلا يوم التنفيذ، وهو أسوأ يوم يظهر فيه.
+    const AR = /[\u0621-\u064A]/;
+    const nonAr = ([
+      ['client_name', 'اسم المالك — اكتبه كما هو في الهوية أو الإقامة بالعربي'],
+      ['establishment_name', 'اسم المنشأة — اكتبه كما هو في السجل التجاري بالعربي'],
+    ] as const).filter(([k]) => !AR.test(String(merged[k] || '')));
+    if (nonAr.length) {
+      return NextResponse.json({
+        error: 'العقد وثيقة عربية والتنفيذ عبر نافذ يطابق الاسم العربي. ' + nonAr.map(([, m]) => m).join(' · '),
+        missing: nonAr.map(([k]) => k),
       }, { status: 422 });
     }
   }
