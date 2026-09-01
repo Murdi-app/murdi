@@ -112,7 +112,9 @@ export async function POST(req: Request) {
       await admin.from('outreach_messages')
         .update({ error_note: out.reason.slice(0, 300), updated_at: new Date().toISOString() })
         .eq('id', id);
-      continue;
+      // هذا المسار يرسل رسالة واحدة لا دفعة — فالفشل يُعاد للواجهة بسببه،
+      // ومرحلة المعاودة لا تُقدَّم، حتى لا نظنّ أننا عاودنا ونحن لم نفعل
+      return NextResponse.json({ error: 'لم تخرج المتابعة: ' + out.reason }, { status: 502 });
     }
 
     await admin.from('outreach_messages').update({
