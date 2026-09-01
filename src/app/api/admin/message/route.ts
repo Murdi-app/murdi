@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { requireStaff } from '@/lib/requireStaff';
+import { sendMail, mailStatus } from '@/lib/sendMail';
 import { TEMPLATES, findTemplate, fillTemplate } from '@/lib/clientTemplates';
 
 // مراسلة العملاء — لا الجهات.
@@ -12,7 +12,6 @@ import { TEMPLATES, findTemplate, fillTemplate } from '@/lib/clientTemplates';
 //
 // القاعدة: قالب جاهز يخرج فوراً. أي نصّ حرّ لا يخرج إلا باعتماد المالك.
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const OWNER_FROM = 'مُرضي للاستشارات المالية <partners@murdi.sa>';
 
 const admin = () =>
@@ -111,16 +110,13 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
       .limit(25);
     for (const m of recent || []) {
-      try {
-        const r = await resend.emails.get(String(m.provider_id));
-        const ev = (r as { data?: { last_event?: string } })?.data?.last_event;
-        if (ev) {
-          await sb
-            .from('client_messages')
-            .update({ delivery: ev, delivery_checked_at: new Date().toISOString() })
-            .eq('id', m.id);
-        }
-      } catch { /* تعذّر السؤال عن رسالة لا يُسقط الباقي */ }
+      const ev = await mailStatus(String(m.provider_id));
+      if (ev) {
+        await sb
+          .from('client_messages')
+          .update({ delivery: ev, delivery_checked_at: new Date().toISOString() })
+          .eq('id', m.id);
+      }
     }
   }
 
@@ -239,28 +235,26 @@ export async function POST(req: Request) {
     });
   }
 
-  let providerId: string | null = null;
-  try {
-    const res = await resend.emails.send({
-      from: sender.from,
-      to: toEmail,
-      replyTo: sender.replyTo,
-      subject,
-      html: htmlOf(body),
-    });
-    // معرّف المزوّد يُحفظ، وبه وحده نعرف لاحقاً: وصلت أم ارتدّت؟
-    providerId = (res as { data?: { id?: string } })?.data?.id || null;
-  } catch (e) {
+  const res = await sendMail({
+    from: sender.from,
+    to: toEmail,
+    replyTo: sender.replyTo,
+    subject,
+    html: htmlOf(body),
+  });
+
+  if (!res.ok) {
     await sb
       .from('client_messages')
-      .update({ status: 'فشل', error_note: String(e).slice(0, 200) })
+      .update({ status: 'فشل', error_note: res.reason.slice(0, 400) })
       .eq('id', saved.id);
-    return NextResponse.json({ error: 'فشل الإرسال: ' + String(e).slice(0, 120) }, { status: 502 });
+    // السبب يُقال للموظفة كما هو — لا «تعذّر الإرسال» مبهمة
+    return NextResponse.json({ error: 'لم تخرج الرسالة: ' + res.reason }, { status: 502 });
   }
 
   await sb
     .from('client_messages')
-    .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, provider_id: providerId })
+    .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, provider_id: res.id })
     .eq('id', saved.id);
   await logEvent(sb, companyId, 'أُرسلت رسالة للعميل: ' + subject, sender.name + ' ← ' + toEmail, who.role === 'admin' ? 'owner' : 'staff');
 
@@ -305,17 +299,17 @@ export async function PATCH(req: Request) {
     replyTo = s.replyTo;
   }
 
-  try {
-    await resend.emails.send({
-      from: sendFrom,
-      to: String(m.to_email),
-      replyTo,
-      subject,
-      html: htmlOf(body),
-    });
-  } catch (e) {
-    await sb.from('client_messages').update({ status: 'فشل', error_note: String(e).slice(0, 200) }).eq('id', id);
-    return NextResponse.json({ error: 'فشل الإرسال: ' + String(e).slice(0, 120) }, { status: 502 });
+  const res = await sendMail({
+    from: sendFrom,
+    to: String(m.to_email),
+    replyTo,
+    subject,
+    html: htmlOf(body),
+  });
+
+  if (!res.ok) {
+    await sb.from('client_messages').update({ status: 'فشل', error_note: res.reason.slice(0, 400) }).eq('id', id);
+    return NextResponse.json({ error: 'لم تخرج الرسالة: ' + res.reason }, { status: 502 });
   }
 
   await sb
@@ -328,6 +322,7 @@ export async function PATCH(req: Request) {
       approved_by: who.userId,
       approved_at: new Date().toISOString(),
       error_note: null,
+      provider_id: res.id,
     })
     .eq('id', id);
   await logEvent(sb, m.company_id ? String(m.company_id) : null, 'اعتُمدت وأُرسلت رسالة للعميل: ' + subject, String(m.created_by_name || '') + ' ← ' + String(m.to_email), 'owner');

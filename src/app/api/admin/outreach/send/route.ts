@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { sendMail } from '@/lib/sendMail';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'مُرضي — فريق الشراكات <partners@murdi.sa>';
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAdmin() {
   const cookieStore = await cookies();
@@ -113,6 +112,8 @@ export async function POST(req: Request) {
 
   let sent = 0;
   let skipped = 0;
+  // أسباب الرفض تُجمع وتُعاد للواجهة — لا تُبتلع في عدّاد
+  const failures: string[] = [];
 
   for (const m of msgs) {
     // حماية: لا نرسل بدون إيميل صحيح
@@ -124,45 +125,54 @@ export async function POST(req: Request) {
       continue;
     }
 
-    try {
-      // نحوّل النص لـ HTML بسيط (نحافظ على الأسطر)
-      const html = '<div style="font-family:Arial,sans-serif;line-height:1.7;direction:'
-        + (m.entity_language === 'إنجليزي' ? 'ltr' : 'rtl')
-        + ';color:#1A3D34;font-size:14px;">'
-        + String(m.message_body).replace(/\n/g, '<br>')
-        + '</div>';
+    // نحوّل النص لـ HTML بسيط (نحافظ على الأسطر)
+    const html = '<div style="font-family:Arial,sans-serif;line-height:1.7;direction:'
+      + (m.entity_language === 'إنجليزي' ? 'ltr' : 'rtl')
+      + ';color:#1A3D34;font-size:14px;">'
+      + String(m.message_body).replace(/\n/g, '<br>')
+      + '</div>';
 
-      await resend.emails.send({
-        from: FROM,
-        to: String(m.entity_email).trim(),
-        subject: m.subject || 'استفسار',
-        html,
-        attachments: (() => {
-          const isEn = m.entity_language === 'إنجليزي';
-          const list: Att[] = [];
-          const main = isEn ? (attEn || attAr) : (attAr || attEn);
-          if (main) list.push(main);
-          // الشرائح: الإنجليزية تُرسل للجميع، والعربية للجهات المحلية فقط
-          if (deckEn) list.push(deckEn);
-          if (!isEn && deckAr) list.push(deckAr);
-          return list.length ? (list as { filename: string; content: string }[]) : undefined;
-        })(),
-      });
+    // كان هنا `await resend.emails.send(...)` داخل try/catch — ومكتبة Resend
+    // لا ترمي عند رفض الخادم بل تُرجع {error}. فكان كل ملف يُعلَّم «مُرسلة»
+    // ولو رُفض. الآن الإرسال يمرّ من مُرسِلٍ يقرأ الخطأ ويعيده.
+    const out = await sendMail({
+      from: FROM,
+      to: String(m.entity_email).trim(),
+      subject: m.subject || 'استفسار',
+      html,
+      attachments: (() => {
+        const isEn = m.entity_language === 'إنجليزي';
+        const list: Att[] = [];
+        const main = isEn ? (attEn || attAr) : (attAr || attEn);
+        if (main) list.push(main);
+        // الشرائح: الإنجليزية تُرسل للجميع، والعربية للجهات المحلية فقط
+        if (deckEn) list.push(deckEn);
+        if (!isEn && deckAr) list.push(deckAr);
+        return list.length ? (list as { filename: string; content: string }[]) : undefined;
+      })(),
+    });
 
-      await admin.from('outreach_messages')
-        .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, updated_at: new Date().toISOString(),
-          last_sent_at: new Date().toISOString(),
-          next_followup_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          reply_status: 'awaiting' })
-        .eq('id', m.id);
-      sent++;
-    } catch (e) {
+    if (!out.ok) {
       skipped++;
+      failures.push(String(m.entity_name || m.entity_email) + ': ' + out.reason);
       await admin.from('outreach_messages')
-        .update({ status: 'فشل', error_note: 'فشل الإرسال: ' + String(e).slice(0, 100), updated_at: new Date().toISOString() })
+        .update({ status: 'فشل', error_note: out.reason.slice(0, 300), updated_at: new Date().toISOString() })
         .eq('id', m.id);
+      continue;
     }
+
+    await admin.from('outreach_messages')
+      .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, updated_at: new Date().toISOString(),
+        last_sent_at: new Date().toISOString(),
+        next_followup_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        reply_status: 'awaiting' })
+      .eq('id', m.id);
+    sent++;
   }
 
-  return NextResponse.json({ ok: true, sent, skipped, total: msgs.length, attachmentWarnings: deckWarn });
+  return NextResponse.json({
+    ok: true, sent, skipped, total: msgs.length,
+    attachmentWarnings: deckWarn,
+    failures: failures.length ? failures : null,
+  });
 }
