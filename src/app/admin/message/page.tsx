@@ -13,6 +13,18 @@ type Msg = {
   id: string; company_id: string | null; to_name: string | null; to_email: string
   subject: string; body: string; status: string; created_by_name: string | null
   sent_at: string | null; error_note: string | null; created_at: string
+  delivery: string | null; delivery_checked_at: string | null
+}
+type Preview = { subject: string; body: string; from: string | null; needs_company: boolean }
+
+// «مُرسلة» تعني سُلِّمت لمزوّد البريد. ووصولها خبر آخر يأتي منه، ويُترجم هنا
+// بلغة مفهومة — لأن موظفة تقرأ «مُرسلة» وتظن أن العميل استلمها.
+const DELIVERY: Record<string, { label: string; good: boolean }> = {
+  delivered: { label: '✓ وصلت لصندوقه', good: true },
+  sent: { label: 'خرجت — لم يُؤكَّد الوصول بعد', good: true },
+  bounced: { label: '⚠ ارتدّت — البريد غير موجود', good: false },
+  complained: { label: '⚠ صنّفها العميل مزعجة', good: false },
+  delivery_delayed: { label: 'تأخّر التسليم', good: false },
 }
 
 const C = { ink: '#1A3D34', soft: '#5E7C73', line: '#E4EFEA', bg: '#F7FBF9', gold: '#C9A84C', red: '#B4622A', green: '#1A6B55' }
@@ -37,9 +49,10 @@ export default function MessagePage() {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+  const [preview, setPreview] = useState<Preview | null>(null)
 
-  const load = () => {
-    fetch('/api/admin/message')
+  const load = (check?: boolean) => {
+    fetch('/api/admin/message' + (check ? '?check=1' : ''))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (!d) return
@@ -48,7 +61,20 @@ export default function MessagePage() {
       })
       .catch(() => {})
   }
-  useEffect(load, [])
+  useEffect(() => { load() }, [])
+
+  // كلما تغيّر القالب أو العميل أو الاسم، تُبنى الرسالة من الخادم وتُعرض
+  // كما ستخرج تماماً. لا تُرسل رسالة لم تُقرأ.
+  useEffect(() => {
+    if (free) { setPreview(null); return }
+    let alive = true
+    const p = new URLSearchParams({ preview: tplKey, company_id: companyId, to_name: toName })
+    fetch('/api/admin/message?' + p.toString())
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d?.ok) setPreview({ subject: d.subject, body: d.body, from: d.from, needs_company: d.needs_company }) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [tplKey, companyId, toName, free])
 
   // اختيار العميل يملأ اسمه وبريده — لا تُكتب البيانات يدوياً فتُخطئ
   const pick = (id: string) => {
@@ -171,8 +197,33 @@ export default function MessagePage() {
 
           {!free && chosen && (
             <p style={{ fontSize: 11.5, color: C.soft, margin: '10px 0 0', lineHeight: 1.7 }}>
-              متى تُستعمل: {chosen.when} — تُملأ باسمه واسم منشأته وتخرج فوراً.
+              متى تُستعمل: {chosen.when}
             </p>
+          )}
+
+          {/* المعاينة: ما سيصل العميل حرفاً بحرف، ومن أي صندوق، وإلى أي بريد */}
+          {!free && preview && (
+            <div style={{ marginTop: 12, border: '1px solid ' + C.line, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: C.bg, padding: '9px 14px', borderBottom: '1px solid ' + C.line, fontSize: 11.5, lineHeight: 1.9 }}>
+                <div><span style={{ color: C.soft, fontWeight: 800 }}>من:</span> <span dir="ltr">{preview.from || '—'}</span></div>
+                <div>
+                  <span style={{ color: C.soft, fontWeight: 800 }}>إلى:</span>{' '}
+                  <span dir="ltr" style={{ fontWeight: 900, fontSize: 13, color: toEmail.includes('@') ? C.ink : C.red }}>
+                    {toEmail || '— لم يُكتب بريد —'}
+                  </span>
+                  <span style={{ color: C.soft }}> — راجعي هذا السطر حرفاً بحرف قبل الإرسال</span>
+                </div>
+                <div><span style={{ color: C.soft, fontWeight: 800 }}>الموضوع:</span> <strong>{preview.subject}</strong></div>
+              </div>
+              <div style={{ padding: '13px 15px', fontSize: 13.5, lineHeight: 1.95, whiteSpace: 'pre-wrap', background: '#fff' }}>
+                {preview.body}
+              </div>
+              {preview.needs_company && !companyId && (
+                <div style={{ padding: '8px 14px', background: '#FFF7F3', color: C.red, fontSize: 11.5, fontWeight: 800, borderTop: '1px solid ' + C.line }}>
+                  هذا القالب يذكر اسم المنشأة — اختاري العميل أولاً وإلا خرجت ناقصة.
+                </div>
+              )}
+            </div>
           )}
 
           {free && (
@@ -197,13 +248,19 @@ export default function MessagePage() {
               fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 13,
               cursor: ready && !busy ? 'pointer' : 'default',
             }}>
-            {busy ? '…' : free && role !== 'admin' ? 'أرسل للاعتماد' : 'أرسل'}
+            {busy ? '…' : free && role !== 'admin' ? 'أرسل للاعتماد' : 'راجعتُها — أرسل'}
           </button>
           {note && <span style={{ fontSize: 12.5, fontWeight: 800, color: note.startsWith('✕') ? C.red : C.green }}>{note}</span>}
         </div>
       </div>
 
-      <h2 style={{ fontSize: 15, fontWeight: 900, margin: '0 0 10px' }}>ما أُرسل</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 900, margin: 0 }}>ما أُرسل</h2>
+        <button type="button" onClick={() => load(true)}
+          style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.soft, fontFamily: 'Cairo,sans-serif', fontWeight: 800, fontSize: 11.5, cursor: 'pointer' }}>
+          ↻ تحقّق من وصولها
+        </button>
+      </div>
       {msgs.length === 0 && <p style={{ fontSize: 12.5, color: C.soft }}>لا شيء بعد.</p>}
       <div style={{ display: 'grid', gap: 8 }}>
         {msgs.map(m => (
@@ -219,6 +276,16 @@ export default function MessagePage() {
               {m.created_by_name ? ' · ' + m.created_by_name : ''}
               {m.sent_at ? ' · ' + new Date(m.sent_at).toLocaleString('ar-SA') : ''}
             </div>
+            {m.delivery && (
+              <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 4, color: DELIVERY[m.delivery]?.good === false ? C.red : C.green }}>
+                {DELIVERY[m.delivery]?.label || m.delivery}
+              </div>
+            )}
+            {m.status === 'مُرسلة' && !m.delivery && (
+              <div style={{ fontSize: 11.5, color: C.soft, marginTop: 4 }}>
+                سُلِّمت لمزوّد البريد — اضغطي «تحقّق من وصولها» لتعرفي إن كانت وصلت فعلاً
+              </div>
+            )}
             {m.error_note && <div style={{ fontSize: 11.5, color: C.red, marginTop: 4 }}>{m.error_note}</div>}
           </div>
         ))}

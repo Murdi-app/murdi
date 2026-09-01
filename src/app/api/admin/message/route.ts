@@ -75,9 +75,58 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const companyId = url.searchParams.get('company_id') || '';
 
+  // معاينة: تُبنى الرسالة كما ستخرج تماماً، فتُقرأ قبل أن تُرسل.
+  // القالب يعيش في الخادم، فلا يمكن للواجهة أن تعرضه من عندها — تسأل عنه.
+  const previewKey = url.searchParams.get('preview') || '';
+  if (previewKey) {
+    const tpl = findTemplate(previewKey);
+    if (!tpl) return NextResponse.json({ error: 'قالب غير معروف' }, { status: 400 });
+    const sender = await senderFor(who.userId, who.role);
+    let companyName = '';
+    if (companyId) {
+      const { data } = await sb.from('companies').select('company_name').eq('id', companyId).maybeSingle();
+      companyName = String(data?.company_name || '');
+    }
+    const vars = {
+      name: url.searchParams.get('to_name') || '',
+      company: companyName,
+      sender: sender?.name || '',
+    };
+    return NextResponse.json({
+      ok: true,
+      subject: fillTemplate(tpl.subject, vars),
+      body: fillTemplate(tpl.body, vars),
+      from: sender?.from || null,
+      needs_company: tpl.body.includes('{{company}}') || tpl.subject.includes('{{company}}'),
+    });
+  }
+
+  // تحديث حالة التسليم من مزوّد البريد — «أُرسلت» ليست «وصلت»
+  if (url.searchParams.get('check')) {
+    const { data: recent } = await sb
+      .from('client_messages')
+      .select('id, provider_id')
+      .eq('status', 'مُرسلة')
+      .not('provider_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    for (const m of recent || []) {
+      try {
+        const r = await resend.emails.get(String(m.provider_id));
+        const ev = (r as { data?: { last_event?: string } })?.data?.last_event;
+        if (ev) {
+          await sb
+            .from('client_messages')
+            .update({ delivery: ev, delivery_checked_at: new Date().toISOString() })
+            .eq('id', m.id);
+        }
+      } catch { /* تعذّر السؤال عن رسالة لا يُسقط الباقي */ }
+    }
+  }
+
   let q = sb
     .from('client_messages')
-    .select('id, company_id, to_name, to_email, subject, body, status, created_by_name, sent_at, error_note, created_at')
+    .select('id, company_id, to_name, to_email, subject, body, status, created_by_name, sent_at, error_note, created_at, delivery, delivery_checked_at')
     .order('created_at', { ascending: false })
     .limit(60);
   if (companyId) q = q.eq('company_id', companyId);
@@ -190,14 +239,17 @@ export async function POST(req: Request) {
     });
   }
 
+  let providerId: string | null = null;
   try {
-    await resend.emails.send({
+    const res = await resend.emails.send({
       from: sender.from,
       to: toEmail,
       replyTo: sender.replyTo,
       subject,
       html: htmlOf(body),
     });
+    // معرّف المزوّد يُحفظ، وبه وحده نعرف لاحقاً: وصلت أم ارتدّت؟
+    providerId = (res as { data?: { id?: string } })?.data?.id || null;
   } catch (e) {
     await sb
       .from('client_messages')
@@ -208,7 +260,7 @@ export async function POST(req: Request) {
 
   await sb
     .from('client_messages')
-    .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null })
+    .update({ status: 'مُرسلة', sent_at: new Date().toISOString(), error_note: null, provider_id: providerId })
     .eq('id', saved.id);
   await logEvent(sb, companyId, 'أُرسلت رسالة للعميل: ' + subject, sender.name + ' ← ' + toEmail, who.role === 'admin' ? 'owner' : 'staff');
 
