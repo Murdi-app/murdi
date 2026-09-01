@@ -11,6 +11,7 @@ import { useRouter, usePathname } from 'next/navigation'
 
 const LINKS = [
   { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
+  { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭' },
   { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
   { href: '/admin/leads', label: 'المتابعة', icon: '📋' },
   { href: '/admin/payments', label: 'المدفوعات', icon: '💳' },
