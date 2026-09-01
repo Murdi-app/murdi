@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 import { runScopedMatch, saveMatchResults, TYPE_LABELS } from '@/lib/matchEngine';
+import { sendMail } from '@/lib/sendMail';
+import { logError } from '@/lib/logError';
 
 
 export async function POST(req: Request) {
@@ -165,7 +166,6 @@ export async function POST(req: Request) {
 
   // ====== الإيميل السري للأدمن: الأسماء والتفاصيل كاملة ======
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#9A7B2E' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
     const regionOrder = (r?: string) => { const x = r || ''; return x.includes('خليج') ? 1 : x.includes('دولي') ? 2 : 0; };
     const sortedOffers = [...webOffers].sort((a, b) => regionOrder(a.region) - regionOrder(b.region));
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
       + '<td style="padding:8px;border:1px solid #ddd">ملاءمة ' + m.fit + '%</td></tr>'
     ).join('');
 
-    await resend.emails.send({
+    const mailOut = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: 'مطابقة ' + trackLabel + ' — ' + company.company_name + ' (' + totalCount + ' فرصة)',
@@ -202,6 +202,8 @@ export async function POST(req: Request) {
         + suggestionBox(suggestService({ ...fd }, isInvest ? 'investment' : 'funding', Number(rr?.readiness_score) || 0))
         + '</div>',
     });
+    // إشعار المالك: لا يُسقط المطابقة إن فشل، لكنه لا يُبتلَع صامتاً
+    if (!mailOut.ok) await logError('match.notify', new Error(mailOut.reason), { entity: 'resend' });
   } catch {}
 
   return NextResponse.json({

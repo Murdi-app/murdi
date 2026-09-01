@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { logError } from '@/lib/logError';
 import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { sendMail } from '@/lib/sendMail';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'فريق الشراكات - حلول المرضي <partners@murdi.sa>';
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function getAdmin() {
   const cookieStore = await cookies();
@@ -101,12 +100,20 @@ export async function POST(req: Request) {
       + fu.body.replace(/\n/g, '<br>')
       + '</div>';
 
-    await resend.emails.send({
+    // لا تُقدَّم مرحلة المعاودة إلا إذا خرجت الرسالة فعلاً — وإلا ظننّا
+    // أننا عاودنا وسكتنا عن جهة لم تصلها رسالة أصلاً
+    const out = await sendMail({
       from: FROM,
       to: String(m.entity_email).trim(),
       subject: fu.subject,
       html,
     });
+    if (!out.ok) {
+      await admin.from('outreach_messages')
+        .update({ error_note: out.reason.slice(0, 300), updated_at: new Date().toISOString() })
+        .eq('id', id);
+      continue;
+    }
 
     await admin.from('outreach_messages').update({
       followup_stage: nextStage,

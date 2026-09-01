@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { runAutoMatch, enrichApplyPaths } from '@/lib/matchEngine';
 import { logError } from '@/lib/logError';
+import { sendMail } from '@/lib/sendMail';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
@@ -28,8 +29,7 @@ export async function POST(req: Request) {
       const { data: cN } = await admin.from('companies').select('company_name').eq('id', companyId).maybeSingle();
       const nm = String((cN as Record<string, unknown> | null)?.company_name || companyId);
       const lbl = t === 'investment' ? 'استثمار' : 'تمويل';
-      const { Resend: R2 } = await import('resend');
-      await new R2(process.env.RESEND_API_KEY).emails.send({
+      const outA = await sendMail({
         from: 'مُرضي <noreply@murdi.sa>',
         to: 'hololalmurdi.fs@gmail.com',
         subject: 'اكتملت مطابقة ' + lbl + ' — ' + nm + ' (' + (count || 0) + ' جهة)',
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
           + '<p>عدد الجهات: <b style="font-size:22px;color:#C9A84C">' + (count || 0) + '</b></p>'
           + '<p><a href="https://murdi.sa/admin/apply" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح لوحة التقديم</a></p></div>',
       });
+      if (!outA.ok) await logError('match.notifyAdmin', new Error(outA.reason), { company_id: companyId });
     } catch (e) { await logError('match.notifyAdmin', e, { company_id: companyId }); }
     try {
       const { data: co2 } = await admin.from('companies').select('user_id').eq('id', companyId).single();
@@ -50,8 +51,7 @@ export async function POST(req: Request) {
       }
       if (!to.includes('@')) await logError('match.noClientEmail', new Error('no client email'), { company_id: companyId });
       if (to.includes('@')) {
-        const { Resend } = await import('resend');
-        await new Resend(process.env.ANTHROPIC_API_KEY ? process.env.RESEND_API_KEY : process.env.RESEND_API_KEY).emails.send({
+        const outC = await sendMail({
           from: '\u0645\u064f\u0631\u0636\u064a <noreply@murdi.sa>',
           to,
           subject: '\u062c\u0647\u0627\u062a\u0643 \u062c\u0627\u0647\u0632\u0629 \u2014 \u0645\u064f\u0631\u0636\u064a',
@@ -60,6 +60,7 @@ export async function POST(req: Request) {
             + '<p>\u0627\u0643\u062a\u0645\u0644\u062a \u0645\u0637\u0627\u0628\u0642\u0629 \u0645\u0644\u0641\u0643 \u0645\u0639 \u0634\u0628\u0643\u0629 \u062c\u0647\u0627\u062a \u0645\u064f\u0631\u0636\u064a\u060c \u0648\u0641\u0631\u064a\u0642 \u062f. \u0639\u0628\u062f\u0627\u0644\u062d\u0643\u064a\u0645 \u064a\u0631\u0627\u062c\u0639\u0647\u0627 \u0627\u0644\u0622\u0646 \u0648\u064a\u0628\u062f\u0623 \u0627\u0644\u062a\u0642\u062f\u064a\u0645 \u0646\u064a\u0627\u0628\u0629\u064b \u0639\u0646\u0643.</p>'
             + '<p><a href="https://murdi.sa/goal" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">\u0627\u0641\u062a\u062d \u0645\u0644\u0641\u0643</a></p></div>',
         });
+        if (!outC.ok) await logError('match.notifyClient', new Error(outC.reason), { company_id: companyId });
       }
     } catch (e) { await logError('match.notifyClient', e, { company_id: companyId }); }
     return NextResponse.json({ ok: true, count: count || 0 });

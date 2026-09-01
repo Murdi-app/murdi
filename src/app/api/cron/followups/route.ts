@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { sendMail } from '@/lib/sendMail';
 
 // نبض المعاودة — يعمل من داخل القاعدة، بلا جلسة ولا إذن ولا حاسب مفتوح.
 // الفرق بينه وبين المهمة المجدولة: هذا لا يقرأ بريداً ولا يفكّر، بل يحسب من
@@ -93,15 +93,13 @@ export async function POST(req: Request) {
       </div>
     </div></div>`;
 
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: FROM, to: OWNER,
-      subject: `نبض المعاودة — ${rows.length} جهة صامتة`,
-      html,
-    });
-  } catch (e) {
-    return NextResponse.json({ error: 'تعذّر الإرسال: ' + String(e).slice(0, 160) }, { status: 500 });
+  const out = await sendMail({
+    from: FROM, to: OWNER,
+    subject: `نبض المعاودة — ${rows.length} جهة صامتة`,
+    html,
+  });
+  if (!out.ok) {
+    return NextResponse.json({ error: 'تعذّر الإرسال: ' + out.reason }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, sent: true, count: rows.length });

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
+import { sendMail } from '@/lib/sendMail';
+import { logError } from '@/lib/logError';
 
 async function generateRecoveryPath(data: Record<string, unknown>): Promise<string> {
   const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -170,12 +171,11 @@ export async function POST() {
     if (planKind === 'qualified') {
       try { advisorsHtml = await searchIpoAdvisors(fd?.sector || company?.sector || 'غير محدد', marketLabel, rev); } catch {}
     }
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const obstacleRows = (rr?.top_obstacles || []).map((o: string) =>
       '<li style="margin-bottom:4px">' + o + '</li>'
     ).join('');
 
-    await resend.emails.send({
+    const mailOut = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ')) + company.company_name + ' (درجة ' + score + ')',
@@ -199,6 +199,8 @@ export async function POST() {
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">التفاصيل الكاملة (الأرقام، العوائق، خارطة الطريق، التقييم) في لوحة الأدمن.</p>' +
         '</div>',
     });
+    // إشعار المالك: لا يُسقط المطابقة إن فشل، لكنه لا يُبتلَع صامتاً
+    if (!mailOut.ok) await logError('match.notify', new Error(mailOut.reason), { entity: 'resend' });
   } catch {}
 
   return NextResponse.json({ ok: true });

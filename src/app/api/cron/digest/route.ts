@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
+import { sendMail } from '@/lib/sendMail';
 
 // جرد المنصة — يُحسب في القاعدة ويصل بريدك، بلا جلسة ولا شاشة إذن ولا حاسب مفتوح.
 // مهام Claude المجدولة كانت تقف عند طلب الإذن فتموت معلّقة، ولا «سماح دائم» في التطبيق.
@@ -145,11 +145,9 @@ export async function POST(req: Request) {
       ? `${title} — ${dec.length} بند ينتظر قرارك`
       : `${title} — كل شيء نظيف`;
 
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({ from: FROM, to: OWNER, subject, html: html(d, title) });
-  } catch (e) {
-    return NextResponse.json({ error: 'تعذّر الإرسال: ' + String(e).slice(0, 160) }, { status: 500 });
+  const out = await sendMail({ from: FROM, to: OWNER, subject, html: html(d, title) });
+  if (!out.ok) {
+    return NextResponse.json({ error: 'تعذّر الإرسال: ' + out.reason }, { status: 500 });
   }
   return NextResponse.json({ ok: true, sent: true, decisions: dec.length });
 }

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
+import { sendMail } from '@/lib/sendMail';
+import { logError } from '@/lib/logError';
 
 
 async function searchInvestors(sector: string, revenue: number, stage: string): Promise<string> {
@@ -260,13 +261,12 @@ export async function POST() {
       }
     } catch {}
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const rows = matches.slice(0, 5).map((m) =>
       '<tr><td style="padding:8px;border:1px solid #ddd">' + (m.entity.entity_name || m.entity.name || '—') +
       '</td><td style="padding:8px;border:1px solid #ddd">' + m.fit + '%</td></tr>'
     ).join('');
 
-    await resend.emails.send({
+    const mailOut = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: (planKind === 'recovery' ? '⚠️ شركة متعثرة (مسار تعافي) — ' : planKind === 'readiness' ? '📈 خطة رفع جاهزية (سكور < 70) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
@@ -283,6 +283,8 @@ export async function POST() {
         '<p style="color:#6B8A80;font-size:12px;margin-top:8px">تفاصيل الأرقام والجهات المطابقة الكاملة في لوحة الأدمن.</p>' +
         '</div>',
     });
+    // إشعار المالك: لا يُسقط المطابقة إن فشل، لكنه لا يُبتلَع صامتاً
+    if (!mailOut.ok) await logError('match.notify', new Error(mailOut.reason), { entity: 'resend' });
   } catch {}
 
   return NextResponse.json({
