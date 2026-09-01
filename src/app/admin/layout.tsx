@@ -10,7 +10,7 @@ const MAX_SESSION_MS = 12 * 60 * 60 * 1000
 // حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. أما العميل فيحتاج ردّاً في
 // وقته، فمراسلته مفتوحة لها بقالبٍ لا يعد بشيء. والقائمة بيضاء عمداً:
 // أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
-const STAFF_PAGES = ['/admin/leads', '/admin/client-hunt', '/admin/deal', '/admin/message']
+const STAFF_PAGES = ['/admin/leads', '/admin/hot', '/admin/deal', '/admin/message']
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')
