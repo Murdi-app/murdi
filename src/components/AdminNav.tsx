@@ -9,11 +9,16 @@ import { useRouter, usePathname } from 'next/navigation'
 // فيختلف ما يراه المستخدم من صفحة لأخرى. الآن: شريط واحد، يلتفّ في صفوف،
 // لا شيء يُقصّ ولا شيء يُخفى.
 
-const LINKS = [
+// staff: true تعني أن الموظفة ترى هذا التبويب. والباقي للمالك وحده.
+// وهذا الإخفاء تجميلي فقط — الحماية الحقيقية في requireStaff داخل كل مسار،
+// وفي القائمة البيضاء STAFF_PAGES داخل layout.
+type Link = { href: string; label: string; icon: string; badge?: boolean; staff?: boolean }
+
+const LINKS: Link[] = [
   { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
-  { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭' },
+  { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭', staff: true },
   { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
-  { href: '/admin/leads', label: 'المتابعة', icon: '📋' },
+  { href: '/admin/leads', label: 'المتابعة', icon: '📋', staff: true },
   { href: '/admin/payments', label: 'المدفوعات', icon: '💳' },
   { href: '/admin/payment-links', label: 'روابط الدفع', icon: '📨' },
   { href: '/admin/apply', label: 'التقديم', icon: '📤' },
@@ -21,7 +26,7 @@ const LINKS = [
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
   { href: '/admin/hunt', label: 'صيد الفرص', icon: '🎯' },
-  { href: '/admin/client-hunt', label: 'صيد العملاء', icon: '🪝' },
+  { href: '/admin/client-hunt', label: 'صيد العملاء', icon: '🪝', staff: true },
   { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 
@@ -29,6 +34,17 @@ export default function AdminNav() {
   const router = useRouter()
   const pathname = usePathname()
   const [pending, setPending] = useState(0)
+  const [role, setRole] = useState<'admin' | 'staff' | ''>('')
+
+  // من الجالس أمام الشاشة؟ يُسأل مرة واحدة ليُبنى عليه الشريط
+  useEffect(() => {
+    let alive = true
+    fetch('/api/admin/whoami')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d?.role) setRole(d.role) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   // عدد ما ينتظر تعميده يظهر على التبويب نفسه — فيراه قبل أن يفتح
   useEffect(() => {
@@ -39,6 +55,8 @@ export default function AdminNav() {
       .catch(() => {})
     return () => { alive = false }
   }, [pathname])
+
+  const visible = role === 'staff' ? LINKS.filter(l => l.staff === true) : LINKS
 
   return (
     <nav
@@ -53,7 +71,7 @@ export default function AdminNav() {
         fontFamily: 'Cairo,sans-serif',
       }}
     >
-      {LINKS.map((l) => {
+      {visible.map((l) => {
         // «/admin» تطابق تامّ فقط، وإلا صارت كل صفحات الإدارة نشطة معاً
         const active = l.href === '/admin'
           ? pathname === '/admin'

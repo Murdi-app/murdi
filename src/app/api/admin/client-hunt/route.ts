@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { runClientHunt, runCallListHunt } from '@/lib/clientHunt';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 
 export const maxDuration = 300;
 
@@ -27,7 +28,7 @@ async function getAdmin() {
 
 // GET : جلب كل الشركات (الأحدث أولاً)
 export async function GET() {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
@@ -85,7 +86,7 @@ export async function PUT(req: Request) {
 
 // PATCH : إرسال دفعة الإيميل اليومية (محكومة بحد أقصى)
 export async function PATCH(req: Request) {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });

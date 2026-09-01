@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 import { buildLeads, leadStats, type RawLead } from '@/lib/leadDesk';
 
 const admin = () => createClient(
@@ -11,7 +11,7 @@ const admin = () => createClient(
 // جدول mini_assessments لم تكن تقرؤه أي صفحة في المنصة: أسماء وهواتف تتراكم منذ يونيو
 // بلا شاشة واحدة تعرضها. هذا المسار هو أول من يفتحه.
 export async function GET() {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const a = admin();
 
@@ -41,7 +41,7 @@ export async function GET() {
 const OUTCOMES = ['لا يرد', 'مهتم', 'طلب معاودة', 'غير مؤهل الآن', 'تحوّل عميلاً', 'رفض'];
 
 export async function PATCH(req: Request) {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id || '');

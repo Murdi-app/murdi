@@ -5,7 +5,11 @@ import { usePathname } from 'next/navigation'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000
-const STAFF_PAGES = ['/admin/apply', '/admin/outreach']
+// نطاق الموظفة: المتابعة وصيد العملاء ولوحة الصفقة.
+// خرجت المخاطبة ولوحة التقديم — مراسلة جهات التمويل تُدار من مكان واحد
+// حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. والقائمة بيضاء عمداً:
+// أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
+const STAFF_PAGES = ['/admin/leads', '/admin/client-hunt', '/admin/deal']
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')

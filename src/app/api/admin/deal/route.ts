@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 
 // لوحة الصفقة: خطّ زمني واحد لكل عميل، ودفتر الأسماء المتراكم.
 // نصف العمل الذي يُباع كان يعيش في صندوق بريد؛ هذا المسار يُدخله المنصة.
@@ -11,7 +11,7 @@ const admin = () => createClient(
 );
 
 export async function GET(req: Request) {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
 
   const sb = admin();
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireAdmin();
+  const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const b = await req.json().catch(() => ({}));
 
