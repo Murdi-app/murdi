@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000
-// نطاق الموظفة: المتابعة وصيد العملاء ولوحة الصفقة.
+// نطاق الموظفة: المتابعة وصيد العملاء ولوحة الصفقة ومراسلة العملاء.
 // خرجت المخاطبة ولوحة التقديم — مراسلة جهات التمويل تُدار من مكان واحد
-// حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. والقائمة بيضاء عمداً:
+// حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. أما العميل فيحتاج ردّاً في
+// وقته، فمراسلته مفتوحة لها بقالبٍ لا يعد بشيء. والقائمة بيضاء عمداً:
 // أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
-const STAFF_PAGES = ['/admin/leads', '/admin/client-hunt', '/admin/deal']
+const STAFF_PAGES = ['/admin/leads', '/admin/client-hunt', '/admin/deal', '/admin/message']
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')
@@ -55,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <>{bar}
         <div dir="rtl" style={{ minHeight:'80vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, fontFamily:'Tajawal, sans-serif', color:'#1A3D34' }}>
           <div style={{ fontSize:20, fontWeight:900 }}>هذه الصفحة للإدارة فقط</div>
-          <a href="/admin/apply" style={{ background:'#1A3D34', color:'#fff', padding:'12px 28px', borderRadius:2, textDecoration:'none', fontWeight:700 }}>اذهب إلى لوحة التقديم</a>
+          <a href="/admin/leads" style={{ background:'#1A3D34', color:'#fff', padding:'12px 28px', borderRadius:2, textDecoration:'none', fontWeight:700 }}>اذهب إلى المتابعة</a>
         </div>
       </>
     )
