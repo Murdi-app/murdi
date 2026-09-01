@@ -1,4 +1,5 @@
 'use client'
+import AdminNav from '@/components/AdminNav'
 import { useEffect, useState } from 'react'
 
 // شاشة مراسلة العملاء.
@@ -119,6 +120,7 @@ export default function MessagePage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo,sans-serif', color: C.ink }}>
+      <AdminNav />
       <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>مراسلة العملاء</h1>
       <p style={{ fontSize: 12.5, color: C.soft, margin: '0 0 18px', lineHeight: 1.8 }}>
         من هنا تُرسل رسائل العملاء. أما مخاطبة جهات التمويل فتُدار من مكان واحد

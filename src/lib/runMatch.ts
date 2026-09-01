@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
+import { sendMail } from '@/lib/sendMail';
+import { logError } from '@/lib/logError';
 
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 const TYPE_LABELS: Record<string, string> = { cash: 'تمويل نقدي', working_capital: 'رأس مال عامل', revenue: 'تمويل الإيرادات', pos: 'تمويل نقاط البيع', invoices: 'تمويل الفواتير والمستخلصات', assets: 'تمويل أصول ومعدات', vehicles: 'تمويل مركبات وأساطيل', real_estate: 'عقاري تجاري', lc: 'اعتمادات وخطابات ضمان', project: 'تمويل مشاريع وعقود' };
@@ -376,17 +377,16 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
       }
     } catch (e) {
       try {
-        const r = new Resend(process.env.RESEND_API_KEY);
-        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+        const mailRes1 = await sendMail({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
           subject: '🚨 فشل بحث المطابقة (استثمار) — ' + (company?.company_name || companyId),
           html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: استثمار</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
+        if (!mailRes1.ok) await logError('runMatch.notify', new Error(mailRes1.reason), { entity: 'resend' });
       } catch {}
     }
   }
 
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
+    const mailRes2 = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: (planKind === 'recovery' ? '⚠️ شركة متعثرة (مسار تعافي) — ' : planKind === 'readiness' ? '📈 خطة رفع جاهزية (سكور < 70) — ' : 'مطابقة استثمار جديدة — ') + company.company_name,
@@ -404,6 +404,7 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
         '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
         '</div></div>',
     });
+    if (!mailRes2.ok) await logError('runMatch.notify', new Error(mailRes2.reason), { entity: 'resend' });
   } catch {}
 }
 
@@ -476,10 +477,10 @@ async function runFundingMatch(companyId: string): Promise<void> {
     webOffers = [...sa, ...gulf, ...intl];
   } catch (e) {
       try {
-        const r = new Resend(process.env.RESEND_API_KEY);
-        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+        const mailRes3 = await sendMail({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
           subject: '🚨 فشل بحث المطابقة (تمويل) — ' + (company?.company_name || companyId),
           html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: تمويل</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
+        if (!mailRes3.ok) await logError('runMatch.notify', new Error(mailRes3.reason), { entity: 'resend' });
       } catch {}
     }
 
@@ -526,7 +527,6 @@ async function runFundingMatch(companyId: string): Promise<void> {
   const totalCount = webOffers.length + dbMatches.length;
 
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
     const regionBadge = (r?: string) => { const x = r || 'السعودية'; const c = x.includes('خليج') ? '#9A7B2E' : x.includes('دولي') ? '#A53B3B' : '#2E9E7B'; return '<span style="background:' + c + ';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">' + x + '</span>'; };
     const regionOrder = (r?: string) => { const x = r || ''; return x.includes('خليج') ? 1 : x.includes('دولي') ? 2 : 0; };
     const sortedOffers = [...webOffers].sort((a, b) => regionOrder(a.region) - regionOrder(b.region));
@@ -544,7 +544,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
       + '<td style="padding:8px;border:1px solid #ddd">ملاءمة ' + m.fit + '%</td></tr>'
     ).join('');
 
-    await resend.emails.send({
+    const mailRes6 = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: 'مطابقة تمويل — ' + company.company_name + ' (' + totalCount + ' فرصة)',
@@ -562,6 +562,7 @@ async function runFundingMatch(companyId: string): Promise<void> {
         + '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>'
         + '</div></div>',
     });
+    if (!mailRes6.ok) await logError('runMatch.notify', new Error(mailRes6.reason), { entity: 'resend' });
   } catch {}
 }
 
@@ -687,16 +688,15 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
         }
       } catch (e) {
       try {
-        const r = new Resend(process.env.RESEND_API_KEY);
-        await r.emails.send({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
+        const mailRes4 = await sendMail({ from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>', to: 'hololalmurdi.fs@gmail.com',
           subject: '🚨 فشل بحث المطابقة (طرح) — ' + (company?.company_name || companyId),
           html: '<div dir="rtl" style="font-family:Arial"><p><b>فشل بحث المطابقة التلقائي.</b></p><p>المسار: طرح</p><p>الشركة: ' + (company?.company_name || companyId) + '</p><p>الخطأ: ' + (e instanceof Error ? e.message : String(e)) + '</p><p>التشخيص: ' + MATCH_DIAG.join(' · ') + '</p><p>⚠️ أعد تشغيل المطابقة يدوياً لهذا العميل.</p></div>' });
+        if (!mailRes4.ok) await logError('runMatch.notify', new Error(mailRes4.reason), { entity: 'resend' });
       } catch {}
     }
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
+    const mailRes5 = await sendMail({
       from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
       to: 'hololalmurdi.fs@gmail.com',
       subject: (isDefaulted ? '⚠️ شركة متعثرة (مسار تعافي) — ' : (score >= 65 ? '🎯 مؤهل طرح — ' : 'تقييم طرح — ')) + company.company_name + ' (درجة ' + score + ')',
@@ -719,6 +719,7 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
         '<p style="margin-top:20px;text-align:center"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">📂 افتح الملف في الأدمن</a></p>' +
         '</div></div>',
     });
+    if (!mailRes5.ok) await logError('runMatch.notify', new Error(mailRes5.reason), { entity: 'resend' });
   } catch {}
 }
 

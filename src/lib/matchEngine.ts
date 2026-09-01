@@ -2,9 +2,9 @@
 // محرك المطابقة المشترك
 
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import { logError } from '@/lib/logError';
 import { parseItemsLenient } from '@/lib/salvageJson';
+import { sendMail } from '@/lib/sendMail';
 
 type Rec = Record<string, any>;
 
@@ -406,7 +406,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
         '<td style="padding:14px;text-align:center;border:1px solid #E3E8E6;background:' + c + '">'
         + '<div style="font-size:26px;font-weight:900;color:#1A3D34">' + v + '</div>'
         + '<div style="font-size:12px;color:#5C6B66">' + t + '</div></td>';
-      await new Resend(process.env.RESEND_API_KEY).emails.send({
+      const mailRes1 = await sendMail({
         from: 'د. عبدالحكيم المرضي <noreply@murdi.sa>',
         to: 'hololalmurdi.fs@gmail.com',
         subject: 'مطابقة ' + label + ' — ' + company.company_name + ' (' + r.offers.length + ' فرصة)',
@@ -426,6 +426,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
           + '<p style="margin-top:18px"><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">📂 افتح أسماء الجهات في الأدمن</a></p>'
           + '</div>',
       });
+      if (!mailRes1.ok) await logError('matchEngine.notify', new Error(mailRes1.reason), { entity: 'resend' });
     } catch {}
     return { done: doneAll, total: r.totalScopes, next: nextB };
   } catch (e) {

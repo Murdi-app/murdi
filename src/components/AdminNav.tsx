@@ -36,18 +36,35 @@ const LINKS: Link[] = [
   { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 
+// الشريط يُركَّب من جديد مع كل انتقال بين التبويبات، وكان الدور يبدأ فارغاً
+// فتظهر التبويبات كلها لحظةً ثم تنكمش — فترى الموظفة شاشة المالك ترفّ أمامها
+// عند كل ضغطة. والعلاج شقّان: لا يُرسم شيء قبل معرفة الدور، والدور يُحفظ في
+// ذاكرة الجلسة فيُقرأ فوراً في المرات التالية بلا سؤال الخادم ولا رفّة.
+const ROLE_KEY = 'murdi.nav.role'
+
 export default function AdminNav() {
   const router = useRouter()
   const pathname = usePathname()
   const [pending, setPending] = useState(0)
   const [role, setRole] = useState<'admin' | 'staff' | ''>('')
 
-  // من الجالس أمام الشاشة؟ يُسأل مرة واحدة ليُبنى عليه الشريط
+  // من الجالس أمام الشاشة؟ الذاكرة أولاً (فورية)، ثم يُصدَّق من الخادم
   useEffect(() => {
     let alive = true
+    try {
+      const cached = sessionStorage.getItem(ROLE_KEY)
+      if (cached === 'admin' || cached === 'staff') setRole(cached)
+    } catch { /* متصفح يمنع التخزين — يُسأل الخادم فقط */ }
+
     fetch('/api/admin/whoami')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (alive && d?.role) setRole(d.role) })
+      .then(d => {
+        if (!alive || !d?.role) return
+        if (d.role === 'admin' || d.role === 'staff') {
+          setRole(d.role)
+          try { sessionStorage.setItem(ROLE_KEY, d.role) } catch {}
+        }
+      })
       .catch(() => {})
     return () => { alive = false }
   }, [])
@@ -63,6 +80,22 @@ export default function AdminNav() {
   }, [pathname])
 
   const visible = role === 'staff' ? LINKS.filter(l => l.staff === true) : LINKS
+
+  // قبل أن يُعرف الدور لا تُرسم تبويبة واحدة — يُحجز مكان الشريط فقط
+  // حتى لا تقفز الصفحة. رسمُ الكلّ ثم إخفاؤه هو عين الخلل الذي نعالجه.
+  if (!role) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          minHeight: 38,
+          marginBottom: 20,
+          paddingBottom: 12,
+          borderBottom: '1px solid #EAF2EE',
+        }}
+      />
+    )
+  }
 
   return (
     <nav

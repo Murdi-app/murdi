@@ -1,4 +1,5 @@
 'use client'
+import AdminNav from '@/components/AdminNav'
 import { useEffect, useMemo, useState } from 'react'
 
 // الفرص الساخنة — الشاشة التي حلّت محلّ «صيد العملاء» و«صيد الفرص».
@@ -68,6 +69,7 @@ export default function HotPage() {
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo,sans-serif', color: C.ink }}>
+      <AdminNav />
       <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>الفرص الساخنة</h1>
       <p style={{ fontSize: 12.5, color: C.soft, margin: '0 0 16px', lineHeight: 1.8 }}>
         من هو داخل المنصة أصلاً، مرتَّباً بقربه من الدفع. لا اتصال بارد —
