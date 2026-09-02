@@ -25,7 +25,6 @@ export default function FundingResult() {
   const [result, setResult] = useState<Result | null>(null);
   const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
   // بطاقة التفعيل كانت تُعرض لكل من يفتح الصفحة — بما فيهم من دفع بالفعل
-  const [subActive, setSubActive] = useState(false);
   const [companyId, setCompanyId] = useState<string>('');
   const [bundleStatus, setBundleStatus] = useState<string>('');
   const [matches, setMatches] = useState<Match[] | null>(null);
@@ -47,13 +46,11 @@ export default function FundingResult() {
 
       const { data: company } = await supabase
         .from('companies')
-        .select('id, subscription_active, subscription_end')
+        .select('id')
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
       setCompanyId(company.id);
-      setSubActive(company.subscription_active === true
-        && (!company.subscription_end || new Date(company.subscription_end) > new Date()));
 
       const { data: rr } = await supabase
         .from('readiness_results')
@@ -370,7 +367,7 @@ export default function FundingResult() {
           </div>
         )}
 
-        {fdRaw && !subActive && (() => {
+        {fdRaw && (() => {
           const f = fdRaw as Record<string, unknown>;
           const rev = Number(f.annual_revenue) || 0;
           let n = 38;

@@ -195,7 +195,7 @@ export default function ClientHuntPage() {
       <AdminNav />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 16px' }}>
         <h1 style={{ color: '#13302A', fontSize: 26, marginBottom: 6 }}>🎯 صيد العملاء</h1>
-        <p style={{ color: '#666', fontSize: 14, marginBottom: 18 }}>شركات سعودية مرشحة للاشتراك في مُرضي — برسائل جاهزة للإرسال</p>
+        <p style={{ color: '#666', fontSize: 14, marginBottom: 18 }}>شركات سعودية مرشّحة للتقييم في مُرضي — برسائل جاهزة للإرسال</p>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
           <button onClick={runHunt} disabled={running} style={{ background: '#13302A', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 22px', fontWeight: 700, cursor: 'pointer', opacity: running ? 0.6 : 1 }}>

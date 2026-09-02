@@ -66,7 +66,7 @@ export default function PaymentLinksPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
                 <span style={{ color: C.ink, fontSize: 18, fontWeight: 900 }}>{r.amount.toLocaleString("ar-SA")} ريال</span>
-                <span style={{ color: C.gray, fontSize: 12 }}>{r.kind === "subscription" ? "اشتراك" : "خدمة"} · {fmt(r.created_at)}</span>
+                <span style={{ color: C.gray, fontSize: 12 }}>{r.kind === "subscription" ? "دفعة قديمة" : "خدمة"} · {fmt(r.created_at)}</span>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {r.status !== "أُرسل" && r.status !== "مدفوع" && (

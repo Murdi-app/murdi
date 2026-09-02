@@ -24,7 +24,10 @@ export default function GoalPage() {
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
-  const [subscriptionActive, setSubscriptionActive] = useState(false);
+  // كان هذا الحقل يقيس اشتراكاً ربعياً أُلغي من المنصة. وما يحكم هذه
+  // الشاشة اليوم شيء آخر: هل تملك تشغيلة مطابقة؟ فسُمِّي بما يقيسه.
+  // ومن اشترك قبل الإلغاء يبقى على حقه حتى تنتهي مدّته المسجَّلة.
+  const [canMatch, setCanMatch] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matchCounts, setMatchCounts] = useState<Record<string, number>>({});
   const [matching, setMatching] = useState(false);
@@ -93,12 +96,12 @@ export default function GoalPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: comp } = await supabase
-        .from('companies').select('id, company_name, sector, subscription_active, subscription_end')
+        .from('companies').select('id, company_name, sector, match_credits, subscription_active, subscription_end')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!comp) return;
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
-      const subActive = comp.subscription_active === true && (!comp.subscription_end || new Date(comp.subscription_end) > new Date());
-      setSubscriptionActive(subActive);
+      const legacySub = comp.subscription_active === true && (!comp.subscription_end || new Date(comp.subscription_end) > new Date());
+      setCanMatch(legacySub || Number(comp.match_credits || 0) > 0);
       const out: Record<string, number> = {};
       const { data: rows } = await supabase
         .from('readiness_results')
@@ -232,7 +235,7 @@ export default function GoalPage() {
   return (
     <div dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
 
-      {subscriptionActive && (
+      {canMatch && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
             {matchNotice === 'stalled' && !matching ? (
@@ -415,7 +418,7 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!subscriptionActive && pendingTransfer && (
+      {!canMatch && pendingTransfer && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
             <div className="text-white font-black text-sm">استلمنا تحويلك — قيد المراجعة</div>
@@ -427,7 +430,7 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!subscriptionActive && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
+      {!canMatch && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
@@ -580,13 +583,15 @@ export default function GoalPage() {
           </div>
 
           {/* ما يقوله ملفك — دليل من إجاباته يصنع السؤال الذي لا تجيبه إلا المطابقة */}
-          {pitch && !subscriptionActive && (
+          {pitch && !canMatch && (
             <div className="rounded-2xl p-6 mb-8 text-center" style={{ background: '#1A3D34' }}>
               <div className="text-white font-black text-base mb-3" style={{ fontFamily: 'Amiri, serif' }}>{pitch.headline}</div>
               {pitch.lines.map((l, i) => (
                 <p key={i} className="text-[#CFE0DA] text-sm font-bold leading-loose mb-2 max-w-2xl mx-auto text-right">{l}</p>
               ))}
-              <a href="/pay" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>{pitch.cta} ←</a>
+              {/* كان يمضي إلى /pay — بوابة اشتراكٍ أُلغي. والخطوة التالية مجانية،
+                  فصار الزرّ ينزل إلى موضع الطلب لا إلى صفحة دفع. */}
+              <a href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
             </div>
           )}
           {CATALOG.map((cat, ci) => (
@@ -881,7 +886,7 @@ export default function GoalPage() {
           <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 460, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             {/* أُلغي رسم التشغيل. لم يعد هنا جدار دفع، بل طلبٌ يُؤذن به —
                 فالتشغيلة تكلّف، والإذن قرار المكتب لا قرار العميل. */}
-            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 12px' }}>شغّل مطابقتك</h2>
+            <h2 id="match-request" style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 12px', scrollMarginTop: 90 }}>شغّل مطابقتك</h2>
             <p style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.95, margin: '0 0 10px' }}>
               نطابق ملفك مع شبكة جهات مُرضي، ونستخرج الجهات التي تنطبق شروطها عليك أنت،
               والمنتج المناسب لك عند كل واحدة.

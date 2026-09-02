@@ -28,7 +28,6 @@ export default function InvestmentResult() {
   const [finData, setFinData] = useState<{ rev: number; profit: number; growth: string } | null>(null);
   const [fdRaw, setFdRaw] = useState<Record<string, unknown> | null>(null);
   // بطاقة التفعيل كانت تُعرض لكل من يفتح الصفحة — بما فيهم من دفع بالفعل
-  const [subActive, setSubActive] = useState(false);
   const [companyId, setCompanyId] = useState<string>('');
   const [bundleStatus, setBundleStatus] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -45,13 +44,11 @@ export default function InvestmentResult() {
 
       const { data: company } = await supabase
         .from('companies')
-        .select('id, subscription_active, subscription_end')
+        .select('id')
         .eq('user_id', user.id)
         .single();
       if (company === null) { setLoading(false); return; }
       setCompanyId(company.id);
-      setSubActive(company.subscription_active === true
-        && (!company.subscription_end || new Date(company.subscription_end) > new Date()));
 
       const { data: fd } = await supabase
         .from('financial_data')
@@ -432,7 +429,7 @@ export default function InvestmentResult() {
           </div>
         </div>
 
-        {fdRaw && !subActive && (() => {
+        {fdRaw && (() => {
           const f = fdRaw as Record<string, unknown>;
           const rev = Number(f.annual_revenue) || 0;
           let n = 38;
@@ -445,26 +442,39 @@ export default function InvestmentResult() {
           if (f.issues_invoices === true) n += 4;
           void n;   // الرقم لم يعد يُعرض — لا نعِد بعدد قبل أن نقيسه
           return (
-          <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
-            <div className="text-3xl mb-3"></div>
-            <h3 className="text-white font-black text-lg mb-3">مطابقة الجهات — الخطوة التي تحوّل درجتك إلى تمويل</h3>
-            <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-4">
-              درجتك تقول أين أنت. والمطابقة تقول <span style={{ color: '#C9A84C' }}>مع مَن</span>:
-              نبحث لك في صناديق الاستثمار والمستثمرين المحليين والخليجيين والدوليين، ونستخرج <span style={{ color: '#C9A84C' }}>المنتج المحدَّد</span> الذي تتأهل له في كل جهة — لا اسم الجهة فقط.
-              فالعميل قد يُرفض في منتج ويُقبل في آخر داخل البنك نفسه.
-            </p>
-            <div className="rounded-2xl py-4 px-5 mb-4" style={{ background: 'rgba(201,168,76,0.12)', border: '1.5px solid rgba(201,168,76,0.35)' }}>
-              <div className="text-[#C9A84C] font-black text-2xl">شبكة مُرضي التمويلية</div>
-              <div className="text-[#CFE0DA] text-xs font-bold mt-1">عدد الجهات المؤهّلة لك يظهر بعد المطابقة — ولا نعِدك برقم قبل أن نقيسه</div>
+          <div className="rounded-3xl p-7" style={{ background: '#1A3D34' }}>
+            <h3 className="text-white font-black text-lg mb-3 text-center">مطابقة المستثمرين — الخطوة التي تحوّل درجتك إلى جولة</h3>
+
+            {/* كان هنا زرّ «فعّل ملفك» يمضي إلى /pay — بوابة اشتراكٍ ربعي
+                أُلغي، ووعدٌ بـ«استشارات مفتوحة أربعة أشهر» لا نبيعه اليوم.
+                والمطابقة صارت مجانية بإذن المكتب، لأنها تكلّفنا ولا نأخذ
+                عليها ريالاً. فحلّ الصدق محلّ الجدار. */}
+            <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(46,158,123,0.14)', border: '1.5px solid rgba(46,158,123,0.4)' }}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-white font-black text-[15px]">المطابقة</span>
+                <span className="font-black text-[15px]" style={{ color: '#5FD3A6' }}>مجاناً</span>
+              </div>
+              <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
+                نبحث لك في صناديق الاستثمار والمستثمرين المحليين والخليجيين والدوليين، ونستخرج <span style={{ color: '#C9A84C' }}>نوع الجولة والشريحة</span> التي تتأهل لها في كل جهة — لا اسم الجهة فقط، فقد تُرفض عند صندوق وتُقبل عند آخر في نفس القطاع.
+                <br />وتخرج منها عارفاً <span style={{ color: '#C9A84C' }}>كم جهة</span> تنطبق شروطها على ملفك أنت.
+              </p>
             </div>
-            <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
-              ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · رفع ملفك للجهات ومتابعة الرد · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
-            </p>
-            <button onClick={() => { window.location.href = '/pay'; }}
+
+            <div className="rounded-xl py-3 px-4 mb-5 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <span className="text-[#CFE0DA] text-xs font-bold leading-relaxed">
+                وبعد المطابقة تظهر لك خدماتنا بأسعارها كاملةً، وتختار منها ما يناسبك —
+                <span style={{ color: '#5FD3A6' }}> ولا يُطلب منك أي دفع قبل ذلك</span>.
+              </span>
+            </div>
+
+            <button onClick={() => { window.location.href = '/goal'; }}
               className="w-full font-black text-sm py-4 rounded-full transition hover:opacity-90"
               style={{ background: '#C9A84C', color: '#1A3D34' }}>
-              فعّل ملفك وشاهد جهاتك ←
+              ابدأ بالمطابقة المجانية ←
             </button>
+            <p className="text-[#A3BAB2] text-[11px] font-bold text-center mt-3 mb-0">
+              لا يُطلب منك أي دفع في هذه الخطوة.
+            </p>
           </div>
           );
         })()}

@@ -157,7 +157,7 @@ export default function MiniAssessment() {
               </div>
               <div className="lp-mini-benefit">
                 <span className="lp-mini-b-icon">🚪</span>
-                <div><b>ثلاثة مسارات مفتوحة</b><p>تمويل، استثمار، وطرح — كلها متاحة لك باشتراك واحد، تنطلق في أيٍّ منها متى شئت.</p></div>
+                <div><b>ثلاثة مسارات مفتوحة</b><p>تمويل، استثمار، وطرح — كلها مفتوحة لك بعد التقييم المجاني</p></div>
               </div>
               <div className="lp-mini-benefit">
                 <span className="lp-mini-b-icon">🎯</span>

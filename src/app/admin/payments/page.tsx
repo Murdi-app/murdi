@@ -98,7 +98,7 @@ export default function PaymentsPage() {
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button onClick={() => act(p.id, 'confirm')} disabled={busy === p.id}
               style={{ flex: 1, background: '#1A3D34', color: '#fff', border: 'none', padding: '10px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13.5, cursor: 'pointer' }}>
-              {busy === p.id ? '…' : '✅ تأكيد وتفعيل الاشتراك'}
+              {busy === p.id ? '…' : '✅ تأكيد استلام المبلغ'}
             </button>
             <button onClick={() => act(p.id, 'reject')} disabled={busy === p.id}
               style={{ background: '#FBEEEC', color: '#C0564B', border: 'none', padding: '10px 16px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13.5, cursor: 'pointer' }}>رفض</button>

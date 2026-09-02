@@ -45,7 +45,7 @@ export async function GET() {
   return NextResponse.json({ payments: rows });
 }
 
-// POST { id, action: 'confirm' } : تأكيد تحويل وتفعيل الاشتراك
+// POST { id, action: 'confirm' } : تأكيد استلام تحويل بنكي
 export async function POST(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });

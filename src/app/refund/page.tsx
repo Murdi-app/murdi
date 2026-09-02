@@ -8,14 +8,14 @@ export default function Page() {
       </div>
       <div style={{maxWidth:'860px',margin:'0 auto',padding:'48px 24px 80px'}}>
         <h1 style={{color:'#1A3D34',fontSize:'26px',fontWeight:900,marginBottom:'6px'}}>سياسة الاسترجاع والإلغاء</h1>
-        <p style={{color:'#6B8A80',fontSize:'14px',marginBottom:'32px'}}>توضّح هذه السياسة أحكام الاشتراك والرسوم والإلغاء في منصة مُرضي.</p>
+        <p style={{color:'#6B8A80',fontSize:'14px',marginBottom:'32px'}}>توضّح هذه السياسة أحكام الرسوم والإلغاء والاسترجاع في منصة مُرضي.</p>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>1. طبيعة الرسوم</h2>
-          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>رسوم الاشتراك في مُرضي مقابل خدمات التقييم والتحليل والتجهيز والاستشارة التي تبدأ فور تفعيل الاشتراك، وهي مستقلة تماماً عن نتيجة الحصول على تمويل أو استثمار أو طرح.</div>
+          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>لا يوجد اشتراك في مُرضي. والرسوم نوعان: مبلغ ثابت مُعلن لكل خدمة يُستحق عند طلبها، وأتعاب نجاح لا تُستحق إلا بعد صرف التمويل أو الاستثمار إلى العميل. والتقييم والمطابقة مجانيان، ولا يُطلب عليهما مبلغ. ورسوم الخدمة مقابل عملٍ يُنفَّذ، وهي مستقلة تماماً عن نتيجة الحصول على تمويل أو استثمار أو طرح.</div>
         </section>
         <section style={{marginBottom:'28px'}}>
-          <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>2. الاشتراك</h2>
-          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>الاشتراك بقيمة مُعلنة لمدة محددة، يتيح الوصول إلى خدمات المنصة خلال المدة. ينتهي الوصول بانتهاء المدة ما لم يُجدَّد.</div>
+          <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>2. الخصم بين الخدمات</h2>
+          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>إذا دفع العميل رسوم الفحص الائتماني السريع ثم أكمل خلال ثلاثين يوماً إلى خدمة تجهيز الملف والمخاطبة، خُصم ما دفعه بالكامل من رسومها فلا يدفعه مرتين. ولا يسري الخصم على من بدأ بخدمة التجهيز مباشرةً.</div>
         </section>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>3. الإلغاء</h2>

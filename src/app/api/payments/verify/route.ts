@@ -49,17 +49,11 @@ export async function POST(req: Request) {
     await sb.from('payments').insert(row);
   }
 
-  // تفعيل الاشتراك تلقائياً عند نجاح دفع الاشتراك
-  if (isPaid && kind === 'subscription' && companyId) {
-    // التجديد المبكر يُضاف إلى ما تبقّى، لا يمحوه
-    const { data: curCo } = await sb.from('companies').select('subscription_end').eq('id', companyId).maybeSingle();
-    const cur = curCo?.subscription_end ? new Date(curCo.subscription_end) : null;
-    const until = cur && cur > new Date() ? new Date(cur) : new Date();
-    until.setMonth(until.getMonth() + 4); // اشتراك ربعي (4 أشهر)
-    await sb.from('companies')
-      .update({ subscription_active: true, subscription_end: until.toISOString() })
-      .eq('id', companyId);
-  }
+  // كان هنا تفعيلُ اشتراكٍ ربعي: أي دفعة نوعها `subscription` تمنح أربعة
+  // أشهر، وتُضاف إلى ما تبقّى عند التجديد. والاشتراك أُلغي من المنصة، فبقاء
+  // هذا الفرع يعني أن رابط دفعٍ قديم — أو استدعاءً بنوعٍ خاطئ — يفتح أربعة
+  // أشهر لا يقابلها شيء في نموذجنا اليوم. حُذف: لا يُنشأ اشتراك بعد الآن.
+  // ومن اشترك قبل الإلغاء يبقى على حقه حتى تنتهي مدّته المسجَّلة.
 
   // عند نجاح دفع خدمة: تحديث الطلب إلى مدفوع (بانتظار التسليم من الأدمن)
   if (isPaid && kind === 'service' && meta.sr) {

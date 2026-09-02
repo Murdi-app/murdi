@@ -63,24 +63,22 @@ export async function POST(req: Request) {
   if (['rejected','suspended'].includes(String(company.account_status || ''))) return NextResponse.json({ error: 'الحساب غير متاح' }, { status: 403 });
 
 
-  // ===== حد التقييم: واحد شهرياً، إلا بطلب تعديل معتمد =====
+  // ===== حد التقييم: واحد لكل مسار، إلا بإذن المكتب =====
   const { createClient } = await import('@supabase/supabase-js');
   const adminGuard = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
 
-  const fourMonthsAgo = new Date();
-  fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
-  const { count: monthCount } = await adminGuard
+  const { count: priorCount } = await adminGuard
     .from('readiness_results')
     .select('id', { count: 'exact', head: true })
     .eq('company_id', company.id)
     .eq('result_type', 'funding')
-    .gte('created_at', fourMonthsAgo.toISOString());
+    .limit(1);
 
   let usingEditRequest = false;
-  if ((monthCount || 0) >= 1) {
+  if ((priorCount || 0) >= 1) {
     const { data: er } = await adminGuard
       .from('edit_requests')
       .select('id')
@@ -88,7 +86,7 @@ export async function POST(req: Request) {
       .eq('status', 'approved')
       .limit(1);
     if (!er || er.length === 0) {
-      return NextResponse.json({ error: 'استنفدت تقييم هذا المسار خلال فترة اشتراكك الحالية (٤ أشهر). إذا أخطأت في البيانات، أرسل طلب تعديل من صفحة الاستشارة وسيراجعه فريق د. عبدالحكيم.' }, { status: 429 });
+      return NextResponse.json({ error: 'لديك تقييم صادر لهذا المسار. إن تغيّرت بياناتك أو أخطأت فيها، اطلب تعديلاً من صفحة الاستشارة ويُفتح لك تقييم جديد.' }, { status: 429 });
     }
     usingEditRequest = true;
     // وسم الطلب كمستخدم + حذف الاستشارة القديمة نهائياً (ستتولد جديدة تلقائياً)
@@ -234,7 +232,7 @@ const { error: rrError } = await supabase.from('readiness_results').insert({
 
   // تشغيل المطابقة مباشرةً (بحث الجهات + اقتراح الخدمة + الإيميل السري) — استدعاء داخلي متين بلا شبكة
   try {
-    // المطابقة لا تعمل مع التقييم المجاني — تُطلق بعد تفعيل الاشتراك
+    // المطابقة لا تعمل مع التقييم — تُطلق بتشغيلة يأذن بها المكتب
     void runAutoMatch;
   } catch (e) { await logError('match.autoFunding', e, { company_id: company.id }); }
 

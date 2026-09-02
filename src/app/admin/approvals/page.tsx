@@ -27,7 +27,6 @@ interface Company {
   created_at: string
   subscription_start?: string
   subscription_end?: string
-  subscription_active?: boolean
   approved_tracks?: string[]
   track_request?: string | null
 }
@@ -189,33 +188,31 @@ export default function ApprovalsPage() {
   async function approve(c: Company) {
     setBusy(c.id)
     const { data: { user } } = await supabase.auth.getUser()
+    // الاعتماد كان يفتح اشتراكاً ربعياً مع كل ضغطة. ولا اشتراك في المنصة،
+    // فالاعتماد اليوم تفعيلُ حسابٍ لا أكثر — والتقييم بعده مجاني.
     await supabase.from('companies').update({
       account_status: 'active',
-      subscription_active: true,
       is_locked: true,
       locked_at: new Date().toISOString(),
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
-      subscription_start: new Date().toISOString(),
-      subscription_end: new Date(Date.now() + 120*24*60*60*1000).toISOString(),
     }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
 
-  async function renew(c: Company) {
+  // كانت «تفعيل الحساب» تستدعي renew فتمنح أربعة أشهر اشتراكاً. حُذف
+  // التجديد كلّه: التفعيل يفتح الحساب، والتقييم مجاني، والمطابقة بإذن.
+  async function activate(c: Company) {
     setBusy(c.id)
-    const cur = c.subscription_end ? new Date(c.subscription_end) : new Date()
-    const base = cur > new Date() ? cur : new Date()
-    const newEnd = new Date(base.getTime() + 120*24*60*60*1000)
-    await supabase.from('companies').update({ subscription_end: newEnd.toISOString(), account_status: 'active', subscription_active: true }).eq('id', c.id)
+    await supabase.from('companies').update({ account_status: 'active' }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
 
   async function setStatus(c: Company, status: string) {
     setBusy(c.id)
-    await supabase.from('companies').update({ account_status: status, subscription_active: status === 'active' }).eq('id', c.id)
+    await supabase.from('companies').update({ account_status: status }).eq('id', c.id)
     await loadCompanies()
     setBusy(null)
   }
@@ -373,7 +370,6 @@ export default function ApprovalsPage() {
               <div className="ap-card-top">
                 <span className="ap-name">{c.company_name || 'بدون اسم'} {c.is_locked && <span className="ap-lock">🔒</span>}</span>
                 <span className="ap-badge" style={{ background:'#E8F5EF', color:'#2E9E7B' }}>{STATUS_LABEL[c.account_status] || c.account_status}</span>
-                <span className="ap-badge" style={{ background: c.subscription_active ? '#1A3D34' : '#F5EFE0', color: c.subscription_active ? '#fff' : '#8A6D1A' }}>{c.subscription_active ? 'مشترك' : 'لم يشترك'}</span>
               </div>
               {c.account_status === 'pending_payment' && (
                 <div className="ap-grid">
@@ -387,7 +383,9 @@ export default function ApprovalsPage() {
               )}
               <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:12 }}>
                 <span style={{ color:'#9DB3AB', fontSize:12, fontWeight:600 }}>📅 سجّل: {fmtDate(c.created_at)}</span>
-                {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#D96A6A' : days <= 14 ? '#D9A441' : '#2E9E7B'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>⏳ الاشتراك: {fmtDate(c.subscription_end)} ({days < 0 ? 'منتهٍ' : days + ' يوم'})</span> })()}
+                {/* لا يُباع اشتراك بعد اليوم. ويبقى هذا السطر لمن اشترك قبل الإلغاء —
+                    حقٌّ دفع ثمنه، يُعرض ولا يُجدَّد. */}
+                {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#9DB3AB' : '#8A6D1A'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>اشتراك قديم {days < 0 ? 'منتهٍ' : 'ساري حتى ' + fmtDate(c.subscription_end)}</span> })()}
               </div>
               <div className="ap-actions">
                 {c.receipt_path && (
@@ -416,12 +414,9 @@ export default function ApprovalsPage() {
                 {c.account_status === 'suspended' && (
                   <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => setStatus(c, 'active')}>إعادة تفعيل</button>
                 )}
-                {c.account_status === 'active' && (
-                  <button className="ap-btn ap-btn-pay" disabled={busy === c.id} onClick={() => renew(c)}>{busy === c.id ? 'جارٍ...' : '🔄 تجديد ٤ أشهر'}</button>
-                )}
                 {c.account_status === 'pending_payment' && (<>
                   {c.phone && <a className="ap-btn ap-btn-receipt" href={'https://wa.me/' + c.phone.replace(/[^0-9]/g, '').replace(/^0/, '966')} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>💬 واتساب</a>}
-                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => { if (confirm('تفعيل حساب ' + c.company_name + '؟ سيتمكّن من التقييم فوراً.')) renew(c) }}>{busy === c.id ? 'جارٍ...' : '✓ تفعيل الحساب'}</button>
+                  <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => { if (confirm('تفعيل حساب ' + c.company_name + '؟ سيتمكّن من التقييم فوراً.')) activate(c) }}>{busy === c.id ? 'جارٍ...' : '✓ تفعيل الحساب'}</button>
                   <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => { if (confirm('رفض هذا الحساب؟')) setStatus(c, 'rejected') }}>رفض</button>
                 </>)}
               </div>
