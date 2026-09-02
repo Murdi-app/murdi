@@ -53,6 +53,9 @@ export default function ApprovalsPage() {
   const [openSec, setOpenSec] = useState<Record<string, boolean>>({ pending: true })
   const [secQ, setSecQ] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
+  // طلبات تشغيل المطابقة — كان الإذن زرّاً داخل بطاقة الشركة في قائمة
+  // مطويّة، فيطلب العميل التشغيل ولا يظهر لك أنه طلب. صار له قسمه.
+  const [matchReqs, setMatchReqs] = useState<Array<{ id: string; company_id: string; track: string; requested_at: string; company: { company_name?: string; phone?: string; sector?: string } | null }>>([])
   const [consultations, setConsultations] = useState<any[]>([])
   const [questions, setQuestions] = useState<any[]>([])
   const [edits, setEdits] = useState<any[]>([])
@@ -103,7 +106,31 @@ export default function ApprovalsPage() {
     await loadCompanies()
     await loadConsultations()
     await loadQA()
+    await loadMatchReqs()
     setLoading(false)
+  }
+
+  async function loadMatchReqs() {
+    try {
+      const res = await fetch('/api/match/request?pending=1')
+      if (!res.ok) return
+      const data = await res.json()
+      setMatchReqs(data.pending || [])
+    } catch {}
+  }
+
+  async function decideMatchReq(companyId: string, track: string, approve: boolean) {
+    setBusy('mq' + companyId + track)
+    try {
+      const r = await fetch('/api/match/request', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company_id: companyId, track, action: approve ? 'grant' : 'reject' }),
+      })
+      if (!r.ok) alert('تعذّر: ' + ((await r.json())?.error || ''))
+    } catch { alert('تعذّر الاتصال') }
+    await loadMatchReqs()
+    await loadCompanies()
+    setBusy(null)
   }
 
   async function loadQA() {
@@ -316,6 +343,42 @@ export default function ApprovalsPage() {
                   <span style={{ color:'#1A3D34', fontWeight:800, fontSize:13.5 }}>{c.company_name}</span>
                   <span style={{ color:'#6B8A80', fontSize:13 }}>يطلب فتح مسار {c.track_request === 'investment' ? 'الاستثمار' : 'التمويل'}</span>
                   <button onClick={() => approveTrack(c)} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:999, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>موافقة</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {matchReqs.length > 0 && (
+            <div style={{ background:'#FBF5E8', border:'2px solid #E8D9AE', borderRadius:16, padding:'18px 22px', marginBottom:20 }}>
+              <div style={{ color:'#8A6D1F', fontSize:15, fontWeight:900, marginBottom:4 }}>
+                🎯 طلبات تشغيل المطابقة ({matchReqs.length})
+              </div>
+              <div style={{ color:'#9A8449', fontSize:12.5, fontWeight:700, marginBottom:14, lineHeight:1.8 }}>
+                لا تعمل المطابقة إلا بإذنك، والتشغيلة الواحدة تكلّف. والعميل الذي يطلبها أسخن ما في يومك.
+              </div>
+              {matchReqs.map(r => (
+                <div key={r.id} style={{ background:'#fff', borderRadius:12, padding:'14px 16px', marginBottom:10, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:10 }}>
+                  <div>
+                    <div style={{ color:'#1A3D34', fontSize:14.5, fontWeight:900 }}>{r.company?.company_name || 'بدون اسم'}</div>
+                    <div style={{ color:'#6B8A80', fontSize:12, fontWeight:700, marginTop:3 }}>
+                      مسار {r.track === 'investment' ? 'الاستثمار' : 'التمويل'}
+                      {r.company?.sector ? ' · ' + r.company.sector : ''}
+                      {r.company?.phone ? ' · ' + r.company.phone : ''}
+                      {' · طلبها ' + fmtDate(r.requested_at)}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button disabled={busy === 'mq' + r.company_id + r.track}
+                      onClick={() => { if (confirm('السماح بتشغيلة مطابقة واحدة لـ ' + (r.company?.company_name || '') + '؟\n\nالتشغيلة تكلّف — والإذن لا يتكرر تلقائياً.')) decideMatchReq(r.company_id, r.track, true) }}
+                      style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'10px 20px', borderRadius:999, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>
+                      {busy === 'mq' + r.company_id + r.track ? 'جارٍ...' : '✓ اسمح بتشغيلة'}
+                    </button>
+                    <button disabled={busy === 'mq' + r.company_id + r.track}
+                      onClick={() => { if (confirm('رفض طلب التشغيل؟')) decideMatchReq(r.company_id, r.track, false) }}
+                      style={{ background:'#FBEEEC', color:'#C0564B', border:'none', padding:'10px 16px', borderRadius:999, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>
+                      رفض
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

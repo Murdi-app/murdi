@@ -41,8 +41,32 @@ async function currentCompany() {
   return co || null;
 }
 
-// GET — حالة طلب العميل، ليعرف أين يقف بلا أن يسأل أحداً
-export async function GET() {
+// GET — حالة طلب العميل، ليعرف أين يقف بلا أن يسأل أحداً.
+// و‏?pending=1‏ للمالك: الطلبات المفتوحة كلها بأسمائها، لأن زرّ الإذن كان
+// مدفوناً في قائمة الشركات ولا شيء يقول مَن طلب — فيطلب العميل ولا يُرى.
+export async function GET(req: Request) {
+  if (new URL(req.url).searchParams.get('pending') === '1') {
+    const { who, error: denied } = await requireStaff();
+    if (denied || !who || who.role !== 'admin') {
+      return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+    }
+    const sb = admin();
+    const { data: rows } = await sb
+      .from('match_requests')
+      .select('id, company_id, track, status, requested_at')
+      .eq('status', 'requested')
+      .order('requested_at', { ascending: true })
+      .limit(100);
+    const ids = Array.from(new Set((rows || []).map((r) => r.company_id)));
+    const { data: cos } = ids.length
+      ? await sb.from('companies').select('id, company_name, phone, sector, match_credits').in('id', ids)
+      : { data: [] as Array<Record<string, unknown>> };
+    const byId = new Map((cos || []).map((c) => [String(c.id), c]));
+    return NextResponse.json({
+      pending: (rows || []).map((r) => ({ ...r, company: byId.get(String(r.company_id)) || null })),
+    });
+  }
+
   const co = await currentCompany();
   if (!co) return NextResponse.json({ state: 'none' });
   const { data: reqs } = await admin()
