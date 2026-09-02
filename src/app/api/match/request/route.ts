@@ -210,6 +210,15 @@ export async function PATCH(req: Request) {
     }
   }
 
+  // القرار الذي اتُّخذ لا يبقى في طابور القرارات: كان طلبُ العميل يُسجَّل
+  // بـ needs_owner=true، ثم تأذن أنت فيُضاف حدثٌ جديد — ويبقى الطلب القديم
+  // مرفوعاً، فيعيده تلخيصُ المساء عليك كل يوم كأنك لم تقرّره. يُطوى هنا.
+  await sb.from('deal_events')
+    .update({ needs_owner: false })
+    .eq('company_id', companyId)
+    .eq('kind', 'match_request')
+    .eq('needs_owner', true);
+
   await sb.from('deal_events').insert({
     company_id: companyId,
     kind: 'match_request',
