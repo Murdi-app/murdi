@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditMemo, memoGaps, MEMO_CSS } from '@/lib/creditMemo';
-import { demandFromMatches, blockersFromMatches } from '@/lib/gapDemand';
+import { demandFromMatches, blockersFromMatches, isRejected } from '@/lib/gapDemand';
 
 // ملف غرض التمويل يُولَّد من القاعدة لا يُكتب باليد.
 // GET ?company_id=…            → صفحة كاملة للطباعة أو الإرسال
@@ -49,12 +49,13 @@ export async function GET(req: Request) {
   // «مؤهّل لتسع، جاهز لاثنتين» أوجع سطر يقرؤه، وأصدقه.
   const { data: mrows } = await sb
     .from('match_results')
-    .select('provider, requirements, gaps')
+    .select('provider, requirements, gaps, verdict')
     .eq('company_id', companyId)
     .eq('status', 'new')
     .gte('fit_score', 30)
     .limit(500);
-  const matches = mrows || [];
+  // ولا يدخل الملفَّ الذي يُقرأ عند جهة تمويلٍ اسمُ جهةٍ استبعدها المحرك
+  const matches = (mrows || []).filter((m) => !isRejected(m.verdict));
   // نفس التصحيح الذي جرى على شاشة العميل: العدّ بالجهات لا بالصفوف،
   // والنواقص من نصّ النواقص وحده — فما كان عن الجهة لا يُحتسب على العميل.
   const entities = new Set(matches.map((m) => String(m.provider || '').trim()).filter(Boolean)).size;
