@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { prettyPhone } from '@/lib/phone';
+import { sendPush } from '@/lib/push';
 
 // إخطار فوري بكل عميل جديد.
 //
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
   let subject = '';
   let head = '';
   let extra = '';
+  let pushTail = '';
 
   if (kind === 'assessment') {
     // التقييم انتهى: الدرجة هي أول ما يريد المالك رؤيته، ثم ما يطلبه العميل
@@ -84,6 +86,9 @@ export async function POST(req: Request) {
 
     subject = 'تقييم جديد: ' + String(c.company_name || '') + ' — ' + String(r?.readiness_score ?? '؟') + '/١٠٠';
     head = 'أنهى تقييمه الآن';
+    pushTail = ' — ' + String(r?.readiness_score ?? '؟') + '/100'
+      + (f?.requested_amount ? ' · يطلب ' + Number(f.requested_amount).toLocaleString('en-US') + ' ر.س' : '')
+      + ' · ' + String(c.city || '');
     extra =
       row('الدرجة', String(r?.readiness_score ?? '—') + ' — ' + String(r?.verdict || '')) +
       row('الإيرادات السنوية', f?.annual_revenue ? Number(f.annual_revenue).toLocaleString('en-US') + ' ر.س' : '—') +
@@ -94,6 +99,7 @@ export async function POST(req: Request) {
   } else {
     subject = 'تسجيل جديد: ' + String(c.company_name || '');
     head = 'سجّل منشأته الآن';
+    pushTail = ' — ' + String(c.city || '') + ' · ' + String(c.sector || '');
     extra = row('السجل التجاري', c.cr_number || '—');
   }
 
@@ -116,14 +122,25 @@ export async function POST(req: Request) {
 
   const mail = await sendMail({ from: FROM, to: OWNER, subject, html });
 
+  // والإشعار على الجوال: البريد يُقرأ حين تفتح بريدك، وهذا يصلك في لحظته.
+  // وفشلُه لا يُسقط شيئاً — التسجيل وقع، والبريد ذهب، والحدث سُجِّل.
+  const push = await sendPush({
+    title: kind === 'assessment' ? '🔥 تقييم جديد' : '🆕 تسجيل جديد',
+    body: String(c.company_name || '') + pushTail,
+    url: '/admin/hot',
+    important: true,
+    tag: 'client-' + companyId,
+  }).catch(() => ({ sent: 0, removed: 0, failed: 0, reason: 'تعذّر الإرسال' }));
+
   await sb.from('deal_events').insert({
     company_id: companyId,
     kind: kind === 'assessment' ? 'assessment' : 'signup',
     title: kind === 'assessment' ? 'أنهى العميل تقييمه' : 'سجّل عميل جديد منشأته',
-    detail: mail.ok ? 'أُخطر المالك بالبريد' : 'تعذّر إخطار المالك: ' + mail.reason,
+    detail: (mail.ok ? 'أُخطر المالك بالبريد' : 'تعذّر البريد: ' + mail.reason)
+      + ' · إشعار الجوال: ' + (push.sent > 0 ? push.sent + ' جهاز' : (push.reason || 'لم يصل')),
     actor: 'system',
     needs_owner: true,
   });
 
-  return NextResponse.json({ ok: true, notified: mail.ok });
+  return NextResponse.json({ ok: true, mail: mail.ok, push });
 }

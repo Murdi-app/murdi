@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
+import PushToggle from '@/components/PushToggle'
 
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
@@ -67,6 +68,8 @@ export default function AdminPage() {
 
         {/* كان هنا تنبيه «اشتراكات قاربت على الانتهاء». والاشتراك أُلغي،
             فصار التنبيه يدفعك لملاحقة تجديدٍ لا تبيعه. حُذف. */}
+
+        <PushToggle />
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:32 }}>
           {stat.map((s,i) => (

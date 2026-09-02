@@ -1,26 +1,19 @@
 {
-  "name": "Murdi — مُرضي | ذكاء المقاولات المالي",
-  "short_name": "Murdi",
-  "description": "مستشارك المالي الذكي لشركات المقاولات السعودية",
-  "start_url": "/dashboard",
+  "name": "مُرضي — منصة جاهزية رأس المال",
+  "short_name": "مُرضي",
+  "description": "تقييم جاهزية التمويل والاستثمار، ومطابقة منشأتك مع الجهات التي تنطبق شروطها عليها.",
+  "start_url": "/goal",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B1C3D",
-  "theme_color": "#0B1C3D",
+  "background_color": "#FBFCFB",
+  "theme_color": "#1A3D34",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -41,8 +41,10 @@ export default function RegisterPage() {
 
   // رقم الهوية إلزامي مع السجل: العقد لا يُصدَر بدونه، وطلبه لاحقاً يعني مطاردة العميل
   // في اللحظة التي يُفترض أن يوقّع فيها. وهو رقم يكتبه صاحب المنشأة في كل تعامل تجاري.
+  // رقم الهوية خرج من الشروط: العقد يحتاجه، والتقييم المجاني لا. وطلبُه
+  // على الباب يوقف من لا يحمل هويته معه في تلك اللحظة — ويخسر ملفاً كاملاً.
   const canProceed = form.company_name && form.cr_number && form.owner_name
-    && form.owner_id_number && form.phone && form.city && form.sector
+    && form.phone && form.city && form.sector
 
   async function saveCompany() {
     setSaving(true)

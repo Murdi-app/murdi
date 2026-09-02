@@ -2,9 +2,25 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { waNumber } from '@/lib/phone'
 
+// كان التسجيل على شاشتين: شاشةٌ تأخذ اسم الشركة والبريد وكلمة المرور، ثم
+// شاشةٌ ثانية تأخذ بيانات المنشأة — وتسأل عن اسم الشركة مرة أخرى.
+//
+// والحدّ بينهما كان يبتلع الناس: `barq.plus@gmail.com` أنشأ حسابه الساعة
+// ٣:٠٠ عصراً وتوقف عند الشاشة الثانية ولم يعد. فبقي في القاعدة بريداً بلا
+// منشأة ولا جوال — لا نعرف من هو ولا كيف نصل إليه.
+//
+// فصارت شاشةً واحدة: يدخل بياناته مرة واحدة، ويخرج منها إلى تقييمه مباشرة.
+// ورقم الهوية أُخرج من هنا إلى وقت العقد — لأنه لا يلزم لتقييمٍ مجاني،
+// وطلبه على الباب يوقف من لا يحمله معه الآن.
 export default function SignUp() {
   const [company, setCompany] = useState('')
+  const [cr, setCr] = useState('')
+  const [owner, setOwner] = useState('')
+  const [phone, setPhone] = useState('')
+  const [city, setCity] = useState('')
+  const [sector, setSector] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
@@ -24,7 +40,12 @@ export default function SignUp() {
 
   const handleSignUp = async () => {
     setMessage('')
-    if (!company.trim()) { setMessage('اكتب اسم شركتك'); return }
+    if (!company.trim()) { setMessage('اكتب اسم المنشأة كما في السجل التجاري'); return }
+    if (!cr.trim()) { setMessage('اكتب رقم السجل التجاري'); return }
+    if (!owner.trim()) { setMessage('اكتب اسم المالك'); return }
+    if (!waNumber(phone)) { setMessage('اكتب رقم جوال سعودي صحيح — مثال 05xxxxxxxx'); return }
+    if (!city.trim()) { setMessage('اكتب المدينة'); return }
+    if (!sector.trim()) { setMessage('اكتب القطاع أو النشاط'); return }
     if (!email.trim() || !email.includes('@')) { setMessage('اكتب بريدا إلكترونياً صحيحاً'); return }
     if (password.length < 6) { setMessage('كلمة المرور يجب ألا تقل عن 6 أحرف'); return }
 
@@ -32,11 +53,28 @@ export default function SignUp() {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
     const user = data.user
-    if (user) {
-      await supabase.from('profiles').insert({ id: user.id, email, company_name: company })
-      router.push('/register')
-    }
+    if (!user) { setMessage('تعذّر إنشاء الحساب — حاول مرة أخرى'); setLoading(false); return }
+
+    await supabase.from('profiles').insert({ id: user.id, email, company_name: company.trim() })
+
+    // الرقم يُطبَّع قبل الحفظ: من كتبه بلا صفر يُحفظ ٠٥xxxxxxxx، فلا يخرج
+    // زرّ واتساب في اللوحة إلى رقم لا وجود له.
+    const norm = waNumber(phone)
+    const { error: cErr } = await supabase.from('companies').insert({
+      user_id: user.id,
+      company_name: company.trim(),
+      cr_number: cr.trim(),
+      owner_name: owner.trim(),
+      phone: norm ? '0' + norm.slice(3) : phone.trim(),
+      city: city.trim(),
+      sector: sector.trim(),
+      account_status: 'active',
+    })
     setLoading(false)
+
+    // لو تعثّر حفظ المنشأة فحسابه قائم — يُكمل من صفحة البيانات لا يبدأ من الصفر
+    if (cErr) { router.push('/register'); return }
+    router.push('/goal')
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !loading) handleSignUp() }
@@ -79,15 +117,25 @@ export default function SignUp() {
             <div className="au-title">افتح ملف شركتك</div>
             <div className="au-lead">التقييم مجاني — تعرف درجتك وعوائقك قبل أن تدفع ريالاً.</div>
 
-            <div className="au-label">اسم الشركة</div>
+            <div className="au-label">اسم المنشأة</div>
             <input className="au-input" placeholder="كما في السجل التجاري" value={company} onChange={e=>setCompany(e.target.value)} onKeyDown={onKeyDown} />
+            <div className="au-label">رقم السجل التجاري</div>
+            <input className="au-input" placeholder="10xxxxxxxx" value={cr} onChange={e=>setCr(e.target.value)} onKeyDown={onKeyDown} inputMode="numeric" />
+            <div className="au-label">اسم المالك</div>
+            <input className="au-input" placeholder="الاسم كما في الهوية" value={owner} onChange={e=>setOwner(e.target.value)} onKeyDown={onKeyDown} />
+            <div className="au-label">رقم الجوال</div>
+            <input className="au-input" placeholder="05xxxxxxxx" value={phone} onChange={e=>setPhone(e.target.value)} onKeyDown={onKeyDown} inputMode="tel" />
+            <div className="au-label">المدينة</div>
+            <input className="au-input" placeholder="الرياض" value={city} onChange={e=>setCity(e.target.value)} onKeyDown={onKeyDown} />
+            <div className="au-label">القطاع أو النشاط</div>
+            <input className="au-input" placeholder="مقاولات · تجارة · مطاعم · تقنية" value={sector} onChange={e=>setSector(e.target.value)} onKeyDown={onKeyDown} />
             <div className="au-label">البريد الإلكتروني</div>
             <input className="au-input" placeholder="name@company.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={onKeyDown} type="email" />
             <div className="au-label">كلمة المرور</div>
             <input className="au-input" placeholder="6 أحرف على الأقل" type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={onKeyDown} />
 
             <button className="au-btn" onClick={handleSignUp} disabled={loading}>
-              {loading ? 'جارٍ إنشاء حسابك…' : 'أنشئ الحساب'}
+              {loading ? 'جارٍ فتح ملفك…' : 'افتح ملفك وابدأ التقييم ←'}
             </button>
 
             {message && <p className="au-err">{message}</p>}
