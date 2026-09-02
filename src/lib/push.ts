@@ -34,9 +34,26 @@ export async function sendPush(payload: PushPayload, toEmail?: string): Promise<
   const subject = process.env.VAPID_SUBJECT || 'mailto:hololalmurdi.fs@gmail.com';
   if (!pub || !priv) return { sent: 0, removed: 0, failed: 0, reason: 'مفاتيح VAPID غير مهيأة' };
 
-  let webpush: typeof import('web-push');
+  // حزمة web-push بلا تعريفات TypeScript، و`typeof import(...)` عليها يكسر
+  // البناء: «Could not find a declaration file for module 'web-push'».
+  // وبدل تثبيت @types (حزمة أخرى تُثبَّت وقد تتأخر أو تتعارض) وُصف هنا ما
+  // نستعمله منها فقط — دالتان لا أكثر. أقلّ اعتماداً وأصدق وصفاً.
+  type WebPushLike = {
+    setVapidDetails: (subject: string, publicKey: string, privateKey: string) => void;
+    sendNotification: (
+      sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+      payload: string,
+      options?: { TTL?: number }
+    ) => Promise<unknown>;
+  };
+
+  let webpush: WebPushLike;
   try {
-    webpush = (await import('web-push')).default as unknown as typeof import('web-push');
+    const mod = (await import('web-push')) as unknown as { default?: WebPushLike } & WebPushLike;
+    webpush = (mod.default ?? mod) as WebPushLike;
+    if (typeof webpush?.sendNotification !== 'function') {
+      return { sent: 0, removed: 0, failed: 0, reason: 'حزمة web-push غير صالحة' };
+    }
   } catch {
     return { sent: 0, removed: 0, failed: 0, reason: 'حزمة web-push غير مثبّتة' };
   }
