@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
+import { waNumber } from '@/lib/phone'
 
 
 export default function RegisterPage() {
@@ -45,6 +46,11 @@ export default function RegisterPage() {
 
   async function saveCompany() {
     setSaving(true)
+    // «برفية رمز مطبق الابداع» سجّلت رقمها ٥٣٥١٧٥١٦٦ بلا الصفر، فخرج زرّ
+    // واتساب في اللوحة يشير إلى رقم لا وجود له. يُطبَّع هنا عند بابه: ما
+    // كان جوالاً سعودياً صالحاً يُحفظ بصيغة ٠٥xxxxxxxx، وما عداه كما كتبه.
+    const norm = waNumber(form.phone)
+    if (norm) form.phone = '0' + norm.slice(3)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data: existing } = await supabase

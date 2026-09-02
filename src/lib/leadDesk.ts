@@ -1,3 +1,4 @@
+import { waNumber } from '@/lib/phone';
 // مكتب المتابعة: ٦٩ اسماً وهاتفاً دخلوا التقييم السريع منذ يونيو، ولم يُتواصل مع أحد.
 // الجدول لا تقرؤه أي صفحة في المنصة. هذا الملف يرتّبهم ويكتب أول جملة تُقال لكل واحد،
 // لأن العائق ليس نقص العملاء بل نقص الوقت: من أتصل به أولاً، وبماذا أبدأ.
@@ -40,13 +41,13 @@ export interface Lead extends RawLead {
   waLink: string;          // رابط واتساب جاهز
 }
 
+// التطبيع صار في src/lib/phone.ts — مصدر واحد لكل المنصة. ويبقى الرجوع
+// إلى الأرقام كما هي حين لا ينطبق شكلٌ معروف، لأن المطابقة بآخر تسع خانات
+// تعتمد عليه ولا يصحّ أن تفقد صفّاً لأن رقمه غريب الشكل.
 export function normPhone(p: string | null | undefined): string {
   const d = String(p || '').replace(/\D/g, '');
   if (!d) return '';
-  if (d.startsWith('966')) return d;
-  if (d.startsWith('05')) return '966' + d.slice(1);
-  if (d.startsWith('5') && d.length === 9) return '966' + d;
-  return d;
+  return waNumber(p) ?? d;
 }
 
 export function daysSince(iso: string, now = Date.now()): number {

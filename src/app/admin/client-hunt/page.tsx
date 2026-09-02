@@ -3,6 +3,7 @@ import AdminNav from '@/components/AdminNav';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
+import { waLink as sharedWaLink } from '@/lib/phone';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -161,9 +162,7 @@ export default function ClientHuntPage() {
   }
 
   function waLink(l: CLead): string {
-    const p = (l.phone || '').replace(/[^0-9]/g, '');
-    const intl = p.startsWith('966') ? p : p.startsWith('05') ? '966' + p.slice(1) : p.startsWith('5') ? '966' + p : p;
-    return 'https://wa.me/' + intl + '?text=' + encodeURIComponent(l.message || '');
+    return sharedWaLink(l.phone, l.message || '') || '';
   }
 
   async function markWhatsapped(id: string) {

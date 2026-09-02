@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
+import { waNumber, waLink } from '@/lib/phone'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleString('ar-SA', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '—'
@@ -114,7 +115,7 @@ export default function ApprovalsPage() {
   // تُفتح بعد await. فيُبنى الرابط هنا من بيانات الطلب التي بين أيدينا،
   // ويُفتح في اللحظة ذاتها التي يُرسَل فيها البريد من الخادم: الاثنان معاً.
   const waLinkFor = (r: { track: string; company: { company_name?: string; phone?: string } | null }) => {
-    const digits = String(r.company?.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '966')
+    const digits = waNumber(r.company?.phone)
     if (!digits) return null
     const trackAr = r.track === 'investment' ? 'جهات الاستثمار' : 'جهات التمويل'
     const text = 'السلام عليكم ورحمة الله\n\n'
@@ -507,7 +508,7 @@ export default function ApprovalsPage() {
                   <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => setStatus(c, 'active')}>إعادة تفعيل</button>
                 )}
                 {c.account_status === 'pending_payment' && (<>
-                  {c.phone && <a className="ap-btn ap-btn-receipt" href={'https://wa.me/' + c.phone.replace(/[^0-9]/g, '').replace(/^0/, '966')} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>💬 واتساب</a>}
+                  {waLink(c.phone) && <a className="ap-btn ap-btn-receipt" href={waLink(c.phone) || '#'} target="_blank" rel="noopener noreferrer" style={{ textDecoration:'none' }}>💬 واتساب</a>}
                   <button className="ap-btn ap-btn-approve" disabled={busy === c.id} onClick={() => { if (confirm('تفعيل حساب ' + c.company_name + '؟ سيتمكّن من التقييم فوراً.')) activate(c) }}>{busy === c.id ? 'جارٍ...' : '✓ تفعيل الحساب'}</button>
                   <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => { if (confirm('رفض هذا الحساب؟')) setStatus(c, 'rejected') }}>رفض</button>
                 </>)}

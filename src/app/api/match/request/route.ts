@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
+import { waLink } from '@/lib/phone';
 
 // طلب تشغيل المطابقة.
 //
@@ -185,8 +186,7 @@ export async function PATCH(req: Request) {
       'تبقّى عليك خطوة واحدة: ادخل لوحتك واضغط «طابق ' + trackAr + '».\n' +
       'ولا يُطلب منك أي دفع في هذه الخطوة.\n\n' +
       'https://murdi.sa/goal';
-    const digits = String(contact.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '966');
-    whatsapp = digits ? 'https://wa.me/' + digits + '?text=' + encodeURIComponent(waText) : null;
+    whatsapp = waLink(contact.phone, waText);
 
     if (contact.contact_email) {
       const r = await sendMail({
