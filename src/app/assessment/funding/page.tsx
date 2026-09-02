@@ -392,17 +392,27 @@ export default function FundingAssessment() {
                     <option value="">— اختر —</option><option value="none">لا</option><option value="import">أستورد</option><option value="export">أصدّر</option><option value="both">الاثنان</option>
                   </select>
                 </div>
+                {/* «مختلطة» و«أجنبية بالكامل» كلمتان إداريتان: المستثمر الأجنبي
+                    يقرؤهما فلا يعرف أن السؤال عنه هو. وهذا السؤال بالذات يفتح
+                    مساراً كاملاً — الشركة الأم وضمانها والممر الأجنبي — فإن
+                    أخطأ فيه أُغلق عليه باب لا يعلم به. فذُكرت كلمة «مستثمر»
+                    في كل خيار، ليعرف نفسه في السطر من أول قراءة.
+                    والقيم المخزَّنة كما هي: saudi · mixed · foreign. */}
                 <div style={{ marginTop: 18 }}>
-                  <label className="block font-black text-[#1A3D34] mb-2">ملكية المنشأة</label>
+                  <label className="block font-black text-[#1A3D34] mb-1">ملكية المنشأة</label>
+                  <p className="text-[#6B8A80] text-xs font-bold mb-2 leading-relaxed">من يملك المنشأة اليوم؟ إن كان فيها مستثمر غير سعودي — شريكاً أو مالكاً — فاذكره هنا، فبعض الجهات لها منتجات خاصة بهذه الحالة.</p>
                   <select value={ownership} onChange={e => setOwnership(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
-                    <option value="">— اختر —</option><option value="saudi">سعودية بالكامل</option><option value="mixed">مختلطة (سعودي + أجنبي)</option><option value="foreign">أجنبية بالكامل</option>
+                    <option value="">— اختر —</option>
+                    <option value="saudi">سعودية بالكامل — كل الملّاك سعوديون</option>
+                    <option value="mixed">مختلطة — شريك سعودي مع مستثمر أجنبي</option>
+                    <option value="foreign">أجنبية بالكامل — المالك مستثمر أجنبي</option>
                   </select>
                 </div>
                 {ownership && ownership !== 'saudi' && (
                   <>
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">جنسية المستثمر الرئيسي</label>
-                  <input type="text" value={ownerNationality} onChange={e => setOwnerNationality(e.target.value)} placeholder="مثال: باكستان، الهند، الصين" className={inputCls} />
+                  <input type="text" value={ownerNationality} onChange={e => setOwnerNationality(e.target.value)} placeholder="جنسية المستثمر — مثال: مصر، الهند، بريطانيا" className={inputCls} />
                 </div>
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">هل للمالك شركة أم أو كيان قائم خارج السعودية؟</label>
