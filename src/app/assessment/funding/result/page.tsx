@@ -383,26 +383,68 @@ export default function FundingResult() {
           if (f.issues_invoices === true) n += 4;
           void n;   // الرقم لم يعد يُعرض — لا نعِد بعدد قبل أن نقيسه
           return (
-          <div className="rounded-3xl p-7 text-center" style={{ background: '#1A3D34' }}>
-            <div className="text-3xl mb-3"></div>
-            <h3 className="text-white font-black text-lg mb-3">مطابقة الجهات — الخطوة التي تحوّل درجتك إلى تمويل</h3>
-            <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-4">
-              درجتك تقول أين أنت. والمطابقة تقول <span style={{ color: '#C9A84C' }}>مع مَن</span>:
-              نبحث لك في البنوك وشركات التمويل السعودية والخليجية والدولية، ونستخرج <span style={{ color: '#C9A84C' }}>المنتج المحدَّد</span> الذي تتأهل له في كل جهة — لا اسم الجهة فقط.
-              فالعميل قد يُرفض في منتج ويُقبل في آخر داخل البنك نفسه.
+          <div className="rounded-3xl p-7" style={{ background: '#1A3D34' }}>
+            <h3 className="text-white font-black text-lg mb-3 text-center">وهذي خطواتك من هنا — كاملةً وبأسعارها</h3>
+            <p className="text-[#CFE0DA] text-sm font-bold leading-loose mb-5 text-center">
+              درجتك تقول أين أنت. وما بعدها ثلاث خطوات، تعرفها كلها الآن قبل أن تدفع ريالاً —
+              وتختار منها ما يناسبك.
             </p>
-            <div className="rounded-2xl py-4 px-5 mb-4" style={{ background: 'rgba(201,168,76,0.12)', border: '1.5px solid rgba(201,168,76,0.35)' }}>
-              <div className="text-[#C9A84C] font-black text-2xl">شبكة مُرضي التمويلية</div>
-              <div className="text-[#CFE0DA] text-xs font-bold mt-1">عدد الجهات المؤهّلة لك يظهر بعد المطابقة — ولا نعِدك برقم قبل أن نقيسه</div>
+
+            {/* الخطوة الأولى: مجانية. تُذكر أولاً لأن أول ما يبحث عنه العميل هو الفخّ. */}
+            <div className="rounded-2xl p-5 mb-3" style={{ background: 'rgba(46,158,123,0.14)', border: '1.5px solid rgba(46,158,123,0.4)' }}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-white font-black text-[15px]">١) المطابقة</span>
+                <span className="font-black text-[15px]" style={{ color: '#5FD3A6' }}>مجاناً</span>
+              </div>
+              <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
+                نبحث لك في البنوك وشركات التمويل السعودية والخليجية والدولية، ونستخرج
+                <span style={{ color: '#C9A84C' }}> المنتج المحدَّد</span> الذي تتأهل له في كل جهة — لا اسم الجهة فقط،
+                فقد تُرفض في منتج وتُقبل في آخر داخل البنك نفسه.
+                <br />وتخرج منها عارفاً <span style={{ color: '#C9A84C' }}>كم جهة</span> تنطبق شروطها على ملفك أنت.
+              </p>
             </div>
-            <p className="text-[#CFE0DA] text-xs font-bold leading-loose mb-5 text-right">
-              ويشمل تفعيل ملفك: مطابقة المسارات الثلاثة · رفع ملفك للجهات ومتابعة الرد · استشارات مفتوحة أربعة أشهر · أسئلة مباشرة يجيب عنها د. عبدالحكيم والفريق داخل المنصة.
-            </p>
-            <button onClick={() => router.push('/pay')}
+
+            {/* الخطوة الثانية: الباب الرخيص. يُعرض بما يشتريه لا بما ينقصه. */}
+            <div className="rounded-2xl p-5 mb-3" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-white font-black text-[15px]">٢) الفحص الائتماني السريع</span>
+                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>٩٩٠ ر.س</span>
+              </div>
+              <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
+                الجهات <span style={{ color: '#C9A84C' }}>بأسمائها</span> · شروط كل واحدة وحدود مبالغها ·
+                ما ينقصك عند كل جهة تحديداً · وطريقة التقديم إليها. خلال ساعات.
+                <br />تعرف موقفك الحقيقي قبل أن تلتزم بشيء أكبر.
+              </p>
+            </div>
+
+            {/* الخطوة الثالثة: التنفيذ. والخصم يُذكر هنا لأنه يزيل الخوف من البدء صغيراً. */}
+            <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(201,168,76,0.16)', border: '1.5px solid rgba(201,168,76,0.5)' }}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-white font-black text-[15px]">٣) تجهيز الملف والمخاطبة والتفاوض</span>
+                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>٧٬٩٠٠ ر.س</span>
+              </div>
+              <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
+                نبني ملفك بالعربية والإنجليزية بلغة محلل الائتمان، ونخاطب الجهات
+                <span style={{ color: '#C9A84C' }}> باسمك</span>، ونتابع الردود ونفاوض على الشروط حتى قرار نهائي.
+                أنت لا تدور على أحد — نحن ندور عنك.
+                <br /><span style={{ color: '#C9A84C' }}>ويُخصم منها الفحص السريع بالكامل إن أكملته خلال ٣٠ يوماً.</span>
+              </p>
+            </div>
+
+            <div className="rounded-xl py-3 px-4 mb-5 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <span className="text-[#CFE0DA] text-xs font-bold leading-relaxed">
+                وأتعاب النجاح على التمويل المنفَّذ <span style={{ color: '#5FD3A6' }}>لا تُدفع إلا بعد صرفه إلى حسابك</span> — لا قبله.
+              </span>
+            </div>
+
+            <button onClick={() => router.push('/goal')}
               className="w-full font-black text-sm py-4 rounded-full transition hover:opacity-90"
               style={{ background: '#C9A84C', color: '#1A3D34' }}>
-              فعّل ملفك وشاهد جهاتك ←
+              ابدأ بالمطابقة المجانية ←
             </button>
+            <p className="text-[#A3BAB2] text-[11px] font-bold text-center mt-3 mb-0">
+              لا يُطلب منك أي دفع في هذه الخطوة.
+            </p>
           </div>
           );
         })()}

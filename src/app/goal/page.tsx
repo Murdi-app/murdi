@@ -31,6 +31,8 @@ export default function GoalPage() {
   const [matchPhase, setMatchPhase] = useState('');
   const [matchNotice, setMatchNotice] = useState('');
   const [matchReq, setMatchReq] = useState('');
+  const [demands, setDemands] = useState<{ key: string; service: string; demand: string; consequence: string; entities: number }[]>([]);
+  const [demandTotal, setDemandTotal] = useState(0);
   const [reqBusy, setReqBusy] = useState(false);
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
@@ -59,6 +61,13 @@ export default function GoalPage() {
   }, []);
 
   useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
+  // ما تطلبه جهاته — يُقرأ بعد المطابقة، ويبيع الخدمات بلا أن نعرضها
+  useEffect(() => {
+    fetch('/api/match/demand').then(r => r.json())
+      .then(d => { setDemands(d?.demands || []); setDemandTotal(Number(d?.total || 0)); })
+      .catch(() => {});
+  }, [matchCount]);
+
   // حالة طلب التشغيل: هل طلب العميل وينتظر إذناً؟
   useEffect(() => { fetch('/api/match/request').then(r => r.json()).then(d => {
     const open = (d?.requests || []).find((x: { status: string }) => x.status === 'requested');
@@ -276,9 +285,50 @@ export default function GoalPage() {
                     </div>
                   </div>
 
+                  {/* الترجيح الصادق: من يبدأ صغيراً ثم يكمل يدفع نفس المبلغ.
+                      فالسؤال لم يعد «كم أدفع؟» بل «هل أكتفي بأن أعرف؟». */}
+                  <div style={{ background: '#F1F8F5', borderInlineStart: '3px solid #1A6B55', borderRadius: '0 10px 10px 0', padding: '10px 13px', marginTop: 12 }}>
+                    <div style={{ color: '#1A6B55', fontWeight: 900, fontSize: 12.5, marginBottom: 3 }}>
+                      وأيّهما تختار؟
+                    </div>
+                    <div style={{ color: '#3A4D47', fontSize: 12, lineHeight: 1.9 }}>
+                      إن بدأت بالفحص السريع ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ ٧٬٩٠٠ لا أكثر</b> — الفحص لا يكلّفك شيئاً إضافياً.
+                      والفرق الوحيد أنك عرفت قبل أن تلتزم.
+                      <br />أمّا إن اكتفيتَ بالفحص، فستعرف أبوابك ولن يُطرق منها باب — <b>لأن الطرق يحتاج ملفاً</b>.
+                    </div>
+                  </div>
+
                   <div style={{ color: '#6B8A80', fontSize: 11.8, lineHeight: 1.85, marginTop: 10 }}>
                     وأتعاب النجاح على التمويل المنفَّذ لا تُدفع إلا بعد صرفه إلى حسابك.
                   </div>
+
+                  {/* ما تطلبه الجهات — العدّ يبيع، لا العرض */}
+                  {demands.length > 0 && (
+                    <div style={{ marginTop: 16, borderTop: '1px solid #E4EFEA', paddingTop: 14 }}>
+                      <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, marginBottom: 3 }}>
+                        وهذا ما طلبته جهاتك منك
+                      </div>
+                      <div style={{ color: '#6B8A80', fontSize: 11.8, marginBottom: 10 }}>
+                        ليس رأينا — بل ما ورد في شروط الجهات التي طوبقت على ملفك.
+                      </div>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {demands.map(d => (
+                          <div key={d.key} style={{ border: '1px solid #E4EFEA', borderRadius: 10, padding: '11px 13px' }}>
+                            <div style={{ color: '#B4622A', fontWeight: 900, fontSize: 12.5 }}>
+                              {d.entities}{demandTotal > 0 ? ' من ' + demandTotal : ''} جهة تطلب {d.demand}
+                            </div>
+                            <div style={{ color: '#5E7C73', fontSize: 11.8, lineHeight: 1.8, marginTop: 3 }}>
+                              {d.consequence}
+                            </div>
+                            <button onClick={() => { setTab('services'); setOrderFor(canonicalTitle(d.service)); }}
+                              style={{ marginTop: 7, background: 'transparent', border: 'none', padding: 0, color: '#1A6B55', fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                              {displayName(d.service)} ←
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* «الخدمات» تبويب لا موضع في الصفحة — فالزرّ يبدّل التبويب */}
                   <button onClick={() => setTab('services')}
