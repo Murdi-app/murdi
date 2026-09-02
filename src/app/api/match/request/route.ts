@@ -162,14 +162,63 @@ export async function PATCH(req: Request) {
     .eq('track', track)
     .eq('status', 'requested');
 
+  // العميل طلب ثم انتظر بلا خبر: الإذن كان يقع في القاعدة ولا يعلم به
+  // صاحبه، فيبقى الزرّ مفتوحاً أمامه ولا أحد قال له إنه فُتح. فصار الإذن
+  // يُخبِر صاحبه: بريد يُرسَل فوراً، ورابط واتساب جاهز يُعاد للمكتب.
+  let notified = false;
+  let whatsapp: string | null = null;
+  let mailNote: string | null = null;
+
+  const { data: contact } = await sb
+    .from('company_contacts')
+    .select('company_name, owner_name, phone, contact_email')
+    .eq('company_id', companyId)
+    .maybeSingle();
+
+  const trackAr = track === 'investment' ? 'جهات الاستثمار' : 'جهات التمويل';
+  const greet = contact?.owner_name ? 'أهلاً ' + String(contact.owner_name) + '،' : 'السلام عليكم ورحمة الله،';
+
+  if (approve && contact) {
+    const waText =
+      'السلام عليكم ورحمة الله\n\n' +
+      'فُتحت لك المطابقة في منصة مُرضي على ' + String(contact.company_name || 'ملفك') + '.\n' +
+      'تبقّى عليك خطوة واحدة: ادخل لوحتك واضغط «طابق ' + trackAr + '».\n' +
+      'ولا يُطلب منك أي دفع في هذه الخطوة.\n\n' +
+      'https://murdi.sa/goal';
+    const digits = String(contact.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '966');
+    whatsapp = digits ? 'https://wa.me/' + digits + '?text=' + encodeURIComponent(waText) : null;
+
+    if (contact.contact_email) {
+      const r = await sendMail({
+        from: FROM,
+        to: String(contact.contact_email),
+        subject: 'فُتحت لك المطابقة في مُرضي',
+        html:
+          '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34;max-width:560px">' +
+          '<h2 style="color:#1A3D34;margin:0 0 14px">فُتحت لك المطابقة</h2>' +
+          '<p style="margin:0 0 12px">' + greet + '</p>' +
+          '<p style="margin:0 0 12px">فُتحت لك تشغيلة المطابقة على <b>' + String(contact.company_name || 'ملفك') + '</b>.</p>' +
+          '<p style="margin:0 0 12px">تبقّى عليك خطوة واحدة: ادخل لوحتك واضغط «<b>طابق ' + trackAr + '</b>»، ' +
+          'ونبحث لك عن الجهات التي تنطبق شروطها على ملفك أنت، والمنتج المناسب لك عند كل واحدة.</p>' +
+          '<p style="margin:0 0 22px"><a href="https://murdi.sa/goal" style="background:#1A3D34;color:#fff;padding:13px 30px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">افتح لوحتك ←</a></p>' +
+          '<p style="margin:0 0 12px;color:#1A7A5A;font-weight:bold">ولا يُطلب منك أي دفع في هذه الخطوة.</p>' +
+          '<p style="margin:0;color:#6B8A80;font-size:13px">مُرضي — حلول المرضي للاستشارات المالية</p>' +
+          '</div>',
+      });
+      notified = r.ok;
+      if (!r.ok) mailNote = r.reason;
+    }
+  }
+
   await sb.from('deal_events').insert({
     company_id: companyId,
     kind: 'match_request',
     title: approve ? 'أذنتَ بتشغيلة مطابقة' : 'رُفض طلب التشغيل',
-    detail: 'مسار ' + (track === 'investment' ? 'الاستثمار' : 'التمويل'),
+    detail: 'مسار ' + (track === 'investment' ? 'الاستثمار' : 'التمويل')
+      + (approve ? (notified ? ' — أُبلغ العميل بالبريد' : ' — لم يصل بريد الإبلاغ' + (mailNote ? ': ' + mailNote : '')) : ''),
     actor: 'owner',
-    needs_owner: false,
+    needs_owner: approve && !notified,
   });
 
-  return NextResponse.json({ ok: true, granted: approve });
+  return NextResponse.json({ ok: true, granted: approve, notified, whatsapp, mailNote });
 }

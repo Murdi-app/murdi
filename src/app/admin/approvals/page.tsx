@@ -110,6 +110,21 @@ export default function ApprovalsPage() {
     setLoading(false)
   }
 
+  // واتساب لا يُفتح إلا داخل نقرة المستخدم نفسها — والمتصفح يحجب أي نافذة
+  // تُفتح بعد await. فيُبنى الرابط هنا من بيانات الطلب التي بين أيدينا،
+  // ويُفتح في اللحظة ذاتها التي يُرسَل فيها البريد من الخادم: الاثنان معاً.
+  const waLinkFor = (r: { track: string; company: { company_name?: string; phone?: string } | null }) => {
+    const digits = String(r.company?.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '966')
+    if (!digits) return null
+    const trackAr = r.track === 'investment' ? 'جهات الاستثمار' : 'جهات التمويل'
+    const text = 'السلام عليكم ورحمة الله\n\n'
+      + 'فُتحت لك المطابقة في منصة مُرضي على ' + (r.company?.company_name || 'ملفك') + '.\n'
+      + 'تبقّى عليك خطوة واحدة: ادخل لوحتك واضغط «طابق ' + trackAr + '».\n'
+      + 'ولا يُطلب منك أي دفع في هذه الخطوة.\n\n'
+      + 'https://murdi.sa/goal'
+    return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(text)
+  }
+
   async function loadMatchReqs() {
     try {
       const res = await fetch('/api/match/request?pending=1')
@@ -126,7 +141,15 @@ export default function ApprovalsPage() {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company_id: companyId, track, action: approve ? 'grant' : 'reject' }),
       })
-      if (!r.ok) alert('تعذّر: ' + ((await r.json())?.error || ''))
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        alert('تعذّر: ' + (d?.error || ''))
+      } else if (approve && d?.notified === false) {
+        // لا يُقال «أُبلغ» إلا وقد ردّ المزوّد بمعرّف. وواتساب فُتح أصلاً
+        // مع النقرة، فيبقى العميل مُبلَّغاً ولو تعطّل البريد.
+        alert('أُذن، وفُتح واتساب — لكن بريد الإبلاغ لم يصل'
+          + (d?.mailNote ? ': ' + d.mailNote : '') + '.')
+      }
     } catch { alert('تعذّر الاتصال') }
     await loadMatchReqs()
     await loadCompanies()
@@ -369,7 +392,13 @@ export default function ApprovalsPage() {
                   </div>
                   <div style={{ display:'flex', gap:8 }}>
                     <button disabled={busy === 'mq' + r.company_id + r.track}
-                      onClick={() => { if (confirm('السماح بتشغيلة مطابقة واحدة لـ ' + (r.company?.company_name || '') + '؟\n\nالتشغيلة تكلّف — والإذن لا يتكرر تلقائياً.')) decideMatchReq(r.company_id, r.track, true) }}
+                      onClick={() => {
+                        const wa = waLinkFor(r)
+                        if (!confirm('السماح بتشغيلة مطابقة واحدة لـ ' + (r.company?.company_name || '') + '؟\n\nالتشغيلة تكلّف — والإذن لا يتكرر تلقائياً.'
+                          + (wa ? '\n\nوسيصله بريد، ويُفتح لك واتساب برسالته جاهزة.' : '\n\nوسيصله بريد — ولا جوال مسجَّل له لواتساب.'))) return
+                        if (wa) window.open(wa, '_blank', 'noopener')
+                        decideMatchReq(r.company_id, r.track, true)
+                      }}
                       style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'10px 20px', borderRadius:999, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer' }}>
                       {busy === 'mq' + r.company_id + r.track ? 'جارٍ...' : '✓ اسمح بتشغيلة'}
                     </button>
