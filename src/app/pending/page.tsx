@@ -43,10 +43,13 @@ export default function PendingPage() {
   // لا وجود له، ويجعله يبحث عن رقم اشتراك لا أحد يعرفه. صُحّح 2 سبتمبر.
   // لكل حالة مخرجها: الصفحة كانت تعرض رسالة وزر خروج فقط،
   // فيصلها عميل مطلوبٌ منه الدفع أو التسجيل ولا يجد رابطاً واحداً يمضي به.
+  //
+  // وكان الزرّ هنا يقول «أكمل الدفع» ويمضي إلى /pay — وهي بوابة اشتراكٍ
+  // أُلغي. فيصل عميلٌ حالته `pending_payment` من التسجيل القديم إلى صفحة
+  // تطلب منه مالاً لا نطلبه، ثم لا يجد ماذا يدفع. حُذف الزرّ من الحالتين،
+  // وبقي باب واتساب وحده — فالتفعيل قرارُ مكتبٍ لا عمليةُ دفع.
   const ACTION: Partial<Record<Status, { label: string; href: string }>> = {
     none: { label: 'سجّل شركتك الآن ←', href: '/register' },
-    pending_payment: { label: 'أكمل الدفع ←', href: '/pay' },
-    expired: { label: 'أعِد التفعيل ←', href: '/pay' },
   }
   const WHATSAPP = '966570314005'
   const content: Record<Status, { icon: string; title: string; msg: string }> = {
@@ -92,7 +95,7 @@ export default function PendingPage() {
           {ACTION[status] && (
             <button className="pd-btn" onClick={() => router.push(ACTION[status]!.href)}>{ACTION[status]!.label}</button>
           )}
-          {(status === 'rejected' || status === 'suspended') && (
+          {(status === 'rejected' || status === 'suspended' || status === 'pending_payment' || status === 'expired') && (
             <a className="pd-btn" style={{ textDecoration: 'none', display: 'inline-block' }}
                href={'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('السلام عليكم، أستفسر عن حالة حسابي في منصة مُرضي')}
                target="_blank" rel="noopener noreferrer">تواصل معنا على واتساب</a>
