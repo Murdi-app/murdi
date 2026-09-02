@@ -36,7 +36,12 @@ export default function GoalPage() {
   const [matchReq, setMatchReq] = useState('');
   const [demands, setDemands] = useState<{ key: string; service: string; demand: string; consequence: string; entities: number }[]>([]);
   const [demandTotal, setDemandTotal] = useState(0);
-  const [readiness, setReadiness] = useState<{ total: number; ready: number; blocked: number } | null>(null);
+  // «مؤهّل لـ٣٩ · جاهز لـ١» حُذف: كان يَعُدّ ملاحظاتٍ عن الجهة نفسها
+  // («لا فرع لها في السعودية») نقصاً في العميل، فيخرج رقمٌ مُحبط وكاذب.
+  // وحلّ محلّه ما يُقاس: كم جهةً مختلفة، وما الثلاثة التي تقف بينه وبينها.
+  const [entities, setEntities] = useState(0);
+  const [strong, setStrong] = useState(0);
+  const [blockers, setBlockers] = useState<Array<{ key: string; service: string; what: string; entities: number }>>([]);
   const [reqBusy, setReqBusy] = useState(false);
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
@@ -68,7 +73,13 @@ export default function GoalPage() {
   // ما تطلبه جهاته — يُقرأ بعد المطابقة، ويبيع الخدمات بلا أن نعرضها
   useEffect(() => {
     fetch('/api/match/demand').then(r => r.json())
-      .then(d => { setDemands(d?.demands || []); setDemandTotal(Number(d?.total || 0)); setReadiness(d?.readiness || null); })
+      .then(d => {
+        setDemands(d?.demands || []);
+        setEntities(Number(d?.entities || 0));
+        setStrong(Number(d?.strong || 0));
+        setBlockers(d?.blockers || []);
+        setDemandTotal(Number(d?.entities || 0));
+      })
       .catch(() => {});
   }, [matchCount]);
 
@@ -261,25 +272,38 @@ export default function GoalPage() {
                     البابان: ماذا يشتري بـ٩٩٠، وماذا يشتري بالملف الكامل. */}
                 {/* الطرح قبل العرض. «مؤهّل لتسع، جاهز لاثنتين» تقرأها الأرقام
                     لا نحن — والعميل لا يجادل الطرح كما يجادل البائع. */}
-                {readiness && readiness.total >= 2 && (
-                  <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '18px 18px 16px', textAlign: 'center' }}>
-                    <div style={{ color: '#5E7C73', fontSize: 12, fontWeight: 800, marginBottom: 8 }}>موقفك اليوم بالأرقام</div>
+                {entities >= 2 && (
+                  <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '18px 18px 16px' }}>
+                    <div style={{ color: '#5E7C73', fontSize: 12, fontWeight: 800, marginBottom: 8, textAlign: 'center' }}>موقفك اليوم بالأرقام</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>مؤهّل لـ</span>
-                      <span style={{ color: '#1A3D34', fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{readiness.total}</span>
-                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>جهة — وملفك اليوم جاهز لـ</span>
-                      <span style={{ color: readiness.ready === 0 ? '#B4622A' : '#C9A84C', fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{readiness.ready}</span>
-                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>منها</span>
+                      <span style={{ color: '#1A3D34', fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{entities}</span>
+                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>جهة تنطبق شروطها على ملفك</span>
                     </div>
-                    {readiness.blocked > 0 && (
-                      <div style={{ color: '#B4622A', fontSize: 12.8, fontWeight: 800, marginTop: 10, lineHeight: 1.85 }}>
-                        و{readiness.blocked} جهة بابها مفتوح لك، ويوقفك عندها نقصٌ قابل للإصلاح.
+                    {strong > 0 && (
+                      <div style={{ color: '#1A7A5A', fontSize: 12.8, fontWeight: 800, marginTop: 8, textAlign: 'center' }}>
+                        منها {strong} جهة المطابقة فيها قوية.
                       </div>
                     )}
-                    {/* شريط بصري: الممتلئ ما يمشي إليه اليوم */}
-                    <div style={{ height: 8, borderRadius: 999, background: '#EAF2EE', overflow: 'hidden', marginTop: 12 }}>
-                      <div style={{ height: '100%', width: Math.round((readiness.ready / readiness.total) * 100) + '%', background: '#C9A84C' }} />
-                    </div>
+
+                    {/* العائق ثلاثة أشياء لا ثمانية وثلاثون باباً موصداً */}
+                    {blockers.length > 0 && (
+                      <div style={{ marginTop: 14, borderTop: '1px solid #EFF5F2', paddingTop: 14 }}>
+                        <div style={{ color: '#1A3D34', fontSize: 13.5, fontWeight: 900, marginBottom: 10 }}>
+                          {blockers.length === 1 ? 'وشيء واحد يتكرر عند أكثرها:' : 'و' + (blockers.length === 2 ? 'شيئان يتكرران' : 'ثلاثة أشياء تتكرر') + ' عند أكثرها:'}
+                        </div>
+                        {blockers.map(b => (
+                          <div key={b.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: '1px solid #F5F9F7' }}>
+                            <span style={{ color: '#3A4D47', fontSize: 13, fontWeight: 800 }}>{b.what}</span>
+                            <span style={{ color: '#B4622A', fontSize: 12.5, fontWeight: 900, whiteSpace: 'nowrap' }}>
+                              يقف عند {b.entities} جهة
+                            </span>
+                          </div>
+                        ))}
+                        <div style={{ color: '#6B8A80', fontSize: 12.3, fontWeight: 700, marginTop: 10, lineHeight: 1.85 }}>
+                          وهذه أشياء تُصلَح — لا أبواب مغلقة.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

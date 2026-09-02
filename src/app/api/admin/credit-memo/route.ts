@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditMemo, memoGaps, MEMO_CSS } from '@/lib/creditMemo';
-import { demandFromMatches, readinessFromMatches, readinessLine } from '@/lib/gapDemand';
+import { demandFromMatches, blockersFromMatches } from '@/lib/gapDemand';
 
 // ملف غرض التمويل يُولَّد من القاعدة لا يُكتب باليد.
 // GET ?company_id=…            → صفحة كاملة للطباعة أو الإرسال
@@ -52,15 +52,21 @@ export async function GET(req: Request) {
     .select('provider, requirements, gaps')
     .eq('company_id', companyId)
     .eq('status', 'new')
-    .gt('fit_score', 0)
-    .limit(400);
+    .gte('fit_score', 30)
+    .limit(500);
   const matches = mrows || [];
-  const readiness = readinessFromMatches(matches);
+  // نفس التصحيح الذي جرى على شاشة العميل: العدّ بالجهات لا بالصفوف،
+  // والنواقص من نصّ النواقص وحده — فما كان عن الجهة لا يُحتسب على العميل.
+  const entities = new Set(matches.map((m) => String(m.provider || '').trim()).filter(Boolean)).size;
+  const blockers = blockersFromMatches(matches, 4);
   const demands = demandFromMatches(matches, 4);
-  const standing = readinessLine(readiness);
+  const standing = entities >= 2
+    ? entities + ' جهة تنطبق شروطها على ملفك'
+      + (blockers.length ? '، وأكثر ما يتكرر عندها: ' + blockers.map((b) => b.what + ' (' + b.entities + ' جهة)').join(' · ') : '')
+    : null;
 
   if (url.searchParams.get('as') === 'json') {
-    return NextResponse.json({ ok: true, company: company.company_name, gaps, readiness, demands });
+    return NextResponse.json({ ok: true, company: company.company_name, gaps, entities, blockers, demands });
   }
 
   // لا يُطبع القسم إن لم يكن هناك ما يُقاس — الفراغ لا يُزيَّن
@@ -68,12 +74,12 @@ export async function GET(req: Request) {
     ? `<section class="sec">
   <h2>موقفك أمام جهاتك</h2>
   <p class="standing">${standing}</p>
-  ${readiness.blocked > 0
-    ? `<p class="blocked">و${readiness.blocked} جهة بابها مفتوح لك، ويوقفك عندها نقصٌ قابل للإصلاح:</p>`
+  ${blockers.length
+    ? `<p class="blocked">وأكثر ما يتكرر من نواقصك عندها — وكلّه قابل للإصلاح:</p>`
     : ''}
   ${demands.length
     ? '<ul class="demands">' + demands.map((d) =>
-        `<li><b>${d.entities} من ${readiness.total} جهة تطلب ${d.demand}</b><br><span>${d.consequence}</span></li>`
+        `<li><b>${d.entities} من ${entities} جهة تطلب ${d.demand}</b><br><span>${d.consequence}</span></li>`
       ).join('') + '</ul>'
     : ''}
   <p class="note">هذه الأرقام معدودة من شروط الجهات التي طوبقت على ملفك، لا من تقدير.</p>

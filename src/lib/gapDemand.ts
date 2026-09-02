@@ -148,42 +148,58 @@ export function demandLine(d: DemandRow, total: number): string {
   return d.entities + of + (d.entities === 1 ? ' جهة تطلب ' : ' جهة تطلب ') + d.demand;
 }
 
-// ── الحساب الذي يبيع ────────────────────────────────────────────────
-// «أنت مؤهّل لتسع جهات، وملفك جاهز لاثنتين منها.»
+// ── ما يقف بينك وبين الجهات ─────────────────────────────────────────
 //
-// هذا ليس عرضاً — هو طرح. والعميل لا يجادل الطرح كما يجادل البائع.
-// والحساب صريح ولا يُجمَّل: الجهة «جاهزة» إن لم يُسجَّل عليها نقص، و«موقوفة»
-// إن سُجِّل. ولا نحتسب جهةً بلا بيانات أصلاً، لأن الصمت ليس جاهزية.
+// كان هنا مقياس «مؤهّل لكذا، جاهز لكذا» يَعُدّ الجهةَ جاهزةً إن لم يُسجَّل
+// عليها نقص. وقياسُه على تشغيلة حقيقية كشف أنه معطوب من أصله:
+//
+//   • كل صفّ مطابقة يحمل ٢ إلى ٤ ملاحظات دائماً — فـ«صفر نواقص» لا تقع
+//     لأي عميل مهما كان ملفه. النتيجة كانت «جاهز لجهة واحدة من ٣٩»
+//     لعميلٍ درجةُ تقييمه ٨٥ و«جاهز للتمويل». تناقضٌ يراه بعينه.
+//
+//   • وأسوأ: الملاحظات تخلط نوعين. «لا قوائم مالية مدققة» نقصٌ في العميل
+//     نبيع إصلاحه. أما «Marco مختصة بممر أمريكا اللاتينية» و«BBK لا فرع
+//     لها في السعودية» فليست نقصاً فيه إطلاقاً — هي سببُ استبعاد الجهة.
+//     واحتسابها ضدّه ظلمٌ حسابي.
+//
+// فحلّ محلَّه ما يُقاس فعلاً: أكثرُ النواقص تكراراً، وكم جهةً يفتحها كلٌّ
+// منها. والعميل يرى عائقه ثلاثةَ أشياء لا ثمانيةً وثلاثين باباً موصداً.
+// ولا تُحتسب إلا الملاحظات التي تطابق ثيمةً نعرفها — فما كان عن الجهة
+// نفسها يسقط من الحساب وحده.
 
-export type Readiness = {
-  /** الجهات المطابَقة التي لها بيانات يُحكم عليها */
-  total: number;
-  /** لا نقص مسجَّلاً عندها — ملفه اليوم يمشي إليها */
-  ready: number;
-  /** عندها نقص مسجَّل — بابٌ مفتوح لا يملك مفتاحه */
-  blocked: number;
+export type Blocker = {
+  key: string;
+  service: string;
+  /** ما ينقصه بكلامنا المختصر */
+  what: string;
+  /** عدد الجهات المختلفة التي يقف عندها هذا النقص */
+  entities: number;
 };
 
-export function readinessFromMatches(rows: MatchLike[]): Readiness {
-  let total = 0;
-  let ready = 0;
-  for (const r of rows) {
-    const g = r.gaps;
-    const list = Array.isArray(g)
-      ? g.map((x) => String(x).trim()).filter(Boolean)
-      : typeof g === 'string' && g.trim()
-        ? [g.trim()]
-        : null;
-    // gaps غير مسجَّلة إطلاقاً = لم تُقيَّم، فلا تُحتسب في الاتجاهين
-    if (list === null) continue;
-    total++;
-    if (list.length === 0) ready++;
-  }
-  return { total, ready, blocked: total - ready };
-}
+const gapsOf = (m: MatchLike): string[] => {
+  const g = m.gaps;
+  if (Array.isArray(g)) return g.map((x) => String(x)).filter(Boolean);
+  if (typeof g === 'string' && g.trim()) return [g.trim()];
+  return [];
+};
 
-/** الجملة كما تُقرأ — ولا تُقال إن لم يكن هناك ما يُقاس */
-export function readinessLine(r: Readiness): string | null {
-  if (r.total < 2) return null;
-  return 'أنت مؤهّل لـ' + r.total + ' جهة، وملفك اليوم جاهز لـ' + r.ready + ' منها.';
+/** أكثر ما يتكرر من نواقصه — من نصّ النواقص وحده، لا من شروط الجهة */
+export function blockersFromMatches(rows: MatchLike[], limit = 3): Blocker[] {
+  const seen = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const text = gapsOf(r).join(' · ').toLowerCase();
+    if (!text) continue;
+    const who = String(r.provider || '').trim();
+    if (!who) continue;
+    for (const th of GAP_THEMES) {
+      if (!th.match.test(text)) continue;
+      if (!seen.has(th.key)) seen.set(th.key, new Set());
+      seen.get(th.key)!.add(who);
+    }
+  }
+  return GAP_THEMES
+    .map((th) => ({ key: th.key, service: th.service, what: th.demand, entities: seen.get(th.key)?.size || 0 }))
+    .filter((b) => b.entities > 0)
+    .sort((a, b) => b.entities - a.entities)
+    .slice(0, limit);
 }

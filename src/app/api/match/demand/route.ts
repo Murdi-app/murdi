@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { demandFromMatches, readinessFromMatches } from '@/lib/gapDemand';
+import { demandFromMatches, blockersFromMatches } from '@/lib/gapDemand';
 
 // ما تطلبه جهاتك — يُحسب من صفوف مطابقتك أنت، ويُعاد بلا أسماء الجهات.
 //
@@ -30,24 +30,33 @@ export async function GET() {
     .maybeSingle();
   if (!co) return NextResponse.json({ demands: [], total: 0 });
 
-  // العتبة كانت `fit_score > 0`، وهي ليست عتبة. وفي تشغيلة واحدة قِيست:
-  // ٢٢٦ صفّاً فوق الصفر، منها ٧٦ صفّاً درجتها بين ١ و١٤ — أي ضجيج لا مطابقة.
-  // فكانت الشاشة تقول للعميل «أنت مؤهّل لـ٢٢٦ جهة»، وهو وعدٌ ينكشف كذبه في
-  // اليوم الذي يدفع فيه ٩٩٠ ويرى الأسماء. والرقم الذي نقوله يجب أن يصمد
-  // أمام ما يشتريه، فرُفعت العتبة إلى ٥٠: مطابقةٌ حكم المحرك بجدّيتها.
-  const FIT_FLOOR = 50;
+  // العتبة كانت `fit_score > 0`، وهي ليست عتبة. وفي تشغيلة حقيقية قِيست:
+  // ٢٢٦ صفّاً فوق الصفر، منها ٧٦ درجتها بين ١ و١٤ — ضجيجٌ لا مطابقة.
+  //
+  // ثم كان العدّ بالصفوف، والصفّ منتجٌ لا جهة: الجهة الواحدة تظهر ثلاث مرات
+  // بثلاثة منتجات فتُعدّ ثلاثاً. والعميل يسأل «كم جهة؟» لا «كم صفّاً؟».
+  //
+  // فصار العدّ بالجهات المختلفة، والعتبة ٣٠ — وهي الحدّ الذي يبقى فوقه
+  // ما يستحق أن يُقال. ويُفرَز منها ما فوق ٥٠ باسمه: مطابقة قوية.
+  const FIT_FLOOR = 30;
+  const STRONG = 50;
   const { data: rows } = await admin
     .from('match_results')
-    .select('provider, requirements, gaps')
+    .select('provider, product, requirements, gaps, fit_score')
     .eq('company_id', co.id)
     .eq('status', 'new')
     .gte('fit_score', FIT_FLOOR)
-    .limit(400);
+    .limit(500);
 
   const list = rows || [];
+  const uniq = (xs: Array<string | null | undefined>) =>
+    new Set(xs.map((x) => String(x || '').trim()).filter(Boolean)).size;
+
   return NextResponse.json({
-    total: list.length,
-    readiness: readinessFromMatches(list),
+    entities: uniq(list.map((r) => r.provider)),
+    strong: uniq(list.filter((r) => Number(r.fit_score) >= STRONG).map((r) => r.provider)),
+    products: list.length,
     demands: demandFromMatches(list, 3),
+    blockers: blockersFromMatches(list, 3),
   });
 }
