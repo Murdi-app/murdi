@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 const FUNDING_TYPES = [
@@ -29,9 +29,19 @@ export default function FundingAssessment() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  // حارس المغادرة أثناء الإرسال. وكان يبقى مشتعلاً بعد نجاح الحفظ، لأن
+  // `loading` لا يعود false في مسار النجاح — فيخرج للعميل «هل تريد مغادرة
+  // الموقع؟» في الثانية التي تسبق نتيجته، وهو لم يطلب مغادرة شيئاً.
+  // فإن ضغط «مغادرة» ظنّها إلغاءً، خرج من نتيجةٍ دُفع ثمنها استدعاءَ نموذج.
+  // صار يُنزع فور رجوع الخادم بالحفظ: ما بعد الحفظ لا شيء يُفقد.
+  const savedRef = useRef(false);
   useEffect(() => {
     if (!loading) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    const warn = (e: BeforeUnloadEvent) => {
+      if (savedRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [loading]);
@@ -150,6 +160,8 @@ export default function FundingAssessment() {
       });
       const data = await res.json();
       if (res.ok === false) throw new Error(data.error || 'حدث خطأ');
+      // حُفظ التقييم في القاعدة — يُنزع الحارس قبل أي انتقال
+      savedRef.current = true;
       router.push('/assessment/funding/result');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
