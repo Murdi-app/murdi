@@ -388,7 +388,11 @@ export default function FundingAssessment() {
                 </div>
                 <div style={{ marginTop: 22 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">هل تصدّر أو تستورد؟</label>
-                  <select value={crossBorder} onChange={e => setCrossBorder(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
+                  <select value={crossBorder} onChange={e => {
+                    setCrossBorder(e.target.value);
+                    // من رجع وقال «لا» بعد أن كتب دولاً، لا تُرسَل دوله معه
+                    if (e.target.value === 'none' || e.target.value === '') setSupplierCountries('');
+                  }} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
                     <option value="">— اختر —</option><option value="none">لا</option><option value="import">أستورد</option><option value="export">أصدّر</option><option value="both">الاثنان</option>
                   </select>
                 </div>
@@ -436,22 +440,40 @@ export default function FundingAssessment() {
                     )}
                   </>
                 )}
+                {/* كان يُعرض للجميع، فيصل سؤال «من أي دول تشترون وتستوردون؟»
+                    إلى من قال قبل سطرين إنه لا يستورد ولا يصدّر — فيقف حائراً
+                    أمام سؤالٍ أجاب عنه بـ«لا». صار مشروطاً بجوابه، ونصّه يتبع
+                    ما اختاره: المستورد يُسأل عن مورّديه، والمصدّر عن أسواقه. */}
+                {(crossBorder === 'import' || crossBorder === 'export' || crossBorder === 'both') && (
                 <div style={{ marginTop: 18 }}>
-                  <label className="block font-black text-[#1A3D34] mb-2">من أي دول تشترون وتستوردون بشكل رئيسي؟</label>
-                  <input type="text" value={supplierCountries} onChange={e => setSupplierCountries(e.target.value)} placeholder="مثال: محلي فقط — أو: الصين والهند" className={inputCls} />
+                  <label className="block font-black text-[#1A3D34] mb-2">
+                    {crossBorder === 'export'
+                      ? 'إلى أي دول تصدّرون بشكل رئيسي؟'
+                      : crossBorder === 'both'
+                        ? 'ما الدول التي تستوردون منها وتصدّرون إليها؟'
+                        : 'من أي دول تشترون وتستوردون بشكل رئيسي؟'}
+                  </label>
+                  <input type="text" value={supplierCountries} onChange={e => setSupplierCountries(e.target.value)} placeholder="مثال: الصين والهند — أو: الإمارات ومصر" className={inputCls} />
                 </div>
+                )}
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">من عملاؤك غالباً؟</label>
                   <select value={clientType} onChange={e => setClientType(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
                     <option value="">— اختر —</option><option value="gov">جهات حكومية</option><option value="large">شركات كبرى</option><option value="sme">شركات صغيرة</option><option value="retail">أفراد</option>
                   </select>
                 </div>
+                {/* نفس علّة سؤال الدول: من قال إنه لا يُصدر فواتير آجلة وإن
+                    عملاءه أفراد، ليس عنده مستحقات تُحصَّل أصلاً — فلا يُسأل
+                    عن مدّتها. وما عدا هذه الحالة الصريحة يبقى السؤال، لأن
+                    البيع الآجل قد يقع بلا فاتورة رسمية. */}
+                {!(issuesInvoices === false && clientType === 'retail') && (
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">كم تستغرق تحصيل مستحقاتك؟</label>
                   <select value={collectionCycle} onChange={e => setCollectionCycle(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
                     <option value="">— اختر —</option><option value="instant">فوري</option><option value="30">حتى 30 يوماً</option><option value="90">30 إلى 90 يوماً</option><option value="90plus">أكثر من 90 يوماً</option>
                   </select>
                 </div>
+                )}
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">هل لديك أصول قابلة للرهن؟</label>
                   <select value={collateral} onChange={e => setCollateral(e.target.value)} className="w-full p-3 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold">
