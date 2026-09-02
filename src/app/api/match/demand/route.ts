@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { demandFromMatches } from '@/lib/gapDemand';
+import { demandFromMatches, readinessFromMatches } from '@/lib/gapDemand';
 
 // ما تطلبه جهاتك — يُحسب من صفوف مطابقتك أنت، ويُعاد بلا أسماء الجهات.
 //
@@ -41,6 +41,7 @@ export async function GET() {
   const list = rows || [];
   return NextResponse.json({
     total: list.length,
+    readiness: readinessFromMatches(list),
     demands: demandFromMatches(list, 3),
   });
 }

@@ -33,6 +33,7 @@ export default function GoalPage() {
   const [matchReq, setMatchReq] = useState('');
   const [demands, setDemands] = useState<{ key: string; service: string; demand: string; consequence: string; entities: number }[]>([]);
   const [demandTotal, setDemandTotal] = useState(0);
+  const [readiness, setReadiness] = useState<{ total: number; ready: number; blocked: number } | null>(null);
   const [reqBusy, setReqBusy] = useState(false);
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
@@ -64,7 +65,7 @@ export default function GoalPage() {
   // ما تطلبه جهاته — يُقرأ بعد المطابقة، ويبيع الخدمات بلا أن نعرضها
   useEffect(() => {
     fetch('/api/match/demand').then(r => r.json())
-      .then(d => { setDemands(d?.demands || []); setDemandTotal(Number(d?.total || 0)); })
+      .then(d => { setDemands(d?.demands || []); setDemandTotal(Number(d?.total || 0)); setReadiness(d?.readiness || null); })
       .catch(() => {});
   }, [matchCount]);
 
@@ -252,7 +253,31 @@ export default function GoalPage() {
                 {/* الرقم وحده لا يبيع. وأسماء الجهات لا تُعرض مجاناً وإلا أخذها
                     العميل ومشى وحده، فتضيع الخدمة والنسبة معاً. فيُعرض هنا
                     البابان: ماذا يشتري بـ٩٩٠، وماذا يشتري بالملف الكامل. */}
-                <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '16px 18px', textAlign: 'right' }}>
+                {/* الطرح قبل العرض. «مؤهّل لتسع، جاهز لاثنتين» تقرأها الأرقام
+                    لا نحن — والعميل لا يجادل الطرح كما يجادل البائع. */}
+                {readiness && readiness.total >= 2 && (
+                  <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '18px 18px 16px', textAlign: 'center' }}>
+                    <div style={{ color: '#5E7C73', fontSize: 12, fontWeight: 800, marginBottom: 8 }}>موقفك اليوم بالأرقام</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>مؤهّل لـ</span>
+                      <span style={{ color: '#1A3D34', fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{readiness.total}</span>
+                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>جهة — وملفك اليوم جاهز لـ</span>
+                      <span style={{ color: readiness.ready === 0 ? '#B4622A' : '#C9A84C', fontSize: 34, fontWeight: 900, lineHeight: 1 }}>{readiness.ready}</span>
+                      <span style={{ color: '#1A3D34', fontSize: 15, fontWeight: 800 }}>منها</span>
+                    </div>
+                    {readiness.blocked > 0 && (
+                      <div style={{ color: '#B4622A', fontSize: 12.8, fontWeight: 800, marginTop: 10, lineHeight: 1.85 }}>
+                        و{readiness.blocked} جهة بابها مفتوح لك، ويوقفك عندها نقصٌ قابل للإصلاح.
+                      </div>
+                    )}
+                    {/* شريط بصري: الممتلئ ما يمشي إليه اليوم */}
+                    <div style={{ height: 8, borderRadius: 999, background: '#EAF2EE', overflow: 'hidden', marginTop: 12 }}>
+                      <div style={{ height: '100%', width: Math.round((readiness.ready / readiness.total) * 100) + '%', background: '#C9A84C' }} />
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 12, background: '#fff', borderRadius: 14, padding: '16px 18px', textAlign: 'right' }}>
                   <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14.5, marginBottom: 6 }}>
                     ويبقى سؤالان: مَن هم؟ وكيف تدخل عليهم؟
                   </div>

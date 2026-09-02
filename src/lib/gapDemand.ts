@@ -147,3 +147,43 @@ export function demandLine(d: DemandRow, total: number): string {
   const of = total > 0 ? ' من ' + total : '';
   return d.entities + of + (d.entities === 1 ? ' جهة تطلب ' : ' جهة تطلب ') + d.demand;
 }
+
+// ── الحساب الذي يبيع ────────────────────────────────────────────────
+// «أنت مؤهّل لتسع جهات، وملفك جاهز لاثنتين منها.»
+//
+// هذا ليس عرضاً — هو طرح. والعميل لا يجادل الطرح كما يجادل البائع.
+// والحساب صريح ولا يُجمَّل: الجهة «جاهزة» إن لم يُسجَّل عليها نقص، و«موقوفة»
+// إن سُجِّل. ولا نحتسب جهةً بلا بيانات أصلاً، لأن الصمت ليس جاهزية.
+
+export type Readiness = {
+  /** الجهات المطابَقة التي لها بيانات يُحكم عليها */
+  total: number;
+  /** لا نقص مسجَّلاً عندها — ملفه اليوم يمشي إليها */
+  ready: number;
+  /** عندها نقص مسجَّل — بابٌ مفتوح لا يملك مفتاحه */
+  blocked: number;
+};
+
+export function readinessFromMatches(rows: MatchLike[]): Readiness {
+  let total = 0;
+  let ready = 0;
+  for (const r of rows) {
+    const g = r.gaps;
+    const list = Array.isArray(g)
+      ? g.map((x) => String(x).trim()).filter(Boolean)
+      : typeof g === 'string' && g.trim()
+        ? [g.trim()]
+        : null;
+    // gaps غير مسجَّلة إطلاقاً = لم تُقيَّم، فلا تُحتسب في الاتجاهين
+    if (list === null) continue;
+    total++;
+    if (list.length === 0) ready++;
+  }
+  return { total, ready, blocked: total - ready };
+}
+
+/** الجملة كما تُقرأ — ولا تُقال إن لم يكن هناك ما يُقاس */
+export function readinessLine(r: Readiness): string | null {
+  if (r.total < 2) return null;
+  return 'أنت مؤهّل لـ' + r.total + ' جهة، وملفك اليوم جاهز لـ' + r.ready + ' منها.';
+}
