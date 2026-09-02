@@ -36,6 +36,23 @@ const esc = (s: unknown) => String(s ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;
 function decisions(d: Digest): string[] {
   const out: string[] = [];
 
+  // الناس أولاً. وكان هذا التلخيص يعدّ الدفعات والخدمات والروابط ولا يذكر
+  // أن عميلاً دخل — فمرّ يومٌ سجّلت فيه أنظفُ منشأة رأتها المنصة وأنهت
+  // تقييماً بدرجة ٨١، ولم يُذكر اسمها في تلخيص مسائه.
+  for (const c of arr(d, 'new_assessments')) {
+    out.push(`🔥 <b>${esc(c.company)}</b> أنهى تقييمه — <b>${esc(c.score)}/١٠٠</b> · ${esc(c.verdict)}. اتصل به اليوم قبل أن تبرد`);
+  }
+  for (const c of arr(d, 'new_companies')) {
+    const asked = c.asked ? ` · يطلب ${Number(c.asked).toLocaleString('en-US')} ريال` : '';
+    out.push(`🆕 <b>${esc(c.company)}</b> سجّل — ${esc(c.owner)} · ${esc(c.city)} · ${esc(c.sector)}${asked}`);
+  }
+  for (const a of arr(d, 'abandoned_signups')) {
+    out.push(`↩︎ <b>${esc(a.email)}</b> أنشأ حساباً ولم يُكمل بيانات منشأته — نصف فرصة تحتاج دفعة`);
+  }
+  if (num(d, 'uncontacted_ready')) {
+    out.push(`📞 <b>${num(d, 'uncontacted_ready')}</b> عميلاً أنهى تقييمه ولم يُسجَّل معه تواصل بعد`);
+  }
+
   for (const p of arr(d, 'pending_payments')) {
     out.push(`تحويل بانتظار تأكيدك — <b>${esc(p.company)}</b> · ${esc(p.amount)} ريال · منذ ${esc(p.days)} يوماً`);
   }
