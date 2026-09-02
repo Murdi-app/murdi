@@ -34,30 +34,26 @@ export async function sendPush(payload: PushPayload, toEmail?: string): Promise<
   const subject = process.env.VAPID_SUBJECT || 'mailto:hololalmurdi.fs@gmail.com';
   if (!pub || !priv) return { sent: 0, removed: 0, failed: 0, reason: 'مفاتيح VAPID غير مهيأة' };
 
-  // حزمة web-push بلا تعريفات TypeScript، و`typeof import(...)` عليها يكسر
-  // البناء: «Could not find a declaration file for module 'web-push'».
-  // وبدل تثبيت @types (حزمة أخرى تُثبَّت وقد تتأخر أو تتعارض) وُصف هنا ما
-  // نستعمله منها فقط — دالتان لا أكثر. أقلّ اعتماداً وأصدق وصفاً.
-  type WebPushLike = {
-    setVapidDetails: (subject: string, publicKey: string, privateKey: string) => void;
-    sendNotification: (
-      sub: { endpoint: string; keys: { p256dh: string; auth: string } },
-      payload: string,
-      options?: { TTL?: number }
-    ) => Promise<unknown>;
-  };
-
-  let webpush: WebPushLike;
+  // الحزمة تُشحن بلا تعريفات أنواع، وأي استيراد لها يكسر البناء. والحل
+  // ليس قالباً على القيمة — جرّبتُه فسقط البناء مرة ثانية — بل ملفُّ تعريفٍ
+  // للوحدة في src/types/web-push.d.ts يصف ما نستعمله منها فقط: دالتان.
+  let setVapidDetails: (s: string, pk: string, sk: string) => void;
+  let sendNotification: (
+    sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+    payload?: string | null,
+    options?: { TTL?: number }
+  ) => Promise<unknown>;
   try {
-    const mod = (await import('web-push')) as unknown as { default?: WebPushLike } & WebPushLike;
-    webpush = (mod.default ?? mod) as WebPushLike;
-    if (typeof webpush?.sendNotification !== 'function') {
+    const mod = await import('web-push');
+    setVapidDetails = mod.setVapidDetails;
+    sendNotification = mod.sendNotification;
+    if (typeof sendNotification !== 'function') {
       return { sent: 0, removed: 0, failed: 0, reason: 'حزمة web-push غير صالحة' };
     }
   } catch {
     return { sent: 0, removed: 0, failed: 0, reason: 'حزمة web-push غير مثبّتة' };
   }
-  webpush.setVapidDetails(subject, pub, priv);
+  setVapidDetails(subject, pub, priv);
 
   const sb = admin();
   let q = sb.from('push_subscriptions').select('id, endpoint, p256dh, auth');
@@ -70,7 +66,7 @@ export async function sendPush(payload: PushPayload, toEmail?: string): Promise<
 
   await Promise.all(subs.map(async (s) => {
     try {
-      await webpush.sendNotification(
+      await sendNotification(
         { endpoint: String(s.endpoint), keys: { p256dh: String(s.p256dh), auth: String(s.auth) } },
         body,
         { TTL: 60 * 60 * 12 }
