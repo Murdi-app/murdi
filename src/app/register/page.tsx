@@ -3,11 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { MEMBERSHIP_FEE } from '@/lib/membership';
 
-const IBAN = 'SA3710000026300000961004'
-const BENEFICIARY = 'شركة حلول المرضي للاستشارات المالية'
-const FEE = '2,900 ر.س'
 
 export default function RegisterPage() {
   const supabase = createBrowserClient(
@@ -16,14 +12,10 @@ export default function RegisterPage() {
   )
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [step, setStep] = useState(1)
+  // بقيت خطوة واحدة بعد حذف خطوة الدفع
+  const step = 1
   const [saving, setSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
 
-  const [receiptFile, setReceiptFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [receiptUploaded, setReceiptUploaded] = useState(false)
-  const [uploadError, setUploadError] = useState('')
 
   const [form, setForm] = useState({
     company_name: '', company_name_en: '', cr_number: '', tax_number: '',
@@ -63,63 +55,18 @@ export default function RegisterPage() {
       const { error } = await supabase.from('companies').update({ ...form }).eq('id', existing.id)
       if (error) { setSaving(false); alert('تعذّر حفظ البيانات — حاول مرة أخرى'); return }
     } else {
-      await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'pending_payment' })
+      // لم يعد يُطلب دفع عند التسجيل: التقييم والمطابقة مجانيان، والرسوم
+      // صارت على الخدمة نفسها. وإبقاء الحساب «بانتظار الدفع» كان يوقف
+      // العميل أمام جدار لا مقابل له، ويناقض ما تقوله له بقية الصفحات.
+      await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'active' })
     }
     setSaving(false)
     router.push('/goal')
   }
 
-  async function uploadReceipt() {
-    if (!receiptFile) return
-    setUploading(true)
-    setUploadError('')
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setUploading(false); return }
-
-    const ext = receiptFile.name.split('.').pop() || 'jpg'
-    const path = user.id + '/receipt-' + Date.now() + '.' + ext
-
-    const { error: upError } = await supabase.storage
-      .from('receipts')
-      .upload(path, receiptFile, { upsert: true })
-
-    if (upError) {
-      setUploadError('فشل رفع الإيصال — حاول مرة أخرى')
-      setUploading(false)
-      return
-    }
-
-    await supabase.from('companies')
-      .update({ receipt_path: path })
-      .eq('user_id', user.id)
-
-    setReceiptUploaded(true)
-    setUploading(false)
-  }
-
-  async function confirmTransfer() {
-    setSaving(true)
-    try {
-      const r = await fetch('/api/payments/transfer', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountSar: MEMBERSHIP_FEE, kind: 'subscription' }),
-      })
-      const d = await r.json().catch(() => ({}))
-      if (!r.ok) { alert(d?.error || 'تعذّر إرسال الطلب — حاول مرة أخرى'); setSaving(false); return }
-    } catch {
-      alert('تعذّر الاتصال — تحقّق من الإنترنت وحاول مجدداً'); setSaving(false); return
-    }
-    setSaving(false)
-    alert('تم استلام طلبك — سنؤكد التحويل ونفعّل ملفك قريباً')
-    router.push('/goal')
-  }
 
 
-  function copyIban() {
-    navigator.clipboard.writeText(IBAN)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -180,7 +127,7 @@ export default function RegisterPage() {
         {step === 1 && (
           <>
             <div className="rg-title">تسجيل شركتك</div>
-            <div className="rg-sub">أدخل بيانات شركتك لفتح ملف جديد</div>
+            <div className="rg-sub">أدخل بيانات شركتك لفتح ملف جديد — التسجيل والتقييم والمطابقة مجاناً</div>
             <div className="rg-card">
               {fields.map(f => (
                 <div className="rg-field" key={f.key}>
@@ -189,66 +136,12 @@ export default function RegisterPage() {
                 </div>
               ))}
               <button className="rg-btn" disabled={!canProceed || saving} onClick={saveCompany}>
-                {saving ? 'جارٍ الحفظ...' : 'التالي: الدفع'}
+                {saving ? 'جارٍ الحفظ...' : 'ابدأ التقييم المجاني ←'}
               </button>
             </div>
           </>
         )}
 
-        {step === 2 && (
-          <>
-            <div className="rg-title">رسوم الاشتراك</div>
-            <div className="rg-sub">حوّل المبلغ على الحساب التالي، ثم ارفع إيصال التحويل</div>
-            <div className="rg-card">
-              <div className="rg-fee-box">
-                <div className="rg-fee-label">رسوم الاشتراك (لمدة ٤ أشهر)</div>
-                <div className="rg-fee-amount">{FEE}</div>
-              </div>
-              <div className="rg-bank-row">
-                <span className="rg-bank-label">المستفيد</span>
-                <span className="rg-bank-val" style={{ direction:'rtl' }}>{BENEFICIARY}</span>
-              </div>
-              <div className="rg-bank-row">
-                <span className="rg-bank-label">البنك</span>
-                <span className="rg-bank-val" style={{ direction:'rtl' }}>البنك الأهلي السعودي</span>
-              </div>
-              <div className="rg-bank-row">
-                <span className="rg-bank-label">الآيبان</span>
-                <span className="rg-bank-val">
-                  {IBAN}
-                  <button className="rg-copy" onClick={copyIban}>{copied ? 'تم ✓' : 'نسخ'}</button>
-                </span>
-              </div>
-
-              <div className="rg-upload-box">
-                <div style={{ color:'#1A3D34', fontSize:14, fontWeight:700, marginBottom:10 }}>إيصال التحويل (صورة أو PDF)</div>
-                <label className="rg-upload-label">
-                  اختر الملف
-                  <input type="file" accept="image/*,.pdf" style={{ display:'none' }}
-                    onChange={e => { setReceiptFile(e.target.files?.[0] || null); setReceiptUploaded(false); setUploadError('') }} />
-                </label>
-                {receiptFile && <div className="rg-upload-name">{receiptFile.name}</div>}
-                {receiptFile && !receiptUploaded && (
-                  <div>
-                    <button className="rg-upload-btn" disabled={uploading} onClick={uploadReceipt}>
-                      {uploading ? 'جارٍ الرفع...' : 'رفع الإيصال'}
-                    </button>
-                  </div>
-                )}
-                {receiptUploaded && <div className="rg-upload-done">✓ تم رفع الإيصال بنجاح</div>}
-                {uploadError && <div className="rg-upload-err">{uploadError}</div>}
-              </div>
-
-              <div className="rg-note">
-                بعد رفع الإيصال اضغط "أكّدت التحويل" لإرسال طلبك للمراجعة. سيراجع فريق Murdi الإيصال ويفعّل حسابك.
-              </div>
-              <button className="rg-btn" disabled={saving || !receiptUploaded} onClick={confirmTransfer}>
-                {saving ? 'جارٍ الإرسال...' : 'أكّدت التحويل'}
-              </button>
-              <button className="rg-back" onClick={() => setStep(1)}>رجوع لتعديل البيانات</button>
-            </div>
-          </>
-        )}
       </div>
     </>
   )

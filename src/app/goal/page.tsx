@@ -156,23 +156,26 @@ export default function GoalPage() {
     extra?: { optionKey?: string; quotedPrice?: number | null; clientInputs?: Record<string, unknown> }
   ) => {
     if (!companyId) return;
+    void category;
     const optimisticPrice = extra?.quotedPrice ?? null;
-    setServiceRequests((prev) => ({ ...prev, [title]: { id: '', status: 'submitted', price: optimisticPrice, deliverable: null } }));
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-    );
-    // السعر المعروض لحظة الطلب يُحفظ مع الطلب، فلا يتغيّر على العميل لو عُدّلت الأسعار لاحقاً
-    const { error } = await supabase.from('service_requests').insert({
-      company_id: companyId,
-      service_title: title,
-      service_category: category,
-      status: 'submitted',
-      option_key: extra?.optionKey || null,
-      quoted_price: extra?.quotedPrice ?? null,
-      client_inputs: extra?.clientInputs || null,
-    });
-    if (error) { console.error('فشل حفظ طلب الخدمة:', error); setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; }); }
+    const optimisticStatus = typeof optimisticPrice === 'number' && optimisticPrice > 0 ? 'priced' : 'submitted';
+    setServiceRequests((prev) => ({ ...prev, [title]: { id: '', status: optimisticStatus, price: optimisticPrice, deliverable: null } }));
+    // الطلب يمرّ من الخادم: هو الذي يُصدّق الخدمة ويقرأ سعرها. وكان العميل
+    // يُدخل الصفّ بنفسه ومعه السعر والحالة، فيستطيع تسعير نفسه أو أن يكتب
+    // «مدفوعة» بلا دفع. لا يُكتب رقم من المتصفح بعد اليوم.
+    try {
+      const r = await fetch('/api/services/order', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_title: title, option_key: extra?.optionKey || null, client_inputs: extra?.clientInputs || null }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || 'تعذّر الطلب');
+      setServiceRequests((prev) => ({ ...prev, [title]: { id: String(d.id || ''), status: String(d.status || 'submitted'), price: d.price ?? null, deliverable: null } }));
+    } catch (e) {
+      console.error('فشل حفظ طلب الخدمة:', e);
+      setServiceRequests((prev) => { const c = { ...prev }; delete c[title]; return c; });
+      alert('تعذّر إرسال الطلب — حاول مرة أخرى');
+    }
   };
 
   // نموذج الطلب: الخدمات ذات الشرائح أو الخيارات تحتاج سؤالين قبل أن يظهر السعر
@@ -428,10 +431,10 @@ export default function GoalPage() {
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
-              <div className="text-white font-black text-sm">درجتك جاهزة — وجهاتك بانتظار التفعيل</div>
-              <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">فعّل ملفك لتبدأ مطابقة الجهات ورفع ملفك إليها، مع استشارات مفتوحة أربعة أشهر وأسئلة مباشرة مع د. عبدالحكيم والفريق</div>
+              <div className="text-white font-black text-sm">درجتك جاهزة — والخطوة التالية مجانية</div>
+              <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">اطلب تشغيل المطابقة لتعرف كم جهة تنطبق شروطها على ملفك. لا يُطلب منك دفع في هذه الخطوة.</div>
             </div>
-            <a href="/pay" className="font-black text-sm px-6 py-2.5 rounded-full whitespace-nowrap" style={{ background: '#C9A84C', color: '#1A3D34' }}>فعّل الآن ←</a>
+            <button onClick={() => setShowPaywall(true)} className="font-black text-sm px-6 py-2.5 rounded-full whitespace-nowrap" style={{ background: '#C9A84C', color: '#1A3D34', border: 'none', cursor: 'pointer' }}>اطلب المطابقة ←</button>
           </div>
         </div>
       )}

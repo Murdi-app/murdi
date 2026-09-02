@@ -2,17 +2,18 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { MEMBERSHIP_FEE } from '@/lib/membership';
 
 // نوع الدفعة يُقرأ مرة واحدة، ورسم العضوية لا يأتي من الرابط
-const kindOf = (p: URLSearchParams) => p.get('kind') || 'subscription';
+const kindOf = (p: URLSearchParams) => p.get('kind') || 'service';
 
 const BANK = { name: 'البنك الأهلي السعودي SNB', beneficiary: 'شركة حلول المرضي للإستشارات المالية', iban: 'SA3710000026300000961004' };
 
 function TransferInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const amountSar = kindOf(params) === 'subscription' ? MEMBERSHIP_FEE : Number(params.get('amount') || MEMBERSHIP_FEE);
+  // لم يبقَ رسمُ اشتراك ولا رسمُ تشغيل — كل تحويل هنا مقابل خدمة بمبلغها.
+  // والمبلغ يأتي من الرابط الذي أصدره المكتب، ولا افتراضيَّ له.
+  const amountSar = Number(params.get('amount') || 0);
   const kind = kindOf(params);
   const companyId = params.get('company_id') || '';
   // رقم طلب الخدمة — كان يُمرَّر في الرابط ويُهمَل هنا، فتضيع صلة الإيصال بالطلب
@@ -65,7 +66,7 @@ function TransferInner() {
       <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 520, margin: '0 auto', padding: '60px 20px', minHeight: '100vh', background: '#FBFCFB', textAlign: 'center' }}>
         <div style={{ fontSize: 56 }}>✅</div>
         <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900 }}>تم استلام تحويلك</h1>
-        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. يراجع فريق مُرضي التحويل، و{kind === 'service' ? 'تبدأ خدمتك' : 'يُفعَّل اشتراكك'} فور التأكد. <b>لا حاجة للتحويل مرة أخرى</b> — وستجد حالة التحويل في لوحتك.</p>
+        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. يراجع فريق مُرضي التحويل، وتبدأ خدمتك فور التأكد. <b>لا حاجة للتحويل مرة أخرى</b> — وستجد حالة التحويل في لوحتك.</p>
         <button onClick={() => router.push('/goal')} style={{ marginTop: 20, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px 30px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>العودة للوحة</button>
       </div>
     );

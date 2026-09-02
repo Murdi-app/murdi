@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { MEMBERSHIP_FEE } from '@/lib/membership';
 
 function admin() {
   return createClient(
@@ -17,7 +16,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   let companyId: string = body?.companyId || '';
   let amountSar: number = Number(body?.amountSar || 0);
-  const kind: string = body?.kind || 'subscription';
+  const kind: string = body?.kind || 'service';
   const description: string = body?.description || '';
   let receiptUrl: string = body?.receiptUrl || '';
   const note: string = body?.note || '';
@@ -58,14 +57,23 @@ export async function POST(req: Request) {
     if (!sr || String(sr.company_id) !== companyId) {
       return NextResponse.json({ error: 'طلب غير معروف' }, { status: 403 });
     }
-    const due = Number(sr.price ?? sr.quoted_price ?? 0);
+    // المستحق من `price` وحده — وهو عمودٌ لا يكتبه العميل. و`quoted_price`
+    // كان يُقبل بديلاً، وهو كان مكتوباً من المتصفح، فيدفع أحدهم ريالاً بإيصال
+    // صحيح عن خدمة بـ٧٬٩٠٠. حزامٌ ثانٍ فوق منع الكتابة في القاعدة.
+    const due = Number(sr.price ?? 0);
     if (!due || due <= 0) return NextResponse.json({ error: 'هذه الخدمة لم تُسعَّر بعد' }, { status: 409 });
     amountSar = due;
   }
 
-  // رسم العضوية أيضاً من المصدر لا من الرابط: كان ?amount= يُصدَّق كما هو،
-  // فيدفع أحدهم ريالاً واحداً بإيصال صحيح وتُفتح له المطابقة
-  if (kind === 'subscription') amountSar = MEMBERSHIP_FEE;
+  // الاشتراك ورسم التشغيل أُلغيا معاً. ولم يبقَ في المنصة ما يُدفع إلا خدمة
+  // مسعَّرة. فالباب يُغلق صراحةً بدل أن يُسعَّر بمبلغ لم يعد له وجود — وإلا
+  // بقي رابط قديم يُنشئ دفعة عن شيء لا نبيعه.
+  if (kind === 'subscription') {
+    return NextResponse.json(
+      { error: 'لم يعد هناك اشتراك في المنصة — الدفع يكون مقابل خدمة مسعَّرة' },
+      { status: 410 }
+    );
+  }
 
   if (!companyId || !amountSar) {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
@@ -89,7 +97,7 @@ export async function POST(req: Request) {
   const { error } = await sb.from('payments').insert({
     company_id: companyId,
     kind,
-    description: description || (kind === 'subscription' ? 'اشتراك العضوية الربعي' : 'خدمة'),
+    description: description || 'خدمة',
     amount_sar: amountSar,
     method: 'transfer',
     status: 'awaiting_confirmation',
