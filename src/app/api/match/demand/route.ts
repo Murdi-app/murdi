@@ -30,12 +30,18 @@ export async function GET() {
     .maybeSingle();
   if (!co) return NextResponse.json({ demands: [], total: 0 });
 
+  // العتبة كانت `fit_score > 0`، وهي ليست عتبة. وفي تشغيلة واحدة قِيست:
+  // ٢٢٦ صفّاً فوق الصفر، منها ٧٦ صفّاً درجتها بين ١ و١٤ — أي ضجيج لا مطابقة.
+  // فكانت الشاشة تقول للعميل «أنت مؤهّل لـ٢٢٦ جهة»، وهو وعدٌ ينكشف كذبه في
+  // اليوم الذي يدفع فيه ٩٩٠ ويرى الأسماء. والرقم الذي نقوله يجب أن يصمد
+  // أمام ما يشتريه، فرُفعت العتبة إلى ٥٠: مطابقةٌ حكم المحرك بجدّيتها.
+  const FIT_FLOOR = 50;
   const { data: rows } = await admin
     .from('match_results')
     .select('provider, requirements, gaps')
     .eq('company_id', co.id)
     .eq('status', 'new')
-    .gt('fit_score', 0)
+    .gte('fit_score', FIT_FLOOR)
     .limit(400);
 
   const list = rows || [];
