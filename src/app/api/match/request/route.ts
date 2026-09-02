@@ -1,0 +1,151 @@
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import { requireStaff } from '@/lib/requireStaff';
+import { sendMail } from '@/lib/sendMail';
+
+// طلب تشغيل المطابقة.
+//
+// أُلغي رسم التشغيل (٤٩٠). وكان الرسم — إلى جانب كونه رقماً ثالثاً يُربك
+// العميل بين ٩٩٠ و٧٩٠٠ — هو البوابة التي تمنع تشغيلة مفتوحة للجميع.
+// وحذفُه بلا بديل يفتح باباً كل عبورٍ منه يكلّف نحو ٢٢ دولاراً.
+//
+// فحلّ الإذنُ محلّ الدفع: العميل يطلب، والمالك يأذن بضغطة، فتُمنح تشغيلة
+// واحدة عبر grant_match_credit — وتبقى آلية الخصم الذرّية كما هي، فلا
+// تُشغَّل تشغيلتان بإذنٍ واحد ولو نقر العميل مرتين.
+
+const admin = () =>
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+  );
+
+const OWNER = 'hololalmurdi.fs@gmail.com';
+const FROM = 'مُرضي <partners@murdi.sa>';
+
+async function currentCompany() {
+  const store = await cookies();
+  const sb = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    { cookies: { getAll: () => store.getAll(), setAll: () => {} } }
+  );
+  const { data } = await sb.auth.getUser();
+  if (!data?.user) return null;
+  const { data: co } = await admin()
+    .from('companies')
+    .select('id, company_name, match_credits')
+    .eq('user_id', data.user.id)
+    .maybeSingle();
+  return co || null;
+}
+
+// GET — حالة طلب العميل، ليعرف أين يقف بلا أن يسأل أحداً
+export async function GET() {
+  const co = await currentCompany();
+  if (!co) return NextResponse.json({ state: 'none' });
+  const { data: reqs } = await admin()
+    .from('match_requests')
+    .select('track, status, requested_at, decided_at')
+    .eq('company_id', co.id)
+    .order('requested_at', { ascending: false })
+    .limit(10);
+  return NextResponse.json({
+    state: 'ok',
+    credits: Number(co.match_credits || 0),
+    requests: reqs || [],
+  });
+}
+
+// POST — العميل يطلب تشغيلة
+export async function POST(req: Request) {
+  const co = await currentCompany();
+  if (!co) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+
+  const b = await req.json().catch(() => ({}));
+  const track = b?.track === 'investment' ? 'investment' : 'funding';
+  const sb = admin();
+
+  // طلب مفتوح واحد لكل مسار — النقر المتكرر لا يُنشئ طوابير
+  const { data: open } = await sb
+    .from('match_requests')
+    .select('id')
+    .eq('company_id', co.id)
+    .eq('track', track)
+    .eq('status', 'requested')
+    .maybeSingle();
+  if (open) return NextResponse.json({ ok: true, already: true });
+
+  const { error } = await sb.from('match_requests').insert({ company_id: co.id, track });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await sb.from('deal_events').insert({
+    company_id: co.id,
+    kind: 'match_request',
+    title: 'طلب العميل تشغيل المطابقة — ' + (track === 'investment' ? 'استثمار' : 'تمويل'),
+    detail: 'لا تعمل المطابقة إلا بإذنك. افتح «الاعتمادات» وامنح تشغيلة.',
+    actor: 'system',
+    needs_owner: true,
+  });
+
+  // إخطارك فوراً: العميل الذي يطلب المطابقة هو أسخن ما في اليوم
+  await sendMail({
+    from: FROM,
+    to: OWNER,
+    subject: 'طلب تشغيل مطابقة — ' + String(co.company_name || ''),
+    html:
+      '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34">' +
+      '<h2 style="color:#1A3D34">طلب تشغيل مطابقة</h2>' +
+      '<p><b>' + String(co.company_name || '') + '</b> — مسار ' + (track === 'investment' ? 'الاستثمار' : 'التمويل') + '</p>' +
+      '<p>لا تعمل حتى تأذن. والتشغيلة تكلّف، فالإذن قرارك لا قراره.</p>' +
+      '<p><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح الاعتمادات</a></p></div>',
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
+// PATCH — المالك يأذن أو يرفض
+export async function PATCH(req: Request) {
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  if (who.role !== 'admin') {
+    return NextResponse.json({ error: 'الإذن بالتشغيل للمالك وحده' }, { status: 403 });
+  }
+
+  const b = await req.json().catch(() => ({}));
+  const companyId = String(b?.company_id || '');
+  const track = b?.track === 'investment' ? 'investment' : 'funding';
+  const approve = b?.action !== 'reject';
+  if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
+
+  const sb = admin();
+
+  if (approve) {
+    const { error } = await sb.rpc('grant_match_credit', { p_company: companyId, p_n: 1 });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  await sb
+    .from('match_requests')
+    .update({
+      status: approve ? 'granted' : 'rejected',
+      decided_at: new Date().toISOString(),
+      decided_by: who.userId,
+      note: b?.note ? String(b.note).slice(0, 500) : null,
+    })
+    .eq('company_id', companyId)
+    .eq('track', track)
+    .eq('status', 'requested');
+
+  await sb.from('deal_events').insert({
+    company_id: companyId,
+    kind: 'match_request',
+    title: approve ? 'أذنتَ بتشغيلة مطابقة' : 'رُفض طلب التشغيل',
+    detail: 'مسار ' + (track === 'investment' ? 'الاستثمار' : 'التمويل'),
+    actor: 'owner',
+    needs_owner: false,
+  });
+
+  return NextResponse.json({ ok: true, granted: approve });
+}

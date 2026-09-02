@@ -613,18 +613,30 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
               {(() => {
                 const ci = (r.client_inputs || {}) as { option?: string }
                 const isFull = String(r.option_key || ci.option || '') !== 'quick'
-                if (!isFull || canonicalTitle(r.service_title) !== 'دراسة الجدوى الاقتصادية') return null
+                if (!isFull) return null
+                // كان الخصم محصوراً في دراسة الجدوى وحدها، فبقي مسار التمويل
+                // بلا مدخل رخيص. الآن يعمل على أي خدمة لها فحص سريع — يُطابَق
+                // بنفس عنوان الخدمة لا باسم مكتوب في الكود.
+                const sameService = canonicalTitle(r.service_title)
                 const quick = reqs.find((x: any) => x.company_id === r.company_id && x.id !== r.id
-                  && canonicalTitle(x.service_title) === 'دراسة الجدوى الاقتصادية'
+                  && canonicalTitle(x.service_title) === sameService
                   && String(x.option_key || (x.client_inputs || {}).option || '') === 'quick'
+                  // ولا يُخصم إلا ما دُفع فعلاً — من يدفع الكامل مباشرةً لا خصم له
                   && ['paid', 'delivered', 'completed'].includes(String(x.status)))
                 if (!quick) return null
                 const paidAmt = Number(quick.price ?? quick.quoted_price ?? 990) || 990
+                // «تُخصم إن أكملت خلال ٣٠ يوماً» وعدٌ مكتوب في وصف الخدمة،
+                // وكان الزرّ لا ينظر إلى التاريخ إطلاقاً. الآن يُقاس ويُقال.
+                const quickAgeDays = Math.floor((Date.now() - new Date(String(quick.created_at)).getTime()) / 86400000)
+                const expired = quickAgeDays > 30
                 const already = r.credited_from === quick.id || creditFrom[r.id] === quick.id
                 return (
                   <div style={{ background:'#EAF7F0', border:'1.5px solid #CBE8DA', borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
-                    <div style={{ color:'#1A7A5A', fontWeight:900, fontSize:12.5 }}>
-                      💳 دفع {paidAmt.toLocaleString('en-US')} ر.س للفحص السريع في {fmtDate(quick.created_at)} — ووعدُك في الملف أن تُخصم بالكامل.
+                    <div style={{ color: expired ? '#B4622A' : '#1A7A5A', fontWeight:900, fontSize:12.5 }}>
+                      💳 دفع {paidAmt.toLocaleString('en-US')} ر.س للفحص السريع في {fmtDate(quick.created_at)} — منذ {quickAgeDays} يوماً.
+                      {expired
+                        ? ' وقد تجاوز الثلاثين يوماً المعلنة، فالخصم صار قرارك لا التزاماً.'
+                        : ' ووعدُك في الملف أن تُخصم بالكامل (يتبقّى ' + (30 - quickAgeDays) + ' يوماً).'}
                     </div>
                     {already ? (
                       <div style={{ color:'#1A7A5A', fontWeight:800, fontSize:12, marginTop:6 }}>✓ الخصم مسجَّل على هذه الدراسة.</div>

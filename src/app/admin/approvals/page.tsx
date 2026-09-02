@@ -393,6 +393,23 @@ export default function ApprovalsPage() {
                 {c.receipt_path && (
                   <button className="ap-btn ap-btn-receipt" onClick={() => viewReceipt(c)}>📎 عرض الإيصال</button>
                 )}
+                {/* المطابقة لا تعمل إلا بإذنك — التشغيلة تكلّف، فلا تُترك مفتوحة.
+                    والإذن هنا يمنح تشغيلة واحدة عبر grant_match_credit. */}
+                <button className="ap-btn ap-btn-approve" disabled={busy === 'mr' + c.id}
+                  onClick={async () => {
+                    if (!confirm('السماح بتشغيلة مطابقة واحدة لـ ' + (c.company_name || '') + '؟\n\nالتشغيلة تكلّف — والإذن لا يتكرر تلقائياً.')) return
+                    setBusy('mr' + c.id)
+                    try {
+                      const r = await fetch('/api/match/request', {
+                        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ company_id: c.id, track: 'funding', action: 'grant' }),
+                      })
+                      alert(r.ok ? 'تم — فُتحت له تشغيلة واحدة.' : 'تعذّر: ' + ((await r.json())?.error || ''))
+                    } catch { alert('تعذّر الاتصال') }
+                    setBusy('')
+                  }}>
+                  {busy === 'mr' + c.id ? 'جارٍ...' : '🎯 اسمح بتشغيلة مطابقة'}
+                </button>
                 {c.account_status === 'active' && (
                   <button className="ap-btn ap-btn-reject" disabled={busy === c.id} onClick={() => setStatus(c, 'suspended')}>إيقاف</button>
                 )}

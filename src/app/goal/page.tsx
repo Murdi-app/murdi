@@ -8,7 +8,6 @@ import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE } from '@/lib/serviceCatalog';
-import { membershipPitch, feeText } from '@/lib/membership';
 
 const TRACKS = [
   { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -31,6 +30,8 @@ export default function GoalPage() {
   const [matching, setMatching] = useState(false);
   const [matchPhase, setMatchPhase] = useState('');
   const [matchNotice, setMatchNotice] = useState('');
+  const [matchReq, setMatchReq] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
   const [showPaywall, setShowPaywall] = useState(false);
@@ -58,6 +59,11 @@ export default function GoalPage() {
   }, []);
 
   useEffect(() => { fetch('/api/match/run').then(r => r.json()).then(d => { setMatchCount(d.count || 0); setMatchCounts(d.counts || {}); setPendingTracks(d.pending || []); setResumeMap(d.resume || {}); setMatchNotice(d.notice || ''); }).catch(() => {}); }, []);
+  // حالة طلب التشغيل: هل طلب العميل وينتظر إذناً؟
+  useEffect(() => { fetch('/api/match/request').then(r => r.json()).then(d => {
+    const open = (d?.requests || []).find((x: { status: string }) => x.status === 'requested');
+    if (open) setMatchReq('requested');
+  }).catch(() => {}); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -232,7 +238,54 @@ export default function GoalPage() {
             ) : matchCount && matchCount > 0 && pendingTracks.length === 0 ? (
               <>
                 <div style={{ color: '#C9A84C', fontWeight: 900, fontSize: 26 }}>{countText()}</div>
-                <div className="text-[#CFE0DA] text-xs font-bold mt-1">طوبق ملفك مع شبكة مُرضي — فريق د. عبدالحكيم يراجعها ويجهّز ملفك للتقديم عليها</div>
+                <div className="text-[#CFE0DA] text-xs font-bold mt-1">طوبق ملفك مع شبكة مُرضي — هذه جهات تنطبق شروطها على ملفك أنت، لا قائمة عامة</div>
+
+                {/* الرقم وحده لا يبيع. وأسماء الجهات لا تُعرض مجاناً وإلا أخذها
+                    العميل ومشى وحده، فتضيع الخدمة والنسبة معاً. فيُعرض هنا
+                    البابان: ماذا يشتري بـ٩٩٠، وماذا يشتري بالملف الكامل. */}
+                <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, padding: '16px 18px', textAlign: 'right' }}>
+                  <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14.5, marginBottom: 6 }}>
+                    ويبقى سؤالان: مَن هم؟ وكيف تدخل عليهم؟
+                  </div>
+                  <p style={{ color: '#3A4D47', fontSize: 12.8, lineHeight: 1.9, margin: '0 0 12px' }}>
+                    أسماء هذه الجهات وشروط كل واحدة وما ينقصك عندها — يكشفها
+                    <b> الفحص الائتماني السريع</b>. أما بناء الملف ومخاطبتها باسمك
+                    والتفاوض حتى القرار، فهو <b>تجهيز ملف التمويل</b>.
+                  </p>
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <div style={{ border: '1px solid #E4EFEA', borderRadius: 12, padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>الفحص الائتماني السريع</span>
+                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>٩٩٠ ر.س</span>
+                      </div>
+                      <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
+                        الجهات بأسمائها · شروط كل واحدة · ما ينقصك عندها · طريقة التقديم — خلال ساعات
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1.5px solid #C9A84C', background: '#FFFDF5', borderRadius: 12, padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>تجهيز ملف التمويل والمخاطبة</span>
+                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>٧٬٩٠٠ ر.س</span>
+                      </div>
+                      <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
+                        نبني ملفك بالعربية والإنجليزية، ونخاطب الجهات باسمك، ونتابع ونفاوض حتى قرار نهائي.
+                        <b style={{ color: '#8A6D1F' }}> ويُخصم منها الفحص السريع إن كنت دفعته خلال ٣٠ يوماً.</b>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ color: '#6B8A80', fontSize: 11.8, lineHeight: 1.85, marginTop: 10 }}>
+                    وأتعاب النجاح على التمويل المنفَّذ لا تُدفع إلا بعد صرفه إلى حسابك.
+                  </div>
+
+                  {/* «الخدمات» تبويب لا موضع في الصفحة — فالزرّ يبدّل التبويب */}
+                  <button onClick={() => setTab('services')}
+                    style={{ width: '100%', marginTop: 12, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
+                    اعرض الخدمتين
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -747,21 +800,37 @@ export default function GoalPage() {
 
       {showPaywall && (
         <div onClick={() => setShowPaywall(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(26,61,52,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: 44, marginBottom: 8 }}></div>
-            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 10px' }}>{membershipPitch().title}</h2>
-            {membershipPitch().lines.map((ln, i) => (
-              <p key={i} style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.9, margin: '0 0 8px' }}>{ln}</p>
-            ))}
-            <div style={{ color: '#1A3D34', fontSize: 28, fontWeight: 900, margin: '14px 0 4px' }}>{feeText()} <span style={{ fontSize: 15 }}>ر.س</span></div>
-            <div style={{ color: '#6B8A80', fontSize: 12.5, marginBottom: 20 }}>يُخصم من أول خدمة تطلبها</div>
-            <button onClick={() => router.push('/pay/transfer?kind=subscription&company_id=' + companyId)}
-              style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
-              إتمام الدفع
-            </button>
+          <div onClick={(e) => e.stopPropagation()} dir="rtl" style={{ fontFamily: 'Cairo', background: '#fff', borderRadius: 20, maxWidth: 460, width: '100%', padding: '32px 28px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+            {/* أُلغي رسم التشغيل. لم يعد هنا جدار دفع، بل طلبٌ يُؤذن به —
+                فالتشغيلة تكلّف، والإذن قرار المكتب لا قرار العميل. */}
+            <h2 style={{ color: '#1A3D34', fontSize: 22, fontWeight: 900, margin: '0 0 12px' }}>شغّل مطابقتك</h2>
+            <p style={{ color: '#3A4D47', fontSize: 14.5, lineHeight: 1.95, margin: '0 0 10px' }}>
+              نطابق ملفك مع شبكة جهات مُرضي، ونستخرج الجهات التي تنطبق شروطها عليك أنت،
+              والمنتج المناسب لك عند كل واحدة.
+            </p>
+            <p style={{ color: '#1A7A5A', fontSize: 14, fontWeight: 900, margin: '0 0 18px' }}>
+              والمطابقة مجانية — لا رسوم عليها.
+            </p>
+            {matchReq === 'requested' ? (
+              <div style={{ background: '#FBF5E8', border: '1px solid #E8D9AE', borderRadius: 12, padding: '14px 16px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 800, lineHeight: 1.85 }}>
+                استلمنا طلبك. يراجعه المستشار ويفتح لك التشغيلة، ويصلك إشعار فور جاهزيتها.
+              </div>
+            ) : (
+              <button disabled={reqBusy} onClick={async () => {
+                setReqBusy(true);
+                try {
+                  const r = await fetch('/api/match/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: 'funding' }) });
+                  if (r.ok) setMatchReq('requested');
+                } catch {}
+                setReqBusy(false);
+              }}
+                style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>
+                {reqBusy ? 'جارٍ الإرسال…' : 'اطلب تشغيل المطابقة'}
+              </button>
+            )}
             <button onClick={() => setShowPaywall(false)}
-              style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '8px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              ربما لاحقاً
+              style={{ width: '100%', background: 'transparent', color: '#9DB3AB', border: 'none', padding: '10px', fontFamily: 'Cairo', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              إغلاق
             </button>
           </div>
         </div>

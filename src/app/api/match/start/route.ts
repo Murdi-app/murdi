@@ -21,14 +21,16 @@ export async function POST(req: Request) {
 
   const tk = track === 'investment' ? 'investment' : 'funding';
 
-  // الاشتراك الربعي أُلغي، وحلّ محله رسمٌ عن تشغيلة واحدة لأي مسار.
-  // ويبقى المشتركون القدامى على حقهم إلى انتهاء مدتهم — لا يُقطع عليهم ما دفعوه.
+  // الاشتراك أُلغي، ثم أُلغي رسم التشغيل بعده. والباقي: تشغيلة تُمنح بإذن
+  // المكتب (‏/api/match/request‏). ويبقى المشتركون القدامى على حقهم.
   const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
   if (!legacy) {
     // الخصم ذرّي في القاعدة: نقرتان متتاليتان كانتا تُشغّلان مرتين بمقابل واحد
     const { data: took } = await admin.rpc('consume_match_credit', { p_company: co.id });
     if (took !== true) {
-      return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — ادفع رسم التشغيل ثم أعد المحاولة', needsPayment: true }, { status: 402 });
+      // أُلغي رسم التشغيل. البوابة الآن إذن المكتب لا دفع العميل —
+      // فالتشغيلة تكلّف، ولا تُترك مفتوحة، ولا يُطلب من العميل مالٌ عليها.
+      return NextResponse.json({ error: 'لم تُفتح لك تشغيلة بعد — اطلبها ويصلك إشعار فور فتحها', needsRequest: true }, { status: 402 });
     }
   }
 
