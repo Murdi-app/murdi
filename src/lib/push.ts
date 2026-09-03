@@ -28,7 +28,11 @@ export type PushPayload = {
 
 export type PushResult = { sent: number; removed: number; failed: number; reason?: string };
 
-export async function sendPush(payload: PushPayload, toEmail?: string): Promise<PushResult> {
+/**
+ * `to` غير محدَّد = كل الأجهزة المشتركة. وإلا فأجهزة هذه البُرُد وحدها —
+ * فإشعار التحويلات والعقود للمالك، وإشعار العملاء الجدد له ولموظفته معاً.
+ */
+export async function sendPush(payload: PushPayload, to?: string | string[]): Promise<PushResult> {
   const pub = process.env.VAPID_PUBLIC_KEY || '';
   const priv = process.env.VAPID_PRIVATE_KEY || '';
   const subject = process.env.VAPID_SUBJECT || 'mailto:hololalmurdi.fs@gmail.com';
@@ -57,7 +61,8 @@ export async function sendPush(payload: PushPayload, toEmail?: string): Promise<
 
   const sb = admin();
   let q = sb.from('push_subscriptions').select('id, endpoint, p256dh, auth');
-  if (toEmail) q = q.eq('email', toEmail);
+  if (Array.isArray(to)) { if (to.length === 0) return { sent: 0, removed: 0, failed: 0, reason: 'لا مستقبِل' }; q = q.in('email', to); }
+  else if (to) q = q.eq('email', to);
   const { data: subs } = await q.limit(50);
   if (!subs || subs.length === 0) return { sent: 0, removed: 0, failed: 0, reason: 'لا توجد أجهزة مشتركة' };
 

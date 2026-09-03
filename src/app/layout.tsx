@@ -45,7 +45,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#1A3D34" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* iOS يخزّن أيقونة الشاشة الرئيسية بالمسار لا بالمحتوى: حذفُ الأيقونة
+            وإعادةُ إضافتها لا يُحدّثها ما دام الاسم واحداً. فتغيّر الاسم. */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v2.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
