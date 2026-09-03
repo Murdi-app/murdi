@@ -109,7 +109,18 @@ export default function GoalPage() {
       const { data: comp } = await supabase
         .from('companies').select('id, company_name, sector, match_credits, subscription_active, subscription_end')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!comp) return;
+
+      // فتحُ المنصة من أيقونة الجوال يبدأ من هنا (start_url في manifest).
+      // والمالك والموظفة لا منشأة لهما، فكانت الشاشة تقف فارغة بلا خبر —
+      // ولا زرّ يمضي بهما إلى مكانهما. فمن لا منشأة له ويملك صلاحية إدارة
+      // يُحوَّل إلى لوحته، ومن لا منشأة له ولا صلاحية يُحوَّل إلى التسجيل.
+      if (!comp) {
+        const { data: st } = await supabase
+          .from('staff').select('user_id').eq('user_id', user.id).eq('active', true).maybeSingle();
+        const isStaff = st !== null || user.email === 'hololalmurdi.fs@gmail.com';
+        window.location.replace(isStaff ? '/admin' : '/auth/signup');
+        return;
+      }
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
       const legacySub = comp.subscription_active === true && (!comp.subscription_end || new Date(comp.subscription_end) > new Date());
       setCanMatch(legacySub || Number(comp.match_credits || 0) > 0);
