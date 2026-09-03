@@ -258,10 +258,21 @@ export default function GoalPage() {
     if (t) router.push(t.href);
   };
 
+  // «عنده نتيجة» شيء، و«يستطيع التشغيل» شيء آخر. والنتيجة تُعرض لصاحبها
+  // دائماً — سواء بقي في رصيده تشغيلة أم لا.
+  const showResults = (matchCount || 0) > 0 || matchNotice === 'running' || matching || canMatch;
+
   return (
     <div dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
 
-      {canMatch && (
+      {/* عيبٌ صنعتُه أمس حين سمّيتُ الحقل canMatch: صار عرضُ **النتيجة**
+          معلّقاً على **امتلاك تشغيلة**. والتشغيلة تُخصم عند التشغيل، فيصير
+          الرصيد صفراً لحظةَ اكتمال المطابقة — فتختفي نتيجتها من الشاشة،
+          ويُعرض على صاحبها «اطلب المطابقة» وكأنه لم يُطابَق. عميلٌ خرجت
+          له ٣٥٢ جهة رأى الطلب من جديد، ولو ضغطه لطلب تشغيلة ثانية بلا سبب.
+          فصار الشرط ما يملكه لا ما يستطيعه: نتيجةٌ قائمة، أو تشغيل جارٍ،
+          أو تشغيلة بيده. */}
+      {(showResults) && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
             {matchNotice === 'stalled' && !matching ? (
@@ -457,7 +468,7 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!canMatch && pendingTransfer && (
+      {!showResults && pendingTransfer && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
             <div className="text-white font-black text-sm">استلمنا تحويلك — قيد المراجعة</div>
@@ -469,7 +480,7 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!canMatch && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
+      {!showResults && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
         <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
             <div className="text-right">
@@ -622,7 +633,7 @@ export default function GoalPage() {
           </div>
 
           {/* ما يقوله ملفك — دليل من إجاباته يصنع السؤال الذي لا تجيبه إلا المطابقة */}
-          {pitch && !canMatch && (
+          {pitch && !showResults && (
             <div className="rounded-2xl p-6 mb-8 text-center" style={{ background: '#1A3D34' }}>
               <div className="text-white font-black text-base mb-3" style={{ fontFamily: 'Amiri, serif' }}>{pitch.headline}</div>
               {pitch.lines.map((l, i) => (
