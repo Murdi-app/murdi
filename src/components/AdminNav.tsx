@@ -24,7 +24,6 @@ const LINKS: Link[] = [
   { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
   { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭', staff: true },
   { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
-  { href: '/admin/leads', label: 'المتابعة', icon: '📋', staff: true },
   { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬', staff: true },
   { href: '/admin/payments', label: 'المدفوعات', icon: '💳' },
   { href: '/admin/payment-links', label: 'روابط الدفع', icon: '📨' },

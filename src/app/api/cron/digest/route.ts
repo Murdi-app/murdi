@@ -126,7 +126,7 @@ function html(d: Digest, title: string): string {
     <div style="margin-top:22px;padding-top:14px;border-top:1px solid #EAF2EE;font-size:11.5px;color:#9DB3AB;line-height:1.8">
       يُحسب هذا الجرد داخل قاعدة بياناتك ويُرسل من منصتك — لا يحتاج جهازك مفتوحاً ولا إذناً.
       <a href="https://murdi.sa/admin/services" style="color:#2E9E7B">لوحة الخدمات</a> ·
-      <a href="https://murdi.sa/admin/leads" style="color:#2E9E7B">مكتب المتابعة</a> ·
+      <a href="https://murdi.sa/admin/hot" style="color:#2E9E7B">الفرص الساخنة</a> ·
       <a href="https://murdi.sa/admin/entities" style="color:#2E9E7B">سجلّ الجهات</a>
     </div>
   </div></div>`;

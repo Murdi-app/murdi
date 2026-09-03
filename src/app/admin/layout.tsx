@@ -10,7 +10,7 @@ const MAX_SESSION_MS = 12 * 60 * 60 * 1000
 // حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. أما العميل فيحتاج ردّاً في
 // وقته، فمراسلته مفتوحة لها بقالبٍ لا يعد بشيء. والقائمة بيضاء عمداً:
 // أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
-const STAFF_PAGES = ['/admin/leads', '/admin/hot', '/admin/deal', '/admin/message']
+const STAFF_PAGES = ['/admin/hot', '/admin/deal', '/admin/message']
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')
@@ -56,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <>{bar}
         <div dir="rtl" style={{ minHeight:'80vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, fontFamily:'Tajawal, sans-serif', color:'#1A3D34' }}>
           <div style={{ fontSize:20, fontWeight:900 }}>هذه الصفحة للإدارة فقط</div>
-          <a href="/admin/leads" style={{ background:'#1A3D34', color:'#fff', padding:'12px 28px', borderRadius:2, textDecoration:'none', fontWeight:700 }}>اذهب إلى المتابعة</a>
+          <a href="/admin/hot" style={{ background:'#1A3D34', color:'#fff', padding:'12px 28px', borderRadius:2, textDecoration:'none', fontWeight:700 }}>اذهب إلى الفرص الساخنة</a>
         </div>
       </>
     )

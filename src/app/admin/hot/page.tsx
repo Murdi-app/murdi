@@ -1,6 +1,7 @@
 'use client'
 import AdminNav from '@/components/AdminNav'
 import { useEffect, useMemo, useState } from 'react'
+import { waNumber } from '@/lib/phone'
 
 // الفرص الساخنة — الشاشة التي حلّت محلّ «صيد العملاء» و«صيد الفرص».
 // ترتيب واحد: من أقرب إلى الدفع، لا من أحدث تسجيلاً. وكل صفّ يحمل سببه
@@ -9,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react'
 type Row = {
   source: string; ref_id: string; name: string | null; person: string | null; phone: string | null
   email: string | null; company_id: string | null; tier: number
-  reason: string; money: number | null; at: string | null; next_step: string
+  reason: string; money: number | null; at: string | null; next_step: string; opener: string | null
   touches: number; last_outcome: string | null; last_note: string | null
   last_at: string | null; next_action_at: string | null; state: string
 }
@@ -22,6 +23,9 @@ const TIERS: Record<number, { label: string; color: string; why: string }> = {
   2: { label: 'ملف مكتمل بلا عقد', color: C.gold, why: 'أتعب نفسه وأكمل بياناته، ولم يُطلب منه القرار بعد' },
   3: { label: 'أنهى التقييم ولم يُتّصل به', color: C.green, why: 'رفع يده بنفسه وكتب رقمه — أدفأ اسم في القائمة' },
   4: { label: 'سجّل ووقف', color: C.soft, why: 'دخل الباب ولم يُكمل — سؤال واحد يكشف ما أوقفه' },
+  // ٨٣ حساباً أُنشئ ولم يُكمل صاحبه بيانات منشأته — لم يكونوا في أي قائمة
+  // من قبل. لا جوال لهم، والبريد بابهم الوحيد.
+  5: { label: 'فتح حساباً ووقف', color: '#8A6D1F', why: 'أنشأ حساباً ولم يُكمل بيانات منشأته — بريدٌ بلا ملف' },
 }
 const OUTCOMES = ['لم يرد', 'مهتم', 'طلب معاودة', 'غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً']
 
@@ -32,6 +36,7 @@ export default function HotPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [view, setView] = useState<'due' | 'waiting' | 'closed'>('due')
+  const [copied, setCopied] = useState('')
   const [open, setOpen] = useState('')
   const [outcome, setOutcome] = useState('لم يرد')
   const [note, setNote] = useState('')
@@ -140,6 +145,31 @@ export default function HotPage() {
               <div style={{ fontSize: 12.5, fontWeight: 800, marginTop: 7, color: C.ink }}>
                 ← {r.next_step}
               </div>
+
+              {/* نصّ الافتتاح كان أنفع ما في صفحة «المتابعة» — يُنسخ ويُرسل
+                  بلا تأليف. نُقل هنا قبل أن تُغلق تلك الصفحة. */}
+              {r.opener && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <button type="button"
+                    onClick={() => { navigator.clipboard?.writeText(r.opener || ''); setCopied(r.source + r.ref_id); setTimeout(() => setCopied(''), 1800) }}
+                    style={{ padding: '5px 13px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.ink, fontFamily: 'Cairo,sans-serif', fontWeight: 800, fontSize: 11.5, cursor: 'pointer' }}>
+                    {copied === r.source + r.ref_id ? '✓ نُسخ' : '📋 انسخ نصّ الافتتاح'}
+                  </button>
+                  {r.phone && (
+                    <a href={'https://wa.me/' + (waNumber(r.phone) || '') + '?text=' + encodeURIComponent(r.opener)}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ padding: '5px 13px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: '#1A7A5A', fontWeight: 800, fontSize: 11.5, textDecoration: 'none' }}>
+                      💬 واتساب
+                    </a>
+                  )}
+                  {!r.phone && r.email && (
+                    <a href={'mailto:' + r.email + '?subject=' + encodeURIComponent('منصة مُرضي') + '&body=' + encodeURIComponent(r.opener)}
+                      style={{ padding: '5px 13px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.ink, fontWeight: 800, fontSize: 11.5, textDecoration: 'none' }}>
+                      ✉️ {r.email}
+                    </a>
+                  )}
+                </div>
+              )}
 
               {r.last_outcome && (
                 <div style={{ fontSize: 11.5, color: C.soft, marginTop: 6, borderTop: '1px dashed ' + C.line, paddingTop: 6 }}>
