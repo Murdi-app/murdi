@@ -118,7 +118,11 @@ export default function GoalPage() {
         const { data: st } = await supabase
           .from('staff').select('user_id').eq('user_id', user.id).eq('active', true).maybeSingle();
         const isStaff = st !== null || user.email === 'hololalmurdi.fs@gmail.com';
-        window.location.replace(isStaff ? '/admin' : '/auth/signup');
+        // ومن له حساب بلا منشأة — وهم ثلاثة وثمانون ممّن وقفوا عند باب
+        // التسجيل القديم — يُرسَل إلى صفحة البيانات لا إلى إنشاء حساب:
+        // بريده مسجَّل أصلاً، فصفحة الإنشاء ترفضه بـ«هذا البريد مسجل
+        // مسبقاً» فيقف أمام حائطٍ ثانٍ. و/register يكمل منشأته بجلسته.
+        window.location.replace(isStaff ? '/admin' : '/register');
         return;
       }
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
