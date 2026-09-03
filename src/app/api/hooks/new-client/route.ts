@@ -197,12 +197,16 @@ export async function POST(req: Request) {
     '<p style="margin:0;color:#6B8A80;font-size:12.5px">حرارة العميل تبرد بالساعات — لا بالأيام.</p>' +
     '</div>';
 
-  const mail = await sendMail({ from: FROM, to: OWNER, subject, html });
-
   // العميل الجديد يخصّ المكتب كلّه — الموظفة هي من تتصل. والمال والعقود لك.
+  //
+  // والقناتان تذهبان لنفس الجمهور عمداً: لو اكتُفي بإشعار الجوال للموظفة،
+  // لما وصلها شيء حتى تفتح لوحتها وتأذن بالإشعار بنفسها — فيمرّ عميل ولا
+  // تعلم به. البريد يصلها سواء أذنت أم لا، والإشعار يسبقه حين تأذن.
   const audience = CLIENT_KINDS.has(kind)
     ? [OWNER, ...(await staffEmails(sb))]
     : [OWNER];
+
+  const mail = await sendMail({ from: FROM, to: audience, subject, html });
 
   const push = await sendPush({
     title: pushTitle,

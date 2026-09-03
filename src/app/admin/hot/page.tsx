@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 // وخطوته التالية وزرّ اتصال — فلا تحتاج الموظفة أن تسأل بماذا تبدأ.
 
 type Row = {
-  source: string; ref_id: string; name: string | null; phone: string | null
+  source: string; ref_id: string; name: string | null; person: string | null; phone: string | null
   email: string | null; company_id: string | null; tier: number
   reason: string; money: number | null; at: string | null; next_step: string
   touches: number; last_outcome: string | null; last_note: string | null
@@ -111,6 +111,14 @@ export default function HotPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
                 <div>
                   <span style={{ fontSize: 14, fontWeight: 900 }}>{r.name || 'بلا اسم'}</span>
+                  {/* اسم من نكلّمه يُعرض إلى جانب اسم المنشأة — ولا يُكرَّر
+                      حين يكون الاثنان واحداً (وهو حال من عبّأ التقييم
+                      السريع قبل أن نسأل عن اسم منشأته). */}
+                  {r.person && r.person !== r.name && (
+                    <span style={{ fontSize: 12, color: C.soft, marginInlineStart: 8, fontWeight: 700 }}>
+                      · {r.person}
+                    </span>
+                  )}
                   {r.phone && (
                     <a href={'tel:' + r.phone} style={{ fontSize: 12.5, color: C.green, marginInlineStart: 10, fontWeight: 800, textDecoration: 'none' }} dir="ltr">
                       📞 {r.phone}

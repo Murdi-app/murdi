@@ -54,6 +54,7 @@ export default function MiniAssessment() {
   const [step, setStep] = useState(0)
   const [ans, setAns] = useState<number[]>([])
   const [name, setName] = useState('')
+  const [biz, setBiz] = useState('')
   const [phone, setPhone] = useState('')
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -82,6 +83,9 @@ export default function MiniAssessment() {
   const submit = async () => {
     setErr('')
     if (name.trim().length < 2) { setErr('فضلاً اكتب اسمك'); return }
+    // اسم المنشأة كان لا يُسأل عنه إطلاقاً، فتصل الموظفة قائمةً من الأسماء
+    // بلا منشآت — وتفتح المكالمة بسؤالٍ ضعيف: «عن أي شركة نتحدث؟»
+    if (biz.trim().length < 2) { setErr('فضلاً اكتب اسم منشأتك'); return }
     if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
     setSaving(true)
     try {
@@ -94,7 +98,7 @@ export default function MiniAssessment() {
       // completed لم تكن تُكتب أبداً، فبقيت خمسون تقييماً تامّاً تظهر في القاعدة «غير مكتملة».
       // والصف لا يُنشأ أصلاً إلا هنا: بعد الأسئلة الثمانية وبعد الاسم والجوال.
       const { error } = await sb.from('mini_assessments').insert({
-        full_name: name.trim(), phone: phone.trim(),
+        full_name: name.trim(), company_name: biz.trim(), phone: phone.trim(),
         track, score: pct, answers: ans, src: adSrc || null,
         completed: ans.length >= QUESTIONS.length,
       })
@@ -135,6 +139,7 @@ export default function MiniAssessment() {
             <div className="lp-mini-gate">
               <p className="lp-mini-gate-t">اكتب اسمك وجوالك ليتواصل معك مستشار مُرضي، ويطلعك على نتيجتك التفصيلية وخطوتك التالية نحو رأس المال.</p>
               <input className="lp-mini-input" placeholder="الاسم" value={name} onChange={e => setName(e.target.value)} />
+              <input className="lp-mini-input" placeholder="اسم المنشأة" value={biz} onChange={e => setBiz(e.target.value)} />
               <input className="lp-mini-input" placeholder="رقم الجوال" value={phone} onChange={e => setPhone(e.target.value)} />
               {err && <div className="lp-mini-err">{err}</div>}
               <button className="lp-mini-submit" onClick={submit} disabled={saving}>
