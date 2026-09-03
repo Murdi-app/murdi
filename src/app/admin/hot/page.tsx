@@ -27,7 +27,10 @@ const TIERS: Record<number, { label: string; color: string; why: string }> = {
   // من قبل. لا جوال لهم، والبريد بابهم الوحيد.
   5: { label: 'فتح حساباً ووقف', color: '#8A6D1F', why: 'أنشأ حساباً ولم يُكمل بيانات منشأته — بريدٌ بلا ملف' },
 }
-const OUTCOMES = ['لم يرد', 'مهتم', 'طلب معاودة', 'غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً']
+// الطبقة الخامسة تُراسَل بالبريد لا بالهاتف، فأُضيفت نتائجها: «أرسلتُ
+// رسالة» تُسجَّل يوم الإرسال لا يوم الردّ — وإلا بقيت الصفوف كأنها لم
+// تُلمس، فأعادت الموظفة مراسلة من راسلته أمس.
+const OUTCOMES = ['أرسلتُ رسالة', 'ردّ — مهتم', 'ردّ — غير مهتم', 'لم يرد', 'طلب معاودة', 'رقم/بريد خاطئ', 'تحوّل عميلاً']
 
 const money = (n: number) => new Intl.NumberFormat('en-US').format(Math.round(n))
 const dayCount = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : null)
@@ -182,7 +185,7 @@ export default function HotPage() {
               {!isOpen ? (
                 <button type="button" onClick={() => setOpen(r.source + r.ref_id)}
                   style={{ marginTop: 9, padding: '6px 15px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.ink, fontFamily: 'Cairo,sans-serif', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-                  سجّل نتيجة المكالمة
+                  {r.phone ? 'سجّل نتيجة المكالمة' : 'سجّل نتيجة المراسلة'}
                 </button>
               ) : (
                 <div style={{ marginTop: 10, borderTop: '1px solid ' + C.line, paddingTop: 10 }}>
