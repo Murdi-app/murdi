@@ -7,7 +7,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
-import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE } from '@/lib/serviceCatalog';
+import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
 
 const TRACKS = [
   { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -743,7 +743,10 @@ export default function GoalPage() {
                     {(() => {
                       const req = serviceRequests[title];
                       const def = SERVICES[title];
-                      const neededTracks = TRACKS_OVERRIDE[title] || def?.tracks || [];
+                      // ما يُطلب مباشرةً لا يُشترط له تقييم — والتقييم العادل
+                      // كان محجوباً خلف مسارَي الاستثمار والطرح بلا داعٍ، وهو
+                      // منتج قائم بذاته يشتريه من لا ينوي جولةً ولا إدراجاً.
+                      const neededTracks = needsDiagnosis(title) ? (TRACKS_OVERRIDE[title] || def?.tracks || []) : [];
                       const hasTrack = neededTracks.length === 0 || neededTracks.some((tk) => scores[tk] !== undefined);
                       if (!req && !hasTrack) {
                         const missing = neededTracks.map((tk) => TRACK_LABEL[tk]).join(' أو ');

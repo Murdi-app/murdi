@@ -125,5 +125,19 @@ export async function POST(req: Request) {
       .eq('id', refId);
   }
 
+  // وطلب الخدمة من الموقع كذلك — وإلا بقي في القائمة بعد أن كُلِّم صاحبه،
+  // فيُكلَّم مرتين وقد طلب مرة واحدة.
+  if (source === 'inquiry') {
+    await sb
+      .from('service_inquiries')
+      .update({
+        contacted: true,
+        contacted_at: new Date().toISOString(),
+        outcome,
+        contact_note: b?.note ? String(b.note).slice(0, 1000) : null,
+      })
+      .eq('id', refId);
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -36,9 +36,17 @@ export default function ServicesBand({ onStart }: { onStart: () => void }) {
         ))}
       </div>
 
+      {/* كان الزرّ الوحيد هنا يعيد الزائر إلى التقييم، والأسماء أعلاه بلا
+          سعر ولا وصف ولا طريقة طلب. فمن يعرف حاجته — دراسة جدوى أو قوائم
+          مالية — لم يجد باباً يدخل منه. صار له باب. */}
       <div className="svc-cta">
-        <p>لا تحتاجها كلها. التقييم يحدد أيّها يخصّك، ولا نبيعك ما لا ينفعك.</p>
+        <p>لا تحتاجها كلها. التقييم يحدد أيّها يخصّك، ولا نبيعك ما لا ينفعك. ومن يعرف حاجته يطلبها مباشرة.</p>
         <button className="cta" onClick={onStart}>اعرف أي خدمة تخصّك — التقييم مجاني</button>
+        <div style={{ marginTop: 14 }}>
+          <a href="/services" style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 13.5, textDecoration: 'none', borderBottom: '1px solid var(--gold)', paddingBottom: 2 }}>
+            أو تصفّح الخدمات بأسعارها ومددها ←
+          </a>
+        </div>
       </div>
     </section>
   )
