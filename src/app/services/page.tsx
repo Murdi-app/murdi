@@ -98,10 +98,19 @@ function Card({ title }: { title: string }) {
 
       <div style={{ marginTop: 16 }}>
         {direct ? (
-          <Link href={'/services/request?s=' + encodeURIComponent(title)}
-            style={{ display: 'block', textAlign: 'center', background: GREEN, color: '#fff', padding: '12px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
-            اطلبها — بلا حساب
-          </Link>
+          <>
+            {/* كُتب أولاً «اطلبها — بلا حساب»، وقرأها صاحب المنصة نفسه
+                «بلا مقابل». وما يلتبس على صاحبه يلتبس على الزائر من باب
+                أَولى — فحُذف من الزرّ كل ما يحتمل معنى المجانية، وبقي
+                انعدام التسجيل سطراً تحته لا وعداً فيه. */}
+            <Link href={'/services/request?s=' + encodeURIComponent(title)}
+              style={{ display: 'block', textAlign: 'center', background: GREEN, color: '#fff', padding: '12px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
+              اطلبها الآن
+            </Link>
+            <p style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, lineHeight: 1.8, margin: '8px 0 0', textAlign: 'center' }}>
+              بلا تسجيل — نتصل بك ونتأكد أنها تخصّك قبل أي دفع
+            </p>
+          </>
         ) : (
           <>
             <Link href="/test"
