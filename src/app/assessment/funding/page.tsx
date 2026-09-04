@@ -50,6 +50,11 @@ export default function FundingAssessment() {
   const [fundingType, setFundingType] = useState('');
   const [fundingTypeOther, setFundingTypeOther] = useState('');
   const [annualRevenue, setAnnualRevenue] = useState('');
+  // الرقم الذي يُبنى عليه كل قرار ائتماني، ولم يكن يُسأل عنه في مسار
+  // التمويل إطلاقاً — يُسأل في مسارَي الاستثمار والطرح وحدهما. فكان ثلاثةٌ
+  // من كل خمسة عملاء يصلون بلا صافي ربح، فلا تُحسب لهم قدرةٌ ولا تغطية خدمة
+  // دين ولا يخرج لهم حكم. والممول لا يسأل «كم تبيع» بل «كم يبقى لك».
+  const [netProfit, setNetProfit] = useState('');
   const [companyBank, setCompanyBank] = useState('');
   const [yearsOperating, setYearsOperating] = useState('');
   const [hasDebt, setHasDebt] = useState<boolean | null>(null);
@@ -92,7 +97,11 @@ export default function FundingAssessment() {
 
   const stepValid = () => {
     if (step === 0) return fundingType !== '' && (fundingType !== 'other' || fundingTypeOther.trim() !== '');
-    if (step === 1) return annualRevenue !== '' && companyBank.trim() !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
+    // الربح قد يكون سالباً (خسارة) فلا يُشترط أن يكون موجباً — لكنه لا
+    // يتجاوز الإيراد منطقاً، وتجاوزُه خطأُ إدخالٍ يُفسد الحكم كله.
+    if (step === 1) return annualRevenue !== '' && netProfit !== ''
+      && Number(netProfit) <= Number(annualRevenue)
+      && companyBank.trim() !== '' && yearsOperating !== '' && Number(yearsOperating) >= 0;
     if (step === 2) {
       if (hasDebt === null) return false;
       if (hasDebt === false) return true;
@@ -117,6 +126,7 @@ export default function FundingAssessment() {
           funding_type: fundingType,
           funding_type_other: fundingType === 'other' ? fundingTypeOther.trim() : null,
           annual_revenue: Number(annualRevenue),
+          net_profit: Number(netProfit),
           company_bank: companyBank.trim(),
           years_operating: Number(yearsOperating),
           has_debt: hasDebt,
@@ -227,6 +237,18 @@ export default function FundingAssessment() {
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
                 <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+              </div>
+              <div>
+                <label className="block font-black text-[#1A3D34] mb-2">صافي الربح السنوي (ريال سعودي)</label>
+                <p className="text-[#6B8A80] text-xs font-bold leading-relaxed mb-2">
+                  ما يبقى بعد كل المصروفات والزكاة. وهو الرقم الذي تُقاس عليه قدرتك على السداد —
+                  الممول لا يسأل كم تبيع بل كم يبقى لك. وإن كانت السنة خسارة فاكتبها بالسالب،
+                  فالصدق هنا يفتح مساراً آخر ولا يغلق ملفك.
+                </p>
+                <input type="number" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={netProfit} onChange={(e) => setNetProfit(e.target.value)} placeholder="مثال: 450000" className={inputCls} />
+                {netProfit !== '' && annualRevenue !== '' && Number(netProfit) > Number(annualRevenue) && (
+                  <p className="text-[#B4453C] text-xs font-black mt-2">صافي الربح لا يتجاوز الإيراد — راجع الرقمين.</p>
+                )}
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">البنك الذي فيه حساب الشركة</label>

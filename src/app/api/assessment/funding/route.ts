@@ -169,6 +169,10 @@ export async function POST(req: Request) {
     lender_name: body.lender_name,
     has_bank_statement: body.has_bank_statement,
     annual_revenue: rev,
+    // يُحفظ حتى لو كان سالباً (خسارة) — والغياب يبقى غياباً لا صفراً،
+    // فالصفر يُقرأ «تعادل» ويُصدَّر عليه حكمٌ لم يقله العميل.
+    net_profit: body.net_profit === undefined || body.net_profit === null || body.net_profit === ''
+      ? null : (Number.isFinite(Number(body.net_profit)) ? Number(body.net_profit) : null),
     years_operating: years,
     has_debt: body.has_debt,
     debt_remaining: body.debt_remaining,

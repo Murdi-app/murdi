@@ -77,12 +77,15 @@ export type Capacity = {
   ratio: number | null;     // الواقعي ÷ المطلوب
 };
 
+// «غير مسجّل» و«خسارة» ليسا شيئاً واحداً. وخلطُهما يجعل الوثيقة تقول لصاحب
+// خسارةٍ مسجّلة إن رقمه ناقص — فيبحث عمّا كتبه أصلاً. فالغياب وحده يُرجع null،
+// والخسارة تُرجَع محسوبة ويحكم عليها القسم التالي.
 export function capacityOf(f: VerdictFin): Capacity | null {
   const profit = n(f.net_profit);
-  if (profit === null || profit <= 0) return null;
+  if (profit === null) return null;
   const monthly = n(f.monthly_installment) ?? n(f.monthly_installments) ?? 0;
   const existingService = Math.max(0, monthly * 12);
-  const safeService = profit / DSCR_MIN;
+  const safeService = profit > 0 ? profit / DSCR_MIN : 0;
   const headroom = safeService - existingService;
   const principal = headroom > 0 ? (headroom * YEARS) / (1 + COST * YEARS) : 0;
   const requested = n(f.requested_amount);
@@ -121,6 +124,13 @@ export function verdictOf(cap: Capacity | null, comp: string[], blockers: Blocke
     kind: 'unknown',
     headline: 'لا يمكن إصدار حكم — صافي ربحك غير مسجّل',
     because: 'الرقم الذي يُبنى عليه كل قرار ائتماني هو صافي الربح، وهو غير مسجّل في ملفك. وبدونه لا يُقاس ما تستطيع حمله، ولا يُكتب حكم يصمد أمام لجنة.',
+  };
+
+  if (cap.profit <= 0) return {
+    kind: 'blocked',
+    headline: cap.profit === 0 ? 'ملفك يُظهر تعادلاً لا ربحاً' : 'ملفك يُظهر خسارة في آخر سنة مسجّلة',
+    because: 'وخدمة الدين تُسدَّد من الربح لا من الإيراد، فلا جهة تُقرض على خسارة مهما بلغت مبيعاتك. '
+      + 'والمخرج ليس الطرق الآن: إمّا أن ربحك الحقيقي أكبر مما تُظهره دفاترك — ومصاريف مخلوطة أو مبيعات غير موثّقة تخفيه، وهذا يُعالَج بإعداد قوائم سليمة — وإمّا أن الخسارة حقيقية فتُعالَج قبل أي تقديم.',
   };
 
   if (comp.length > 0) return {
