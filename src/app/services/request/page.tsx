@@ -1,12 +1,17 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { CATALOG, displayName, commercialFor, needsDiagnosis } from '@/lib/serviceCatalog';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
 // أربعة حقول: الاسم والجوال والمنشأة وسطرٌ عمّا يريد. وما زاد يُسأل في المكالمة.
+//
+// و«الخدمة» تُقرأ من الرابط بـwindow لا بـuseSearchParams عمداً: الثانية
+// تُبطل التصيير المسبق للصفحة كلها (BAILOUT_TO_CLIENT_SIDE_RENDERING)،
+// فيصل الزائر صفحةً فيها عنوانٌ وفراغ حتى تُحمَّل السكربتات وتُنفَّذ.
+// قِستُه على الإنتاج فوجدتُ النموذج غائباً من أول استجابة. وبهذه القراءة
+// يخرج النموذج كاملاً في أول بايت، والرابط يُقرأ بعد الترطيب.
 
 const GREEN = '#1A3D34';
 const GOLD = '#C9A84C';
@@ -19,9 +24,12 @@ const inputCls: React.CSSProperties = {
   background: '#fff', boxSizing: 'border-box',
 };
 
+const DIRECT = CATALOG.flatMap((c) => c.items).filter((t) => !needsDiagnosis(t));
+
 function RequestForm() {
-  const params = useSearchParams();
-  const [service, setService] = useState('');
+  // القيمة الأولى تُختار من الفهرس لا من الرابط، فيُصيَّر النموذج مسبقاً
+  // بخدمة صالحة، ثم يصحّحها الرابط إن حمل غيرها.
+  const [service, setService] = useState(DIRECT[0] || '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -32,13 +40,11 @@ function RequestForm() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
 
-  const direct = CATALOG.flatMap((c) => c.items).filter((t) => !needsDiagnosis(t));
-
   useEffect(() => {
-    const s = params.get('s') || '';
-    if (s && direct.includes(s)) setService(s);
-    else if (direct.length) setService(direct[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try {
+      const s = new URLSearchParams(window.location.search).get('s') || '';
+      if (s && DIRECT.includes(s)) setService(s);
+    } catch { /* لا شيء — تبقى الخدمة الأولى */ }
   }, []);
 
   const c = service ? commercialFor(service) : undefined;
@@ -79,7 +85,7 @@ function RequestForm() {
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>الخدمة</label>
         <select value={service} onChange={(e) => setService(e.target.value)} style={inputCls}>
-          {direct.map((t) => <option key={t} value={t}>{displayName(t)}</option>)}
+          {DIRECT.map((t) => <option key={t} value={t}>{displayName(t)}</option>)}
         </select>
         {c?.days && <div style={{ color: '#9DB3AB', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>المدة المعتادة: {c.days}</div>}
         {c?.notForWho && (
@@ -156,7 +162,7 @@ export default function ServiceRequestPage() {
             أربعة حقول، ونتواصل معك اليوم. والباقي يُسأل في المكالمة لا في نموذج.
           </p>
         </div>
-        <Suspense fallback={null}><RequestForm /></Suspense>
+        <RequestForm />
       </div>
     </div>
   );
