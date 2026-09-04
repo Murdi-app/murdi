@@ -41,7 +41,8 @@ export async function POST(req: Request) {
   let reqId = '';
   let purpose = '';
   let quickMode = false;
-  try { const b = await req.json(); companyId = String(b.company_id || ''); track = (b.track === 'feasibility' || b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake' || b.track === 'feasibility') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); quickMode = b.mode === 'quick'; }
+  let saveToClient = true;
+  try { const b = await req.json(); saveToClient = b.save_to_client !== false; companyId = String(b.company_id || ''); track = (b.track === 'feasibility' || b.track === 'investment' || b.track === 'acquisition' || b.track === 'valuation' || b.track === 'negotiation' || b.track === 'intake' || b.track === 'feasibility') ? String(b.track) : 'funding'; region = String(b.region || ''); const fa = Number(b.funding_amount); if (fa > 0) fundingAmount = fa; reqId = String(b.service_request_id || ''); purpose = String(b.funding_purpose || ''); quickMode = b.mode === 'quick'; }
   catch { return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 }); }
   if (!companyId) return NextResponse.json({ error: 'company_id مطلوب' }, { status: 400 });
   if (reqId && (fundingAmount || purpose)) {
@@ -52,6 +53,35 @@ export async function POST(req: Request) {
         updated_at: new Date().toISOString() }, { onConflict: 'service_request_id' });
     } catch (e) { await logError('file.saveFundingInputs', e, { company_id: companyId }); }
   }
+
+  // ── الوثيقة تصل حساب العميل، لا متصفحك وحدك ──────────────────────
+  //
+  // كان هذا المسار يعيد الوثيقة نصّاً إلى النافذة التي فتحتها، ولا يكتبها
+  // في القاعدة إطلاقاً. وأغلى ما تبيعه المنصة يمرّ منه — دراسة الجدوى وملف
+  // التمويل. فالعميل الذي يدفع ويضغط «طباعة الخدمة» في حسابه كان لا يجد
+  // شيئاً، لأن الزرّ يقرأ `admin_deliverable` وهو فارغ. وما لا يصل حساب
+  // العميل لم يُسلَّم مهما جُهِّز.
+  //
+  // ولا يُفرج تلقائياً: تُحفظ بحالة in_progress ويبقى «سلّم» بيدك.
+  // نسخة العميل واحدة. وملف التمويل يُولَّد مرتين — عربية ودولية — فلو
+  // حُفظتا معاً لطمست الثانيةُ الأولى، ولوجد العميل نسخةً إنجليزية وحدها.
+  // فالحفظ يُطلب صراحةً من الواجهة للنسخة العربية دون غيرها.
+  const deliver = async (html: string, warn?: string) => {
+    if (reqId && saveToClient) {
+      try {
+        const adm3 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+        const { data: cur } = await adm3.from('service_requests').select('status').eq('id', reqId).maybeSingle();
+        // ما سُلِّم لا يُستبدل من تحت العميل بنسخة لم يرها
+        const keep = cur && (cur.status === 'delivered' || cur.status === 'completed');
+        await adm3.from('service_requests').update({
+          admin_deliverable: html,
+          ...(keep ? {} : { status: 'in_progress' }),
+          updated_at: new Date().toISOString(),
+        }).eq('id', reqId);
+      } catch (e) { await logError('file.saveDeliverable', e, { company_id: companyId, req: reqId }); }
+    }
+    return NextResponse.json({ ok: true, html, saved: Boolean(reqId), warn });
+  };
 
   // القوائم المالية المُنجزة (إن وُجدت)
   let statementsHtml = '';
@@ -197,7 +227,7 @@ export async function POST(req: Request) {
       if (!fnd || !fnd.length) ({ data: fnd } = await pull('funding'));
       const { sections, result, credit, error } = await generateFeasibility(ctx);
       const html = buildFeasibilityHTML(ctx, sections, result, error || (sections.executiveSummary ? undefined : 'لم تصل الأقسام النصية من النموذج'), credit, (fnd || []) as never);
-      return NextResponse.json({ ok: true, html, warn: error || undefined });
+      return await deliver(html, error || undefined);
     } catch (e) {
       await logError('feasibility.generate', e, {});
       return NextResponse.json({ error: 'تعذر توليد الجدوى: ' + String(e).slice(0, 120) }, { status: 500 });
@@ -213,7 +243,7 @@ export async function POST(req: Request) {
     } catch {}
     const content = await generateFileContent(client, track as 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation' | 'intake', region);
     const html = buildFileHTML(client, content, track as 'funding' | 'investment' | 'acquisition' | 'valuation' | 'negotiation' | 'intake', region, statementsHtml);
-    return NextResponse.json({ ok: true, html });
+    return await deliver(html);
   } catch (e) {
     await logError('file.generate', e, {});
     return NextResponse.json({ error: 'تعذر التوليد: ' + String(e).slice(0, 120) }, { status: 500 });

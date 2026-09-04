@@ -230,3 +230,32 @@ export function isRejected(verdict: unknown): boolean {
 export function isFullyQualified(verdict: unknown): boolean {
   return String(verdict || '').trim() === 'متأهل';
 }
+
+// ── دورة التحصيل والاستيراد: قيمتان تُقرآن خطأً ──────────────────────
+//
+// سؤال دورة التحصيل في التقييم قائمةُ اختيار لا رقم: «فوري · حتى ٣٠ ·
+// ٣٠ إلى ٩٠ · أكثر من ٩٠» — تُحفظ نصّاً: instant · 30 · 90 · 90plus.
+// وكانت تُقرأ بـNumber() مباشرة، فتصير «90plus» و«instant» كلتاهما صفراً.
+// والأثر معكوس تماماً: صاحبُ أسوأ دورة تحصيل — أكثرَ من تسعين يوماً —
+// لا تُعرض عليه خدمة الذمم إطلاقاً، لأن شرطها «٦٠ فأكثر» لا يتحقق من صفر.
+// (منارة الشبكات اليوم على 90plus.)
+//
+// و`trades_cross_border` كذلك نصّ لا منطق: قيمتها «imports» أو «none»،
+// و`Boolean('none')` صحيحٌ فلا يُميّز شيئاً. فالقراءتان من هنا وحدهما.
+
+/** «أكثر من ٩٠» تُقرأ ١٢٠ — أدنى تقدير معقول لها، فلا نبالغ في رقم يُبنى عليه بيع */
+export function cycleDays(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const s = String(v).trim().toLowerCase();
+  if (s === 'instant' || s === 'فوري') return 0;
+  if (s === '90plus' || s === '90+') return 120;
+  const x = Number(s);
+  return Number.isFinite(x) && x >= 0 ? x : null;
+}
+
+/** هل يستورد فعلاً؟ «none» ليست استيراداً وإن كانت نصّاً غير فارغ */
+export function isImporter(v: unknown, supplierCountries?: unknown): boolean {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (s && s !== 'none' && s !== 'no' && s !== 'false' && s !== 'لا') return true;
+  return String(supplierCountries ?? '').trim() !== '';
+}

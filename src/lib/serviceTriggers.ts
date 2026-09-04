@@ -99,7 +99,9 @@ export function reasonsFor(s: ClientSignals, phase: EvidencePhase = 'post'): Ser
   // ═══ الذمم: يبيع آجلاً لشركات ═══
   if (s.sellsToLargeBuyers || (s.collectionDays || 0) >= 60) {
     add('تنظيم دورة الفوترة وملف الذمم', 'strong',
-      (s.collectionDays ? 'دورة تحصيلك ' + s.collectionDays + ' يوماً' : 'تبيع آجلاً لشركات كبرى')
+      // «أكثر من ٩٠» تُقرأ داخلياً ١٢٠ لتتجاوز عتبة الستين، ولا تُقال له
+      // رقماً لم يذكره — يُعاد إلى عبارته هو.
+      (s.collectionDays ? 'دورة تحصيلك ' + (s.collectionDays >= 120 ? 'أكثر من ٩٠ يوماً' : s.collectionDays + ' يوماً') : 'تبيع آجلاً لشركات كبرى')
       + ' — أي أن جزءاً من مالك عند عملائك في كل لحظة. ذممك يمكن أن تتحول إلى سيولة اليوم بلا رهن.');
   }
 

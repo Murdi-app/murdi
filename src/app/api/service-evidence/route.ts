@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { reasonsFor, unlockPitch, type ClientSignals } from '@/lib/serviceTriggers';
 import { canonicalTitle } from '@/lib/serviceCatalog';
+import { cycleDays, isImporter } from '@/lib/gapDemand';
 
 // طبقة الدليل: لماذا هذه الخدمة لك أنت.
 // تُبنى من بيانات العميل نفسه ومن نتائج مطابقته — لا من وصف تسويقي.
@@ -61,9 +62,11 @@ export async function GET() {
     hasDebt: yes('has_debt'),
     annualInstalment: num('monthly_installment') * 12,
     annualRevenue: num('annual_revenue'),
-    imports: Boolean(f.trades_cross_border) && String(f.trades_cross_border) !== 'none',
+    imports: isImporter(f.trades_cross_border, f.supplier_countries),
     sellsToLargeBuyers: String(f.client_type || '') === 'large',
-    collectionDays: num('collection_cycle'),
+    // كانت num() تُصيّر «90plus» صفراً، فيسقط شرط «٦٠ يوماً فأكثر» عمّن
+    // دورته الأسوأ. القراءة الآن من cycleDays وحدها.
+    collectionDays: cycleDays(f.collection_cycle) ?? undefined,
     governanceReady: f.has_governance === undefined ? undefined : yes('has_governance'),
     intent: intent as ClientSignals['intent'],
     projectKind: undefined,
