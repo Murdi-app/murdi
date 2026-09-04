@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -89,10 +89,23 @@ export default function GoalPage() {
     if (open) setMatchReq('requested');
   }).catch(() => {}); }, []);
 
+  // من اختار تبويباً بيده لا يُنتزع منه. والعلامة تُرفع أيضاً حين يأتي
+  // التبويب في الرابط، فلا يزاحمه اختيارٌ تلقائي بعده.
+  const tabChosen = useRef(false);
+
+  // بعد المطابقة تُفتح الصفحة على «الخدمات» لا على النظرة العامة.
+  // ونتيجتُه لا تضيع بهذا: عدد الجهات وما طلبته منه يعيش فوق شريط
+  // التبويبات، فيُقرأ في كل حال. والذي يلي النتيجة قرارٌ يُتخذ لا رقمٌ
+  // يُتأمَّل — فيُنزَل به إلى حيث يُتَّخذ.
+  useEffect(() => {
+    if (tabChosen.current) return;
+    if ((matchCount || 0) > 0) { tabChosen.current = true; setTab('services'); }
+  }, [matchCount]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('tab');
-    if (t === 'services' || t === 'consult' || t === 'overview') setTab(t);
+    if (t === 'services' || t === 'consult' || t === 'overview') { tabChosen.current = true; setTab(t); }
     const h = params.get('highlight');
     // العنوان القادم من صفحة النتيجة قد يكون اسماً قديماً — يُردّ إلى المعياري وإلا لم يُطابق شيئاً
     if (h) setHighlightService(canonicalTitle(h));
@@ -401,7 +414,7 @@ export default function GoalPage() {
                             <div style={{ color: '#5E7C73', fontSize: 11.8, lineHeight: 1.8, marginTop: 3 }}>
                               {d.consequence}
                             </div>
-                            <button onClick={() => { setTab('services'); setOrderFor(canonicalTitle(d.service)); }}
+                            <button onClick={() => { tabChosen.current = true; setTab('services'); setOrderFor(canonicalTitle(d.service)); }}
                               style={{ marginTop: 7, background: 'transparent', border: 'none', padding: 0, color: '#1A6B55', fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
                               {displayName(d.service)} ←
                             </button>
@@ -411,10 +424,12 @@ export default function GoalPage() {
                     </div>
                   )}
 
-                  {/* «الخدمات» تبويب لا موضع في الصفحة — فالزرّ يبدّل التبويب */}
-                  <button onClick={() => setTab('services')}
+                  {/* «الخدمات» تبويب لا موضع في الصفحة — فالزرّ يبدّل التبويب.
+                      وكان مكتوباً «اعرض الخدمتين» فيُقرأ فوق ثلاث بطاقات
+                      متطلّبات، فيظنّ القارئ العدد ناقصاً. والعدد ليس شأنه. */}
+                  <button onClick={() => { tabChosen.current = true; setTab('services'); }}
                     style={{ width: '100%', marginTop: 12, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>
-                    اعرض الخدمتين
+                    اعرض الخدمات
                   </button>
                 </div>
               </>
@@ -525,7 +540,7 @@ export default function GoalPage() {
             { id: 'consult', label: 'الاستشارة والأسئلة' },
             { id: 'services', label: 'الخدمات' },
           ].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id as 'overview' | 'consult' | 'services')}
+            <button key={t.id} onClick={() => { tabChosen.current = true; setTab(t.id as 'overview' | 'consult' | 'services'); }}
               className={'px-3 md:px-5 py-4 font-black text-[13px] md:text-sm whitespace-nowrap transition border-b-[3px] ' + (tab === t.id ? 'text-[#1A3D34] border-[#C9A84C]' : 'text-[#9DB3AB] border-transparent hover:text-[#6B8A80]')}>
               {t.label}
             </button>
