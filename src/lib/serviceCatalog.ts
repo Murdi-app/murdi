@@ -123,5 +123,15 @@ export function commercialFor(title: string): ServiceCommercial | undefined {
   return COMMERCIAL[canonicalTitle(title)];
 }
 
+// مرساة الخدمة في صفحة الخدمات.
+//
+// أسماء الخدمات السبع عشرة في الواجهة الرئيسية كانت نصّاً لا يُضغط: يقرأ
+// الزائر «دراسة الجدوى الائتمانية» فيضغطها فلا يقع شيء. فصار كل اسم رابطاً
+// ينزل على بطاقة تلك الخدمة بعينها في /services — لا على رأس الصفحة، لئلا
+// يبحث عنها بين سبع عشرة بطاقة بعد أن دلّ عليها بإصبعه.
+export function serviceAnchor(title: string): string {
+  return 'svc-' + canonicalTitle(title).replace(/\s+/g, '-');
+}
+
 // عدد الخدمات المعروضة — يُقرأ في واجهة المنصة فلا يتخلّف الرقم عن القائمة
 export const SERVICE_COUNT = CATALOG.reduce((n, c) => n + c.items.length, 0);

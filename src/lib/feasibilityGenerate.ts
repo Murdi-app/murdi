@@ -324,17 +324,57 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
   const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + mdToHtml(body, title) + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
   const bp = credit ? computeBreakPoints(ctx.inputs, r, credit) : undefined;
-  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>' + (ctx.quick ? 'الفحص الائتماني للمشروع' : 'دراسة جدوى') + ' — ' + ctx.companyName + '</title>'
-    + '<style>body{font-family:Arial,sans-serif;color:#1F2A44;line-height:1.9;padding:32px;max-width:900px;margin:auto}'
-    + 'h1{color:#B8860B;font-size:26px}h2{color:#1F2A44;border-bottom:2px solid #B8860B;padding-bottom:6px;margin-top:28px;font-size:19px}'
-    + '.bd{font-size:15px}table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
-    + 'table.fz th,table.fz td{border:1px solid #E0E0E0;padding:7px;text-align:right}table.fz th{background:#EFE6D0;font-weight:bold}'
-    + 'table.fz.sm{font-size:11px}table.fz.sm th,table.fz.sm td{padding:5px}'
-    + '.note{background:#FBF7EC;border-right:4px solid #B8860B;padding:12px;margin:16px 0;font-size:13px}'
-    + '.dp{border:2px solid #B8860B;border-radius:8px;padding:14px 16px;margin:18px 0}'
-    + '.dph{color:#B8860B;font-weight:bold;font-size:17px;margin-bottom:6px}'
-    + '.dp table.fz th{width:38%}</style></head><body>'
-    + (ctx.quick ? '<h1>الفحص الائتماني للمشروع</h1>' : '<h1>دراسة الجدوى الاقتصادية</h1>') + '<p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
+  // ═══ الاسم ═══
+  // «الاقتصادية» عنوانٌ مخزَّن في قاعدة البيانات لا يُمسّ، لكنه ليس اسم
+  // المنتج. والاسم المعروض هو «الجدوى الائتمانية» — وبه يفترق منتج المكتب
+  // عن دراسة السوق: هذه مكتوبة بلغة محلل الائتمان. وكان العنوان مكتوباً هنا
+  // بيده فبقي «الاقتصادية» على الوثيقة نفسها بينما تغيّر في كل مكان سواها.
+  const docTitle = ctx.quick ? 'الفحص الائتماني للمشروع' : 'دراسة الجدوى الائتمانية';
+
+  // ═══ الهوية ═══
+  // كانت الوثيقة بخط Arial وذهبٍ #B8860B — لا يشبهان المنصة ولا وثيقة الحكم
+  // الائتماني الخارجة من المكتب نفسه. وهي أغلى ما يُسلَّم، ويحملها العميل إلى
+  // بنك: فاختلاف هويتها عن هوية مُرضي يجعلها تُقرأ كملفٍّ عابر لا كمخرَج مكتب
+  // مرخَّص. فصارت بلون المنصة وخطّها: أخضر #1A3D34 وذهبي #C9A84C وخط القاهرة.
+  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + docTitle + ' — ' + ctx.companyName + '</title>'
+    + '<style>'
+    + "@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Amiri:wght@700&display=swap');"
+    + '*{box-sizing:border-box}'
+    + 'body{font-family:Cairo,system-ui,sans-serif;color:#12302A;background:#F4F7F6;line-height:1.95;margin:0;padding:22px 14px 50px}'
+    + '.pg{max-width:900px;margin:0 auto;background:#fff;border:1px solid #E1EDE8;border-radius:16px;padding:0 0 30px;overflow:hidden}'
+    + '.hd{background:#1A3D34;color:#fff;padding:30px 30px 26px}'
+    + '.hd .eb{font-size:11px;letter-spacing:.14em;color:#C9A84C;font-weight:900;margin-bottom:10px}'
+    + '.hd h1{font-family:Amiri,serif;font-size:29px;line-height:1.5;margin:0 0 8px;color:#fff}'
+    + '.hd .co{font-size:15px;font-weight:900;color:#E4CE93}'
+    + '.hd .meta{font-size:12.5px;color:#BFD4CD;font-weight:400;margin-top:3px}'
+    + '.bx{padding:0 30px}'
+    + 'h2{font-size:18.5px;color:#1A3D34;margin:32px 0 10px;padding-bottom:8px;border-bottom:2px solid #EDF4F1;position:relative}'
+    + 'h2::after{content:"";position:absolute;right:0;bottom:-2px;width:52px;height:2px;background:#C9A84C}'
+    + 'p{font-size:14px;margin:0 0 12px}'
+    + '.bd{font-size:14px}'
+    + '.bd b,.bd strong{color:#1A3D34}'
+    + 'table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
+    + 'table.fz th{background:#1A3D34;color:#fff;text-align:right;padding:9px 11px;font-weight:900;font-size:12.5px}'
+    + 'table.fz td{padding:9px 11px;border-bottom:1px solid #EFF5F2;text-align:right;vertical-align:top}'
+    + 'table.fz tr:nth-child(even) td{background:#FAFCFB}'
+    + 'table.fz.sm{font-size:11.5px}table.fz.sm th,table.fz.sm td{padding:6px 8px}'
+    + '.note{background:#FBF7EC;border-right:4px solid #C9A84C;padding:13px 16px;margin:16px 0;font-size:13px;line-height:2}'
+    + '.dp{border:2px solid #C9A84C;background:#FCFAF4;border-radius:14px;padding:18px 20px;margin:20px 0}'
+    + '.dph{font-family:Amiri,serif;color:#1A3D34;font-weight:700;font-size:19px;margin-bottom:8px}'
+    + '.dp table.fz th{width:38%;background:#22493F}'
+    + 'ul{padding-inline-start:0;list-style:none;margin:0 0 14px}'
+    + 'li{font-size:13.5px;line-height:1.95;margin-bottom:6px;padding-inline-start:16px;position:relative}'
+    + 'li::before{content:"";position:absolute;right:0;top:10px;width:5px;height:5px;background:#C9A84C}'
+    + '.ft{text-align:center;font-size:11.5px;color:#9DB3AB;padding:18px 30px 0;margin-top:26px;border-top:1px solid #EFF5F2}'
+    + '@media print{body{background:#fff;padding:0}.pg{border:none;border-radius:0}.dp,table.fz{break-inside:avoid}}'
+    + '</style></head><body><div class="pg">'
+    + '<div class="hd"><div class="eb">مُرضي · حلول المرضي للاستشارات المالية · ترخيص FL-457927015</div>'
+    + '<h1>' + docTitle + '</h1>'
+    + '<div class="co">' + ctx.companyName + '</div>'
+    + '<div class="meta">' + [ctx.crNumber ? 'سجل تجاري ' + ctx.crNumber : '', ctx.city || ''].filter(Boolean).join(' · ') + '</div></div>'
+    + '<div class="bx">'
     + '<p>' + ctx.projectDescription + '</p>'
     + decisionPage(ctx, r, credit, bp)
     + sec('الملخص التنفيذي', s.executiveSummary)
@@ -357,6 +397,9 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + (ctx.quick ? '<div class="note"><b>ما يشمله هذا الفحص وما لا يشمله:</b> الأرقام أعلاه محسوبة بالكامل من مدخلاتك، وتُظهر قدرة المشروع على خدمة الدين وحدوده الآمنة ونقطة تعادله وأعمق نقطة سيولة فيه. '
       + 'ولا يشمل هذا الفحص دراسة السوق بمصادرها، ولا تحليل المنافسة في نطاق المشروع، ولا الدراسة الفنية والمخاطر، ولا قائمة الجهات التمويلية المرشّحة بفجواتها ومتطلباتها وطرق التقديم إليها — وهذه كلها في دراسة الجدوى الكاملة. '
       + 'وقيمة هذا الفحص تُخصم بالكامل من الدراسة الكاملة عند إكمالها.</div>' : '')
-    + '<p style="margin-top:30px;font-size:12px;color:#666">أُعدّت بواسطة حلول المرضي للاستشارات المالية — ترخيص FL-457927015</p>'
-    + '</body></html>';
+    + '</div>'
+    + '<div class="ft"><b style="color:#1A3D34;font-size:13px">د. عبدالحكيم المرضي</b><br>'
+    + 'مستشار مالي معتمد · ترخيص FL-457927015 · حلول المرضي للاستشارات المالية · سجل تجاري 7039663724<br>'
+    + 'وثيقة سرّية أُعدّت لصالح ' + ctx.companyName + ' — لا تُتداول خارج أطرافها</div>'
+    + '</div></body></html>';
 }

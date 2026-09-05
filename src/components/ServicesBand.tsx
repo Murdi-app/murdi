@@ -2,7 +2,7 @@
 
 // شريط الخدمات في الواجهة العامة — يُقرأ من فهرس الخدمات نفسه،
 // فلا يتخلّف العدد المعروض عن القائمة حين تُضاف خدمة أو تُدمج.
-import { CATALOG, SERVICE_COUNT, displayName } from '@/lib/serviceCatalog'
+import { CATALOG, SERVICE_COUNT, displayName, serviceAnchor } from '@/lib/serviceCatalog'
 
 export default function ServicesBand({ onStart }: { onStart: () => void }) {
   return (
@@ -13,8 +13,15 @@ export default function ServicesBand({ onStart }: { onStart: () => void }) {
         .svc-g h3{font-size:15px;margin-bottom:3px}
         .svc-g .svc-n{color:var(--gold);font-size:12px;font-weight:600;margin-bottom:14px;display:block}
         .svc-g ul{list-style:none;margin:0;padding:0}
-        .svc-g li{color:var(--muted);font-size:13.5px;line-height:1.6;padding:7px 0;border-top:1px solid var(--line)}
+        .svc-g li{line-height:1.6;border-top:1px solid var(--line)}
         .svc-g li:first-child{border-top:none}
+        /* كل اسم رابطٌ يفتح بطاقته في صفحة الخدمات — والسهم يظهر عند اللمس
+           ليعرف الزائر أنها تُضغط قبل أن يجرّب. */
+        .svc-g li a{display:flex;align-items:center;justify-content:space-between;gap:8px;
+          color:var(--muted);font-size:13.5px;padding:8px 0;text-decoration:none;transition:.15s}
+        .svc-g li a:hover{color:var(--ink)}
+        .svc-g li a .go{color:var(--gold);font-weight:800;font-size:12px;opacity:0;transition:.15s}
+        .svc-g li a:hover .go{opacity:1}
         .svc-cta{text-align:center;margin-top:26px}
         .svc-cta p{color:var(--muted);font-size:13.5px;line-height:1.95;max-width:560px;margin:0 auto 14px}
         @media (max-width:760px){ .svc{grid-template-columns:1fr} }
@@ -31,7 +38,14 @@ export default function ServicesBand({ onStart }: { onStart: () => void }) {
           <div className="svc-g" key={cat.label}>
             <h3>{cat.label}</h3>
             <span className="svc-n">{cat.note}</span>
-            <ul>{cat.items.map(t => <li key={t}>{displayName(t)}</li>)}</ul>
+            <ul>{cat.items.map(t => (
+              <li key={t}>
+                <a href={'/services#' + serviceAnchor(t)}>
+                  <span>{displayName(t)}</span>
+                  <span className="go" aria-hidden>←</span>
+                </a>
+              </li>
+            ))}</ul>
           </div>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SignedInServicesStrip from '@/components/SignedInServicesStrip';
-import { CATALOG, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis } from '@/lib/serviceCatalog';
+import { CATALOG, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis, serviceAnchor } from '@/lib/serviceCatalog';
 import type { ServiceCommercial } from '@/lib/servicePricing';
 
 // السعر كما يُقال لزائر لا حقلَ أمامه.
@@ -56,7 +56,8 @@ function Card({ title }: { title: string }) {
   const label = displayName(title);
 
   return (
-    <div className="sv-card">
+    // id المرساة: من ضغط اسم الخدمة في الواجهة الرئيسية ينزل على بطاقتها هي
+    <div className="sv-card" id={serviceAnchor(title)}>
       <h3 className="sv-t">{label}</h3>
 
       {c?.pain && <p className="sv-pain">{c.pain}</p>}
@@ -159,48 +160,56 @@ export default function ServicesPage() {
         .sv-sec-h h2::after{content:'';position:absolute;right:0;bottom:-13px;width:46px;height:2px;background:var(--gold)}
         .sv-sec-p{color:var(--muted);font-size:13.5px;font-weight:400;line-height:2;margin:0 0 22px}
 
-        .sv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+        .sv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
 
-        /* البطاقة: زوايا حادّة وشريط ذهبي علوي — كبطاقات الرئيسية */
-        .sv-card{background:#fff;border-top:3px solid var(--gold);padding:26px 24px 22px;display:flex;flex-direction:column}
-        .sv-t{font-size:17.5px;line-height:1.55;color:var(--ink);margin-bottom:9px}
-        .sv-pain{color:var(--muted);font-size:13.5px;font-weight:400;line-height:2;margin:0 0 15px}
+        /* ═══ البطاقة خضراء غامقة ═══
+           كانت بيضاء على أرضية بيضاء، فلا يفصل البطاقةَ عن الصفحة إلا خطٌّ
+           رفيع — ولا يعرف الزائر أين تنتهي خدمة وتبدأ أخرى. والخضرة الغامقة
+           تفصلها وتُظهر الذهبي عليها، وهي لون المنصة نفسه. والسعر أبرز ما
+           فيها فجُعل ذهبياً على الخضرة. */
+        .sv-card{background:var(--ink);border-top:3px solid var(--gold);padding:26px 24px 22px;
+          display:flex;flex-direction:column;color:#fff;scroll-margin-top:90px;transition:.2s}
+        .sv-card:hover{background:var(--deep);box-shadow:0 6px 26px rgba(18,44,38,.20)}
+        .sv-t{font-size:17.5px;line-height:1.55;color:#fff;margin-bottom:9px}
+        .sv-pain{color:#B6CEC6;font-size:13.5px;font-weight:400;line-height:2;margin:0 0 15px}
 
-        .sv-price{padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:14px}
+        .sv-price{padding:12px 0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:14px}
         .sv-price-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-        .sv-amount{font-family:'Tajawal';color:var(--ink);font-weight:900;font-size:21px}
-        .sv-days{color:#9DB3AB;font-size:12px;font-weight:500}
-        .sv-hint{color:#8A6D1F;font-size:12px;font-weight:700;margin-top:5px}
+        .sv-amount{font-family:'Tajawal';color:var(--gold);font-weight:900;font-size:22px}
+        .sv-days{color:#9FB8B0;font-size:12px;font-weight:500}
+        .sv-hint{color:var(--gold-soft);font-size:12px;font-weight:700;margin-top:5px}
 
-        .sv-h{font-family:'Tajawal';color:var(--ink);font-size:12.5px;font-weight:900;margin-bottom:7px;letter-spacing:.02em}
+        .sv-h{font-family:'Tajawal';color:var(--gold);font-size:12.5px;font-weight:900;margin-bottom:7px;letter-spacing:.02em}
         .sv-ul{margin:0 0 14px;padding-inline-start:0;list-style:none}
-        .sv-ul li{color:#41625A;font-size:12.9px;font-weight:400;line-height:1.9;margin-bottom:6px;padding-inline-start:15px;position:relative}
+        .sv-ul li{color:#CFE0DA;font-size:12.9px;font-weight:400;line-height:1.9;margin-bottom:6px;padding-inline-start:15px;position:relative}
         .sv-ul li::before{content:'';position:absolute;right:0;top:9px;width:5px;height:5px;background:var(--gold)}
 
-        .sv-for{color:#41625A;font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
-        .sv-for b{color:var(--ink);font-weight:700}
-        .sv-not{color:#8A6D1F;font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
+        .sv-for{color:#CFE0DA;font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
+        .sv-for b{color:#fff;font-weight:700}
+        .sv-not{color:var(--gold-soft);font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
         .sv-not b{font-weight:700}
-        .sv-fee{color:#9A7B2E;font-size:12px;font-weight:500;line-height:1.85;margin-top:7px}
+        .sv-fee{color:#B3C9C1;font-size:12px;font-weight:500;line-height:1.85;margin-top:7px}
 
+        /* الزرّ ذهبي على الخضرة — أعلى تباين في البطاقة، فهو المقصود منها */
         .sv-cta-wrap{margin-top:18px}
-        .sv-cta{display:block;text-align:center;background:var(--ink);color:#fff;padding:13px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:14.5px;transition:.18s}
-        .sv-cta:hover{background:var(--deep)}
-        .sv-cta.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
-        .sv-cta.ghost:hover{background:var(--mist)}
-        .sv-note{color:#9DB3AB;font-size:11.5px;font-weight:400;line-height:1.85;margin:9px 0 0;text-align:center}
+        .sv-cta{display:block;text-align:center;background:var(--gold);color:var(--deep);padding:13px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:14.5px;transition:.18s}
+        .sv-cta:hover{background:#D9BA63}
+        .sv-cta.ghost{background:transparent;color:var(--gold);border:1.5px solid var(--gold)}
+        .sv-cta.ghost:hover{background:rgba(201,168,76,.12)}
+        .sv-note{color:#9FB8B0;font-size:11.5px;font-weight:400;line-height:1.85;margin:9px 0 0;text-align:center}
 
         .sv-cat{margin-bottom:34px}
         .sv-cat-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
         .sv-cat-h b{font-family:'Tajawal';color:var(--ink);font-weight:900;font-size:16px}
         .sv-cat-h span{color:#9DB3AB;font-size:12px;font-weight:400}
 
-        /* الخاتمة: خضراء بزرّ ذهبي — نفس نداء الرئيسية */
-        .sv-final{background:var(--ink);padding:38px 26px;text-align:center;margin-top:48px}
-        .sv-final h2{font-family:'Amiri',serif;color:#fff;font-size:22px;margin-bottom:10px}
-        .sv-final p{color:#BFD4CD;font-size:14px;font-weight:400;line-height:2.05;max-width:640px;margin:0 auto 20px}
-        .sv-final a{display:inline-block;background:var(--gold);color:var(--deep);padding:15px 38px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:15px;transition:.18s}
-        .sv-final a:hover{background:#D9BA63}
+        /* الخاتمة: فاتحة بإطار ذهبي — البطاقات صارت خضراء، فلو كانت الخاتمة
+           خضراء أيضاً لذابت فيها ولم تُقرأ كنداءٍ مستقل */
+        .sv-final{background:var(--mist);border:1px solid var(--line);border-top:3px solid var(--gold);padding:38px 26px;text-align:center;margin-top:48px}
+        .sv-final h2{font-family:'Amiri',serif;color:var(--ink);font-size:23px;margin-bottom:10px}
+        .sv-final p{color:var(--muted);font-size:14px;font-weight:400;line-height:2.05;max-width:640px;margin:0 auto 20px}
+        .sv-final a{display:inline-block;background:var(--ink);color:#fff;padding:15px 38px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:15px;transition:.18s}
+        .sv-final a:hover{background:var(--deep)}
 
         .sv-foot{color:#9DB3AB;font-size:11.5px;font-weight:400;text-align:center;line-height:2;margin-top:30px}
 
