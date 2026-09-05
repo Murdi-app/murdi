@@ -74,12 +74,22 @@ export async function POST(req: Request) {
   });
   if (created?.user?.id) { userId = created.user.id; isNew = true; }
   else {
-    // البريد مستعمل — نبحث عن صاحبه بدل أن نفشل
-    const { data: list } = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
-    const hit = (list?.users || []).find((u) => String(u.email || '').toLowerCase() === email);
-    if (!hit) return NextResponse.json({ error: 'تعذّر فتح الحساب: ' + (cErr?.message || 'سبب غير معروف') }, { status: 500 });
-    userId = hit.id;
+    // البريد مستعمل — يُبحث عن صاحبه في `profiles` لا بتصفّح المستخدمين.
+    // كان البحث يقرأ أول مئتَي حساب فقط، فمن كان بعدهم لا يُعثر عليه ويُردّ
+    // بخطأ وهو مسجَّل — عيبٌ لا يظهر اليوم ويظهر حين تكبر القائمة.
+    const { data: prof } = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
+    if (prof?.id) userId = String(prof.id);
+    else {
+      const { data: list } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const hit = (list?.users || []).find((u) => String(u.email || '').toLowerCase() === email);
+      if (!hit) return NextResponse.json({ error: 'تعذّر فتح الحساب: ' + (cErr?.message || 'سبب غير معروف') }, { status: 500 });
+      userId = hit.id;
+    }
   }
+
+  // صفّ التعريف كما يكتبه التسجيل العادي — فلا يختلف من فُتح له ملفٌ من
+  // مكالمة عمّن سجّل بنفسه في أي شاشة تقرأ هذا الجدول.
+  await sb.from('profiles').upsert({ id: userId, email, company_name: companyName }, { onConflict: 'id' });
 
   // ═══ المنشأة ═══
   const { data: existingCo } = await sb.from('companies').select('id, company_name').eq('user_id', userId).maybeSingle();
@@ -125,19 +135,42 @@ export async function POST(req: Request) {
   }, { onConflict: 'service_request_id' });
 
   // ═══ الرابط ═══
-  // «دعوة» لمن فُتح حسابه الآن، و«استرجاع» لمن كان له حساب — كلاهما يُنهي
-  // بتعيين كلمة مرور ثم ينزل على ملفه مباشرة.
-  const redirectTo = origin + '/goal?tab=services';
+  //
+  // عيبان كانا هنا، وكلاهما يجعل الرابط لا يعمل إطلاقاً:
+  //
+  // ١) كان النوع «دعوة» لمن أُنشئ حسابه الآن. و«الدعوة» تُصدَر لمن لا حساب
+  //    له، ونحن أنشأناه قبل سطور — فتُرَدّ «مسجَّل مسبقاً»، ويسقط الرابط
+  //    إلى صفحة الدخول العامة. والصواب «استرجاع» في الحالين: هي التي تُنهي
+  //    بتعيين كلمة مرور، وهي ما يحتاجه من لا كلمة له ومن نسيها سواء.
+  //
+  // ٢) وكان يُوجَّه إلى /goal مباشرة. والرابط يحمل رمزاً لا بد أن يُبادَل
+  //    بجلسة في /auth/callback؛ فمن ينزل على /goal دونه يصل بلا جلسة
+  //    فيُطرد إلى الدخول — ولا يضع كلمة مرور أصلاً، فلا يعود يدخل أبداً.
+  //
+  // فالمسار الآن كمسار استعادة كلمة المرور في المنصة حرفاً بحرف:
+  // callback يُبادل الرمز ← update-password يضع كلمته ← خدماته وفيها طلبه.
+  const after = '/auth/update-password?next=' + encodeURIComponent('/goal?tab=services');
+  const redirectTo = origin + '/auth/callback?next=' + encodeURIComponent(after);
   let link = '';
+  let linkErr = '';
   try {
-    const { data: gen } = await sb.auth.admin.generateLink({
-      type: isNew ? 'invite' : 'recovery',
+    const { data: gen, error: gErr } = await sb.auth.admin.generateLink({
+      type: 'recovery',
       email,
       options: { redirectTo },
     });
     link = String(gen?.properties?.action_link || '');
-  } catch { /* يُعالَج أدناه */ }
-  if (!link) link = origin + '/auth/login';
+    if (gErr) linkErr = gErr.message;
+  } catch (e) { linkErr = String(e).slice(0, 120); }
+
+  // ولا يُبتلع الفشل: رابطٌ ساقط يعني أن الرسالة تُرسل إلى صفحة دخول
+  // لا يملك العميل كلمةَ مرورٍ لها. فيُقال للموظفة بدل أن تكتشفه منه.
+  if (!link) {
+    return NextResponse.json({
+      error: 'فُتح ملفه لكن تعذّر توليد الرابط' + (linkErr ? ' (' + linkErr + ')' : '')
+        + '. راجعي الدكتور قبل أن ترسلي له شيئاً.',
+    }, { status: 502 });
+  }
 
   const tier = priceFor(title, inputs.capex + inputs.workingCapital);
   const full = tier.amount != null ? tier.amount.toLocaleString('en-US') + ' ريال' : 'بعرض خاص';

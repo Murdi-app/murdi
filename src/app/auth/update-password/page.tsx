@@ -38,7 +38,12 @@ export default function UpdatePasswordPage() {
       setError('تعذر التحديث: ' + error.message)
     } else {
       setDone(true)
-      setTimeout(() => router.push('/goal'), 2000)
+      // من جاء من رابطٍ فتحته له الموظفة يُنزَل على خدماته لا على النظرة
+      // العامة — فطلبه مسعَّرٌ ينتظر دفعه هناك. ولا يُقبل إلا مسارٌ داخلي
+      // يبدأ بشرطة واحدة، فلا يُحوَّل من فتح الرابط إلى موقع غريب.
+      const raw = new URLSearchParams(window.location.search).get('next') || ''
+      const safe = /^\/[^/\\]/.test(raw) ? raw : '/goal'
+      setTimeout(() => router.push(safe), 2000)
     }
     setLoading(false)
   }
