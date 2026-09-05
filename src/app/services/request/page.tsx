@@ -150,7 +150,10 @@ export default function ServiceRequestPage() {
           <Link href="/" style={{ color: GREEN, fontWeight: 900, fontSize: 22, textDecoration: 'none' }}>
             مُرضي <span style={{ fontSize: 11, color: '#9DB3AB', letterSpacing: '.14em', fontWeight: 500 }}>MURDI</span>
           </Link>
-          <a href="tel:0570314005" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570314005</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Link href="/services" style={{ color: MUTED, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>الخدمات</Link>
+            <a href="tel:0570314005" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570314005</a>
+          </div>
         </div>
       </nav>
 

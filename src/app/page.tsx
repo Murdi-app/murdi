@@ -62,6 +62,10 @@ export default function Home() {
         .logo{font-family:'Tajawal';font-size:24px;font-weight:900;color:var(--ink)}
         .logo i{font-style:normal;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.14em;margin-inline-start:7px}
         .nav-r{display:flex;align-items:center;gap:14px}
+        /* مدخل الخدمات في الشريط العلوي. كانت الصفحة موجودة وبابُها مدفوناً
+           في وسط الصفحة، فيصل إليها من نزل كثيراً وحده — وهذا ليس عرضاً. */
+        .nav-link{font-size:14.5px;font-weight:700;text-decoration:none;color:var(--ink);white-space:nowrap;border-bottom:2px solid var(--gold);padding-bottom:2px}
+        .nav-link:hover{color:var(--gold)}
         .nav-tel{font-size:14px;font-weight:600;text-decoration:none;color:var(--ink);white-space:nowrap}
         .nav-btn{background:none;border:1.5px solid var(--line);color:var(--ink);padding:9px 20px;border-radius:2px;font-family:'IBM Plex Sans Arabic';font-weight:600;font-size:13.5px;cursor:pointer;transition:.18s}
         .nav-btn:hover{border-color:var(--ink)}
@@ -213,6 +217,7 @@ export default function Home() {
         <nav className="nav">
           <div className="logo">مُرضي <i>MURDI</i></div>
           <div className="nav-r">
+            <a className="nav-link" href="/services">الخدمات</a>
             <a className="nav-tel" href={`tel:${PHONE}`}>{PHONE}</a>
             <button className="nav-btn" onClick={() => router.push('/auth/login')}>تسجيل الدخول</button>
           </div>

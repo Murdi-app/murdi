@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import SignedInServicesStrip from '@/components/SignedInServicesStrip';
 import { CATALOG, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis } from '@/lib/serviceCatalog';
 import type { ServiceCommercial } from '@/lib/servicePricing';
 
@@ -140,7 +141,11 @@ export default function ServicesPage() {
           <Link href="/" style={{ color: GREEN, fontWeight: 900, fontSize: 22, textDecoration: 'none' }}>
             مُرضي <span style={{ fontSize: 11, color: '#9DB3AB', letterSpacing: '.14em', fontWeight: 500 }}>MURDI</span>
           </Link>
+          {/* نفس عناصر شريط الرئيسية وبنفس ترتيبها — المقرّ واحد، والانتقال
+              بينهما لا يُشعر الزائر أنه خرج من الموقع إلى مكان آخر. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Link href="/" style={{ color: MUTED, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>الرئيسية</Link>
+            <span style={{ color: GREEN, fontWeight: 800, fontSize: 14.5, borderBottom: '2px solid ' + GOLD, paddingBottom: 2 }}>الخدمات</span>
             <a href="tel:0570314005" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570314005</a>
             <Link href="/auth/login" style={{ background: GREEN, color: '#fff', padding: '9px 20px', borderRadius: 999, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>تسجيل الدخول</Link>
           </div>
@@ -160,6 +165,8 @@ export default function ServicesPage() {
             بلا مكالمة ولا مساومة. وتُنفَّذ تحت إشراف الدكتور عبدالحكيم المرضي.
           </p>
         </header>
+
+        <SignedInServicesStrip />
 
         {/* ما يُطلب مباشرة */}
         <section style={{ marginBottom: 52 }}>
