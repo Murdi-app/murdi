@@ -28,6 +28,12 @@ function publicPrice(c: ServiceCommercial | undefined): { main: string; hint?: s
 //
 // وهذه الصفحة لا تكشف جديداً: هي نفسها ما يراه العميل بعد أربع بوابات.
 // نقلناها إلى حيث تُقرأ قبلها.
+//
+// ═══ الهوية ═══
+// كانت الصفحة بيضاء بزوايا دائرية، وبقية المنصة خضراء غامقة بذهبٍ وزوايا
+// حادّة — فيخرج الزائر من الرئيسية إلى صفحةٍ لا تشبهها فيظنّها موقعاً آخر.
+// فالمتغيّرات أدناه هي نفسها متغيّرات الرئيسية حرفاً بحرف، والزوايا حادّة
+// مثلها، والخطّان نفسهما: تجوّل للعناوين، وIBM Plex للنصّ.
 
 export const metadata: Metadata = {
   title: 'خدمات مُرضي | تأهيل المنشآت لرأس المال — بأسعار معلنة',
@@ -43,11 +49,6 @@ export const metadata: Metadata = {
   },
 };
 
-const GREEN = '#1A3D34';
-const GOLD = '#C9A84C';
-const MUTED = '#6B8A80';
-const LINE = '#EAF2EE';
-
 function Card({ title }: { title: string }) {
   const c = commercialFor(title);
   const pr = publicPrice(c);
@@ -55,72 +56,55 @@ function Card({ title }: { title: string }) {
   const label = displayName(title);
 
   return (
-    <div style={{ background: '#fff', border: '1.5px solid ' + LINE, borderRadius: 16, padding: '22px 22px 20px', display: 'flex', flexDirection: 'column' }}>
-      <h3 style={{ color: GREEN, fontWeight: 900, fontSize: 17, lineHeight: 1.55, margin: '0 0 8px' }}>{label}</h3>
+    <div className="sv-card">
+      <h3 className="sv-t">{label}</h3>
 
-      {c?.pain && <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 14px' }}>{c.pain}</p>}
+      {c?.pain && <p className="sv-pain">{c.pain}</p>}
 
-      <div style={{ paddingBottom: 12, borderBottom: '1px dashed ' + LINE, marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-          <span style={{ color: GREEN, fontWeight: 900, fontSize: 19 }}>{pr.main}</span>
-          <span style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700 }}>{c?.days || ''}</span>
+      <div className="sv-price">
+        <div className="sv-price-row">
+          <span className="sv-amount">{pr.main}</span>
+          <span className="sv-days">{c?.days || ''}</span>
         </div>
-        {pr.hint && <div style={{ color: '#8A6D1F', fontSize: 12, fontWeight: 800, marginTop: 4 }}>{pr.hint}</div>}
+        {pr.hint && <div className="sv-hint">{pr.hint}</div>}
       </div>
 
+      {/* ما تستلمه — كاملاً لا مقصوصاً.
+          كان يُقصّ عند البند الرابع، وبند المطابقة في دراسة الجدوى هو
+          الخامس: «جدول الجهات المرشّحة… وما ينقصك عند كل جهة». فكان أقوى
+          ما في الخدمة محجوباً عن صفحة البيع، ويظنّ قارئها أنها دراسة ورقية
+          كأي دراسة. والقصّ يوفّر سطرين ويكلّف الخدمة نفسها. */}
       {c?.deliverables?.length ? (
         <>
-          <div style={{ color: GREEN, fontSize: 12.5, fontWeight: 900, marginBottom: 6 }}>ما تستلمه</div>
-          <ul style={{ margin: '0 0 12px', paddingInlineStart: 18 }}>
-            {c.deliverables.slice(0, 4).map((d, i) => (
-              <li key={i} style={{ color: '#4A6A60', fontSize: 12.8, fontWeight: 700, lineHeight: 1.85, marginBottom: 4 }}>{d}</li>
-            ))}
+          <div className="sv-h">ما تستلمه</div>
+          <ul className="sv-ul">
+            {c.deliverables.map((d, i) => <li key={i}>{d}</li>)}
           </ul>
         </>
       ) : null}
 
-      {c?.forWho && (
-        <div style={{ color: '#4A6A60', fontSize: 12.5, fontWeight: 700, lineHeight: 1.85, marginBottom: 4 }}>
-          <b style={{ color: GREEN }}>لمن: </b>{c.forWho}
-        </div>
-      )}
+      {c?.forWho && <div className="sv-for"><b>لمن: </b>{c.forWho}</div>}
       {/* «ليست لمن» تُعرض في الواجهة العامة كما تُعرض في الداخل. والصدق هنا
           يمنع بيعاً خاطئاً يكلّف السمعة أكثر مما يكسب الرسم. */}
-      {c?.notForWho && (
-        <div style={{ color: '#8A6D1F', fontSize: 12.5, fontWeight: 700, lineHeight: 1.85, marginBottom: 4 }}>
-          <b>ليست لمن: </b>{c.notForWho}
-        </div>
-      )}
-      {c?.successFee && (
-        <div style={{ color: '#9A7B2E', fontSize: 12, fontWeight: 700, lineHeight: 1.8, marginTop: 6 }}>{c.successFee.replace(/\*\*/g, '')}</div>
-      )}
+      {c?.notForWho && <div className="sv-not"><b>ليست لمن: </b>{c.notForWho}</div>}
+      {c?.successFee && <div className="sv-fee">{c.successFee.replace(/\*\*/g, '')}</div>}
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ marginTop: 16 }}>
+      <div className="sv-cta-wrap">
         {direct ? (
           <>
             {/* كُتب أولاً «اطلبها — بلا حساب»، وقرأها صاحب المنصة نفسه
                 «بلا مقابل». وما يلتبس على صاحبه يلتبس على الزائر من باب
                 أَولى — فحُذف من الزرّ كل ما يحتمل معنى المجانية، وبقي
                 انعدام التسجيل سطراً تحته لا وعداً فيه. */}
-            <Link href={'/services/request?s=' + encodeURIComponent(title)}
-              style={{ display: 'block', textAlign: 'center', background: GREEN, color: '#fff', padding: '12px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
-              اطلبها الآن
-            </Link>
-            <p style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, lineHeight: 1.8, margin: '8px 0 0', textAlign: 'center' }}>
-              بلا تسجيل — نتصل بك ونتأكد أنها تخصّك قبل أي دفع
-            </p>
+            <Link href={'/services/request?s=' + encodeURIComponent(title)} className="sv-cta">اطلبها الآن</Link>
+            <p className="sv-note">بلا تسجيل — نتصل بك ونتأكد أنها تخصّك قبل أي دفع</p>
           </>
         ) : (
           <>
-            <Link href="/test"
-              style={{ display: 'block', textAlign: 'center', background: '#fff', color: GREEN, border: '1.5px solid ' + GREEN, padding: '11px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
-              ابدأ بالتقييم المجاني
-            </Link>
-            <p style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, lineHeight: 1.8, margin: '8px 0 0', textAlign: 'center' }}>
-              هذه تُبنى على تشخيص ملفك — لا نبيعها قبل أن نعرف أنها تخصّك
-            </p>
+            <Link href="/test" className="sv-cta ghost">ابدأ بالتقييم المجاني</Link>
+            <p className="sv-note">هذه تُبنى على تشخيص ملفك — لا نبيعها قبل أن نعرف أنها تخصّك</p>
           </>
         )}
       </div>
@@ -134,89 +118,165 @@ export default function ServicesPage() {
   const diagnosed = CATALOG.map((c) => ({ ...c, items: c.items.filter((t) => needsDiagnosis(t)) })).filter((c) => c.items.length > 0);
 
   return (
-    <div dir="rtl" style={{ background: '#FBFCFB', minHeight: '100vh', fontFamily: 'Tajawal, Cairo, sans-serif' }}>
-      {/* شريط علوي بسيط — الزائر يعرف أين هو ويجد الدخول والهاتف */}
-      <nav style={{ background: '#fff', borderBottom: '1px solid ' + LINE, padding: '16px 20px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <Link href="/" style={{ color: GREEN, fontWeight: 900, fontSize: 22, textDecoration: 'none' }}>
-            مُرضي <span style={{ fontSize: 11, color: '#9DB3AB', letterSpacing: '.14em', fontWeight: 500 }}>MURDI</span>
-          </Link>
-          {/* نفس عناصر شريط الرئيسية وبنفس ترتيبها — المقرّ واحد، والانتقال
-              بينهما لا يُشعر الزائر أنه خرج من الموقع إلى مكان آخر. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Link href="/" style={{ color: MUTED, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>الرئيسية</Link>
-            <span style={{ color: GREEN, fontWeight: 800, fontSize: 14.5, borderBottom: '2px solid ' + GOLD, paddingBottom: 2 }}>الخدمات</span>
-            <a href="tel:0570314005" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570314005</a>
-            <Link href="/auth/login" style={{ background: GREEN, color: '#fff', padding: '9px 20px', borderRadius: 999, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>تسجيل الدخول</Link>
-          </div>
+    <div className="sv" dir="rtl">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Amiri:wght@700&display=swap');
+        .sv{
+          --ink:#1A3D34; --deep:#122C26; --gold:#C9A84C; --gold-soft:#E4CE93;
+          --paper:#FFFFFF; --mist:#F4F7F6; --line:#E3EAE7; --muted:#6B8A80;
+          font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--paper);
+          color:var(--ink);direction:rtl;min-height:100vh;-webkit-font-smoothing:antialiased;
+        }
+        .sv *{box-sizing:border-box}
+        .sv h1,.sv h2,.sv h3{font-family:'Tajawal',sans-serif;font-weight:900;letter-spacing:-.01em;margin:0}
+        .sv a{text-decoration:none}
+
+        .sv-bar{background:var(--deep);color:#9FB6AE;font-size:12px;text-align:center;padding:8px 16px;letter-spacing:.02em}
+        .sv-bar b{color:#fff;font-weight:600}
+
+        .sv-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 28px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:90;flex-wrap:wrap}
+        .sv-logo{font-family:'Tajawal';font-weight:900;font-size:22px;color:var(--ink)}
+        .sv-logo span{font-size:11px;color:#9DB3AB;letter-spacing:.14em;font-weight:500}
+        .sv-nav-r{display:flex;align-items:center;gap:16px}
+        .sv-link{color:var(--muted);font-weight:600;font-size:14px}
+        .sv-link:hover{color:var(--ink)}
+        .sv-here{color:var(--ink);font-weight:800;font-size:14.5px;border-bottom:2px solid var(--gold);padding-bottom:3px}
+        .sv-login{background:var(--ink);color:#fff;padding:9px 22px;border-radius:2px;font-weight:800;font-size:13px}
+
+        /* ═══ الرأس: أخضر غامق كرأس الرئيسية ═══ */
+        .sv-hero{background:var(--ink);color:#fff;padding:clamp(46px,7vw,78px) 20px clamp(42px,6vw,64px);text-align:center}
+        .sv-eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.16em;color:var(--gold);margin-bottom:14px}
+        .sv-hero h1{font-family:'Amiri',serif;font-size:clamp(26px,4.4vw,38px);line-height:1.55;color:#fff;margin-bottom:14px}
+        .sv-hero h1 em{font-style:normal;color:var(--gold)}
+        .sv-hero p{color:#BFD4CD;font-size:15px;font-weight:400;line-height:2.05;max-width:720px;margin:0 auto}
+        .sv-rule{width:38px;height:2px;background:var(--gold);margin:22px auto 0}
+
+        .sv-wrap{max-width:1120px;margin:0 auto;padding:46px 20px 70px}
+
+        .sv-sec{margin-bottom:54px}
+        .sv-sec-h{border-bottom:2px solid var(--line);padding-bottom:11px;margin-bottom:10px;display:flex;align-items:baseline;gap:12px}
+        .sv-sec-h h2{font-size:21px;color:var(--ink);position:relative}
+        .sv-sec-h h2::after{content:'';position:absolute;right:0;bottom:-13px;width:46px;height:2px;background:var(--gold)}
+        .sv-sec-p{color:var(--muted);font-size:13.5px;font-weight:400;line-height:2;margin:0 0 22px}
+
+        .sv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+
+        /* البطاقة: زوايا حادّة وشريط ذهبي علوي — كبطاقات الرئيسية */
+        .sv-card{background:#fff;border-top:3px solid var(--gold);padding:26px 24px 22px;display:flex;flex-direction:column}
+        .sv-t{font-size:17.5px;line-height:1.55;color:var(--ink);margin-bottom:9px}
+        .sv-pain{color:var(--muted);font-size:13.5px;font-weight:400;line-height:2;margin:0 0 15px}
+
+        .sv-price{padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:14px}
+        .sv-price-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+        .sv-amount{font-family:'Tajawal';color:var(--ink);font-weight:900;font-size:21px}
+        .sv-days{color:#9DB3AB;font-size:12px;font-weight:500}
+        .sv-hint{color:#8A6D1F;font-size:12px;font-weight:700;margin-top:5px}
+
+        .sv-h{font-family:'Tajawal';color:var(--ink);font-size:12.5px;font-weight:900;margin-bottom:7px;letter-spacing:.02em}
+        .sv-ul{margin:0 0 14px;padding-inline-start:0;list-style:none}
+        .sv-ul li{color:#41625A;font-size:12.9px;font-weight:400;line-height:1.9;margin-bottom:6px;padding-inline-start:15px;position:relative}
+        .sv-ul li::before{content:'';position:absolute;right:0;top:9px;width:5px;height:5px;background:var(--gold)}
+
+        .sv-for{color:#41625A;font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
+        .sv-for b{color:var(--ink);font-weight:700}
+        .sv-not{color:#8A6D1F;font-size:12.5px;font-weight:400;line-height:1.9;margin-bottom:5px}
+        .sv-not b{font-weight:700}
+        .sv-fee{color:#9A7B2E;font-size:12px;font-weight:500;line-height:1.85;margin-top:7px}
+
+        .sv-cta-wrap{margin-top:18px}
+        .sv-cta{display:block;text-align:center;background:var(--ink);color:#fff;padding:13px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:14.5px;transition:.18s}
+        .sv-cta:hover{background:var(--deep)}
+        .sv-cta.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+        .sv-cta.ghost:hover{background:var(--mist)}
+        .sv-note{color:#9DB3AB;font-size:11.5px;font-weight:400;line-height:1.85;margin:9px 0 0;text-align:center}
+
+        .sv-cat{margin-bottom:34px}
+        .sv-cat-h{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+        .sv-cat-h b{font-family:'Tajawal';color:var(--ink);font-weight:900;font-size:16px}
+        .sv-cat-h span{color:#9DB3AB;font-size:12px;font-weight:400}
+
+        /* الخاتمة: خضراء بزرّ ذهبي — نفس نداء الرئيسية */
+        .sv-final{background:var(--ink);padding:38px 26px;text-align:center;margin-top:48px}
+        .sv-final h2{font-family:'Amiri',serif;color:#fff;font-size:22px;margin-bottom:10px}
+        .sv-final p{color:#BFD4CD;font-size:14px;font-weight:400;line-height:2.05;max-width:640px;margin:0 auto 20px}
+        .sv-final a{display:inline-block;background:var(--gold);color:var(--deep);padding:15px 38px;border-radius:2px;font-family:'Tajawal';font-weight:900;font-size:15px;transition:.18s}
+        .sv-final a:hover{background:#D9BA63}
+
+        .sv-foot{color:#9DB3AB;font-size:11.5px;font-weight:400;text-align:center;line-height:2;margin-top:30px}
+
+        @media(max-width:560px){
+          .sv-nav{padding:12px 16px}
+          .sv-nav-r{gap:11px}
+          .sv-link,.sv-here{font-size:13px}
+          .sv-grid{grid-template-columns:1fr}
+        }
+      `}</style>
+
+      <div className="sv-bar">حلول المرضي للاستشارات المالية · ترخيص <b>FL-457927015</b> · سجل تجاري <b>7039663724</b></div>
+
+      <nav className="sv-nav">
+        <Link href="/" className="sv-logo">مُرضي <span>MURDI</span></Link>
+        {/* نفس عناصر شريط الرئيسية وبنفس ترتيبها — المقرّ واحد، والانتقال
+            بينهما لا يُشعر الزائر أنه خرج من الموقع إلى مكان آخر. */}
+        <div className="sv-nav-r">
+          <Link href="/" className="sv-link">الرئيسية</Link>
+          <span className="sv-here">الخدمات</span>
+          <a href="tel:0570314005" className="sv-link">0570314005</a>
+          <Link href="/auth/login" className="sv-login">تسجيل الدخول</Link>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 20px 70px' }}>
-        <header style={{ textAlign: 'center', marginBottom: 42 }}>
-          <div style={{ color: GOLD, fontWeight: 900, fontSize: 12, letterSpacing: '.12em', marginBottom: 10 }}>
-            حلول المرضي للاستشارات المالية · ترخيص FL-457927015
-          </div>
-          <h1 style={{ color: GREEN, fontSize: 32, fontWeight: 900, lineHeight: 1.5, margin: '0 0 12px', fontFamily: 'Amiri, serif' }}>
-            {SERVICE_COUNT} خدمة تؤهّل منشأتك لرأس المال
-          </h1>
-          <p style={{ color: MUTED, fontSize: 15, fontWeight: 700, lineHeight: 2, maxWidth: 720, margin: '0 auto' }}>
-            كل واحدة منها تُزيل عائقاً بعينه بين ملفك وبين الجهة التي تموّلك — بسعر معلن ومدة معلومة،
-            بلا مكالمة ولا مساومة. وتُنفَّذ تحت إشراف الدكتور عبدالحكيم المرضي.
-          </p>
-        </header>
+      <header className="sv-hero">
+        <div className="sv-eyebrow">خدمات مُرضي</div>
+        <h1>{SERVICE_COUNT} خدمة تؤهّل منشأتك <em>لرأس المال</em></h1>
+        <p>
+          كل واحدة منها تُزيل عائقاً بعينه بين ملفك وبين الجهة التي تموّلك — بسعر معلن ومدة معلومة،
+          بلا مكالمة ولا مساومة. وتُنفَّذ تحت إشراف الدكتور عبدالحكيم المرضي.
+        </p>
+        <div className="sv-rule" />
+      </header>
 
+      <div className="sv-wrap">
         <SignedInServicesStrip />
 
         {/* ما يُطلب مباشرة */}
-        <section style={{ marginBottom: 52 }}>
-          <div style={{ borderBottom: '2px solid ' + LINE, paddingBottom: 10, marginBottom: 8 }}>
-            <h2 style={{ color: GREEN, fontSize: 21, fontWeight: 900, margin: 0 }}>تُطلب مباشرة</h2>
-          </div>
-          <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 20px' }}>
+        <section className="sv-sec">
+          <div className="sv-sec-h"><h2>تُطلب مباشرة</h2></div>
+          <p className="sv-sec-p">
             هذه تعرف حاجتك إليها بنفسك، فلا نطلب منك تقييماً قبلها ولا حساباً. اطلبها ونتواصل معك في نفس اليوم.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 18 }}>
+          <div className="sv-grid">
             {direct.map((t) => <Card key={t} title={t} />)}
           </div>
         </section>
 
         {/* ما يحتاج تشخيصاً */}
         <section>
-          <div style={{ borderBottom: '2px solid ' + LINE, paddingBottom: 10, marginBottom: 8 }}>
-            <h2 style={{ color: GREEN, fontSize: 21, fontWeight: 900, margin: 0 }}>تُبنى على تشخيص ملفك</h2>
-          </div>
-          <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 20px' }}>
+          <div className="sv-sec-h"><h2>تُبنى على تشخيص ملفك</h2></div>
+          <p className="sv-sec-p">
             هذه لا تُباع بالوصف بل بالدليل. التقييم والمطابقة مجاناً، وبعدهما نقول لك بالأرقام أيّها يخصّك —
             كم جهة من جهاتك تطلب هذا بالضبط — وأيّها لا يعنيك فلا نعرضه عليك.
           </p>
           {diagnosed.map((cat) => (
-            <div key={cat.label} style={{ marginBottom: 30 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-                <span style={{ color: GREEN, fontWeight: 900, fontSize: 16 }}>{cat.label}</span>
-                <span style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700 }}>{cat.note}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 18 }}>
+            <div key={cat.label} className="sv-cat">
+              <div className="sv-cat-h"><b>{cat.label}</b><span>{cat.note}</span></div>
+              <div className="sv-grid">
                 {cat.items.map((t) => <Card key={t} title={t} />)}
               </div>
             </div>
           ))}
         </section>
 
-        <div style={{ background: GREEN, borderRadius: 18, padding: '30px 26px', textAlign: 'center', marginTop: 44 }}>
-          <div style={{ color: '#fff', fontWeight: 900, fontSize: 19, marginBottom: 8, fontFamily: 'Amiri, serif' }}>
-            ولا تحتاجها كلها
-          </div>
-          <p style={{ color: '#CFE0DA', fontSize: 14, fontWeight: 700, lineHeight: 2, maxWidth: 620, margin: '0 auto 18px' }}>
+        <div className="sv-final">
+          <h2>ولا تحتاجها كلها</h2>
+          <p>
             التقييم مجاني ويأخذ دقائق، ويعطيك درجتك وما يمنع قبولك بالضبط. وبعده تعرف أيّ خدمة تخصّك —
             ولا نبيعك ما لا ينفعك.
           </p>
-          <Link href="/test" style={{ display: 'inline-block', background: GOLD, color: GREEN, padding: '13px 34px', borderRadius: 999, fontWeight: 900, fontSize: 14.5, textDecoration: 'none' }}>
-            ابدأ التقييم المجاني
-          </Link>
+          <Link href="/test">ابدأ التقييم المجاني</Link>
         </div>
 
-        <p style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, textAlign: 'center', lineHeight: 1.9, marginTop: 30 }}>
+        <p className="sv-foot">
           الأسعار أعلاه لا تشمل ضريبة القيمة المضافة. وأتعاب النجاح — حيث ذُكرت — لا تُدفع إلا بعد وصول التمويل إلى حسابك.
           <br />شركة حلول المرضي للاستشارات المالية · سجل تجاري 7039663724 · الرياض
         </p>
