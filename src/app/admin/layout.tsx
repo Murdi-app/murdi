@@ -10,10 +10,7 @@ const MAX_SESSION_MS = 12 * 60 * 60 * 1000
 // حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. أما العميل فيحتاج ردّاً في
 // وقته، فمراسلته مفتوحة لها بقالبٍ لا يعد بشيء. والقائمة بيضاء عمداً:
 // أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
-// و«عميل من مكالمة» تُفتح لها لأنها أداة بيعها: تفتح ملف من باعته وترسل
-// رابطه. ولا تُسعّر شيئاً بيدها — السعر يُقرأ في الخادم، ولا تُفرج وثيقةً،
-// ولا تؤكّد تحويلاً. فالمفتوح لها الفتحُ لا القبض.
-const STAFF_PAGES = ['/admin/hot', '/admin/deal', '/admin/message', '/admin/intake']
+const STAFF_PAGES = ['/admin/hot', '/admin/deal', '/admin/message']
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')

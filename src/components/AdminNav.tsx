@@ -32,8 +32,6 @@ const LINKS: Link[] = [
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
   { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥', staff: true },
-  // شاشة المكالمة — تُفتح والسماعة على الأذن، فموضعها بجوار الفرص لا بعيداً
-  { href: '/admin/intake', label: 'عميل من مكالمة', icon: '📞', staff: true },
   { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 

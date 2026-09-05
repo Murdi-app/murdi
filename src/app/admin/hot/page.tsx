@@ -1,5 +1,6 @@
 'use client'
 import AdminNav from '@/components/AdminNav'
+import CallIntake from '@/components/CallIntake'
 import { useEffect, useMemo, useState } from 'react'
 import { waNumber } from '@/lib/phone'
 
@@ -45,6 +46,8 @@ export default function HotPage() {
   const [note, setNote] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
+  // أي صفّ فُتحت له لوحة الملف — أو 'blank' لمن ليس في القائمة
+  const [intake, setIntake] = useState('')
 
   const load = () => {
     fetch('/api/admin/hot')
@@ -92,6 +95,32 @@ export default function HotPage() {
           {tile(money(stats.money_on_table) + ' ﷼', 'موقّع لم يُحصَّل', C.green)}
         </div>
       )}
+
+      {/* ═══ فتح الملف يقع هنا لا في تبويب آخر ═══
+          بُنيت هذه اللوحة أولاً صفحةً مستقلة بتبويب خاص، وكان ذلك خطأً:
+          الموظفة تعيش في هذه الشاشة، وكل من تكلّمه صفٌّ فيها باسمه ورقمه
+          وبريده. فإرسالها إلى تبويب آخر يعني أن تكتب بيدها ما تعرفه المنصة
+          أصلاً، ثم تعود. فصار الفتح من الصفّ نفسه ومعبّأً منه، ولمن ليس في
+          القائمة زرٌّ واحد أعلى الشاشة. مقرٌّ واحد لا مقرّان. */}
+      <div style={{ marginBottom: 16 }}>
+        {intake === 'blank' ? (
+          <div style={{ background: '#fff', border: '2px solid ' + C.gold, borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+              <b style={{ fontSize: 15, fontWeight: 900 }}>📞 عميل من مكالمة — ليس في القائمة</b>
+              <button type="button" onClick={() => setIntake('')}
+                style={{ background: 'transparent', border: '1px solid ' + C.line, color: C.soft, borderRadius: 999, padding: '6px 16px', fontFamily: 'Cairo', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                إغلاق
+              </button>
+            </div>
+            <CallIntake onDone={() => { setIntake(''); load() }} />
+          </div>
+        ) : (
+          <button type="button" onClick={() => setIntake('blank')}
+            style={{ background: '#fff', border: '1.5px dashed ' + C.gold, color: '#8A6D1F', borderRadius: 999, padding: '10px 22px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            📞 عميل من مكالمة — ليس في القائمة
+          </button>
+        )}
+      </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {([['due', 'اليوم'], ['waiting', 'تنتظر موعدها'], ['closed', 'مغلقة']] as const).map(([k, l]) => (
@@ -182,11 +211,43 @@ export default function HotPage() {
                 </div>
               )}
 
+              {/* فتح الملف من الصفّ نفسه — الاسم والرقم والبريد تنتقل معه،
+                  فلا تُكتب مرتين. ولا يُعرض إلا لمن معه جوال نتكلّمه فيه:
+                  الطبقة الخامسة بريدٌ بلا هاتف، ولا تُفتح ملفات بلا مكالمة. */}
+              {r.phone && intake === r.source + r.ref_id && (
+                <div style={{ marginTop: 11, borderTop: '2px solid ' + C.gold, paddingTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 10 }}>
+                    <b style={{ fontSize: 13.5, fontWeight: 900 }}>📞 افتح ملفه — الأرقام تُؤخذ وهو على الخط</b>
+                    <button type="button" onClick={() => setIntake('')}
+                      style={{ background: 'transparent', border: '1px solid ' + C.line, color: C.soft, borderRadius: 999, padding: '5px 14px', fontFamily: 'Cairo', fontWeight: 800, fontSize: 11.5, cursor: 'pointer' }}>
+                      إغلاق
+                    </button>
+                  </div>
+                  <CallIntake
+                    seed={{
+                      full_name: r.person || r.name || '',
+                      phone: r.phone || '',
+                      email: r.email || '',
+                      company_name: r.name && r.name !== r.person ? r.name : '',
+                    }}
+                    onDone={() => { setIntake(''); load() }}
+                  />
+                </div>
+              )}
+
               {!isOpen ? (
+                <div style={{ display: 'flex', gap: 8, marginTop: 9, flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => setOpen(r.source + r.ref_id)}
-                  style={{ marginTop: 9, padding: '6px 15px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.ink, fontFamily: 'Cairo,sans-serif', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                  style={{ padding: '6px 15px', borderRadius: 8, border: '1px solid ' + C.line, background: '#fff', color: C.ink, fontFamily: 'Cairo,sans-serif', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
                   {r.phone ? 'سجّل نتيجة المكالمة' : 'سجّل نتيجة المراسلة'}
                 </button>
+                {r.phone && intake !== r.source + r.ref_id && (
+                  <button type="button" onClick={() => setIntake(r.source + r.ref_id)}
+                    style={{ padding: '6px 15px', borderRadius: 8, border: '1px solid ' + C.gold, background: '#FBF5E8', color: '#8A6D1F', fontFamily: 'Cairo,sans-serif', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                    📞 افتح ملفه
+                  </button>
+                )}
+                </div>
               ) : (
                 <div style={{ marginTop: 10, borderTop: '1px solid ' + C.line, paddingTop: 10 }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 9 }}>
