@@ -404,7 +404,7 @@ export default function FundingResult() {
             {/* الخطوة الثانية: الباب الرخيص. يُعرض بما يشتريه لا بما ينقصه. */}
             <div className="rounded-2xl p-5 mb-3" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }}>
               <div className="flex items-baseline justify-between gap-3 mb-1">
-                <span className="text-white font-black text-[15px]">٢) الفحص الائتماني السريع</span>
+                <span className="text-white font-black text-[15px]">٢) الحكم الائتماني لمنشأتك</span>
                 <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>٩٩٠ ر.س</span>
               </div>
               <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
@@ -424,7 +424,7 @@ export default function FundingResult() {
                 نبني ملفك بالعربية والإنجليزية بلغة محلل الائتمان، ونخاطب الجهات
                 <span style={{ color: '#C9A84C' }}> باسمك</span>، ونتابع الردود ونفاوض على الشروط حتى قرار نهائي.
                 أنت لا تدور على أحد — نحن ندور عنك.
-                <br /><span style={{ color: '#C9A84C' }}>ويُخصم منها الفحص السريع بالكامل إن أكملته خلال ٣٠ يوماً.</span>
+                <br /><span style={{ color: '#C9A84C' }}>ويُخصم منها الحكم الائتماني بالكامل إن أكملته خلال ٣٠ يوماً.</span>
               </p>
             </div>
 

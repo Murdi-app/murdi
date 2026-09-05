@@ -15,7 +15,7 @@ export default function Page() {
         </section>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>2. الخصم بين الخدمات</h2>
-          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>إذا دفع العميل رسوم الفحص الائتماني السريع ثم أكمل خلال ثلاثين يوماً إلى خدمة تجهيز الملف والمخاطبة، خُصم ما دفعه بالكامل من رسومها فلا يدفعه مرتين. ولا يسري الخصم على من بدأ بخدمة التجهيز مباشرةً.</div>
+          <div style={{color:'#3A4D47',fontSize:'15px',lineHeight:2}}>إذا دفع العميل رسوم الحكم الائتماني لمنشأته أو الفحص الائتماني لمشروعه ثم أكمل خلال ثلاثين يوماً إلى خدمة تجهيز الملف والمخاطبة، خُصم ما دفعه بالكامل من رسومها فلا يدفعه مرتين. ولا يسري الخصم على من بدأ بخدمة التجهيز مباشرةً.</div>
         </section>
         <section style={{marginBottom:'28px'}}>
           <h2 style={{color:'#1A3D34',fontSize:'19px',fontWeight:800,marginBottom:'10px'}}>3. الإلغاء</h2>

@@ -324,7 +324,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
   const sec = (title: string, body: string) => body ? '<h2>' + title + '</h2><div class="bd">' + mdToHtml(body, title) + '</div>' : '';
   const srcList = (s.sources || []).length ? '<h2>المصادر</h2><ul>' + s.sources.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '';
   const bp = credit ? computeBreakPoints(ctx.inputs, r, credit) : undefined;
-  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>' + (ctx.quick ? 'فحص ائتماني سريع' : 'دراسة جدوى') + ' — ' + ctx.companyName + '</title>'
+  return '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>' + (ctx.quick ? 'الفحص الائتماني للمشروع' : 'دراسة جدوى') + ' — ' + ctx.companyName + '</title>'
     + '<style>body{font-family:Arial,sans-serif;color:#1F2A44;line-height:1.9;padding:32px;max-width:900px;margin:auto}'
     + 'h1{color:#B8860B;font-size:26px}h2{color:#1F2A44;border-bottom:2px solid #B8860B;padding-bottom:6px;margin-top:28px;font-size:19px}'
     + '.bd{font-size:15px}table.fz{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}'
@@ -334,7 +334,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + '.dp{border:2px solid #B8860B;border-radius:8px;padding:14px 16px;margin:18px 0}'
     + '.dph{color:#B8860B;font-weight:bold;font-size:17px;margin-bottom:6px}'
     + '.dp table.fz th{width:38%}</style></head><body>'
-    + (ctx.quick ? '<h1>الفحص الائتماني السريع</h1>' : '<h1>دراسة الجدوى الاقتصادية</h1>') + '<p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
+    + (ctx.quick ? '<h1>الفحص الائتماني للمشروع</h1>' : '<h1>دراسة الجدوى الاقتصادية</h1>') + '<p><b>' + ctx.companyName + '</b>' + (ctx.crNumber ? ' — سجل تجاري ' + ctx.crNumber : '') + (ctx.city ? ' — ' + ctx.city : '') + '</p>'
     + '<p>' + ctx.projectDescription + '</p>'
     + decisionPage(ctx, r, credit, bp)
     + sec('الملخص التنفيذي', s.executiveSummary)

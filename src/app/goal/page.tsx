@@ -352,14 +352,14 @@ export default function GoalPage() {
                   </div>
                   <p style={{ color: '#3A4D47', fontSize: 12.8, lineHeight: 1.9, margin: '0 0 12px' }}>
                     أسماء هذه الجهات وشروط كل واحدة وما ينقصك عندها — يكشفها
-                    <b> الفحص الائتماني السريع</b>. أما بناء الملف ومخاطبتها باسمك
+                    <b> الحكم الائتماني لمنشأتك</b>. أما بناء الملف ومخاطبتها باسمك
                     والتفاوض حتى القرار، فهو <b>تجهيز ملف التمويل</b>.
                   </p>
 
                   <div style={{ display: 'grid', gap: 10 }}>
                     <div style={{ border: '1px solid #E4EFEA', borderRadius: 12, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>الفحص الائتماني السريع</span>
+                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>الحكم الائتماني لمنشأتك</span>
                         <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>٩٩٠ ر.س</span>
                       </div>
                       <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
@@ -374,7 +374,7 @@ export default function GoalPage() {
                       </div>
                       <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
                         نبني ملفك بالعربية والإنجليزية، ونخاطب الجهات باسمك، ونتابع ونفاوض حتى قرار نهائي.
-                        <b style={{ color: '#8A6D1F' }}> ويُخصم منها الفحص السريع إن كنت دفعته خلال ٣٠ يوماً.</b>
+                        <b style={{ color: '#8A6D1F' }}> ويُخصم منها الحكم الائتماني إن كنت دفعته خلال ٣٠ يوماً.</b>
                       </div>
                     </div>
                   </div>
@@ -386,9 +386,9 @@ export default function GoalPage() {
                       وأيّهما تختار؟
                     </div>
                     <div style={{ color: '#3A4D47', fontSize: 12, lineHeight: 1.9 }}>
-                      إن بدأت بالفحص السريع ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ ٧٬٩٠٠ لا أكثر</b> — الفحص لا يكلّفك شيئاً إضافياً.
+                      إن بدأت بالحكم الائتماني ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ ٧٬٩٠٠ لا أكثر</b> — الحكم لا يكلّفك شيئاً إضافياً.
                       والفرق الوحيد أنك عرفت قبل أن تلتزم.
-                      <br />أمّا إن اكتفيتَ بالفحص، فستعرف أبوابك ولن يُطرق منها باب — <b>لأن الطرق يحتاج ملفاً</b>.
+                      <br />أمّا إن اكتفيتَ بالحكم، فستعرف أبوابك ولن يُطرق منها باب — <b>لأن الطرق يحتاج ملفاً</b>.
                     </div>
                   </div>
 
