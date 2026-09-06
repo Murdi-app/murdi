@@ -29,13 +29,19 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const sb = admin();
-  const { data: co } = await sb.from('companies').select('id').eq('user_id', user.id).maybeSingle();
-  if (!co) return NextResponse.json({ ok: true, documents: [] });
+  // كل منشآت صاحب الجلسة لا واحدة: كان الاستعلام هنا بلا ترتيب ولا حدّ، فمن
+  // سُجّلت باسمه منشأتان — ويقع هذا حين يعيد صاحبها التسجيل ظنّاً أن الأولى
+  // لم تُحفظ — رجع بخطأ وبلا صفّ، فرأى صفحته خاليةً من وثيقةٍ وُضعت له فعلاً.
+  // وقد وقع هذا مرة. والقصر على منشأة واحدة يُخفي الوثيقة إن عُلّقت بالأخرى،
+  // فالملكية تُقاس بصاحب الحساب لا بصفٍّ منها بعينه.
+  const { data: cos } = await sb.from('companies').select('id').eq('user_id', user.id);
+  const mine: string[] = (cos || []).map((c: { id: string }) => c.id);
+  if (mine.length === 0) return NextResponse.json({ ok: true, documents: [] });
 
   if (!id) {
     const { data } = await sb.from('client_documents')
       .select('id, title, kind, created_at')
-      .eq('company_id', co.id)
+      .in('company_id', mine)
       .order('created_at', { ascending: false })
       .limit(20);
     return NextResponse.json({ ok: true, documents: data || [] });
@@ -45,7 +51,7 @@ export async function GET(req: Request) {
   const { data: doc } = await sb.from('client_documents')
     .select('id, title, body, company_id')
     .eq('id', id).maybeSingle();
-  if (!doc || doc.company_id !== co.id) {
+  if (!doc || !mine.includes(doc.company_id)) {
     return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
   }
 
