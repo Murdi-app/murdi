@@ -7,6 +7,7 @@ import { COMMISSION_SERVICES } from '@/lib/contracts'
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
 import { canonicalTitle, displayName } from '@/lib/serviceCatalog'
 import FeasibilityIntake from '@/components/FeasibilityIntake'
+import ContractIntake from '@/components/ContractIntake'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 import { buildPdfHtml } from '@/lib/pdfTemplate'
@@ -687,6 +688,12 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 <div style={{ background:'#EAF7F0', border:'1.5px solid #D8E8E0', borderRadius:10, padding:'8px 14px', marginBottom:10, color:'#9A7B2E', fontWeight:900, fontSize:12.5 }}>
                   🎤 المرحلة ١: العرض التقديمي — حدّد مبلغه وأصدره للدفع. بعد تسليمه يظهر عقد تجهيز الملف (المرحلة ٢).
                 </div>
+              )}
+              {/* تمويل العقد: اللوحة كلها في مكوّنها — ثمانية أرقام وحكمٌ
+                  قبل التوليد وزرّان. ولا خانة منها في هذا الملف، فلا يكبر
+                  بألف سطر أخرى ولا يُكسر ما فيه. */}
+              {r.service_title === 'تمويل العقد' && (
+                <ContractIntake requestId={r.id} companyId={r.company_id} />
               )}
               {r.service_title === 'دراسة الجدوى الاقتصادية' && (
                 <div style={{ background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
