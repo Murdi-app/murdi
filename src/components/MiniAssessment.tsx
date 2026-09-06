@@ -60,9 +60,19 @@ export default function MiniAssessment() {
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
-  const pick = (val: number) => {
+  // ═══ الموقع يُحفظ إلى جانب القيمة ═══
+  // خيارات السؤال الأخير الثلاثة الأولى قيمتها 8 جميعاً — تمويل واستثمار
+  // وطرح. فأي استنتاج للهدف من القيمة يُرجع الأول دائماً، سواءٌ كُتب
+  // بـindexOf أو بـfindIndex. وقيس ذلك في القاعدة: 62 تقييماً تامّاً قيمة
+  // إجابته الأخيرة 8، و62 منها سُجِّلت «تمويل» وصفرٌ «استثمار» أو «طرح».
+  // أي أن طالبي الشريك والإدراج كانوا يُنادَون بعرض تمويل طوال الوقت.
+  // فالموقع يُحفظ عند الضغط، ولا يُستنتج بعده.
+  const [picks, setPicks] = useState<number[]>([])
+
+  const pick = (val: number, idx: number) => {
     const next = [...ans, val]
     setAns(next)
+    setPicks((p) => [...p, idx])
     if (step + 1 < QUESTIONS.length) setStep(step + 1)
     else setStep(QUESTIONS.length)
   }
@@ -91,7 +101,7 @@ export default function MiniAssessment() {
     try {
       // الهدف يُقرأ بموقع الخيار لا بقيمته: الخيارات الثلاثة الأولى قيمتها 8 جميعاً،
       // فكان indexOf يعيد صفراً دائماً ويُسجَّل كل ليد «تمويل» — بمن فيهم طالبو الاستثمار والطرح.
-      const goalIdx = (QUESTIONS[7]?.opts || []).findIndex(o => o.v === ans[7])
+      const goalIdx = picks[7] ?? -1
       const track = ['تمويل', 'استثمار', 'طرح', 'استكشاف'][goalIdx] || ''
       // Supabase لا يرمي استثناءً عند رفض الصف — يعيد { error }.
       // كان الخطأ يمرّ صامتاً فيرى العميل «وصلَنا طلبك» ولا يُحفظ اسمه ولا جواله.
@@ -125,7 +135,7 @@ export default function MiniAssessment() {
             <h3 className="lp-mini-q">{QUESTIONS[step].q}</h3>
             <div className="lp-mini-opts">
               {QUESTIONS[step].opts.map((o, i) => (
-                <button key={i} className="lp-mini-opt" onClick={() => pick(o.v)}>{o.t}</button>
+                <button key={i} className="lp-mini-opt" onClick={() => pick(o.v, i)}>{o.t}</button>
               ))}
             </div>
           </div>
