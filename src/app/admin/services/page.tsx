@@ -6,6 +6,7 @@ import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
 import { canonicalTitle, displayName } from '@/lib/serviceCatalog'
+import FeasibilityIntake from '@/components/FeasibilityIntake'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 import { buildPdfHtml } from '@/lib/pdfTemplate'
@@ -690,6 +691,10 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
               {r.service_title === 'دراسة الجدوى الاقتصادية' && (
                 <div style={{ background:'#FBF5E8', border:'1.5px solid #E8D9A8', borderRadius:10, padding:'12px 14px', marginBottom:10 }}>
                   <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>📐 مدخلات دراسة الجدوى — الأرقام تُحسب برمجياً</div>
+                  {/* المدخلات الأربع والعشرون بلغة محاسب، وصاحب المشروع لا
+                      يعرف نفسه بها. فصار فوقها بابٌ من ستة أسئلة بلغته،
+                      يملأ ما تحته ويُري الحكم قبل التوليد. */}
+                  <FeasibilityIntake onFill={(patch) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), ...patch } }))} />
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))', gap:8, marginBottom:8 }}>
                     <select value={(fzIn[r.id] || {}).audience || ''} onChange={(e) => setFzIn((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), audience: e.target.value } }))} style={IN_STYLE}>
                       <option value="">— لمن الدراسة؟ —</option><option value="financier">جهة تمويل</option><option value="investor">مستثمر</option><option value="regulator">جهة حكومية أو ترخيص</option><option value="internal">استخدام داخلي</option>
