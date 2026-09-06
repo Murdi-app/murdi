@@ -46,6 +46,9 @@ export default function GoalPage() {
   const [pendingTracks, setPendingTracks] = useState<string[]>([]);
   const [resumeMap, setResumeMap] = useState<Record<string, number>>({});
   const [showPaywall, setShowPaywall] = useState(false);
+  // وثائق يُسلّمها المكتب خارج الخدمات المدفوعة — قراءة أولية أو ملاحظة.
+  // تُعرض أعلى الشاشة لأنها الشيء الوحيد الذي كُتب له هو بيده.
+  const [docs, setDocs] = useState<{ id: string; title: string; created_at: string }[]>([]);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
   const [openDetails, setOpenDetails] = useState<string>('');
@@ -160,6 +163,11 @@ export default function GoalPage() {
         .select('id, service_title, status, price')
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
+      fetch('/api/client-documents')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d?.documents) setDocs(d.documents); })
+        .catch(() => { /* الوثائق إضافة لا تُسقط الشاشة إن تعذّرت */ });
+
       const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null }> = {};
       // العناوين القديمة تُردّ إلى عنوانها الحالي حتى يظل طلب العميل ظاهراً بعد دمج الخدمات
       // المحتوى المُسلَّم لا يُقرأ هنا — يُطلب من الخادم عند الطباعة، بعد التحقق من الحالة
@@ -285,6 +293,38 @@ export default function GoalPage() {
           له ٣٥٢ جهة رأى الطلب من جديد، ولو ضغطه لطلب تشغيلة ثانية بلا سبب.
           فصار الشرط ما يملكه لا ما يستطيعه: نتيجةٌ قائمة، أو تشغيل جارٍ،
           أو تشغيلة بيده. */}
+      {docs.length > 0 && (
+        <div style={{ background: '#FBF7EC', borderBottom: '1px solid #E8D9A8', padding: '14px 16px' }}>
+          <div className="max-w-5xl mx-auto">
+            <div style={{ color: '#8A6D1F', fontWeight: 900, fontSize: 12.5, marginBottom: 8 }}>
+              📩 وثائق من مُرضي
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {docs.map((d) => (
+                <button key={d.id} type="button"
+                  onClick={async () => {
+                    const w = window.open('', '_blank');
+                    try {
+                      const r = await fetch('/api/client-documents?id=' + encodeURIComponent(d.id));
+                      const j = await r.json();
+                      if (!w) return;
+                      w.document.open();
+                      w.document.write(j?.body || '<p dir="rtl" style="font-family:Cairo;padding:30px">تعذّر فتح الوثيقة — راجع فريق مُرضي.</p>');
+                      w.document.close();
+                    } catch { w?.close(); }
+                  }}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                    background: '#fff', border: '1.5px solid #E8D9A8', borderRadius: 12, padding: '12px 15px',
+                    cursor: 'pointer', fontFamily: 'Cairo', textAlign: 'right', width: '100%' }}>
+                  <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>{d.title}</span>
+                  <span style={{ color: '#9A7B2E', fontWeight: 800, fontSize: 12, whiteSpace: 'nowrap' }}>افتحها ←</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {(showResults) && (
         <div style={{ background: '#1A3D34', padding: '18px 16px' }}>
           <div className="max-w-5xl mx-auto text-center">
