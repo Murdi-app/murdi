@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
 import { COMMISSION_SERVICES } from '@/lib/contracts'
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
-import { canonicalTitle } from '@/lib/serviceCatalog'
+import { canonicalTitle, displayName } from '@/lib/serviceCatalog'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 import { buildPdfHtml } from '@/lib/pdfTemplate'
@@ -589,7 +589,10 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
             <div key={r.id} style={{ background:'#fff', border:'2px solid #EAF2EE', borderRadius:16, padding:20, marginBottom:16 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:10 }}>
                 <div>
-                  <div style={{ fontSize:16, fontWeight:900, color:'#1A3D34' }}>{isNew(r.created_at) && <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginLeft:6 }}>جديد</span>}{r.service_title}</div>
+                  <div style={{ fontSize:16, fontWeight:900, color:'#1A3D34' }}>{isNew(r.created_at) && <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginLeft:6 }}>جديد</span>}{displayName(canonicalTitle(r.service_title))}</div>
+                  {/* الاسم المعروض لا المخزَّن: «الاقتصادية» مفتاحٌ في القاعدة
+                      لا اسم منتج، وكان يظهر هنا وحده بينما تغيّر في كل شاشة
+                      سواها — فتقرأ في الإدارة غير ما يقرأ العميل. */}
                   <div style={{ color:'#6B8A80', fontSize:13, fontWeight:600, marginTop:2 }}>{(r.companies?.company_name) || 'شركة'} · {r.companies?.phone || '—'}</div>
                   <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginTop:2 }}>📅 {fmtDate(r.created_at)}</div>
                 </div>
