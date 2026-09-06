@@ -161,6 +161,9 @@ export default function FeasibilityIntake({ onFill }: { onFill: (patch: FzMap) =
         const y1 = r.years[0]
         const gap = r.fundingGap
         const stress = c.scenarios[0]?.dscrY1 ?? null
+        // deepestMonth مصرَّحٌ `MonthRow | null` في CreditPack — يُقرأ مرة
+        // ويُحرَس، ولا يُفترض وجوده لأن المصفوفة قد تخرج فارغة نظرياً.
+        const dm = c.deepestMonth
         const tone = c.minDscr === null ? C.soft : c.minDscr >= 1.25 ? C.green : c.minDscr >= 1 ? C.gold : C.red
         const box = (n: string, t: string, col?: string) => (
           <div style={{ flex: '1 1 105px', border: '1px solid ' + C.line, borderRadius: 8, padding: '9px 11px', background: '#fff' }}>
@@ -175,8 +178,9 @@ export default function FeasibilityIntake({ onFill }: { onFill: (patch: FzMap) =
               {box(c.minDscr === null ? '—' : c.minDscr.toFixed(2) + '×', 'أدنى تغطية دين', tone)}
               {box(y1.revenue > 0 ? (r.breakEvenRevenue / y1.revenue * 100).toFixed(0) + '%' : '—', 'التعادل من مبيعات س١')}
               {box(r.paybackYears === null ? '+5' : r.paybackYears.toFixed(1), 'سنة للاسترداد')}
-              {box(money(c.deepestMonth.cumulative), 'أعمق نقطة — شهر ' + c.deepestMonth.month,
-                c.deepestMonth.cumulative < 0 ? C.red : C.ink)}
+              {dm
+                ? box(money(dm.cumulative), 'أعمق نقطة — شهر ' + dm.month, dm.cumulative < 0 ? C.red : C.ink)
+                : box('—', 'أعمق نقطة نقدية')}
               {box(money(r.annualInstalment), 'القسط السنوي')}
               {box(money(y1.revenue), 'إيراد السنة الأولى')}
             </div>
