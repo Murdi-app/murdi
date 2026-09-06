@@ -1,5 +1,6 @@
 'use client';
 import AdminNav from '@/components/AdminNav';
+import { readOwnership, type OwnershipInput } from '@/lib/ownership';
 import { useState, useEffect } from 'react';
 
 type Row = {
@@ -57,7 +58,7 @@ const NEEDS: { rx: string; label: string; svc: string }[] = [
 
 export default function ApplyPage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [clients, setClients] = useState<{ id: string; company_name: string }[]>([]);
+  const [clients, setClients] = useState<(OwnershipInput & { id: string; company_name: string })[]>([]);
   const [coId, setCoId] = useState('');
   const [big, setBig] = useState(false);
   const [fitOnly, setFitOnly] = useState(false);
@@ -279,6 +280,37 @@ export default function ApplyPage() {
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
         </div>
+
+        {/* الملكية قبل الطَّرق. وأكثر برامج التمويل الحكومية تشترط الملكية
+            السعودية، فمن يفتح لوحة عميلٍ ملكيته غير سعودية يقرأ ذلك قبل أن
+            يختار له باباً — لا بعد أن يَعِده به. */}
+        {coId !== '' && (() => {
+          const cli = clients.find((x) => x.id === coId);
+          if (!cli) return null;
+          const own = readOwnership(cli);
+          const tone = own.tone === 'good'
+            ? { bg: '#F2FAF6', bd: '#CBE8DA', fg: '#1A6B52' }
+            : own.tone === 'warn'
+            ? { bg: '#FDF1EC', bd: '#EBD5C2', fg: '#8A5A2E' }
+            : { bg: '#FBF5E8', bd: '#EAD9A8', fg: '#6B5A2E' };
+          return (
+            <div style={{ background: tone.bg, border: '1.5px solid ' + tone.bd, borderRadius: 16, padding: 14, marginBottom: 16 }}>
+              <div style={{ color: tone.fg, fontWeight: 900, fontSize: 13, marginBottom: 6 }}>
+                {own.badge}{own.nationality !== '' ? ' · ' + own.nationality : ''}
+                {own.govProgrammesSafe ? '' : ' — لا وعد ببرنامج حكومي بلا تحقق'}
+              </div>
+              <div style={{ color: '#3A4D47', fontSize: 12.5, fontWeight: 700, lineHeight: 1.9 }}>{own.note}</div>
+              {own.ask && (
+                <div style={{ color: tone.fg, fontSize: 12.5, fontWeight: 900, lineHeight: 1.9, marginTop: 6 }}>❓ {own.ask}</div>
+              )}
+              {own.doors.length > 0 && (
+                <div style={{ color: '#6B8A80', fontSize: 12, fontWeight: 700, lineHeight: 1.9, marginTop: 6 }}>
+                  ممرّه: {own.doors.join(' · ')}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {(() => {
           const src = base;

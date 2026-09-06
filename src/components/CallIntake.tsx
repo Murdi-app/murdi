@@ -23,7 +23,8 @@ const GREEN = '#1A3D34'
 const GOLD = '#C9A84C'
 const MUTED = '#6B8A80'
 
-export type Who = { full_name: string; phone: string; email: string; company_name: string; city: string; sector: string }
+export type Who = { full_name: string; phone: string; email: string; company_name: string; city: string; sector: string;
+  ownership_type: string; cr_route: string; owner_nationality: string }
 
 const IN: React.CSSProperties = {
   width: '100%', padding: '10px 13px', borderRadius: 10, border: '1.5px solid #D9E5DF',
@@ -59,6 +60,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
   const [who, setWho] = useState<Who>({
     full_name: seed?.full_name || '', phone: seed?.phone || '', email: seed?.email || '',
     company_name: seed?.company_name || '', city: '', sector: '',
+    ownership_type: '', cr_route: '', owner_nationality: '',
   })
   const [f, setF] = useState<Record<string, string>>(() => {
     const o: Record<string, string> = {}
@@ -190,7 +192,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
                 style={{ background: '#25D366', color: '#fff', padding: '11px 22px', borderRadius: 999, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>
                 أرسليها واتساب
               </a>
-              <button onClick={() => { setOut(null); if (onDone) onDone(); else setWho({ full_name: '', phone: '', email: '', company_name: '', city: '', sector: '' }) }}
+              <button onClick={() => { setOut(null); if (onDone) onDone(); else setWho({ full_name: '', phone: '', email: '', company_name: '', city: '', sector: '', ownership_type: '', cr_route: '', owner_nationality: '' }) }}
                 style={{ background: 'transparent', color: MUTED, border: '1.5px solid #D9E5DF', padding: '11px 22px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
                 أغلق
               </button>
@@ -213,6 +215,49 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
                   </div>
                 ))}
               </div>
+            ))}
+
+            {/* الملكية — ثلاثة أسئلة تُسأل مرة واحدة وتُقرأ في كل مخرَج بعدها.
+                وأكثر برامج التمويل الحكومية تشترط الملكية السعودية، فبناء
+                ملفٍ بلا معرفتها هو أن تَعِد رجلاً بباب مقفل عليه. والسؤال
+                الثاني أهمّها: من يحمل ترخيصاً استثمارياً أو إقامة مميزة
+                تقرؤه الجهات «مستثمراً مرخّصاً» لا «مقيماً» — وهما وضعان. */}
+            {card('ملكيته — سؤالان يغيّران أبوابه', (
+              <>
+                <div style={grid()}>
+                  <div>
+                    <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>ملكية المنشأة</label>
+                    <select value={who.ownership_type} onChange={(e) => setWho((p) => ({ ...p, ownership_type: e.target.value }))} style={IN}>
+                      <option value="">— اسأليه —</option>
+                      <option value="saudi">سعودية بالكامل</option>
+                      <option value="gcc">خليجية</option>
+                      <option value="mixed">مشتركة — شريك سعودي وشريك غير سعودي</option>
+                      <option value="foreign">غير سعودية</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>سجله التجاري صدر بأي طريق؟</label>
+                    <select value={who.cr_route} onChange={(e) => setWho((p) => ({ ...p, cr_route: e.target.value }))} style={IN}>
+                      <option value="">— اسأليه —</option>
+                      <option value="saudi_owner">مالك سعودي</option>
+                      <option value="misa_licence">ترخيص وزارة الاستثمار</option>
+                      <option value="premium_residency">إقامة مميزة</option>
+                      <option value="saudi_partner">شريك سعودي في السجل</option>
+                      <option value="gcc_national">مواطن خليجي</option>
+                      <option value="unknown">لا يعرف</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>جنسية المالك <span style={{ color: '#9DB3AB', fontWeight: 700 }}>(إن لم تكن سعودية)</span></label>
+                    <input value={who.owner_nationality} onChange={(e) => setWho((p) => ({ ...p, owner_nationality: e.target.value }))} placeholder="الأردن · باكستان · الصين…" style={IN} />
+                  </div>
+                </div>
+                {who.ownership_type !== '' && who.ownership_type !== 'saudi' && (
+                  <div style={{ background: '#FBF3EC', border: '1px solid #EBD5C2', borderRadius: 10, padding: '10px 13px', marginTop: 12, color: '#8A5A2E', fontSize: 12.5, fontWeight: 800, lineHeight: 1.85 }}>
+                    ملكية غير سعودية — لا تَعِديه ببرنامج حكومي (كفالة · التنمية الاجتماعية · الصناديق) قبل تحقّق مكتوب من شرط الملكية عند الجهة نفسها.
+                  </div>
+                )}
+              </>
             ))}
 
             {card('أرقام مشروعه — يعرفها كلها', (

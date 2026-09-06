@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { waNumber } from '@/lib/phone';
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing';
+import { asOwnership, asRoute } from '@/lib/ownership';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 
 // فتح ملف عميلٍ باعته الموظفة بالهاتف.
@@ -40,6 +41,12 @@ export async function POST(req: Request) {
   const city = cut(b?.city, 80) || null;
   const sector = cut(b?.sector, 120) || null;
   const raw = (b?.inputs && typeof b.inputs === 'object') ? b.inputs as Record<string, unknown> : {};
+
+  // الملكية تُضيَّق هنا لا تُمرَّر كما جاءت: القيَم مقيَّدة بـCHECK في
+  // القاعدة، وقيمةٌ غريبة تُسقط إدراج المنشأة كله لا الحقل وحده.
+  const ownershipType = asOwnership(b?.ownership_type) || null;
+  const crRoute = asRoute(b?.cr_route) || null;
+  const ownerNationality = cut(b?.owner_nationality, 80) || null;
 
   if (!fullName) return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبيه 05xxxxxxxx' }, { status: 400 });
@@ -94,10 +101,20 @@ export async function POST(req: Request) {
   // ═══ المنشأة ═══
   const { data: existingCo } = await sb.from('companies').select('id, company_name').eq('user_id', userId).maybeSingle();
   let companyId = existingCo?.id as string | undefined;
+  // منشأة قائمة: تُستكمل ملكيتها إن كانت فارغة، ولا تُطمس إن كانت مسجَّلة.
+  // فمكالمةٌ ثانية لم يُسأل فيها عن الملكية كانت ستمسح جواب الأولى.
+  if (companyId && (ownershipType || crRoute || ownerNationality)) {
+    const patch: Record<string, string> = {};
+    if (ownershipType) patch.ownership_type = ownershipType;
+    if (crRoute) patch.cr_route = crRoute;
+    if (ownerNationality) patch.owner_nationality = ownerNationality;
+    if (Object.keys(patch).length > 0) await sb.from('companies').update(patch).eq('id', companyId);
+  }
   if (!companyId) {
     const { data: co, error: coErr } = await sb.from('companies').insert({
       user_id: userId, company_name: companyName, owner_name: fullName,
       phone, city, sector, account_status: 'active',
+      ownership_type: ownershipType, cr_route: crRoute, owner_nationality: ownerNationality,
       admin_note: 'فُتح من مكالمة — ' + (who.role === 'admin' ? 'د. عبدالحكيم' : who.email),
     }).select('id').single();
     if (coErr || !co) return NextResponse.json({ error: 'تعذّر إنشاء المنشأة: ' + (coErr?.message || '') }, { status: 500 });

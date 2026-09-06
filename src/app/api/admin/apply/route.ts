@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   if (only) q = q.eq('company_id', only).limit(3000);
   else q = q.eq('company_id', '00000000-0000-0000-0000-000000000000');
   const { data: rows, error } = await q;
-  let cq = a.from('companies').select('id, company_name').order('company_name');
+  let cq = a.from('companies').select('id, company_name, ownership_type, cr_route, owner_nationality, parent_company_country, parent_can_guarantee').order('company_name');
   if (mine) cq = cq.in('id', mine);
   const { data: allCos } = await cq;
   let ask = 0;
