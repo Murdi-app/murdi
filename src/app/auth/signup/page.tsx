@@ -41,7 +41,12 @@ export default function SignUp() {
   const handleSignUp = async () => {
     setMessage('')
     if (!company.trim()) { setMessage('اكتب اسم المنشأة كما في السجل التجاري'); return }
-    if (!cr.trim()) { setMessage('اكتب رقم السجل التجاري'); return }
+    // ═══ السجل التجاري اختياري عمداً ═══
+    // كان إلزامياً، وهو يمنع أكثر من يشتري خدماتنا المباشرة: صاحب المشروع
+    // الذي لم يبدأ بعد لا سجلَ له أصلاً. وصفحة الخدمات تقول ذلك بنفسها عن
+    // دراسة الجدوى: «من يبدأ مشروعاً جديداً لا منشأة عنده تُقيَّم». فكانت
+    // المنصة تبيعه خدمةً ثم تمنعه من فتح الحساب الذي يشتريها به.
+    // ويبقى مطلوباً حين يُقيَّم مسار التمويل لمنشأة قائمة — هناك موضعه.
     if (!owner.trim()) { setMessage('اكتب اسم المالك'); return }
     if (!waNumber(phone)) { setMessage('اكتب رقم جوال سعودي صحيح — مثال 05xxxxxxxx'); return }
     if (!city.trim()) { setMessage('اكتب المدينة'); return }
@@ -63,7 +68,9 @@ export default function SignUp() {
     const { error: cErr } = await supabase.from('companies').insert({
       user_id: user.id,
       company_name: company.trim(),
-      cr_number: cr.trim(),
+      // الفراغ يُحفظ null لا نصّاً فارغاً: «لم يُذكر» ليست «مذكورٌ وفارغ»،
+      // وقارئو هذا العمود يفحصون وجوده لا طوله.
+      cr_number: cr.trim() || null,
       owner_name: owner.trim(),
       phone: norm ? '0' + norm.slice(3) : phone.trim(),
       city: city.trim(),
@@ -95,6 +102,7 @@ export default function SignUp() {
         .au-title{font-family:'Tajawal';margin-top:26px;font-size:21px;font-weight:900;text-align:center;margin-bottom:6px}
         .au-lead{color:#6B8A80;font-size:13.5px;text-align:center;line-height:1.9;margin-bottom:24px}
         .au-label{font-size:12.5px;font-weight:600;color:#6B8A80;margin-bottom:6px}
+        .au-opt{color:#9A7B2E;font-weight:500;font-size:11.5px;margin-inline-start:5px}
         .au-input{width:100%;padding:14px 15px;margin-bottom:16px;border-radius:2px;border:1px solid #E3EAE7;background:#fff;color:#1A3D34;font-size:15px;font-family:'IBM Plex Sans Arabic';outline:none;text-align:right}
         .au-input:focus{border-color:#1A3D34}
         .au-btn{width:100%;padding:15px;border-radius:2px;border:none;background:#C9A84C;color:#122C26;font-size:16px;font-weight:900;font-family:'Tajawal';cursor:pointer;margin-top:4px;transition:.18s}
@@ -115,12 +123,12 @@ export default function SignUp() {
             <div className="au-brand">مُرضي<i>MURDI</i></div>
             <div className="au-rule" />
             <div className="au-title">افتح ملف شركتك</div>
-            <div className="au-lead">التقييم مجاني — تعرف درجتك وعوائقك قبل أن تدفع ريالاً.</div>
+            <div className="au-lead">التقييم مجاني — تعرف درجتك وعوائقك قبل أن تدفع ريالاً.<br />ومشروعك الجديد لا يحتاج سجلاً تجارياً ليُفتح له ملف.</div>
 
-            <div className="au-label">اسم المنشأة</div>
-            <input className="au-input" placeholder="كما في السجل التجاري" value={company} onChange={e=>setCompany(e.target.value)} onKeyDown={onKeyDown} />
-            <div className="au-label">رقم السجل التجاري</div>
-            <input className="au-input" placeholder="10xxxxxxxx" value={cr} onChange={e=>setCr(e.target.value)} onKeyDown={onKeyDown} inputMode="numeric" />
+            <div className="au-label">اسم المنشأة أو المشروع</div>
+            <input className="au-input" placeholder="كما في السجل — أو اسم مشروعك إن لم يُسجَّل بعد" value={company} onChange={e=>setCompany(e.target.value)} onKeyDown={onKeyDown} />
+            <div className="au-label">رقم السجل التجاري <span className="au-opt">اختياري</span></div>
+            <input className="au-input" placeholder="10xxxxxxxx — اتركه فارغاً إن كان مشروعاً لم يبدأ" value={cr} onChange={e=>setCr(e.target.value)} onKeyDown={onKeyDown} inputMode="numeric" />
             <div className="au-label">اسم المالك</div>
             <input className="au-input" placeholder="الاسم كما في الهوية" value={owner} onChange={e=>setOwner(e.target.value)} onKeyDown={onKeyDown} />
             <div className="au-label">رقم الجوال</div>

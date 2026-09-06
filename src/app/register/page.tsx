@@ -83,9 +83,9 @@ export default function RegisterPage() {
   )
 
   const fields = [
-    { key:'company_name', label:'اسم المنشأة بالعربي', ph:'كما هو في السجل التجاري' },
+    { key:'company_name', label:'اسم المنشأة أو المشروع بالعربي', ph:'كما في السجل — أو اسم مشروعك إن لم يُسجَّل' },
     { key:'company_name_en', label:'اسم المنشأة بالإنجليزي (اختياري)', ph:'للمخاطبات مع الجهات الدولية' },
-    { key:'cr_number', label:'رقم السجل التجاري', ph:'10xxxxxxxx' },
+    { key:'cr_number', label:'رقم السجل التجاري (اختياري لمشروع لم يُسجَّل بعد)', ph:'10xxxxxxxx' },
     { key:'tax_number', label:'الرقم الضريبي (اختياري)', ph:'3xxxxxxxxxxxxxx' },
     { key:'owner_name', label:'اسم المالك بالعربي', ph:'كما هو مكتوب في الهوية أو الإقامة' },
     { key:'owner_name_en', label:'الاسم بالإنجليزي (اختياري)', ph:'للمقيمين — كما في الإقامة' },
