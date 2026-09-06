@@ -30,7 +30,12 @@ export default function Login() {
     const { data: { user: u } } = await supabase.auth.getUser()
     if (u?.email === 'hololalmurdi.fs@gmail.com') { router.push('/admin'); return }
     const { data: stf } = await supabase.from('staff').select('active').eq('user_id', u?.id).maybeSingle()
-    if (stf && stf.active === true) { router.push('/admin/apply'); return }
+    // ═══ الموظفة تنزل على شاشتها هي ═══
+    // كان الدخول يُنزلها على «/admin/apply»، وتلك ليست في قائمة صفحاتها
+    // البيضاء (STAFF_PAGES في admin/layout) — فأول ما يستقبلها بعد كتابة
+    // كلمة مرورها: «هذه الصفحة للإدارة فقط». حائطٌ في أول خطوة، ولوحة
+    // التقديم أصلاً ليست عملها: عملها الفرص الساخنة.
+    if (stf && stf.active === true) { router.push('/admin/hot'); return }
     const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
     if (!co) { router.push('/register'); return }
     if (co.account_status === 'active') { router.push('/goal'); return }

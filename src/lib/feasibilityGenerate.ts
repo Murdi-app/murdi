@@ -368,7 +368,12 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + 'li{font-size:13.5px;line-height:1.95;margin-bottom:6px;padding-inline-start:16px;position:relative}'
     + 'li::before{content:"";position:absolute;right:0;top:10px;width:5px;height:5px;background:#C9A84C}'
     + '.ft{text-align:center;font-size:11.5px;color:#9DB3AB;padding:18px 30px 0;margin-top:26px;border-top:1px solid #EFF5F2}'
-    + '@media print{body{background:#fff;padding:0}.pg{border:none;border-radius:0}.dp,table.fz{break-inside:avoid}}'
+    // المتصفّح يُسقط كل لون خلفية عند الطباعة إلا بهذا الأمر — فكانت الوثيقة
+    // تخرج PDF بيضاء بلا رأسٍ أخضر ولا رؤوس جداول، أي بلا هوية. وهي تُطبع
+    // أكثر مما تُقرأ على الشاشة: العميل يحملها إلى بنك.
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + '@media print{body{background:#fff;padding:0}.pg{border:none;border-radius:0}'
+    + 'h2,.dp,table.fz,.note{break-inside:avoid}}'
     + '</style></head><body><div class="pg">'
     + '<div class="hd"><div class="eb">مُرضي · حلول المرضي للاستشارات المالية · ترخيص FL-457927015</div>'
     + '<h1>' + docTitle + '</h1>'

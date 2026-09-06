@@ -174,5 +174,10 @@ li{margin-bottom:8px}
 .q{font-weight:900;margin-bottom:3px;font-size:13.4px}
 .a{font-size:13.2px;color:#33544B}
 .foot{font-size:11.5px;color:#9DB3AB;text-align:center;padding-top:16px;margin-top:18px;border-top:1px solid #EFF5F2}
-@media print{body{background:#fff;padding:0}.doc{border:none;border-radius:0;padding:0}}
+/* المتصفّح يُسقط كل لون خلفية عند الطباعة إلا بهذا الأمر — فكانت
+   الوثيقة تخرج PDF بيضاء بلا رأسٍ أخضر ولا رؤوس جداول، أي بلا هوية.
+   وهي تُطبع أكثر مما تُقرأ على الشاشة: العميل يحملها إلى بنك. */
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{body{background:#fff;padding:0}.doc{border:none;border-radius:0;padding:0}
+  h2,table{break-inside:avoid}}
 `;
