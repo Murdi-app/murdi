@@ -66,6 +66,8 @@ export default function ApplyPage() {
   const [co, setCo] = useState('');
   const [st, setSt] = useState('');
   const [busy, setBusy] = useState('');
+  const [mBusy, setMBusy] = useState('');   // تقدّم تشغيلة المطابقة
+
   const [genBusy, setGenBusy] = useState('');
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [genErr, setGenErr] = useState<Record<string, string>>({});
@@ -186,6 +188,27 @@ export default function ApplyPage() {
     setTimeout(() => { document.getElementById('row-' + r.id)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 150);
   }
 
+  // تشغيل المطابقة من هنا: كانت بيد العميل وحده، فمن دفع وتردّد في الدخول
+  // بقي ملفه واقفاً ولا يملك المكتب تحريكه. والدفعات تُكرَّر من المتصفح كما
+  // في زرّ الجدوى، فلا تصطدم تشغيلةٌ طويلة بحدّ زمن الخادم.
+  const runMatch = async (companyId: string, track: 'funding' | 'investment') => {
+    if (!companyId) return;
+    setMBusy('يبدأ…');
+    let batch = 0;
+    for (let i = 0; i < 60; i++) {
+      const r = await fetch('/api/admin/run-match', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId, track, batch, spend: batch === 0 }),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error) { setMBusy('توقّف: ' + (d?.error || 'خطأ')); return; }
+      setMBusy('نطاق ' + Math.min((d.next || 0) * 5, d.total || 0) + ' من ' + (d.total || 0) + ' · ' + (d.count || 0) + ' جهة');
+      if (d.done) { setMBusy('✅ انتهت — ' + (d.count || 0) + ' جهة. حدّث الصفحة.'); return; }
+      batch = d.next;
+    }
+    setMBusy('توقّفت بعد ستين دفعة — راجع السجل.');
+  };
+
   const cos = Array.from(new Set(rows.map(r => r.company_name).filter(Boolean)));
   const qq = q.trim().toLowerCase();
   const TOKS = (s?: string | null) => {
@@ -279,7 +302,24 @@ export default function ApplyPage() {
             <option value="">كل العملاء</option>
             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
           </select>
+          {coId !== '' && (
+            <>
+              <button onClick={() => runMatch(coId, 'funding')} disabled={mBusy !== '' && !mBusy.startsWith('✅') && !mBusy.startsWith('توقّف')}
+                title="يخصم تشغيلة واحدة من رصيد العميل ويشغّل بحث مسار التمويل"
+                style={{ background: C.ink, color: '#fff', border: 'none', borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                🏦 شغّل مطابقة التمويل
+              </button>
+              <button onClick={() => runMatch(coId, 'investment')} disabled={mBusy !== '' && !mBusy.startsWith('✅') && !mBusy.startsWith('توقّف')}
+                title="بحث مسار الاستثمار — صناديق ومستثمرون"
+                style={{ background: '#5C4A16', color: '#fff', border: 'none', borderRadius: 30, padding: '8px 16px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12, cursor: 'pointer' }}>
+                💼 شغّل مطابقة الاستثمار
+              </button>
+            </>
+          )}
         </div>
+        {mBusy !== '' && (
+          <div style={{ color: mBusy.startsWith('توقّف') ? '#B4622A' : C.green, fontWeight: 900, fontSize: 12.5, marginBottom: 12 }}>{mBusy}</div>
+        )}
 
         {/* الملكية قبل الطَّرق. وأكثر برامج التمويل الحكومية تشترط الملكية
             السعودية، فمن يفتح لوحة عميلٍ ملكيته غير سعودية يقرأ ذلك قبل أن
