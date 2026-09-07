@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { runAutoMatch } from '@/lib/matchEngine';
+import { canonicalTitle } from '@/lib/serviceCatalog';
 import { logError } from '@/lib/logError';
 import { requireAdmin } from '@/lib/requireAdmin';
 
@@ -75,18 +75,47 @@ export async function POST(req: Request) {
 
     if (pay.kind === 'service' && pay.company_id) {
       const stamp = { status: 'paid', payment_id: id, paid_at: new Date().toISOString(), payment_ref: id, updated_at: new Date().toISOString() };
+      // الخدمة التي يَعِد مخرَجها بجدول جهات تشتري تشغيلة مطابقة معها.
+      //
+      // وكان تأكيد دفعة الخدمة يختم الطلب «مدفوعاً» ولا يمنح رصيد تشغيلة —
+      // فيدفع العميل سبعة آلاف وتسعمئة ثمن ملفٍ نصفُه قائمة جهات، ثم يقف
+      // الملف بلا مطابقة ولا يعرف أحد لماذا. وقع فعلاً على عميل دفع.
+      const NEEDS_MATCH = new Set<string>([
+        'تجهيز ملف التمويل والتفاوض',
+        'دراسة الجدوى الاقتصادية',
+        'تمويل العقد',
+        'ملف الممر الأجنبي',
+        'تجهيز ملف عرض المستثمر والتفاوض',
+      ]);
+      // المعرّف يُلتقط في ثابت قبل الإغلاق: تضييق `pay.company_id` لا يعبر
+      // إلى داخل دالة، فيسقط البناء على «قد يكون undefined».
+      const payCompanyId = String(pay.company_id);
+      const sb = admin;
+      const grantIfNeeded = async (title: string | null | undefined) => {
+        if (!title || !NEEDS_MATCH.has(canonicalTitle(String(title)))) return;
+        await sb.rpc('grant_match_credit', { p_company: payCompanyId, p_n: 1 });
+        await sb.from('companies')
+          .update({ account_status: 'active', payment_confirmed_at: new Date().toISOString() })
+          .eq('id', payCompanyId);
+      };
       if (pay.service_request_id) {
         await admin.from('service_requests').update(stamp).eq('id', pay.service_request_id);
+        const { data: srv } = await admin.from('service_requests')
+          .select('service_title').eq('id', pay.service_request_id).maybeSingle();
+        await grantIfNeeded(srv?.service_title);
       } else {
         // دفعات قديمة بلا رقم طلب: نطابق بالمبلغ، ولا نخمّن حين يتعدد المرشّح
         const { data: cands } = await admin.from('service_requests')
-          .select('id, price, quoted_price')
+          .select('id, price, quoted_price, service_title')
           .eq('company_id', pay.company_id).eq('status', 'priced');
         const amt = Number(pay.amount_sar || 0);
         const hit = (cands || []).filter((c: { price: number | null; quoted_price: number | null }) =>
           Number(c.price ?? c.quoted_price ?? -1) === amt);
         if (hit.length === 1) {
           await admin.from('service_requests').update(stamp).eq('id', hit[0].id);
+          const { data: srv2 } = await admin.from('service_requests')
+            .select('service_title').eq('id', hit[0].id).maybeSingle();
+          await grantIfNeeded(srv2?.service_title);
         } else {
           linkNote = hit.length === 0
             ? 'لم يُطابق أي طلب مسعّر مبلغَ هذه الدفعة — اربطها بالطلب يدوياً من لوحة الخدمات.'
