@@ -36,11 +36,25 @@ for (const file of walk(ROOT)) {
   let i = -1;
   while ((i = src.indexOf("from('match_results')", i + 1)) !== -1) {
     checked++;
-    const chunk = src.slice(i, i + WINDOW).replace(/\s+/g, ' ');
+    // نافذتان لا واحدة، لأن الشرطين ليسا سواءً:
+    //
+    // • قيدُ المسار قد يُضاف على سطرٍ لاحق حين يُبنى الاستعلام على متغيّر
+    //   (`let q = …` ثم `q = q.eq('track', track)`) — فيُبحث عنه في نافذة واسعة.
+    // • أما `.eq('id', …)` فيُبحث عنه في الجملة وحدها: كان يُبحث عنه في
+    //   النافذة الواسعة، فيقع فيها معرّفٌ من استعلامٍ آخر لا علاقة له فيُبرَّأ
+    //   استعلامٌ يقرأ كل المسارات. وقع فعلاً على `contract-file` فمرّ وهو مذنب.
+    const wide = src.slice(i, i + WINDOW).replace(/\s+/g, ' ');
+    const raw = src.slice(i, i + WINDOW);
+    const end = raw.indexOf(';');
+    const stmt = (end === -1 ? raw : raw.slice(0, end)).replace(/\s+/g, ' ');
+    const chunk = stmt;
     // الإدخال يحمل المسار في صفوفه نفسها
     if (/^from\('match_results'\)\s*\.insert\(/.test(chunk)) continue;
-    const scoped = chunk.includes(".eq('track'") || chunk.includes(".in('track'");
-    const byId = chunk.includes(".eq('id'");
+    // التحديث الموجَّه لصفٍّ واحد بمعرّفه آمنٌ بالبناء، ولو طال جسمه فتجاوز
+    // النافذة قبل أن يصل إلى `.eq('id')`. فيُقبل حين يظهر المعرّف في الواسعة.
+    if (/^from\('match_results'\)\s*\.update\(/.test(chunk) && wide.includes(".eq('id'")) continue;
+    const scoped = wide.includes(".eq('track'") || wide.includes(".in('track'");
+    const byId = stmt.includes(".eq('id'");
     if (scoped || byId) continue;
     offenders.push({ file, line: src.slice(0, i).split('\n').length, chunk: chunk.slice(0, 140) });
   }

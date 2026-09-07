@@ -44,6 +44,7 @@ export async function GET() {
     .select('provider, product, requirements, gaps, fit_score, verdict')
     .eq('company_id', co.id)
     .eq('status', 'new')
+    .in('track', ['funding', 'investment'])
     .gte('fit_score', FIT_FLOOR)
     .limit(500);
 

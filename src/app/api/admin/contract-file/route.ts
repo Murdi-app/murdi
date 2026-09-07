@@ -99,6 +99,8 @@ export async function POST(req: Request) {
     .select('provider, product, instrument, amount_range, timeline, apply_channel, verdict, gaps, fit_score')
     .eq('company_id', sr.company_id)
     .eq('status', 'new')
+    // مسار التمويل وحده: صفوف الجدوى لعميلٍ آخر لا تدخل ملف عقده
+    .eq('track', 'funding')
     .gte('fit_score', 30)
     .order('fit_score', { ascending: false });
 

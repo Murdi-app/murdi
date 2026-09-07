@@ -52,6 +52,7 @@ export async function GET(req: Request) {
     .select('provider, requirements, gaps, verdict')
     .eq('company_id', companyId)
     .eq('status', 'new')
+    .in('track', ['funding', 'investment'])
     .gte('fit_score', 30)
     .limit(500);
   // ولا يدخل الملفَّ الذي يُقرأ عند جهة تمويلٍ اسمُ جهةٍ استبعدها المحرك
