@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff, ownsCompany } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
+import { guardOutreach } from '@/lib/outreachGuard';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'مُرضي — فريق الشراكات <partners@murdi.sa>';
@@ -110,6 +111,10 @@ export async function POST(req: Request) {
   // الشرائح لا تمنع الإرسال، لكن سقوطها يُقال في الرد لا يُبتلع
   const deckWarn = attErrors.length ? attErrors : null;
 
+  // أرقام العميل تُقرأ مرة قبل الحلقة: الحارس يمنع خروجها إلى أي جهة.
+  const { data: coRow } = await admin.from('companies').select('phone').eq('id', companyId).maybeSingle();
+  const clientPhones: (string | null | undefined)[] = [coRow?.phone];
+
   let sent = 0;
   let skipped = 0;
   // أسباب الرفض تُجمع وتُعاد للواجهة — لا تُبتلع في عدّاد
@@ -121,6 +126,23 @@ export async function POST(req: Request) {
       skipped++;
       await admin.from('outreach_messages')
         .update({ status: 'فشل', error_note: 'لا يوجد إيميل صالح', updated_at: new Date().toISOString() })
+        .eq('id', m.id);
+      continue;
+    }
+
+    // ═══ الحارسان ═══ يمنعان ولا يُنبّهان: رقم مالك العميل لا يخرج إلى
+    // جهة، وملفُ عميلٍ بعينه لا يدخل صندوق خدمة عملاء. وكلاهما وقع فعلاً.
+    const verdict = guardOutreach({
+      to: String(m.entity_email).trim(),
+      subject: m.subject,
+      body: String(m.admin_edited_body || m.message_body || ''),
+      clientPhones,
+    });
+    if (!verdict.ok) {
+      skipped++;
+      failures.push((m.entity_name || 'جهة') + ': ' + verdict.reasons.join(' ⟵ '));
+      await admin.from('outreach_messages')
+        .update({ status: 'موقوفة', error_note: verdict.reasons.join(' | ').slice(0, 900), updated_at: new Date().toISOString() })
         .eq('id', m.id);
       continue;
     }
