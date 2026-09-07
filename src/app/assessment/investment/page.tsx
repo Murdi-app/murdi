@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { cleanNum } from '@/lib/numInput';
 import { useRouter } from 'next/navigation';
 
 const SECTORS = [
@@ -261,7 +262,7 @@ export default function InvestmentAssessment() {
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(cleanNum(e.target.value))} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
           )}
@@ -270,11 +271,11 @@ export default function InvestmentAssessment() {
             <div className="space-y-6">
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال)</label>
-                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 5000000" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={annualRevenue} onChange={(e) => setAnnualRevenue(cleanNum(e.target.value))} placeholder="مثال: 5000000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">صافي الربح السنوي (ريال — اكتب 0 إذا خسارة)</label>
-                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={netProfit} onChange={(e) => setNetProfit(e.target.value)} placeholder="مثال: 800000" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={netProfit} onChange={(e) => setNetProfit(cleanNum(e.target.value))} placeholder="مثال: 800000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-3">نمو الإيرادات آخر سنة</label>
@@ -353,7 +354,7 @@ export default function InvestmentAssessment() {
                 </div>
                 <div>
                   <label className="block font-black text-[#1A3D34] mb-2">حجم الجولة المطلوبة (المبلغ الذي تبحث عنه بالريال)</label>
-                  <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={roundSize} onChange={(e) => setRoundSize(e.target.value)}
+                  <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={roundSize} onChange={(e) => setRoundSize(cleanNum(e.target.value))}
                     placeholder="مثال: 5000000" className={inputCls + ' text-right'} />
                 </div>
                 <div>
@@ -391,13 +392,13 @@ export default function InvestmentAssessment() {
                 <>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">إجمالي مبلغ التمويل الأصلي (ريال)</label>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} value={totalFinancing} onChange={(e) => setTotalFinancing(e.target.value)}
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} value={totalFinancing} onChange={(e) => setTotalFinancing(cleanNum(e.target.value))}
                       placeholder="مثال: 2000000"
                       className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي على الشركة الآن (ريال)</label>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} value={remainingDebt} onChange={(e) => setRemainingDebt(e.target.value)}
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} value={remainingDebt} onChange={(e) => setRemainingDebt(cleanNum(e.target.value))}
                       placeholder="مثال: 1200000"
                       className="w-full p-4 rounded-xl border-2 border-[#E8F5EF] bg-[#FBFCFB] text-[#1A3D34] font-bold focus:border-[#1A3D34] focus:outline-none text-right" />
                   </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { cleanNum } from '@/lib/numInput';
 import { useRouter } from 'next/navigation';
 
 const FUNDING_TYPES = [
@@ -236,7 +237,7 @@ export default function FundingAssessment() {
             <div className="space-y-6">
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">الإيرادات السنوية (ريال سعودي)</label>
-                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={annualRevenue} onChange={(e) => setAnnualRevenue(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={annualRevenue} onChange={(e) => setAnnualRevenue(cleanNum(e.target.value))} placeholder="مثال: 3000000" className={inputCls} />
               </div>
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">صافي الربح السنوي (ريال سعودي)</label>
@@ -245,7 +246,7 @@ export default function FundingAssessment() {
                   الممول لا يسأل كم تبيع بل كم يبقى لك. وإن كانت السنة خسارة فاكتبها بالسالب،
                   فالصدق هنا يفتح مساراً آخر ولا يغلق ملفك.
                 </p>
-                <input type="number" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={netProfit} onChange={(e) => setNetProfit(e.target.value)} placeholder="مثال: 450000" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={netProfit} onChange={(e) => setNetProfit(cleanNum(e.target.value))} placeholder="مثال: 450000" className={inputCls} />
                 {netProfit !== '' && annualRevenue !== '' && Number(netProfit) > Number(annualRevenue) && (
                   <p className="text-[#B4453C] text-xs font-black mt-2">صافي الربح لا يتجاوز الإيراد — راجع الرقمين.</p>
                 )}
@@ -257,7 +258,7 @@ export default function FundingAssessment() {
 
               <div>
                 <label className="block font-black text-[#1A3D34] mb-2">عمر النشاط (بالسنوات)</label>
-                <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)} placeholder="مثال: 5" className={inputCls} />
+                <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={yearsOperating} onChange={(e) => setYearsOperating(cleanNum(e.target.value))} placeholder="مثال: 5" className={inputCls} />
               </div>
             </div>
           )}
@@ -272,15 +273,15 @@ export default function FundingAssessment() {
                 <>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">قيمة التمويل الأصلية (ريال)</label>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={originalLoan} onChange={(e) => setOriginalLoan(e.target.value)} placeholder="مثال: 2000000" className={inputCls} />
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={originalLoan} onChange={(e) => setOriginalLoan(cleanNum(e.target.value))} placeholder="مثال: 2000000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">المبلغ المتبقي (ريال)</label>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={debtRemaining} onChange={(e) => setDebtRemaining(e.target.value)} placeholder="مثال: 500000" className={inputCls} />
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={debtRemaining} onChange={(e) => setDebtRemaining(cleanNum(e.target.value))} placeholder="مثال: 500000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">القسط الشهري (ريال)</label>
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={monthlyInstallment} onChange={(e) => setMonthlyInstallment(e.target.value)} placeholder="مثال: 15000" className={inputCls} />
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={monthlyInstallment} onChange={(e) => setMonthlyInstallment(cleanNum(e.target.value))} placeholder="مثال: 15000" className={inputCls} />
                   </div>
                   <div>
                     <label className="block font-black text-[#1A3D34] mb-2">جهة التمويل</label>
@@ -307,7 +308,7 @@ export default function FundingAssessment() {
                   {debtStatus === 'late' && (
                     <div>
                       <label className="block font-black text-[#1A3D34] mb-2">كم شهر التأخر؟</label>
-                      <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={monthsLate} onChange={(e) => setMonthsLate(e.target.value)} placeholder="مثال: 2" className={inputCls} />
+                      <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={monthsLate} onChange={(e) => setMonthsLate(cleanNum(e.target.value))} placeholder="مثال: 2" className={inputCls} />
                     </div>
                   )}
                   <div>
@@ -398,9 +399,9 @@ export default function FundingAssessment() {
                   <div className="space-y-3 mt-3 bg-[#FBFCFB] rounded-xl p-4 border border-[#F0F5F3]">
                     <input value={posTypes} onChange={(e) => setPosTypes(e.target.value)}
                       placeholder="أنواع نقاط البيع (مثال: مدى، Apple Pay، STC Pay)" className={inputCls + ' text-right'} />
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={posCount} onChange={(e) => setPosCount(e.target.value)}
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={posCount} onChange={(e) => setPosCount(cleanNum(e.target.value))}
                       placeholder="عدد أجهزة نقاط البيع" className={inputCls + ' text-right'} />
-                    <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="numeric" value={posUsage} onChange={(e) => setPosUsage(e.target.value)}
+                    <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={posUsage} onChange={(e) => setPosUsage(cleanNum(e.target.value))}
                       placeholder="نسبة مبيعاتك عبر نقاط البيع تقريباً (%)" className={inputCls + ' text-right'} />
                   </div>
                 )}
@@ -414,7 +415,7 @@ export default function FundingAssessment() {
                 <YesNo value={hasFleet} onChange={setHasFleet} />
                 <div style={{ marginTop: 22 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">كم المبلغ الذي تحتاجه؟ (ريال)</label>
-                  <input type="number" min="0" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={reqAmount} onChange={(e) => setReqAmount(e.target.value)} placeholder="مثال: 3000000" className={inputCls} />
+                  <input type="text" onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()} inputMode="decimal" value={reqAmount} onChange={(e) => setReqAmount(cleanNum(e.target.value))} placeholder="مثال: 3000000" className={inputCls} />
                 </div>
                 <div style={{ marginTop: 18 }}>
                   <label className="block font-black text-[#1A3D34] mb-2">ما الغرض من التمويل؟</label>
