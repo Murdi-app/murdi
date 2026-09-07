@@ -19,6 +19,15 @@ export const runtime = 'nodejs';
 // ★ والرصيد يُخصم كما يُخصم على العميل: من دفع تشغيلةً يأخذ واحدة، ولا
 //   تُفتح للمكتب تشغيلاتٌ بلا حساب — فالتشغيلة تكلّف، والحساب يُمسك.
 
+// الخدمات التي يَعِد مخرَجها بجدول جهات — نسخة مطابقة لما في تأكيد الدفع
+const MATCH_BEARING = new Set<string>([
+  'تجهيز ملف التمويل والتفاوض',
+  'دراسة الجدوى الاقتصادية',
+  'تمويل العقد',
+  'ملف الممر الأجنبي',
+  'تجهيز ملف عرض المستثمر والتفاوض',
+]);
+
 export async function POST(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
@@ -52,15 +61,27 @@ export async function POST(req: Request) {
     }
 
     if (batch === undefined || batch === 0) {
-      if (spend && Number(co.match_credits || 0) < 1) {
+      const credits = Number(co.match_credits || 0);
+
+      // الاستحقاق أصدق من العدّاد. فمن دفع خدمةً مخرَجها جدول جهات صار
+      // التشغيل حقّاً له، والرصيد رقمٌ يُمثّله لا يُنشئه — وقد يتخلّف عنه:
+      // يقع حين يُدمج صفّان لعميلٍ سجّل مرتين، فيبقى العدّاد على الصفّ
+      // المهجور ويقف مَن دفع أمام «لا يوجد رصيد». وقع فعلاً.
+      const { data: paidSrv } = await admin.from('service_requests')
+        .select('service_title').eq('company_id', companyId).eq('status', 'paid');
+      const entitled = (paidSrv || []).some((r: { service_title?: string | null }) =>
+        MATCH_BEARING.has(String(r.service_title || '')));
+
+      if (spend && credits < 1 && !entitled) {
         return NextResponse.json(
-          { error: 'لا يوجد رصيد تشغيلة لهذه المنشأة. تُمنح بتأكيد دفعة خدمةٍ فيها جدول جهات، أو بمنحها يدوياً.' },
+          { error: 'لا يوجد رصيد تشغيلة ولا خدمة مدفوعة تستوجبها. تُمنح بتأكيد دفعة خدمةٍ فيها جدول جهات.' },
           { status: 402 }
         );
       }
-      if (spend) {
+      // ولا يُخصم إلا موجود: من شُغِّل له باستحقاقه لا يُنقص رصيده تحت الصفر
+      if (spend && credits > 0) {
         await admin.from('companies')
-          .update({ match_credits: Math.max(0, Number(co.match_credits || 0) - 1) })
+          .update({ match_credits: Math.max(0, credits - 1) })
           .eq('id', companyId);
       }
     }
