@@ -11,8 +11,21 @@
 //
 // والحارسان يمنعان ولا يُصلحان بصمت: تصحيحٌ صامت يُخفي الخطأ فيتكرر.
 
-/** رقم المكتب — وهو الرقم الوحيد الذي يجوز خروجه إلى أي جهة */
+// رقما المكتب — وهما وحدهما ما يجوز خروجه في رسالة إلى جهة.
+//
+// ولهما وظيفتان لا واحدة، والخلط بينهما وقع مرتين في يوم:
+//   • 0560721110 — يُعطى لجهة التمويل إذا طلبت رقم تواصل
+//   • 0570314005 — الرقم الرئيسي للمنصة، وهو ما يراه العملاء
+//
+// والحارس يقبلهما معاً ولا يفاضل: وظيفته منع رقم العميل ومالكه من الخروج،
+// لا فرض رقمٍ بعينه. وحصرُه في واحد جعله يوماً يمنع رقم الشركة نفسه.
+export const OFFICE_PHONES = ['0560721110', '0570314005'] as const;
+
+/** الرقم الذي يُعطى لجهة التمويل حين تطلب رقم تواصل */
 export const OFFICE_PHONE = '0560721110';
+
+/** الرقم الرئيسي للمنصة — للعملاء والعموم */
+export const PLATFORM_PHONE = '0570314005';
 
 /** آخر تسع خانات — بها تُقارَن الأرقام مهما اختلفت صيغتها */
 const tail9 = (v: string): string => {
@@ -20,7 +33,7 @@ const tail9 = (v: string): string => {
   return d.length >= 9 ? d.slice(-9) : '';
 };
 
-const OFFICE_TAIL = tail9(OFFICE_PHONE);
+const OFFICE_TAILS = new Set<string>(OFFICE_PHONES.map((p: string) => tail9(p)));
 
 // أي تتابع أرقام سعودي محتمل داخل النص، ولو فُصل بمسافات أو شُرَط أو نقاط
 const PHONE_RE = /(?:\+?\s*9\s*6\s*6|0)(?:[\s\-.()]*\d){8,10}/g;
@@ -30,7 +43,7 @@ const PHONE_RE = /(?:\+?\s*9\s*6\s*6|0)(?:[\s\-.()]*\d){8,10}/g;
  * تُعاد كما وردت في النص ليراها المستعمل كما كتبها.
  */
 export function foreignPhones(body: string, allow: string[] = []): string[] {
-  const allowTails = new Set<string>([OFFICE_TAIL, ...allow.map(tail9).filter((t: string) => t !== '')]);
+  const allowTails = new Set<string>([...OFFICE_TAILS, ...allow.map(tail9).filter((t: string) => t !== '')]);
   const found = String(body || '').match(PHONE_RE) || [];
   const out: string[] = [];
   for (const raw of found) {
@@ -90,9 +103,9 @@ export function guardOutreach(g: GuardInput): GuardVerdict {
 
   if (leaked.length > 0) {
     reasons.push(
-      (isClientNumber ? 'الرسالة تحمل رقم جوال العميل' : 'الرسالة تحمل رقم جوال ليس رقم المكتب')
+      (isClientNumber ? 'الرسالة تحمل رقم جوال العميل' : 'الرسالة تحمل رقم جوال ليس من رقمَي المكتب')
       + ' (' + leaked.join(' · ') + '). '
-      + 'الرقم الوحيد الذي يخرج إلى الجهات هو ' + OFFICE_PHONE + ' — '
+      + 'ولا يخرج إلى الجهات إلا ' + OFFICE_PHONE + ' أو ' + PLATFORM_PHONE + ' — '
       + 'لأن الجهة إن اتصلت بالعميل مباشرةً خرج المكتب من بين الطرفين.'
     );
   }
