@@ -183,6 +183,20 @@ export async function POST() {
     .from('investment_entities')
     .select('*');
 
+  // ⚠️ هذا مسارٌ قديم يقرأ جدول `investment_entities`، وهو فارغ منذ البداية —
+  // فكان يردّ «صفر مستثمرين» لا لأن أحداً لم ينطبق، بل لأن القائمة التي
+  // يقارن بها لا وجود لها. وصفرٌ كاذب أسوأ من خطأ صريح: العميل يقرؤه
+  // «المنصة بحثت ولم تجد لي أحداً».
+  //
+  // والبحث الحيّ عن المستثمرين قائمٌ في مكان آخر: runAutoMatch(id,'investment')
+  // في المحرّك، بمئتين وثمانية وثلاثين نطاقاً — يُستدعى من /api/match/run.
+  // فلا يُردّ من هنا رقمٌ يُفهم قياساً.
+  if (!entities || entities.length === 0) {
+    return NextResponse.json({
+      error: 'مطابقة المستثمرين تُشغَّل من مسار المطابقة الرئيسي — هذا الطريق قديم ولا يُعتدّ برقمه',
+    }, { status: 503 });
+  }
+
   const rev = Number(fd.annual_revenue) || 0;
 
   type Match = { entity: Record<string, unknown>; fit: number; reasons: string[] };
