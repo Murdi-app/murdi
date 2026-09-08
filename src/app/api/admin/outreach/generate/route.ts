@@ -84,10 +84,16 @@ async function buildClient(admin: Admin, companyId: string): Promise<ClientInput
       if (pv.pre_money) client.preMoney = Number(pv.pre_money).toLocaleString('en-US');
       if (pv.round_size) client.roundSize = Number(pv.round_size);
     }
-    const { data: srv } = await admin.from('service_requests')
-      .select('price').eq('company_id', companyId).not('price', 'is', null)
-      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
-    if (srv?.price) client.roundSize = Number(srv.price);
+    // ★ كان هنا سطرٌ يقرأ `service_requests.price` ويضعه في `roundSize`،
+    //   وهو **أتعاب الخدمة التي دفعها العميل لنا** لا حجم جولته. فكان
+    //   يدهس حجم الجولة الحقيقي المقروء أعلاه، ثم يخرج في الرسالة إلى
+    //   الجهة نصّاً: «حجم الجولة المطلوب: 50,000 ريال» لعميلٍ يطلب خمسة
+    //   ملايين. خطأ في اتجاهين: يُفشي ما دفعه العميل، ويُصغّر طلبه أمام
+    //   الممول. فحُذف، ولا بديل له:
+    //   `roundSize` مفهومٌ استثماريّ يأتي من مدخلات العرض وحدها، وما يطلبه
+    //   عميل التمويل محمولٌ في `fundAmount` أعلاه من `requested_amount`.
+    //   وإن غاب حجم الجولة فالأصحّ أن يُسكت عنه في الرسالة لا أن يُملأ برقمٍ
+    //   من مكانٍ آخر — والقالب يحذف السطر كلّه إذا كان صفراً.
   } catch {}
 
   return client;

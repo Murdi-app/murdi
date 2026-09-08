@@ -128,11 +128,17 @@ export async function GET(req: Request) {
   if (companyId) q = q.eq('company_id', companyId);
   if (who.role === 'staff') q = q.eq('created_by', who.userId);
 
-  // بريد العميل يعيش في حساب دخوله لا في جدول المنشآت — والمنظر يجمعهما
+  // بريد العميل يعيش في حساب دخوله لا في جدول المنشآت — والمنظر يجمعهما.
+  // ★ ورقم جوال المالك كان يخرج في هذه القائمة لكل موظفة ولكل منشأة —
+  //   وهو الرقم الذي لا يخرج إلى جهة. والشاشة لا تستعمله أصلاً: تقرأ
+  //   `owner_name` و`contact_email` وحدهما لتعبئة النموذج. فيُحذف عن
+  //   الموظفة في الخادم — والحذف هنا لا يكلّف الشاشةَ شيئاً.
   const [msgs, companies] = await Promise.all([
     q,
     sb.from('company_contacts').select('company_id, company_name, owner_name, phone, contact_email'),
   ]);
+  const contacts = (companies.data || []).map((c) =>
+    who.role === 'admin' ? c : { ...c, phone: null });
 
   const pending =
     who.role === 'admin'
@@ -147,7 +153,7 @@ export async function GET(req: Request) {
     role: who.role,
     templates: TEMPLATES.map((t) => ({ key: t.key, label: t.label, when: t.when })),
     messages: msgs.data || [],
-    companies: companies.data || [],
+    companies: contacts,
     pending_approval: pending,
   });
 }
