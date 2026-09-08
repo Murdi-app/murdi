@@ -41,10 +41,20 @@ export default function HuntPage() {
 
   useEffect(() => { init(); }, []);
 
+  // ★ الصيد عملُ المساعدة قبل أن يكون عمل المالك، وكانت هذه الصفحة تردّها
+  //   بـ«غير مصرّح» لأنها تقارن البريد بالمالك وحده — فتفتح الشاشةَ التي
+  //   جُعلت أولَ شاشتها فلا ترى إلا الرفض. والمسار الخلفي كان يقبلها أصلاً،
+  //   فالعطب في الشاشة لا في الصلاحية.
+  // ★ ومن يدخل هذه الصفحة قرّرَه `staffPages` في الـ layout؛ فلا تكرّر هنا
+  //   قسمةَ الأدوار، واكتفِ بالسؤال: أهو المالك أم موظفةٌ فعّالة؟
   async function init() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/auth/login'); return; }
-    if (user.email !== ADMIN_EMAIL) { setAuthorized(false); setLoading(false); return; }
+    if (user.email !== ADMIN_EMAIL) {
+      const { data: st } = await supabase
+        .from('staff').select('user_id, active').eq('user_id', user.id).maybeSingle();
+      if (!st || st.active !== true) { setAuthorized(false); setLoading(false); return; }
+    }
     setAuthorized(true);
     await loadLeads();
     setLoading(false);
@@ -129,8 +139,13 @@ export default function HuntPage() {
       + body
       + '<div class=footer>\u0644\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645 \u0627\u0644\u062F\u0627\u062E\u0644\u064A \u2014 \u0641\u0631\u064A\u0642 \u0645\u064F\u0631\u0636\u064A</div>'
       + '</body></html>';
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); }
+    // ★ `window.open('', '_blank')` يُحجب في المتصفحات فيرجع null، فكان الزرّ
+    //   يُضغط ولا يحدث شيء ولا رسالة — وهو العطب نفسه الذي أخفى الاستشارة عن
+    //   الهرم. فيُبنى الملفّ رابطاً حقيقياً، وإن حُجبت النافذة فُتح في التبويب.
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    const w = window.open(url, '_blank');
+    if (!w) window.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   if (loading) return <div style={{ padding: 40, fontFamily: 'Cairo', textAlign: 'center', color: '#6B8A80' }}>جار التحميل…</div>;

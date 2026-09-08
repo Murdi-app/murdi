@@ -79,15 +79,18 @@ export default function AdminNav() {
     return () => { alive = false }
   }, [])
 
-  // عدد ما ينتظر تعميده يظهر على التبويب نفسه — فيراه قبل أن يفتح
+  // عدد ما ينتظر تعميده يظهر على التبويب نفسه — فيراه قبل أن يفتح.
+  // ★ وهو عدد المالك وحده. وكان متصفّح الموظفة يناديه في كل انتقال فيُردّ
+  //   بـ401 — نداءٌ لا يفيدها ويطرق باباً ليس لها. فلا يُنادى إلا للمالك.
   useEffect(() => {
+    if (role !== 'admin') { setPending(0); return }
     let alive = true
     fetch('/api/admin/inbox?status=pending')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (alive && d) setPending(Number(d.pending) || 0) })
       .catch(() => {})
     return () => { alive = false }
-  }, [pathname])
+  }, [pathname, role])
 
   // ★ الموظفة ترى صفحات دورها وحدها — لا «كل ما هو مسموح للموظفات».
   //   فالمتابِعة كانت ترى خمسة تبويبات أربعةٌ منها ليست عملها، والمساعدة
