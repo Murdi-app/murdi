@@ -7,5 +7,6 @@ import { requireStaff } from '@/lib/requireStaff';
 export async function GET() {
   const { who, error } = await requireStaff();
   if (error || !who) return NextResponse.json({ role: 'none' }, { status: 401 });
-  return NextResponse.json({ role: who.role, can_send: who.canSend });
+  // و`job` معه: الشاشة الأولى تختلف بين من تصيد العملاء ومن تلاحق الجهات
+  return NextResponse.json({ role: who.role, can_send: who.canSend, job: who.job });
 }

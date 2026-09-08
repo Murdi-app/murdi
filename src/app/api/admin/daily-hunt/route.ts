@@ -1,35 +1,22 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { runDailyHunt } from '@/lib/dailyHunt';
-import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 
 export const maxDuration = 300;
 
-const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
-async function getAdmin() {
-  const cookieStore = await cookies();
-  const sb = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-  );
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) return null;
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.SUPABASE_SERVICE_ROLE_KEY as string
-  );
-}
 
 // GET ?date=YYYY-MM-DD : جلب جولة يوم (افتراضياً اليوم)
 export async function GET(req: Request) {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
-  const admin = await getAdmin();
-  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  // الصيد عملُ المساعدة لا عمل المالك — فتُقرأ الجولة بحساب الموظفة أيضاً.
+  // وكان المسار محصوراً بالمالك، فكانت هي تصيد بلا أن ترى ما صِيد.
+  const { who } = await requireStaff();
+  if (!who) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+  );
   const url = new URL(req.url);
   const savedOnly = url.searchParams.get('saved') === 'true';
   const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
@@ -51,10 +38,26 @@ export async function GET(req: Request) {
 
 // POST : تشغيل جولة صيد جديدة لليوم
 export async function POST() {
-  const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
-  const admin = await getAdmin();
-  if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
+  const { who } = await requireStaff();
+  if (!who) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+  );
+
+  // ★ جولة واحدة في اليوم لا أكثر: الجولة تنادي نموذجاً ببحثٍ في الشبكة
+  //   على ثلاثة محاور، فتكلّف. وزرٌّ مفتوح أمام موظفة يُضغط مرتين بالخطأ.
+  //   ومن أراد إعادتها اليوم فالمالك وحده يملك ذلك.
+  const today = new Date().toISOString().slice(0, 10);
+  const { count } = await admin.from('daily_leads')
+    .select('id', { count: 'exact', head: true }).eq('hunt_date', today);
+  if ((count || 0) > 0 && who.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'صيد اليوم شُغّل مسبقاً — القائمة تحتك جاهزة. وجولة الغد تبدأ بعد منتصف الليل.' },
+      { status: 409 }
+    );
+  }
+
   try {
     const result = await runDailyHunt();
     return NextResponse.json({ ok: true, ...result });

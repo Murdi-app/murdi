@@ -13,10 +13,15 @@ type Lead = {
   lead_kind: string | null; hotness: string | null; entry_angle: string | null; saved: boolean | null;
 };
 
+// الفئات هي الخدمات الثلاث التي تُباع — لا تقسيمٌ نظري. والقديمة تبقى
+// معرَّفةً ليقرأ الجدولُ جولاتِ الأيام الماضية بلا فراغ.
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
-  funding_reserves: { ar: 'التمويل — مراتع وعملاء كشفوا حاجتهم', icon: '🎯', color: '#2E9E7B' },
-  investment_reserves: { ar: 'الاستثمار — مراتع وعملاء كشفوا رغبتهم', icon: '🎯', color: '#9A7B2E' },
-  ipo_early_intent: { ar: 'الطرح — رغبة مبكّرة (قابل للتجهيز)', icon: '🌑', color: '#A53B3B' },
+  contract_finance: { ar: 'تمويل العقد — من رسا عليه عقد', icon: '📜', color: '#B4622A' },
+  funding_track: { ar: 'مسار التمويل — منشأة قائمة تحتاج تمويلاً', icon: '🏦', color: '#2E9E7B' },
+  feasibility: { ar: 'دراسة الجدوى الائتمانية — مشروع أو توسعة', icon: '📊', color: '#9A7B2E' },
+  funding_reserves: { ar: 'التمويل (جولات سابقة)', icon: '🎯', color: '#7E938C' },
+  investment_reserves: { ar: 'الاستثمار (جولات سابقة)', icon: '🎯', color: '#7E938C' },
+  ipo_early_intent: { ar: 'الطرح (جولات سابقة)', icon: '🌑', color: '#7E938C' },
 };
 
 export default function HuntPage() {
@@ -131,7 +136,9 @@ export default function HuntPage() {
   if (loading) return <div style={{ padding: 40, fontFamily: 'Cairo', textAlign: 'center', color: '#6B8A80' }}>جار التحميل…</div>;
   if (authorized === false) return <div style={{ padding: 40, fontFamily: 'Cairo', textAlign: 'center', color: '#A33' }}>غير مصرّح</div>;
 
-  const cats = Object.keys(CAT_META);
+  // الفئات الحيّة أولاً، والقديمة لا تظهر إلا إن كان فيها صفوف
+  const LIVE = ['contract_finance', 'funding_track', 'feasibility'];
+  const cats = [...LIVE, ...Object.keys(CAT_META).filter((c) => !LIVE.includes(c) && leads.some((l) => l.category === c))];
   const byCat = (c: string) => leads.filter((l) => l.category === c);
 
   return (

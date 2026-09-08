@@ -32,6 +32,8 @@ const LINKS: Link[] = [
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
   { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥', staff: true },
+  { href: '/admin/hunt', label: 'صيد اليوم', icon: '🎯', staff: true },
+  { href: '/admin/followup', label: 'المتابعة', icon: '📞', staff: true },
   { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 
