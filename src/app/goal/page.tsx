@@ -296,8 +296,11 @@ export default function GoalPage() {
       {docs.length > 0 && (
         <div style={{ background: '#FBF7EC', borderBottom: '1px solid #E8D9A8', padding: '14px 16px' }}>
           <div className="max-w-5xl mx-auto">
+            {/* الاستشارة موضعها قسم الاستشارات، وهذا الشريط يدلّ عليها ويفتحها.
+                وكان يعرضها وحدها فوق، فبحث عنها العميل في مكان الاستشارات
+                ولم يجدها — ومرّ على الشريط ولم يعرف أنه هي. */}
             <div style={{ color: '#8A6D1F', fontWeight: 900, fontSize: 12.5, marginBottom: 8 }}>
-              📩 وثائق من مُرضي
+              📩 وصلتك وثيقة من مُرضي — وتجدها أيضاً في «الاستشارات»
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
               {/* رابطٌ حقيقي لا نافذةٌ تُكتب بعد انتظار.

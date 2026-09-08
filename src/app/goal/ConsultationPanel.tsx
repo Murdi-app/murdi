@@ -16,6 +16,8 @@ export default function ConsultationPanel() {
   const [sendingE, setSendingE] = useState(false);
   const [retrying, setRetrying] = useState('');
   const [companyId, setCompanyId] = useState('');
+  /** استشارات كتبها المكتب بيده وسلّمها للعميل — مكانها هنا لا في شريطٍ أعلى الصفحة */
+  const [docs, setDocs] = useState<{ id: string; title: string; kind: string; created_at: string }[]>([]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -27,8 +29,13 @@ export default function ConsultationPanel() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user === null) { setLoading(false); return; }
 
+      // `.single()` يُخطئ على صفرٍ وعلى أكثر من صفّ معاً، ومن سجّل منشأتين —
+      // ويقع حين يعيد صاحبها التسجيل ظنّاً أن الأولى لم تُحفظ — كانت لوحته
+      // كلها تقف صامتة. وهو بعينه ما أخفى استشارة د. محمود عن صاحبها.
+      // فالأحدث تُؤخذ، ولا يُخطَّأ أحد.
       const { data: company } = await supabase
-        .from('companies').select('id').eq('user_id', user.id).single();
+        .from('companies').select('id').eq('user_id', user.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (company === null) { setLoading(false); return; }
       setCompanyId(company.id);
 
@@ -37,6 +44,15 @@ export default function ConsultationPanel() {
         const cData = await cRes.json();
         if (cData.consultations) setConsults(cData.consultations);
       } catch {}
+
+      // استشارات المكتب المكتوبة بيده — موضعها هنا، في مكان الاستشارات.
+      // فالعميل يبحث عن استشارته حيث الاستشارات، وقد وُضعت في شريط «وثائق
+      // من مُرضي» أعلى الصفحة، فمرّ عليها ولم يعرف أنها هي. وقع مع هرم.
+      try {
+        const dRes = await fetch('/api/client-documents');
+        const dData = await dRes.json();
+        if (Array.isArray(dData?.documents)) setDocs(dData.documents);
+      } catch { /* الوثائق إضافة لا تُسقط اللوحة إن تعذّرت */ }
 
       const { data: qs } = await supabase
         .from('client_questions')
@@ -111,6 +127,45 @@ export default function ConsultationPanel() {
           <h1 className="text-2xl font-black text-[#1A3D34]">استشارة د. عبدالحكيم المرضي</h1>
           <p className="text-[#6B8A80] text-sm font-bold mt-1">استشارتك الخاصة، أسئلتك، والدعم — في مكان واحد</p>
         </div>
+
+        {/* استشارات كتبها د. عبدالحكيم بيده — تتصدّر ما وَلَّدته المنصة،
+            لأنها هي التي انتظرها العميل، ولأن رابطها عنوانٌ حقيقي لا نافذة
+            تُكتب بعد انتظار فتُحجب على الجوال. */}
+        {docs.filter((d) => d.kind === 'consultation').length > 0 && (
+          <div className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#2E9E7B] no-print">
+            <h2 className="font-black text-[#1A3D34] mb-1">استشارتك من د. عبدالحكيم المرضي</h2>
+            <p className="text-[#6B8A80] text-xs font-bold mb-4">قراءة خاصة بملفك، أُعدّت لك وحدك</p>
+            <div className="flex flex-col gap-2">
+              {docs.filter((d) => d.kind === 'consultation').map((d) => (
+                <a key={d.id} href={'/api/client-documents/view?id=' + encodeURIComponent(d.id)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4"
+                  style={{ background: '#F6FAF8', border: '1.5px solid #CFE7DC', textDecoration: 'none' }}>
+                  <span className="text-[#1A3D34] font-black text-sm text-right">{d.title}</span>
+                  <span className="text-[#1A6B52] font-black text-xs whitespace-nowrap">افتحها ←</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* وما ليس استشارةً من وثائق المكتب — يبقى معها في مكانٍ واحد */}
+        {docs.filter((d) => d.kind !== 'consultation').length > 0 && (
+          <div className="bg-white rounded-3xl p-7 shadow-sm border-2 border-[#E8D9A8] no-print">
+            <h2 className="font-black text-[#1A3D34] mb-4">وثائق من مُرضي</h2>
+            <div className="flex flex-col gap-2">
+              {docs.filter((d) => d.kind !== 'consultation').map((d) => (
+                <a key={d.id} href={'/api/client-documents/view?id=' + encodeURIComponent(d.id)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4"
+                  style={{ background: '#FBF7EC', border: '1.5px solid #E8D9A8', textDecoration: 'none' }}>
+                  <span className="text-[#1A3D34] font-black text-sm text-right">{d.title}</span>
+                  <span className="text-[#9A7B2E] font-black text-xs whitespace-nowrap">افتحها ←</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* الاستشارات الخاصة — مسار لكل خدمة */}
         {(['funding', 'investment', 'ipo'] as const).map((tk) => {
