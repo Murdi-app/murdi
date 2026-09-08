@@ -2,22 +2,17 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { usePathname } from 'next/navigation'
+import { mayVisit, homeFor, asJob, type StaffJob } from '@/lib/staffPages'
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com'
 const MAX_SESSION_MS = 12 * 60 * 60 * 1000
-// نطاق الموظفة: المتابعة وصيد العملاء ولوحة الصفقة ومراسلة العملاء.
-// خرجت المخاطبة ولوحة التقديم — مراسلة جهات التمويل تُدار من مكان واحد
-// حتى لا تصل الجهةَ رسالتان بخطّين مختلفين. أما العميل فيحتاج ردّاً في
-// وقته، فمراسلته مفتوحة لها بقالبٍ لا يعد بشيء. والقائمة بيضاء عمداً:
-// أي صفحة إدارة جديدة مغلقة على الموظفة حتى تُفتح صراحةً.
-// و«المتابعة» أُضيفت لمن تلاحق مخاطبات الجهات: تسجّل ما وقع بالهاتف وتصنّف
-// ما وصل من ردود — ولا تُرسل شيئاً. فالمخاطبة نفسها ما زالت في يدٍ واحدة.
-const STAFF_PAGES = ['/admin/hot', '/admin/deal', '/admin/message', '/admin/followup', '/admin/hunt']
+// نطاق كل موظفة معرَّف في `staffPages` وحده — الشريط والحارس يقرآن منه
+// معاً، فلا يُفتح أحدهما ويُنسى الآخر.
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'ok' | 'staff' | 'no'>('loading')
   // دور الموظفة يقرّر شاشتها الأولى حين تُردّ عن صفحة ليست لها — لا بريدها
-  const [job, setJob] = useState<'assistant' | 'followup'>('assistant')
+  const [job, setJob] = useState<StaffJob>('assistant')
   const pathname = usePathname()
   useEffect(() => {
     const sb = createBrowserClient(
@@ -32,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (!u || !fresh) { if (u) sb.auth.signOut().catch(() => {}); setState('no'); return }
         if (u.email === ADMIN_EMAIL) { setState('ok'); return }
         const { data: st } = await sb.from('staff').select('user_id, active, job').eq('user_id', u.id).maybeSingle()
-        if (st && st.active === true) { setJob(st.job === 'followup' ? 'followup' : 'assistant'); setState('staff'); return }
+        if (st && st.active === true) { setJob(asJob(st.job)); setState('staff'); return }
         setState('no')
       })
       .catch(() => setState('no'))
@@ -57,15 +52,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     )
 
-    if (state === 'staff' && !STAFF_PAGES.some(p => (pathname || '').startsWith(p))) {
+    if (state === 'staff' && !mayVisit(job, pathname || '')) {
       // ويُردّ إلى شاشته هو لا إلى شاشةٍ واحدة للجميع
-      const home = job === 'followup' ? '/admin/followup' : '/admin/hot'
+      const home = homeFor(job)
       return (
         <>{bar}
           <div dir="rtl" style={{ minHeight:'70vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, fontFamily:'Tajawal, sans-serif', color:'#1A3D34' }}>
             <div style={{ fontSize:20, fontWeight:900 }}>هذه الصفحة للإدارة فقط</div>
             <a href={home} style={{ background:'#1A3D34', color:'#fff', padding:'12px 28px', borderRadius:2, textDecoration:'none', fontWeight:700 }}>
-              {job === 'followup' ? 'اذهب إلى المتابعة' : 'اذهب إلى الفرص الساخنة'}
+              اذهب إلى شاشتك
             </a>
           </div>
         </>

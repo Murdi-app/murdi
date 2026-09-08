@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { PAGES_BY_JOB, asJob, type StaffJob } from '@/lib/staffPages'
 
 // شريط الإدارة — نسخة واحدة تظهر في كل صفحة، وكل التبويبات ظاهرة دائماً.
 // قبلها كان الشريط صفّاً واحداً يُسحب بالإصبع وشريط تمريره مخفي، فكانت
@@ -15,25 +16,26 @@ import { useRouter, usePathname } from 'next/navigation'
 // بأنفسهم وكتبوا أرقامهم ولم يُتّصل بأحد منهم. الاتصال بهؤلاء أرخص وأسرع
 // وأعلى تحويلاً من أي صيد. والصفحتان القديمتان باقيتان لمن أرادهما بالرابط.
 
-// staff: true تعني أن الموظفة ترى هذا التبويب. والباقي للمالك وحده.
-// وهذا الإخفاء تجميلي فقط — الحماية الحقيقية في requireStaff داخل كل مسار،
-// وفي القائمة البيضاء STAFF_PAGES داخل layout.
-type Link = { href: string; label: string; icon: string; badge?: boolean; staff?: boolean }
+// هذه القائمة للمالك وحده. وما تراه كل موظفة معرَّف في `staffPages` بدورها،
+// فلا علامة `staff` هنا — علامةٌ لا تُقرأ يُظنّ أنها تحرس وهي لا تحرس.
+// والإخفاء تجميلي على كل حال: الحماية في requireStaff داخل كل مسار، وفي
+// `mayVisit` داخل layout.
+type Link = { href: string; label: string; icon: string; badge?: boolean }
 
 const LINKS: Link[] = [
   { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
-  { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭', staff: true },
+  { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭' },
   { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
-  { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬', staff: true },
+  { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬' },
   { href: '/admin/payments', label: 'المدفوعات', icon: '💳' },
   { href: '/admin/payment-links', label: 'روابط الدفع', icon: '📨' },
   { href: '/admin/apply', label: 'التقديم', icon: '📤' },
   { href: '/admin/outreach', label: 'المخاطبة', icon: '✉️' },
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
-  { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥', staff: true },
-  { href: '/admin/hunt', label: 'صيد اليوم', icon: '🎯', staff: true },
-  { href: '/admin/followup', label: 'المتابعة', icon: '📞', staff: true },
+  { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },
+  { href: '/admin/hunt', label: 'صيد اليوم', icon: '🎯' },
+  { href: '/admin/followup', label: 'المتابعة', icon: '📞' },
   { href: '/admin', label: 'لوحة التحكم', icon: '📊' },
 ]
 
@@ -42,12 +44,15 @@ const LINKS: Link[] = [
 // عند كل ضغطة. والعلاج شقّان: لا يُرسم شيء قبل معرفة الدور، والدور يُحفظ في
 // ذاكرة الجلسة فيُقرأ فوراً في المرات التالية بلا سؤال الخادم ولا رفّة.
 const ROLE_KEY = 'murdi.nav.role'
+const JOB_KEY = 'murdi.nav.job'
 
 export default function AdminNav() {
   const router = useRouter()
   const pathname = usePathname()
   const [pending, setPending] = useState(0)
   const [role, setRole] = useState<'admin' | 'staff' | ''>('')
+  // ودورها معه: «موظفة» لا يكفي — المتابِعة والمساعدة ليستا سواء
+  const [job, setJob] = useState<StaffJob | ''>('')
 
   // من الجالس أمام الشاشة؟ الذاكرة أولاً (فورية)، ثم يُصدَّق من الخادم
   useEffect(() => {
@@ -55,6 +60,8 @@ export default function AdminNav() {
     try {
       const cached = sessionStorage.getItem(ROLE_KEY)
       if (cached === 'admin' || cached === 'staff') setRole(cached)
+      const cachedJob = sessionStorage.getItem(JOB_KEY)
+      if (cachedJob === 'assistant' || cachedJob === 'followup') setJob(cachedJob)
     } catch { /* متصفح يمنع التخزين — يُسأل الخادم فقط */ }
 
     fetch('/api/admin/whoami')
@@ -63,7 +70,9 @@ export default function AdminNav() {
         if (!alive || !d?.role) return
         if (d.role === 'admin' || d.role === 'staff') {
           setRole(d.role)
-          try { sessionStorage.setItem(ROLE_KEY, d.role) } catch {}
+          const j = asJob(d.job)
+          setJob(j)
+          try { sessionStorage.setItem(ROLE_KEY, d.role); sessionStorage.setItem(JOB_KEY, j) } catch {}
         }
       })
       .catch(() => {})
@@ -80,11 +89,16 @@ export default function AdminNav() {
     return () => { alive = false }
   }, [pathname])
 
-  const visible = role === 'staff' ? LINKS.filter(l => l.staff === true) : LINKS
+  // ★ الموظفة ترى صفحات دورها وحدها — لا «كل ما هو مسموح للموظفات».
+  //   فالمتابِعة كانت ترى خمسة تبويبات أربعةٌ منها ليست عملها، والمساعدة
+  //   ترى تبويب المتابعة وهي لا تتابع. والتشتيت وحده يكفي سبباً.
+  const visible: Link[] = role === 'staff'
+    ? (PAGES_BY_JOB[asJob(job)] || []).map(p => ({ href: p.href, label: p.label, icon: p.icon }))
+    : LINKS
 
   // قبل أن يُعرف الدور لا تُرسم تبويبة واحدة — يُحجز مكان الشريط فقط
   // حتى لا تقفز الصفحة. رسمُ الكلّ ثم إخفاؤه هو عين الخلل الذي نعالجه.
-  if (!role) {
+  if (!role || (role === 'staff' && !job)) {
     return (
       <div
         aria-hidden
