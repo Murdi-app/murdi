@@ -820,8 +820,14 @@ export default function GoalPage() {
                         in_follow_up: { t: 'صدر عقدك', bg: '#EAF7F0', fg: '#9A7B2E' },
                         rejected: { t: 'لم تُقبل — راجعنا للتفاصيل', bg: '#FBEEEC', fg: '#C0564B' },
                         completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
+                        cancelled: { t: 'ملغاة', bg: '#F2F5F4', fg: '#7E938C' },
                       };
-                      let st = STAT[req.status] || STAT.submitted;
+                      // الحالة المجهولة لا تُقرأ «بانتظار التجهيز» في وجه العميل.
+                      //
+                      // فعميلٌ سجّل مرتين وأُلغي طلبه المكرّر كان يرى الملغى حيّاً
+                      // بانتظار التجهيز إلى جانب طلبه المدفوع — فيظن أن عليه طلبين،
+                      // ويتصل يسأل. وقع مع منارة الشبكات.
+                      let st = STAT[req.status] || { t: 'ملغاة', bg: '#F2F5F4', fg: '#7E938C' };
                       if (req.status === 'in_follow_up') {
                         const ct = COMMISSION_SERVICES[title];
                         const signed = ct ? clientContracts[ct]?.status === 'signed' : false;

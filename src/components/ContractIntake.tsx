@@ -35,6 +35,11 @@ const BTN = (bg: string): React.CSSProperties => ({
 const KINDS: AwarderKind[] = ['gov', 'semi', 'large', 'private']
 const kindOf = (v: string): AwarderKind | undefined => KINDS.find((k: AwarderKind) => k === v)
 
+// تضييق النوع في مدى الوحدة لا بحرفٍ يُلقى عليه — كما فُعل بـkindOf
+const ASSIGNS = ['yes', 'no', 'unknown'] as const
+type Assign = (typeof ASSIGNS)[number]
+const assignOf = (v: string): Assign => ASSIGNS.find((k: Assign) => k === v) || 'unknown'
+
 const num = (v: string): number => {
   const x = Number(String(v).replace(/[^\d.-]/g, ''))
   return Number.isFinite(x) ? x : 0
@@ -64,6 +69,8 @@ export default function ContractIntake({ requestId, companyId }: Props) {
     value: '', months: '', advance: '', retention: '', cost: '', delay: '',
     recover: '', perf: '', bid: '', cover: '', awarderName: '', awarderKind: '',
     penalty: '', awarded: 'yes',
+    // البند الذي يقرّر أي الأبواب تُطرق، والشهور التي مضت من التنفيذ
+    assign: 'unknown', elapsed: '',
   })
 
   const set = (k: keyof typeof a) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -85,6 +92,8 @@ export default function ContractIntake({ requestId, companyId }: Props) {
     awarderKind: kindOf(a.awarderKind),
     penaltyPct: num(a.penalty) / 100,
     awarded: a.awarded !== 'no',
+    assignAllowed: assignOf(a.assign),
+    elapsed: num(a.elapsed),
   }), [a])
 
   const ready = payload.value > 0 && payload.months > 0
@@ -185,6 +194,19 @@ export default function ContractIntake({ requestId, companyId }: Props) {
             <option value="no">قبل الترسية — يستعدّ للتقديم</option>
           </select>
         </div>
+
+        {/* أخطر بندٍ في الملف: إن مَنَع العقد التنازل سقط تسييل المستخلصات
+            وأكثر المنصات معه — فترشيحه بلا سؤال يرسل العميل إلى بابٍ مقفل */}
+        <div>
+          <div style={LB}>هل يسمح العقد بالتنازل عن المستحقات؟</div>
+          <select value={a.assign} onChange={set('assign')} style={IN}>
+            <option value="unknown">لم يُقرأ البند بعد</option>
+            <option value="yes">نعم — يسمح</option>
+            <option value="no">لا — يمنعه</option>
+          </select>
+        </div>
+
+        {a.awarded !== 'no' && F('elapsed', 'كم شهراً مضى من التنفيذ؟', '2')}
       </div>
 
       {calc === null ? (

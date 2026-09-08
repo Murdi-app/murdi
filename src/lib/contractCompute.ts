@@ -27,6 +27,24 @@ export interface ContractInputs {
   awarderKind?: AwarderKind;  // جودته الائتمانية
   penaltyPct?: number;        // غرامة التأخير اليومية أو الإجمالية كما في العقد
   awarded?: boolean;          // هل رسا العقد فعلاً أم ما زال منافسة
+
+  // ★ هل يسمح العقد بالتنازل عن المستحقات؟
+  //
+  // وهذا أخطر بندٍ في الملف كله لا بنداً من جملة بنود: إن منعه العقد سقط
+  // تسييل المستخلصات — وهو الأداة الأولى التي تُرشَّح لكل مقاول — وسقطت معه
+  // أكثر منصات التمويل، لأن قرارها مبنيٌّ على أخذ التنازل. ومن لا يُسأل عنه
+  // تُبنى له وثيقةٌ ترشّح باباً مقفلاً، فيطرقه ويُردّ ويظن العيب في نفسه.
+  //
+  // وقع فعلاً: عقد هرم الإنشاء يمنع التنازل، وعجزت عن استخراج أي ورقة من
+  // المُسنِد. فكان الترشيح الأول لها باب عدم.
+  assignAllowed?: 'yes' | 'no' | 'unknown';
+
+  // ★ كم شهراً مضى من التنفيذ.
+  //
+  // فالعقد الذي مضى عليه شهران ليس عقداً على الورق: صاحبه اجتاز جزءاً من
+  // الحفرة بماله، وحاجته من اليوم أقلّ من أعمق نقطةٍ في الجدول. ومن يطلب
+  // الرقم الكامل يطلب مالاً لا يحتاجه ويحمل كلفته.
+  elapsed?: number;
 }
 
 export type AwarderKind = 'gov' | 'semi' | 'large' | 'private';
@@ -62,6 +80,13 @@ export interface ContractPack {
   fundsMoreThanEarns: boolean;  // يموّل أكثر مما سيربح — أخطر جملة في الوثيقة
   retentionAmount: number;
   retentionMonth: number;
+
+  // ما تبقّى من الحفرة بعد ما مضى — وهو الرقم الذي يُطلب من الجهة فعلاً.
+  // ويساوي `gap` لعقدٍ لم يبدأ، فلا يتغيّر شيء لمن لم يُدخل `elapsed`.
+  forwardGap: number;
+  forwardMonth: number;      // الشهر الذي تقع فيه أعمق نقطة متبقية
+  clearsAtMonth: number | null;  // أول شهرٍ يعود فيه التراكمي موجباً
+  elapsed: number;
 }
 
 export interface ContractScenario {
@@ -102,6 +127,15 @@ export function normalizeContract(i: Partial<ContractInputs>): ContractInputs {
     awarderKind: i.awarderKind,
     penaltyPct: clamp01(Number(i.penaltyPct)),
     awarded: i.awarded !== false,
+    // المجهول لا يُقرأ سماحاً: من لم يُسأل تُكتب له «يُقرأ في عقدك» لا
+    // «مسموح» — فالافتراض بالسماح هو بعينه ما يرشّح باباً مقفلاً
+    assignAllowed:
+      i.assignAllowed === 'yes' || i.assignAllowed === 'no' ? i.assignAllowed : 'unknown',
+    // ما مضى لا يتجاوز المدة، وسالبُه صفر
+    elapsed: Math.min(
+      Math.max(0, Math.round(Number(i.elapsed)) || 0),
+      Math.round(num(Number(i.months), 0)) || 12
+    ),
   };
 }
 
@@ -179,6 +213,31 @@ export function computeContract(raw: Partial<ContractInputs>): ContractPack {
     },
     // الجملة التي تبيع الخدمة وحدها: أن يحتاج نقداً أكثر مما سيربح
     fundsMoreThanEarns: gap > profit && profit > 0,
+    ...forward(rows, i.elapsed),
+    elapsed: i.elapsed,
+  };
+}
+
+/**
+ * أعمق نقطة متبقية من اليوم، لا من أول العقد.
+ *
+ * ومن مضى على عقده شهران عبَر أعمق نقطةٍ بماله هو، فطلبُه الرقمَ الكامل
+ * طلبُ مالٍ لا يحتاجه — ويحمل كلفته اثني عشر شهراً. والفرق ليس تجميلاً:
+ * في عقد هرم هو الفرق بين 5,571,429 و4,071,429.
+ */
+function forward(rows: MonthFlow[], elapsed: number): {
+  forwardGap: number; forwardMonth: number; clearsAtMonth: number | null;
+} {
+  const ahead = rows.filter((r: MonthFlow) => r.m > elapsed);
+  if (ahead.length === 0) return { forwardGap: 0, forwardMonth: 0, clearsAtMonth: null };
+  let low = ahead[0];
+  for (const r of ahead) if (r.cum < low.cum) low = r;
+  // أول شهرٍ يخرج فيه من العجز بعد أعمق نقطته — وهو موعد انتهاء حاجته
+  const cleared = ahead.find((r: MonthFlow) => r.m >= low.m && r.cum >= 0);
+  return {
+    forwardGap: low.cum < 0 ? -low.cum : 0,
+    forwardMonth: low.m,
+    clearsAtMonth: cleared ? cleared.m : null,
   };
 }
 
@@ -275,14 +334,40 @@ export function fundingStructure(raw: Partial<ContractInputs>, p: ContractPack):
   }
 
   if (p.gap > 0) {
-    legs.push({
-      moment: 'أثناء التنفيذ · الشهر ' + (p.worst !== null ? p.worst.m : '—'),
-      need: 'رأس المال العامل حتى يُصرف أول مستخلص',
-      instrument: 'رأس مال عامل · أو تسييل مستخلصات',
-      amount: p.gap,
-      family: 'رأس مال عامل · تمويل ذمم وفواتير',
-      note: 'وتسييل المستخلص أقرب للقبول من قرضٍ عام، لأن سداده من مالٍ مستحقٍّ لك على جهة معروفة.',
-    });
+    // ما يُطلب فعلاً هو المتبقّي من الحفرة لا كاملها — ومن مضى على عقده
+    // شهران عبَر أعمقها بماله
+    const ask = p.forwardGap > 0 ? p.forwardGap : p.gap;
+    const at = p.forwardGap > 0 ? p.forwardMonth : (p.worst !== null ? p.worst.m : 0);
+    const until = p.clearsAtMonth !== null
+      ? ' — وحاجتك تنتهي بالشهر ' + p.clearsAtMonth + '، فاطلب تسهيلاً بمدّتها لا قرضاً بخمس سنوات'
+      : '';
+
+    if (i.assignAllowed === 'no') {
+      // عقدٌ يمنع التنازل: تسييل المستخلصات ساقط، ولا يُذكر أصلاً. والبديل
+      // الذي يقبله البنك بلا مخالفة العقد **توجيه الدفع** — لا تنازل فيه،
+      // وإنما حساب تحصيل لدى المموّل تُوجَّه إليه دفعات المُسنِد.
+      legs.push({
+        moment: 'أثناء التنفيذ · الشهر ' + at,
+        need: 'رأس المال العامل حتى يُصرف المستخلص',
+        instrument: 'تسهيل رأس مال عامل دوّار بضمان كفالة · وحساب تحصيل',
+        amount: ask,
+        family: 'رأس مال عامل · ضمانات وكفالات',
+        note: 'عقدك يمنع التنازل عن المستحقات، فتسييل المستخلصات ساقطٌ عنك ولا يُطرق. '
+          + 'والبديل الذي لا يخالف عقدك: تسهيل دوّار يُسحب مع المستخلص ويُسدَّد من تحصيله، '
+          + 'وتُوجَّه دفعات المُسنِد إلى حساب تحصيل لك لدى المموّل — وهذا توجيه دفع لا تنازل. '
+          + 'والضمان تحمله كفالة لا رهنك' + until + '.',
+      });
+    } else {
+      legs.push({
+        moment: 'أثناء التنفيذ · الشهر ' + at,
+        need: 'رأس المال العامل حتى يُصرف أول مستخلص',
+        instrument: 'رأس مال عامل · أو تسييل مستخلصات',
+        amount: ask,
+        family: 'رأس مال عامل · تمويل ذمم وفواتير',
+        note: 'وتسييل المستخلص أقرب للقبول من قرضٍ عام، لأن سداده من مالٍ مستحقٍّ لك على جهة معروفة'
+          + until + '.',
+      });
+    }
   }
 
   legs.push({

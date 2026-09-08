@@ -149,7 +149,21 @@ export async function POST(req: Request) {
     sector: company.sector || undefined,
     city: company.city || undefined,
     goal: company.goal || undefined,
-    fundingAmount,
+    // ★ المبلغ يرجع إلى ما طلبه العميل في تقييمه إن تُركت الخانة فارغة.
+    //
+    // وكان يُترك `undefined`، والتعليمة تأمر النموذج بألّا يترك المبلغ
+    // مفتوحاً — فيخترع «نطاقاً مسنداً إلى الإيراد». والنموذج لا يخترع الرقم
+    // نفسه مرتين: وقع في ملف منارة الشبكات — النسخة العربية قالت
+    // ١٬٥٠٠٬٠٠٠–٢٬٥٠٠٬٠٠٠ والإنجليزية ٢٬٠٠٠٬٠٠٠–٣٬٠٠٠٬٠٠٠، والعميل طلب
+    // ١٬٠٠٠٬٠٠٠. وثيقتان لعميل واحد برقمين مختلفين تُسقطان الملف عند أول
+    // جهة تقارن، وتُسقطان معهما ثقة الجهة بالمكتب لا بالعميل وحده.
+    //
+    // فما طلبه العميل أصدق من رقمٍ يُولَّد، والخانة تبقى للتعديل لا للإنشاء.
+    fundingAmount: fundingAmount ?? (
+      Number((effective as { requested_amount?: number }).requested_amount) > 0
+        ? Number((effective as { requested_amount?: number }).requested_amount)
+        : undefined
+    ),
     revenue: dn.revenue ?? undefined,
     profit: (effective as { net_profit?: number }).net_profit ?? undefined,
     liabilities: dn.remaining ?? undefined,

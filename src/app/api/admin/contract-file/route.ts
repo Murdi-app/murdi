@@ -72,6 +72,9 @@ export async function POST(req: Request) {
   // وتحرس الحساب معاً، وnormalizeContract يتكفّل بعد ذلك بالمدى.
   const KINDS: AwarderKind[] = ['gov', 'semi', 'large', 'private'];
   const kind = KINDS.find((k: AwarderKind) => k === String(saved.awarderKind || ''));
+  // والمجهول لا يُقرأ سماحاً: الافتراض الصامت بالسماح هو ما يرشّح باباً مقفلاً
+  const ASSIGNS = ['yes', 'no', 'unknown'] as const;
+  const assign = ASSIGNS.find((k: (typeof ASSIGNS)[number]) => k === String(saved.assignAllowed || ''));
   const i: ContractInputs = normalizeContract({
     value: Number(saved.value),
     months: Number(saved.months),
@@ -87,6 +90,8 @@ export async function POST(req: Request) {
     awarderName: String(saved.awarderName || '').slice(0, 160),
     awarderKind: kind,
     awarded: saved.awarded !== false,
+    assignAllowed: assign,
+    elapsed: Number(saved.elapsed),
   });
   const pack = computeContract(i);
   const scen = contractScenarios(i);

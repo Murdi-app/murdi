@@ -203,7 +203,28 @@ export async function POST(req: Request) {
   });
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
-  
+  // الملكية تُنسخ إلى صفّ المنشأة أيضاً.
+  //
+  // فالعميل يُدخلها هنا، واللوحات و`readOwnership` تقرؤها من `companies` —
+  // فكانت تُكتب في مكانٍ ويُبحث عنها في آخر، واللوحة تقول «الملكية غير
+  // مسجّلة» عن عميلٍ سجّلها بيده. ووقع أثرها: رُتِّبت أبوابٌ حكومية لمنشأةٍ
+  // لم تُعرف ملكيتها — وهو بعينه ما تمنعه آلية الممر الأجنبي.
+  //
+  // ولا تُطمس إجابةٌ سابقة إن جاء التقييم الثاني فارغاً: تُكتب القيمة إن
+  // وُجدت، ويُترك ما دونها.
+  {
+    const own: Record<string, unknown> = {};
+    if (body.ownership_type) own.ownership_type = body.ownership_type;
+    if (body.owner_nationality) own.owner_nationality = body.owner_nationality;
+    if (body.parent_company_country) own.parent_company_country = body.parent_company_country;
+    if (body.parent_can_guarantee === 'yes' || body.parent_can_guarantee === true) own.parent_can_guarantee = true;
+    else if (body.parent_can_guarantee === 'no' || body.parent_can_guarantee === false) own.parent_can_guarantee = false;
+    // وفشلُه لا يُسقط التقييم: الملكية تُستدرك، والتقييم لا يُعاد
+    if (Object.keys(own).length > 0) {
+      await supabase.from('companies').update(own).eq('id', company.id);
+    }
+  }
+
   // ===== التحليل العميق: Claude يكتب العوائق والخطة من الأرقام الفعلية =====
   try {
     const deep = await generateDeepAnalysis({ ...body, annual_revenue: rev, years_operating: years } as Record<string, unknown>, score);

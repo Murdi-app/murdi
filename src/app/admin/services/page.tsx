@@ -26,7 +26,20 @@ const STAT: Record<string, { t: string; bg: string; fg: string }> = {
   in_follow_up: { t: 'قيد المتابعة مع الجهات', bg: '#EAF7F0', fg: '#9A7B2E' },
   completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
   rejected: { t: 'مرفوضة', bg: '#FBEEEC', fg: '#C0564B' },
+  cancelled: { t: 'ملغاة', bg: '#F2F5F4', fg: '#7E938C' },
 }
+
+// حالةٌ لا يعرفها الجدول أعلاه لا تُقرأ «بانتظار التجهيز».
+//
+// كان الرجوع `STAT[r.status] || STAT.submitted`، فظهر طلبٌ **ملغى** لصائب
+// بطاقةً حيّةً بانتظار التجهيز إلى جانب طلبه المدفوع — طلبان متطابقان
+// أحدهما ميت يبدو حياً. وهذا يُغري بتجهيزه، أو يُشغل المكتب عن المدفوع.
+// والافتراض الصامت بالأخفّ هو الخطأ: المجهول يُعلَن مجهولاً.
+const statOf = (s: string): { t: string; bg: string; fg: string } =>
+  STAT[s] || { t: s || 'غير محددة', bg: '#F2F5F4', fg: '#7E938C' }
+
+// الحالات الميتة: تُعرض للسجل ولا تُعرض عليها أزرار عمل
+const DEAD = new Set<string>(['cancelled', 'rejected'])
 
 export default function AdminServicesPage() {
   const router = useRouter()
@@ -586,9 +599,10 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
         {reqs.map((r) => {
           const e = edits[r.id] || { deliverable: r.admin_deliverable || '', price: r.price ? String(r.price) : '' }
-          const st = STAT[r.status] || STAT.submitted
+          const st = statOf(r.status)
+          const dead = DEAD.has(r.status)
           return (
-            <div key={r.id} style={{ background:'#fff', border:'2px solid #EAF2EE', borderRadius:16, padding:20, marginBottom:16 }}>
+            <div key={r.id} style={{ background: dead ? '#FAFBFB' : '#fff', border:'2px solid ' + (dead ? '#E9EEEC' : '#EAF2EE'), borderRadius:16, padding:20, marginBottom:16, opacity: dead ? 0.62 : 1 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:8, marginBottom:10 }}>
                 <div>
                   <div style={{ fontSize:16, fontWeight:900, color:'#1A3D34' }}>{isNew(r.created_at) && <span style={{ background:'#2E9E7B', color:'#fff', fontSize:10, fontWeight:900, padding:'2px 8px', borderRadius:20, marginLeft:6 }}>جديد</span>}{displayName(canonicalTitle(r.service_title))}</div>
@@ -933,7 +947,9 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 {r.status !== 'completed' && r.status !== 'rejected' && r.status !== 'delivered' && <button onClick={() => { if (confirm('هل أنت متأكد من رفض هذه الخدمة؟')) save(r.id, e.deliverable, e.price, 'rejected') }} disabled={busy === r.id} style={{ background:'transparent', color:'#C0564B', border:'1.5px solid #F0D5D1', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>✕ رفض الخدمة</button>}
               </div>
               </>)}
-              {COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || !!r.delivered_at) && (() => {
+              {/* لا أزرار عمل على طلبٍ ملغى أو مرفوض: بطاقته تبقى للسجل،
+                  ولا تُغري بتوليد ملفٍ أو إنشاء عقدٍ على طلبٍ ميت */}
+              {!dead && COMMISSION_SERVICES[r.service_title] && (r.service_title !== 'تجهيز ملف عرض المستثمر والتفاوض' || !!r.delivered_at) && (() => {
                 const c = contracts[r.id]
                 return (<>
                 <div style={{ marginTop:16 }}>
