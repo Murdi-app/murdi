@@ -17,9 +17,14 @@ import AdminNav from '@/components/AdminNav'
 
 const OFFICE = '0560721110'
 
+// اتفاق العدد بالعربية — «7 جهة» خطأ يقرؤه العميل والموظفة معاً
+const arEntities = (n: number): string =>
+  n === 0 ? 'لا جهات' : n === 1 ? 'جهة واحدة' : n === 2 ? 'جهتان'
+  : n <= 10 ? n + ' جهات' : n + ' جهة'
+
 type Row = {
   id: string; entity: string; email: string; track: string
-  kind: 'reply' | 'stale' | 'waiting' | 'done' | 'draft'
+  kind: 'reply' | 'stale' | 'waiting' | 'done'
   sentAt: number | null; daysSince: number | null
   reply: string; replyStatus: string
   officerName: string; officerPhone: string; officerEmail: string
@@ -32,7 +37,6 @@ const KIND: Record<string, { t: string; bg: string; fg: string; bd: string }> = 
   stale:   { t: 'عدّى يومين — اتصلي', bg: '#FBEEEC', fg: '#B4453C', bd: '#C0564B' },
   waiting: { t: 'بانتظار الرد', bg: '#FBF7EC', fg: '#8A6D1F', bd: '#E8D9A8' },
   done:    { t: 'مصنَّف', bg: '#F2F5F4', fg: '#7E938C', bd: '#E1EDE8' },
-  draft:   { t: 'لم تُرسل بعد', bg: '#F2F5F4', fg: '#7E938C', bd: '#E1EDE8' },
 }
 
 const REPLY_KINDS: { k: string; t: string }[] = [
@@ -44,7 +48,7 @@ const REPLY_KINDS: { k: string; t: string }[] = [
 
 export default function FollowupPage() {
   const [clients, setClients] = useState<Client[]>([])
-  const [counts, setCounts] = useState({ reply: 0, stale: 0, waiting: 0, done: 0, draft: 0 })
+  const [counts, setCounts] = useState({ reply: 0, stale: 0, waiting: 0, done: 0 })
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string>('')
   const [busy, setBusy] = useState('')
@@ -110,7 +114,7 @@ export default function FollowupPage() {
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 900, color: '#1A3D34' }}>{c.name}</div>
                   <div style={{ fontSize: 12, color: '#6B8A80', fontWeight: 700, marginTop: 2 }}>
-                    {c.service}{c.city ? ' · ' + c.city : ''} · {c.rows.length} جهة
+                    {c.service}{c.city ? ' · ' + c.city : ''} · {arEntities(c.rows.length)}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -125,7 +129,7 @@ export default function FollowupPage() {
               <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
                 {c.rows.length === 0 && (
                   <div style={{ background: '#FBF7EC', border: '1px solid #E8D9A8', borderRadius: 12, padding: 14, fontSize: 13, fontWeight: 700, color: '#8A6D1F' }}>
-                    هذا العميل دفع وما خرجت له أي مخاطبة بعد. بلّغي الدكتور عبدالحكيم.
+                    هذا العميل دفع وما خرجت له أي رسالة بعد. بلّغي الدكتور عبدالحكيم.
                   </div>
                 )}
 

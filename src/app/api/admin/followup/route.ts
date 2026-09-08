@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
+import { canonicalTitle, displayName } from '@/lib/serviceCatalog';
 
 // لوحة المتابعة — ما يراه من يلاحق مخاطبات الجهات.
 //
@@ -59,20 +60,30 @@ export async function GET() {
 
     const svc = new Map<string, string>();
     for (const r of (paid || []) as { company_id: string; service_title: string | null }[]) {
-      if (!svc.has(r.company_id)) svc.set(r.company_id, String(r.service_title || ''));
+      // الاسم المعروض لا المفتاح المخزَّن: «الاقتصادية» مفتاح قاعدة،
+      // والمنتج اسمه «دراسة الجدوى الائتمانية» في كل شاشة سواها
+      if (!svc.has(r.company_id)) svc.set(r.company_id, displayName(canonicalTitle(String(r.service_title || ''))));
     }
     const ids = [...svc.keys()];
     if (ids.length === 0) return NextResponse.json({ ok: true, clients: [], counts: zero() });
 
+    // ★ الموقوفة لا تظهر: الهمام موقوفة بأمر المالك، ومنشآت الاختبار ليست
+    //   عملاء. وظهورهما على لوحة الموظفة يُغريها بالاتصال بمن نُهي عن
+    //   مخاطبته، وبعملٍ على ملفٍ ليس ملفاً.
     const { data: cos } = await admin
       .from('companies')
       .select('id, company_name, city, sector, assigned_to')
-      .in('id', ids);
+      .in('id', ids)
+      .eq('outreach_paused', false);
 
+    // ★ المسوّدة ليست عملاً لها: رسالةٌ لم تُرسل لا تُتابَع ولا يُتصل بشأنها.
+    //   وكانت تُعدّ صفّاً فتقول اللوحة «٧ جهات» لعميلٍ لم تخرج له رسالة
+    //   واحدة — فيبدو مشغولاً وهو ساكن.
     const { data: msgs } = await admin
       .from('outreach_messages')
       .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, officer_name, officer_phone, officer_email, staff_note, track')
       .in('company_id', ids)
+      .not('sent_at', 'is', null)
       .order('sent_at', { ascending: false });
 
     const now = Date.now();
@@ -100,7 +111,7 @@ export async function GET() {
         // ردٌّ وصل ولم يُصنَّف بعد — أول ما يُعمل في الصباح
         const needsTriage = hasReply && String(m.reply_status || '').trim() === '';
 
-        const kind = needsTriage ? 'reply' : stale ? 'stale' : hasReply ? 'done' : sent ? 'waiting' : 'draft';
+        const kind = needsTriage ? 'reply' : stale ? 'stale' : hasReply ? 'done' : 'waiting';
         counts[kind as keyof typeof counts] += 1;
 
         return {
@@ -122,7 +133,7 @@ export async function GET() {
       });
 
       // ترتيب الجهات داخل العميل: ما يستحقّ عملاً اليوم أولاً
-      const W: Record<string, number> = { reply: 0, stale: 1, waiting: 2, draft: 3, done: 4 };
+      const W: Record<string, number> = { reply: 0, stale: 1, waiting: 2, done: 3 };
       rows.sort((a, b) => (W[a.kind] - W[b.kind]) || ((b.sentAt || 0) - (a.sentAt || 0)));
 
       return {
@@ -148,7 +159,7 @@ export async function GET() {
 }
 
 function zero() {
-  return { reply: 0, stale: 0, waiting: 0, done: 0, draft: 0 };
+  return { reply: 0, stale: 0, waiting: 0, done: 0 };
 }
 
 // تسجيل ما انتزعته بالهاتف، أو تصنيف ردّ — ولا إرسال من هنا إطلاقاً.
