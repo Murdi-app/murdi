@@ -178,6 +178,38 @@ export async function POST(req: Request) {
     issuesInvoices: (effective as { issues_invoices?: boolean }).issues_invoices || undefined,
     hasCollateral: (effective as { has_collateral?: string }).has_collateral || undefined,
     yearsOperating: (effective as { years_operating?: number }).years_operating || undefined,
+
+    // الحقائق الائتمانية الثلاث — تُقرأ من تقييم العميل نفسه لا تُكتب يدوياً
+    debtFree: (() => {
+      const e = effective as { has_debt?: unknown; monthly_installment?: number };
+      const noDebt = e.has_debt === false || String(e.has_debt) === 'false' || String(e.has_debt) === 'no';
+      // ولا تُقال إلا إن صدّقها الرقم: من قال «لا مديونية» وعليه قسط لا يُوصف نظيفاً
+      return noDebt && !dn.remaining && !Number(e.monthly_installment) ? true : undefined;
+    })(),
+    parentCountry: (() => {
+      const e = effective as { has_parent_company?: unknown; parent_company_country?: string };
+      const has = e.has_parent_company === true || String(e.has_parent_company) === 'yes' || String(e.has_parent_company) === 'true';
+      return has ? (String(e.parent_company_country || '').trim() || undefined) : undefined;
+    })(),
+    parentCanGuarantee: (() => {
+      const g = (effective as { parent_can_guarantee?: unknown }).parent_can_guarantee;
+      return g === true || String(g) === 'yes' || String(g) === 'true' ? true : undefined;
+    })(),
+    // الصفة تُصاغ هنا مرة واحدة، بلا جنسية ولا بلد (قراره 2026-09-08).
+    //
+    // «شركة سعودية بملكية مستثمر» صحيحة حرفاً بحرف: الكيان سعودي التسجيل
+    // مهما كان مالكه. والجنسية يقرؤها الممول من السجل إن أرادها، ولا تُبتدأ
+    // بها الوثيقة فتُوجّه القراءة إلى المالك بدل المنشأة.
+    //
+    // ولا تُقال «ملكية سعودية» إلا لمن هي ملكيته سعودية فعلاً — الادّعاء هنا
+    // يُكتشف من السجل في دقيقة، ويُسقط الوثيقة والمكتب معها.
+    ownership: (() => {
+      const t = String((effective as { ownership_type?: string }).ownership_type || '');
+      if (t === 'saudi') return 'شركة سعودية';
+      if (t === 'gcc' || t === 'foreign' || t === 'mixed') return 'شركة سعودية بملكية مستثمر';
+      return undefined;   // غير مسجّلة: لا يُفترض شيء ولا تُكتب صفة
+    })(),
+
     debtDetail: (() => {
       const e = effective as { lender_name?: string; monthly_installment?: number; debt_type?: string; debt_status?: string };
       const parts: string[] = [];
