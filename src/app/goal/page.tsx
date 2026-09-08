@@ -300,25 +300,22 @@ export default function GoalPage() {
               📩 وثائق من مُرضي
             </div>
             <div style={{ display: 'grid', gap: 8 }}>
+              {/* رابطٌ حقيقي لا نافذةٌ تُكتب بعد انتظار.
+                  كان الزرّ يفتح `window.open('', '_blank')` ثم ينتظر الطلب ثم
+                  يكتب المتن — وهذا يُحجب في متصفّحات الجوال وفي متصفّح واتساب
+                  المدمج، وحين يُحجب يقول الكود `if (!w) return` فيصمت تماماً.
+                  وقع مع هرم الإنشاء: ضُغط الزرّ وسُجّل `seen_at` ولم يظهر شيء،
+                  فقال العميل إن الاستشارة لم تصله وهي عنده. */}
               {docs.map((d) => (
-                <button key={d.id} type="button"
-                  onClick={async () => {
-                    const w = window.open('', '_blank');
-                    try {
-                      const r = await fetch('/api/client-documents?id=' + encodeURIComponent(d.id));
-                      const j = await r.json();
-                      if (!w) return;
-                      w.document.open();
-                      w.document.write(j?.body || '<p dir="rtl" style="font-family:Cairo;padding:30px">تعذّر فتح الوثيقة — راجع فريق مُرضي.</p>');
-                      w.document.close();
-                    } catch { w?.close(); }
-                  }}
+                <a key={d.id} href={'/api/client-documents/view?id=' + encodeURIComponent(d.id)}
+                  target="_blank" rel="noopener noreferrer"
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                     background: '#fff', border: '1.5px solid #E8D9A8', borderRadius: 12, padding: '12px 15px',
-                    cursor: 'pointer', fontFamily: 'Cairo', textAlign: 'right', width: '100%' }}>
+                    cursor: 'pointer', fontFamily: 'Cairo', textAlign: 'right', width: '100%',
+                    textDecoration: 'none' }}>
                   <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>{d.title}</span>
                   <span style={{ color: '#9A7B2E', fontWeight: 800, fontSize: 12, whiteSpace: 'nowrap' }}>افتحها ←</span>
-                </button>
+                </a>
               ))}
             </div>
           </div>
@@ -847,17 +844,14 @@ export default function GoalPage() {
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
                             </div>
                           )}
+                          {/* رابطٌ حقيقي لا نافذةٌ تُكتب بعد انتظار — نفس علّة
+                              وثائق العميل التي أخفت استشارة هرم عن صاحبها.
+                              والعميل يفتح بهذا الزرّ ملفه الذي دفع ثمنه. */}
                           {(req.status === 'delivered' || req.status === 'completed') && (
-                            <button onClick={async () => {
-                              const w = window.open('', '', 'width=800');   // يُفتح داخل نقرة المستخدم وإلا حجبه المتصفح
-                              try {
-                                const d = await (await fetch('/api/service-deliverable?id=' + encodeURIComponent(req.id))).json();
-                                if (!w) return;
-                                if (!d?.deliverable) { w.document.write('<p dir=rtl style="font-family:Cairo">تعذّر جلب المحتوى — راجع فريق مُرضي.</p>'); w.document.close(); return; }
-                                w.document.write('<html dir=rtl><head><meta charset=utf-8><title>' + label + '</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + d.deliverable + '</body></html>');
-                                w.document.close(); w.print();
-                              } catch { if (w) { w.document.write('<p dir=rtl style="font-family:Cairo">تعذّر الاتصال.</p>'); w.document.close(); } }
-                            }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">طباعة الخدمة</button>
+                            <a href={'/api/service-deliverable/view?id=' + encodeURIComponent(req.id)}
+                              target="_blank" rel="noopener noreferrer"
+                              className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs"
+                              style={{ textDecoration: 'none' }}>افتح الخدمة</a>
                           )}
                         </div>
                       );
@@ -870,7 +864,25 @@ export default function GoalPage() {
                         <div className="mt-3 pt-3 border-t border-dashed border-[#EAD9A8]">
                           <div className="text-[#9A7B2E] font-black text-xs mb-2">عقد الخدمة {ctr.status === 'signed' ? '— تم استلام توقيعك ' : '— بانتظار توقيعك'}</div>
                           <div className="flex flex-col gap-2">
-                            <button onClick={() => { const w = window.open('', '', 'width=800'); if (w) { w.document.write('<html dir=rtl><head><meta charset=utf-8><title>عقد</title></head><body style="font-family:Cairo,Arial;padding:32px;line-height:2;white-space:pre-wrap">' + (ctr.body || '') + '</body></html>'); w.document.close(); w.print(); } }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">اطبع العقد لقراءته وتوقيعه</button>
+                            {/* عنوانٌ حقيقي لا نافذة فارغة: `window.open('')`
+                                يُحجب في متصفّحات الجوال وفي متصفّح واتساب
+                                المدمج، فيقف العميل أمام عقدٍ لا يُفتح ولا
+                                يوقّعه — وعليه تقوم عمولة المكتب. وblob عنوانٌ
+                                يقبله المتصفّح كأي صفحة. */}
+                            <button onClick={() => {
+                              const safe = String(ctr.body || '')
+                                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                              const html = '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">'
+                                + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+                                + '<title>عقد الخدمة — مُرضي</title></head>'
+                                + '<body style="font-family:Cairo,system-ui,sans-serif;padding:32px;line-height:2;'
+                                + 'white-space:pre-wrap;color:#12302A;max-width:860px;margin:0 auto">'
+                                + safe + '</body></html>';
+                              const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+                              const w = window.open(url, '_blank');
+                              if (!w) { window.location.href = url; return; }   // ولا يُترك صامتاً إن حُجب
+                              setTimeout(() => URL.revokeObjectURL(url), 60000);
+                            }} className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs">افتح العقد لقراءته وتوقيعه</button>
                             {ctr.status !== 'signed' && (
                               <label className="text-center py-2 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-xs cursor-pointer">
                                 ارفع العقد بعد توقيعه
