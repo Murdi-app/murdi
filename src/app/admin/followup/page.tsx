@@ -49,6 +49,8 @@ export default function FollowupPage() {
   const [open, setOpen] = useState<string>('')
   const [busy, setBusy] = useState('')
   const [draft, setDraft] = useState<Record<string, { n: string; p: string; e: string; note: string }>>({})
+  // نصّ ردٍّ تنسخه من صندوق البريد وتلصقه هنا — لا استقبال آلياً للوارد
+  const [reply, setReply] = useState<Record<string, string>>({})
 
   const load = async () => {
     try {
@@ -144,6 +146,22 @@ export default function FollowupPage() {
                       {r.reply !== '' && (
                         <div style={{ background: '#fff', borderRadius: 9, padding: '9px 12px', fontSize: 12.5, color: '#33544B', lineHeight: 1.9, marginBottom: 8, whiteSpace: 'pre-wrap' }}>
                           {r.reply.slice(0, 600)}
+                        </div>
+                      )}
+
+                      {/* ★ لصق الرد الواصل على البريد.
+                          المنصة لا تستقبل بريداً وارداً، فالردّ يعيش في الصندوق
+                          وحده ولا يُرى في الملف. وهذا هو الجسر: تنسخه وتلصقه،
+                          فيصير للملف تاريخٌ يقرؤه الدكتور بلا فتح صندوق. */}
+                      {(r.kind === 'waiting' || r.kind === 'stale') && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                          <input value={reply[r.id] || ''} onChange={(e) => setReply((p) => ({ ...p, [r.id]: e.target.value }))}
+                            placeholder="وصلني رد على البريد — الصقيه هنا" style={{ ...IN, flex: '1 1 240px' }} />
+                          <button disabled={busy === r.id || !(reply[r.id] || '').trim()}
+                            onClick={() => patch(r.id, { reply_received: reply[r.id] })}
+                            style={{ background: '#2E9E7B', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+                            ✉️ سجّلي الرد
+                          </button>
                         </div>
                       )}
 

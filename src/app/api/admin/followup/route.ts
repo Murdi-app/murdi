@@ -169,6 +169,22 @@ export async function PATCH(req: Request) {
   if (b.officer_email !== undefined) patch.officer_email = cut(b.officer_email, 160) || null;
   if (b.staff_note !== undefined) patch.staff_note = cut(b.staff_note, 1200) || null;
 
+  // ★ تسجيل ردٍّ وصل على البريد.
+  //
+  //   ولا يوجد في المنصة استقبالٌ للبريد الوارد إطلاقاً — لا خطّاف ولا
+  //   مسار — فحقل `reply_received` لا يكتبه شيء. أي أن عدّاد «ردود جديدة»
+  //   في لوحة المتابعة كان يبقى صفراً أبداً مهما وصل من ردود، وهي تراها
+  //   في الصندوق ولا تجد أين تسجّلها.
+  //
+  //   فهذا هو الجسر: ما وصل البريدَ يُنقل هنا بيدها، فيصير للملف تاريخٌ
+  //   في المنصة يقرؤه المالك بلا أن يفتح صندوقاً.
+  if (b.reply_received !== undefined) {
+    const txt = cut(b.reply_received, 4000);
+    patch.reply_received = txt || null;
+    // ووقت الرد يُسجَّل مع أول نصّ يصل، ولا يُمحى بتعديلٍ لاحق عليه
+    if (txt !== '') patch.reply_at = new Date().toISOString();
+  }
+
   // تصنيف الرد — أربع خانات لا خامس لها، ويُرفض ما سواها صراحةً
   const KINDS = ['docs', 'call', 'deflect', 'declined'] as const;
   if (b.reply_status !== undefined) {
