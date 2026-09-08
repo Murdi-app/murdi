@@ -213,8 +213,11 @@ export function computeContract(raw: Partial<ContractInputs>): ContractPack {
     },
     // الجملة التي تبيع الخدمة وحدها: أن يحتاج نقداً أكثر مما سيربح
     fundsMoreThanEarns: gap > profit && profit > 0,
-    ...forward(rows, i.elapsed),
-    elapsed: i.elapsed,
+    // `elapsed` اختياري في الواجهة كبقية الحقول الاختيارية، وnormalizeContract
+    // يملؤه دائماً — لكن النوع يبقى `number | undefined`. فيُقرأ بصفرٍ احتياطي
+    // كما تُقرأ `bidBondPct` و`cashCoverPct` تماماً، لا بحرفٍ يُلقى على النوع.
+    ...forward(rows, i.elapsed ?? 0),
+    elapsed: i.elapsed ?? 0,
   };
 }
 
