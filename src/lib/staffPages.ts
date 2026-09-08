@@ -20,6 +20,10 @@ export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon:
     { href: '/admin/hunt', label: 'صيد اليوم', icon: '🎯' },
     { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },
     { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬' },
+    // ★ وتساعد المتابِعة في شقٍّ واحد: المكالمات. تفتح صفحة المتابعة فترى
+    //   ما تأخّر يومين فقط، فتتصل وتسجّل الاسم والرقم — ولا ترى الردود
+    //   الواصلة ولا تصنّفها. وهذا مفروض في الخادم لا في الشاشة.
+    { href: '/admin/followup', label: 'مساعدة المتابعة', icon: '📞' },
   ],
   // المتابِعة: تلاحق مخاطبات الجهات وردودها. شاشة واحدة، ولا شيء يشتّتها.
   followup: [

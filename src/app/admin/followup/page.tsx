@@ -52,6 +52,8 @@ export default function FollowupPage() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string>('')
   const [busy, setBusy] = useState('')
+  // وضع المساعدة: مكالمات فقط — يأتي من الخادم لا يُخمَّن
+  const [callsOnly, setCallsOnly] = useState(false)
   const [draft, setDraft] = useState<Record<string, { n: string; p: string; e: string; note: string }>>({})
   // نصّ ردٍّ تنسخه من صندوق البريد وتلصقه هنا — لا استقبال آلياً للوارد
   const [reply, setReply] = useState<Record<string, string>>({})
@@ -60,7 +62,7 @@ export default function FollowupPage() {
     try {
       const r = await fetch('/api/admin/followup')
       const d = await r.json()
-      if (d?.clients) { setClients(d.clients); setCounts(d.counts) }
+      if (d?.clients) { setClients(d.clients); setCounts(d.counts); setCallsOnly(d.callsOnly === true) }
     } catch {}
     setLoading(false)
   }
@@ -87,22 +89,26 @@ export default function FollowupPage() {
       <AdminNav />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
 
-        <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>المتابعة</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>
+          {callsOnly ? 'مساعدة المتابعة — مكالمات' : 'المتابعة'}
+        </h1>
         <p style={{ color: '#6B8A80', fontWeight: 700, fontSize: 13, margin: '0 0 18px' }}>
-          ما في ملف يقعد ساكت — ابدئي بالأحمر ثم الأخضر.
+          {callsOnly
+            ? 'جهات عدّى عليها يومين وما ردّت — اتصلي واطلبي اسم مسؤول الائتمان ورقمه.'
+            : 'ما في ملف يقعد ساكت — ابدئي بالأحمر ثم الأخضر.'}
         </p>
 
         {/* ثلاثة أرقام تُقرأ من بعيد — لا تحتاج قراءة جدول لتعرف بماذا تبدأ */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           <Stat n={counts.stale} t="عدّى يومين — اتصلي" bg="#FBEEEC" fg="#B4453C" />
-          <Stat n={counts.reply} t="ردود تنتظر تصنيفك" bg="#EAF7F0" fg="#1A6B52" />
-          <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />
-          <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />
+          {!callsOnly && <Stat n={counts.reply} t="ردود تنتظر تصنيفك" bg="#EAF7F0" fg="#1A6B52" />}
+          {!callsOnly && <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />}
+          {!callsOnly && <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />}
         </div>
 
         {clients.length === 0 && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#9DB3AB', fontWeight: 800, border: '1px solid #E1EDE8' }}>
-            ما في عملاء للمتابعة الآن
+            {callsOnly ? 'ما في جهة تحتاج مكالمة الآن — أحسنتِ' : 'ما في عملاء للمتابعة الآن'}
           </div>
         )}
 
@@ -157,7 +163,7 @@ export default function FollowupPage() {
                           المنصة لا تستقبل بريداً وارداً، فالردّ يعيش في الصندوق
                           وحده ولا يُرى في الملف. وهذا هو الجسر: تنسخه وتلصقه،
                           فيصير للملف تاريخٌ يقرؤه الدكتور بلا فتح صندوق. */}
-                      {(r.kind === 'waiting' || r.kind === 'stale') && (
+                      {!callsOnly && (r.kind === 'waiting' || r.kind === 'stale') && (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                           <input value={reply[r.id] || ''} onChange={(e) => setReply((p) => ({ ...p, [r.id]: e.target.value }))}
                             placeholder="وصلني رد على البريد — الصقيه هنا" style={{ ...IN, flex: '1 1 240px' }} />
@@ -170,7 +176,7 @@ export default function FollowupPage() {
                       )}
 
                       {/* تصنيف الرد — أربع خانات لا خامس، وهي نفسها التي في دليلها */}
-                      {r.kind === 'reply' && (
+                      {!callsOnly && r.kind === 'reply' && (
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                           {REPLY_KINDS.map((x) => (
                             <button key={x.k} disabled={busy === r.id}
@@ -215,6 +221,7 @@ export default function FollowupPage() {
         <div style={{ background: '#FBEEEC', border: '1.5px solid #F0D6D2', borderRadius: 12, padding: 14, marginTop: 20, fontSize: 12.5, color: '#8A3B33', fontWeight: 700, lineHeight: 1.9 }}>
           <strong>تذكير:</strong> ما نرسل أي شي لجهة تمويل من هنا — كل شي يطلع للجهات يمرّ على الدكتور عبدالحكيم.
           والرقم اللي يُعطى للجهات هو <strong>{OFFICE}</strong> — ورقم العميل ما يطلع أبداً.
+          {callsOnly && <><br /><strong>وتسجيل الردود وتصنيفها من عمل ضي</strong> — أنتِ تتصلين وتسجّلين الاسم والرقم.</>}
         </div>
 
       </div>

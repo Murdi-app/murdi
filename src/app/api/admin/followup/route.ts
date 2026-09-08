@@ -86,6 +86,11 @@ export async function GET() {
       .not('sent_at', 'is', null)
       .order('sent_at', { ascending: false });
 
+    // ★ المساعدة تساعد في المكالمات وحدها: ترى ما تأخّر يومين، ولا ترى نصّ
+    //   ردٍّ واصل. والردود تأتي من جهات تمويل وقد تحمل حديثاً عن عمولةٍ أو
+    //   شروطٍ مع المكتب — وهي ليست بابها. ومن رأى نصّاً قرأه.
+    const callsOnly = who.job === 'assistant' && who.role !== 'admin';
+
     const now = Date.now();
     const byCo = new Map<string, Row[]>();
     for (const m of (msgs || []) as Row[]) {
@@ -136,22 +141,35 @@ export async function GET() {
       const W: Record<string, number> = { reply: 0, stale: 1, waiting: 2, done: 3 };
       rows.sort((a, b) => (W[a.kind] - W[b.kind]) || ((b.sentAt || 0) - (a.sentAt || 0)));
 
+      // المساعدة: صفوف المكالمات وحدها، ونصّ الرد يُحذف قبل الإرسال
+      const shown = callsOnly
+        ? rows.filter((r) => r.kind === 'stale').map((r) => ({ ...r, reply: '', replyStatus: '' }))
+        : rows;
+
       return {
         id: c.id,
         name: c.company_name || 'منشأة',
         city: c.city || '',
         service: svc.get(c.id) || '',
-        rows,
-        urgent: rows.filter((r) => r.kind === 'reply' || r.kind === 'stale').length,
-        // ملفٌ دفع صاحبه ولا مخاطبة له إطلاقاً — أخطر حالة في اللوحة
-        untouched: rows.length === 0,
+        rows: shown,
+        urgent: shown.filter((r) => r.kind === 'reply' || r.kind === 'stale').length,
+        // ملفٌ دفع صاحبه ولا مخاطبة له إطلاقاً — أخطر حالة في اللوحة.
+        // ولا تُعرض على المساعدة: ليست من عملها، وبلاغُها للمالك عمل المتابِعة.
+        untouched: !callsOnly && rows.length === 0,
       };
     });
 
     // العميل الذي عليه عملٌ اليوم يتصدّر، ومن لا مخاطبة له يسبق الجميع
     clients.sort((a, b) => (Number(b.untouched) - Number(a.untouched)) || (b.urgent - a.urgent));
 
-    return NextResponse.json({ ok: true, clients, counts, job: who.job, role: who.role });
+    // والمساعدة لا تُعرض عليها إلا مَن لها عنده مكالمة
+    const shownClients = callsOnly ? clients.filter((c) => c.rows.length > 0) : clients;
+    const shownCounts = callsOnly ? { ...zero(), stale: counts.stale } : counts;
+
+    return NextResponse.json({
+      ok: true, clients: shownClients, counts: shownCounts,
+      job: who.job, role: who.role, callsOnly,
+    });
   } catch (e) {
     await logError('admin.followup', e, {});
     return NextResponse.json({ error: 'تعذّر تحميل اللوحة' }, { status: 500 });
@@ -171,6 +189,17 @@ export async function PATCH(req: Request) {
   const b = await req.json().catch(() => ({}));
   const id = String(b?.id || '');
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+
+  // ★ حدّ المساعدة مفروضٌ هنا لا في الشاشة: تسجّل ما انتزعته بالهاتف، ولا
+  //   تلصق رداً ولا تصنّفه. فتصنيفُ الردّ حكمٌ على نصٍّ في صندوقٍ لا تقرؤه،
+  //   ومن صنّف ما لم يقرأ أفسد الملف بحسن نية.
+  const callsOnly = who.job === 'assistant' && who.role !== 'admin';
+  if (callsOnly && (b.reply_received !== undefined || b.reply_status !== undefined)) {
+    return NextResponse.json(
+      { error: 'تسجيل الردود وتصنيفها من عمل المتابعة. سجّلي اسم المسؤول ورقمه وملاحظتك.' },
+      { status: 403 }
+    );
+  }
 
   const cut = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
   const patch: Record<string, unknown> = {};
