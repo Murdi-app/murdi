@@ -67,18 +67,22 @@ export async function GET() {
   });
 
   const due = merged.filter((m) => m.state === 'due');
+  // ★ `money` هو أتعاب المكتب المعلَّقة على كل صفّ — أي ما يدخل جيبه من هذا
+  //   العميل. والموظفة تُقاس بعدد مكالماتها وتحويلاتها، لا بمال المكتب.
+  //   فيُحذف الرقم عن الموظفة في الخادم، ولا يُخفى في المتصفّح.
+  const isStaff = who.role === 'staff';
+  const money = merged.filter((m) => m.tier === 1).reduce((s, m) => s + Number(m.money || 0), 0);
+
   return NextResponse.json({
     ok: true,
     role: who.role,
-    rows: merged,
+    rows: isStaff ? merged.map((m) => ({ ...m, money: null })) : merged,
     stats: {
       due: due.length,
       untouched: due.filter((m) => m.touches === 0).length,
       waiting: merged.filter((m) => m.state === 'waiting').length,
       closed: merged.filter((m) => m.state === 'closed').length,
-      money_on_table: merged
-        .filter((m) => m.tier === 1)
-        .reduce((s, m) => s + Number(m.money || 0), 0),
+      money_on_table: isStaff ? null : money,
     },
   });
 }

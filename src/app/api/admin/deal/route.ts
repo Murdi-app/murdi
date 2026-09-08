@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
+import { redactTimeline, redactContract } from '@/lib/staffRedact';
 
 // لوحة الصفقة: خطّ زمني واحد لكل عميل، ودفتر الأسماء المتراكم.
 // نصف العمل الذي يُباع كان يعيش في صندوق بريد؛ هذا المسار يُدخله المنصة.
@@ -11,8 +12,10 @@ const admin = () => createClient(
 );
 
 export async function GET(req: Request) {
-  const { error: denied } = await requireStaff();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  // المالك يرى ماله، والموظفة ترى عملها — والفرق يُطبَّق هنا لا في المتصفّح
+  const isStaff = who.role === 'staff';
 
   const sb = admin();
   const companyId = new URL(req.url).searchParams.get('company_id') || '';
@@ -48,10 +51,13 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     companies: companies || [],
-    timeline: timeline.data || [],
+    // الأحداث كلها تبقى للموظفة — تعرف أن العقد صدر وأن الدفعة وصلت —
+    // والأرقام وحدها تُطمس: تعرف ما وقع ولا تعرف بكم
+    timeline: isStaff ? redactTimeline(timeline.data || []) : (timeline.data || []),
     contacts: contacts.data || [],
     outreach: rows.map((r) => ({ ...r, silent_days: silentDays(r.sent_at) })),
-    contract: contract.data || null,
+    // نسبة الأتعاب والمبلغ الثابت لا يخرجان لموظفة إطلاقاً
+    contract: isStaff ? redactContract(contract.data) : (contract.data || null),
     stats: {
       approached: rows.length,
       replied: rows.filter((r) => r.reply_at).length,
