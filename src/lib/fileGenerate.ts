@@ -105,8 +105,17 @@ export async function generateFileContent(
     client.fundingAmount ? 'المبلغ المطلوب (حدّده المستشار — استخدمه حرفياً ولا تجتهد في تقديره): ' + num(client.fundingAmount) : '',
     client.fundingPurpose ? 'غرض التمويل وأوجه استخدامه (كما ذكره العميل — فصّله في theRequest ولا تعمّمه): ' + client.fundingPurpose : '',
     client.majorBuyers ? 'الجهات الكبيرة التي يتعامل معها العميل أو يورّد لها: ' + client.majorBuyers : '',
-    client.clientType ? 'نوع عملائه: ' + client.clientType : '',
-    client.collectionCycle ? 'دورة التحصيل: ' + client.collectionCycle + ' يوماً' : '',
+    // ★ مفاتيح النموذج تُترجَم قبل أن تصل النموذج.
+    //
+    // كانت تُبثّ خاماً: «نوع عملائه: large» و«دورة التحصيل: 90plus يوماً» —
+    // ومفتاحٌ إنجليزي في كتلة بياناتٍ عربية يُعاد كما هو أحياناً، فتخرج
+    // وثيقةٌ إلى بنك مكتوبٌ فيها «90plus». وهي مفاتيح قاعدة بيانات لا لغة.
+    client.clientType
+      ? 'نوع عملائه: ' + ({ gov: 'جهات حكومية', large: 'شركات كبرى', sme: 'شركات صغيرة ومتوسطة', retail: 'أفراد' }[client.clientType] || client.clientType)
+      : '',
+    client.collectionCycle
+      ? 'دورة التحصيل: ' + ({ instant: 'فورية عند التسليم', '30': 'حتى ثلاثين يوماً', '90': 'من ثلاثين إلى تسعين يوماً', '90plus': 'تتجاوز تسعين يوماً' }[client.collectionCycle] || client.collectionCycle + ' يوماً')
+      : '',
     client.yearsOperating ? 'عمر النشاط: ' + client.yearsOperating + ' سنوات' : '',
     client.hasFleet ? 'يملك أسطولاً أو معدات تشغيلية' : '',
     client.issuesInvoices ? 'يصدر فواتير أو مستخلصات على عملائه' : '',
@@ -123,8 +132,10 @@ export async function generateFileContent(
     //   حرفاً بحرف، فالمنشأة سعودية التسجيل والكيان مهما كان مالكها. ولا
     //   يُكتب «ملكية سعودية» لمنشأةٍ ليست كذلك أبداً؛ السجل يكشفها، وجملةٌ
     //   واحدة غير صحيحة تُسقط الوثيقة كلها ومعها المكتب.
-    client.ownership ? 'صفة المنشأة كما تُذكر في الوثيقة: ' + client.ownership
-      + ' — اكتبها بهذي الصيغة ولا تذكر جنسيةً ولا بلداً ولا شركةً أمّاً' : '',
+    // والتعليمة تُكتب إثباتاً لا نفياً: قولُ «لا تذكر شركةً أمّاً» يُدخل
+    // «الشركة الأم» في سياق النموذج فيُغريه بها — والمنع بالذكر إغراء.
+    // فتُعطى الصيغة المطلوبة وحدها، ويُؤمر بالوقوف عندها.
+    client.ownership ? 'صفة المنشأة — تُكتب بهذي الصيغة حرفياً ولا يُزاد عليها شيء: ' + client.ownership : '',
   ].filter(Boolean).join('\\n');
 
   const PITCH_LBL: Record<string, string> = { branch_revenue: 'متوسط إيراد الفرع الواحد (ر.س/سنة)', branch_cost: 'الكلفة الرأسمالية لافتتاح الفرع (ر.س — لمرة واحدة)', payback: 'فترة استرداد كلفة الفرع (شهر)', branches_now: 'عدد الفروع العاملة اليوم', branches_target: 'عدد الفروع المستهدفة من الجولة', headcount: 'عدد الموظفين', equity_offered: 'الحصة المعروضة (%)', pre_money: 'التقييم قبل الجولة (ر.س)', target_return: 'مضاعف العائد المستهدف وأفقه' };
