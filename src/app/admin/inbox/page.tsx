@@ -30,6 +30,7 @@ export default function InboxPage() {
   const [err, setErr] = useState('');
   const [vals, setVals] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [delId, setDelId] = useState('');   // البند الذي طُلب حذفه وينتظر التأكيد
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -48,6 +49,24 @@ export default function InboxPage() {
     });
     setBusy('');
     if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || 'تعذّر الحفظ'); return; }
+    setItems(prev => prev.filter(x => x.id !== it.id));
+  };
+
+  // الحذف نقرتان: الأولى تُظهر «تأكيد الحذف»، والثانية تحذف. وتسقط الأولى وحدها بعد أربع ثوانٍ
+  // حتى لا يمسح إبهامٌ عابرٌ بنداً على الجوال.
+  const remove = async (it: Item) => {
+    if (delId !== it.id) {
+      setDelId(it.id);
+      setTimeout(() => setDelId(cur => (cur === it.id ? '' : cur)), 4000);
+      return;
+    }
+    setBusy(it.id); setErr('');
+    const r = await fetch('/api/admin/inbox', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: it.id }),
+    });
+    setBusy(''); setDelId('');
+    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || 'تعذّر الحذف'); return; }
     setItems(prev => prev.filter(x => x.id !== it.id));
   };
 
@@ -80,14 +99,28 @@ export default function InboxPage() {
         ) : items.map(it => {
           const tone = TONE[it.urgency] || TONE.normal;
           const done = it.status === 'answered';
+          const asking = delId === it.id;
           return (
-            <div key={it.id} style={{ background: '#fff', border: '1.5px solid ' + tone.br, borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
+            <div key={it.id} style={{ background: '#fff', border: '1.5px solid ' + (asking ? '#F2D4D4' : tone.br), borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
                 <span style={{ background: tone.bg, color: tone.fg, borderRadius: 20, padding: '3px 11px', fontSize: 11, fontWeight: 900 }}>{tone.t}</span>
                 {it.companies?.company_name && (
                   <span style={{ fontSize: 12, color: '#1A3D34', fontWeight: 800 }}>{it.companies.company_name}</span>
                 )}
                 <span style={{ fontSize: 11.5, color: '#9DB3AB', marginInlineStart: 'auto' }}>{fmt(it.created_at)}</span>
+                <button
+                  onClick={() => remove(it)}
+                  disabled={busy === it.id}
+                  aria-label="حذف البند"
+                  style={{
+                    background: asking ? '#FDF1F1' : 'transparent',
+                    border: asking ? '1px solid #F2D4D4' : '1px solid transparent',
+                    color: asking ? '#B4342A' : '#C2CFCA',
+                    borderRadius: 20, padding: asking ? '4px 12px' : '4px 9px',
+                    cursor: 'pointer', fontFamily: 'Cairo', fontSize: 11.5, fontWeight: 800, lineHeight: 1,
+                  }}>
+                  {busy === it.id ? '…' : asking ? 'تأكيد الحذف' : '✕'}
+                </button>
               </div>
 
               <div style={{ fontSize: 15.5, fontWeight: 900, color: '#1A3D34', lineHeight: 1.7 }}>{it.title}</div>

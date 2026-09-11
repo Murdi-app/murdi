@@ -68,3 +68,22 @@ export async function PATCH(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+// حذف بندٍ من صندوق التعميد. المالك وحده، وبتأكيد من الواجهة.
+// حذفٌ نهائي لا إخفاء — فبندٌ يبقى مخفياً في القاعدة يعود يوماً ويربك اللوحة.
+export async function DELETE(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+
+  const b = await req.json().catch(() => ({} as { id?: string }));
+  const id = String(b?.id || new URL(req.url).searchParams.get('id') || '');
+  if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+
+  // بندٌ محذوف سلفاً ليس خطأً — الواجهة أسقطته والنتيجة واحدة
+  const { data: item } = await admin().from('approvals').select('id').eq('id', id).maybeSingle();
+  if (!item) return NextResponse.json({ ok: true, already: true });
+
+  const { error } = await admin().from('approvals').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}
