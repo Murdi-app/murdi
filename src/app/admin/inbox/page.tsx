@@ -108,18 +108,22 @@ export default function InboxPage() {
                   <span style={{ fontSize: 12, color: '#1A3D34', fontWeight: 800 }}>{it.companies.company_name}</span>
                 )}
                 <span style={{ fontSize: 11.5, color: '#9DB3AB', marginInlineStart: 'auto' }}>{fmt(it.created_at)}</span>
+                {/* ★ كان الزرّ ✕ رماديّاً باهتاً (#C2CFCA) بلا خلفية ولا إطار،
+                      فلم يره المالكُ أصلاً وقال: «وأمّا الحذف فلا أعرف».
+                      وزرٌّ لا يُرى زرٌّ غير موجود — مهما كان الخادم خلفه سليماً.
+                      فصار كلمةً مقروءةً في إطارٍ ظاهر، ويحمرّ عند طلب التأكيد. */}
                 <button
                   onClick={() => remove(it)}
                   disabled={busy === it.id}
                   aria-label="حذف البند"
                   style={{
-                    background: asking ? '#FDF1F1' : 'transparent',
-                    border: asking ? '1px solid #F2D4D4' : '1px solid transparent',
-                    color: asking ? '#B4342A' : '#C2CFCA',
-                    borderRadius: 20, padding: asking ? '4px 12px' : '4px 9px',
+                    background: asking ? '#FDF1F1' : '#F7FAF9',
+                    border: '1px solid ' + (asking ? '#E9BFBB' : '#DFEAE5'),
+                    color: asking ? '#B4342A' : '#7E938C',
+                    borderRadius: 20, padding: '5px 13px',
                     cursor: 'pointer', fontFamily: 'Cairo', fontSize: 11.5, fontWeight: 800, lineHeight: 1,
                   }}>
-                  {busy === it.id ? '…' : asking ? 'تأكيد الحذف' : '✕'}
+                  {busy === it.id ? '…' : asking ? 'تأكيد الحذف' : '✕ حذف'}
                 </button>
               </div>
 

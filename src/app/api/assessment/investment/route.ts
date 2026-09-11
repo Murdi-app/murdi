@@ -199,6 +199,9 @@ export async function POST(req: Request) {
     remaining_debt: body.remaining_debt,
     financing_sources: body.financing_sources,
     investment_intent: body.investment_intent,
+    // ★ ومثلها في مسار الاستثمار: النموذج يرسل `investment_type` و`runMatch`
+    //   يقرؤه ليعرف نوع التمويل المطلوب — ولم يكن يُكتب أصلاً.
+    investment_type: body.investment_type ?? null,
     financing_type: body.financing_type,
     repayment_status: body.repayment_status,
     debt_details: body.debt_details,

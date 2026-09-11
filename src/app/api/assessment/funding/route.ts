@@ -180,6 +180,19 @@ export async function POST(req: Request) {
     months_late: body.months_late,
     debt_type: body.debt_type,
     debt_type_other: body.debt_type_other,
+    // ★ ستةُ حقولٍ كان العميل يكتبها والنموذج يرسلها والقاعدة تنتظرها —
+    //   ثم يُسقطها هذا الإدراج صامتاً. والصمت أسوأ من الخطأ: لا رسالة،
+    //   ولا عمود ناقص، بل حقلٌ يُكتب ويُفقد.
+    //   وأثرها ليس تجميلياً: `runMatch` يصف نقاط البيع للمحرّك من
+    //   `pos_types/pos_count/pos_usage_pct`، و`creditMemo` يبني «جودة
+    //   المدينين» على `major_buyers`، و`creditVerdict` يفتح باب تسييل
+    //   الفواتير بها. فكان المحرّك يقرأ فراغاً ويحكم عليه.
+    debt_narrative: body.debt_narrative ?? null,
+    activity_type_other: body.activity_type_other ?? null,
+    major_buyers: body.major_buyers ?? null,
+    pos_types: body.pos_types ?? null,
+    pos_count: body.pos_count ?? null,
+    pos_usage_pct: body.pos_usage_pct ?? null,
     cr_valid: body.cr_valid,
     tax_compliant: body.tax_compliant,
     zakat_compliant: body.zakat_compliant,
