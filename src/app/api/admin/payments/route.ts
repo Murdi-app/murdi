@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 import { logError } from '@/lib/logError';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { sendPush } from '@/lib/push';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -123,6 +124,18 @@ export async function POST(req: Request) {
         }
       }
     }
+    // المال يدخل، فيصل خبره إلى الجوال — ومعه ما ينبغي عمله بعده مباشرة
+    try {
+      const { data: payCo } = await admin.from('companies')
+        .select('company_name').eq('id', String(pay.company_id || '')).maybeSingle();
+      await sendPush({
+        title: '💰 دفعة مؤكَّدة — ' + Number(pay.amount_sar || 0).toLocaleString('en-US') + ' ريال',
+        body: String(payCo?.company_name || 'منشأة') + (linkNote ? ' — ' + linkNote : ' — الخدمة صارت مدفوعة، والمطابقة صارت من حقه'),
+        url: 'https://murdi.sa/admin/approvals',
+        important: true,
+        tag: 'pay-' + id,
+      });
+    } catch {}
     return NextResponse.json({ ok: true, note: linkNote });
   }
   if (action === 'reject') {

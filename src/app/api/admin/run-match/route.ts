@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { runAutoMatch } from '@/lib/matchEngine';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { logError } from '@/lib/logError';
+import { sendPush } from '@/lib/push';
 
 export const maxDuration = 300;
 export const runtime = 'nodejs';
@@ -91,6 +92,17 @@ export async function POST(req: Request) {
     const { count } = await admin.from('match_results')
       .select('id', { count: 'exact', head: true })
       .eq('company_id', companyId).eq('track', track).eq('status', 'new').gt('fit_score', 0);
+
+    // ويصل خبر انتهائها إلى الجوال، فالتشغيل من المكتب لا يعني الجلوس أمامه
+    if (r.done) try {
+      await sendPush({
+        title: '🎯 انتهت مطابقة ' + (track === 'investment' ? 'الاستثمار' : 'التمويل'),
+        body: String(co.company_name || 'منشأة') + ' — ' + (count || 0) + ' فرصة بدرجة أعلى من صفر',
+        url: 'https://murdi.sa/admin/approvals',
+        important: true,
+        tag: 'match-' + companyId,
+      });
+    } catch {}
 
     return NextResponse.json({
       ok: true, done: r.done, next: r.next, total: r.total,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { runAutoMatch } from '@/lib/matchEngine';
 import { logError } from '@/lib/logError';
+import { sendPush } from '@/lib/push';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -85,6 +86,20 @@ export async function POST(req: Request) {
     .select('id', { count: 'exact', head: true })
     .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0)
     .in('track', ['funding', 'investment']);
+
+  // المطابقة تستغرق أربعين دقيقة ولا أحد يجلس أمامها. فإذا انتهت وصل خبرها
+  // إلى الجوال بعدد أبوابها — وإلا نامت الأسماء حتى يُفتح البريد.
+  if (res.done) try {
+    const { data: coName } = await admin.from('companies')
+      .select('company_name').eq('id', co.id).maybeSingle();
+    await sendPush({
+      title: '🎯 انتهت مطابقة ' + (t === 'investment' ? 'الاستثمار' : 'التمويل'),
+      body: String(coName?.company_name || 'منشأة') + ' — ' + (count || 0) + ' فرصة بدرجة أعلى من صفر',
+      url: 'https://murdi.sa/admin/approvals',
+      important: true,
+      tag: 'match-' + co.id,
+    });
+  } catch {}
 
   return NextResponse.json({ ok: true, count: count || 0, done: res.done, next: res.next, total: res.total, track: t });
 }
