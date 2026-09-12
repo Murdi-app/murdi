@@ -134,6 +134,7 @@ export async function GET() {
           officerEmail: m.officer_email || '',
           note: m.staff_note || '',
           calledAt: calledAt || null,
+          suggested: needsTriage ? suggestFor(String(m.reply_received || ''), String(m.officer_name || '')) : '',
         };
       });
 
@@ -143,7 +144,7 @@ export async function GET() {
 
       // المساعدة: صفوف المكالمات وحدها، ونصّ الرد يُحذف قبل الإرسال
       const shown = callsOnly
-        ? rows.filter((r) => r.kind === 'stale').map((r) => ({ ...r, reply: '', replyStatus: '' }))
+        ? rows.filter((r) => r.kind === 'stale').map((r) => ({ ...r, reply: '', replyStatus: '', suggested: '' }))
         : rows;
 
       return {
@@ -178,6 +179,32 @@ export async function GET() {
 
 function zero() {
   return { reply: 0, stale: 0, waiting: 0, done: 0 };
+}
+
+// ★ الإجراء المقترح — ليقرأ الردَّ من لا يفتح صندوق البريد.
+//
+//   المتابِعة لا تدخل `partners@` إطلاقاً: المهمة المجدولة تقرأ الوارد
+//   وتكتب ملخّص كل ردّ في `reply_received` واسمَ مسؤوله في `officer_name`.
+//   فيبقى عليها القرار وحده — وهذا السطر يقوله لها بلغة العمل لا بلغة النصّ:
+//   ردٌّ يَعِد بالتواصل يُصنَّف ولا يُلحّ عليه · وطلبُ أوراقٍ يُرفع للدكتور ·
+//   وطلبُ رقمٍ يُجاب برقم المكتب وحده. والقاعدة المكتوبة هنا تُغني عن
+//   اجتهادٍ في نصٍّ قد يُساء فهمه.
+const RX_PROMISE = /سيتواصل|سنتواصل|سيقوم فريقنا|تم رفع طلب|سنقوم بالتواصل|نعاود الاتصال/;
+const RX_DEFLECT = /زيارة (ال)?فرع|الموقع الالكتروني|الموقع الإلكتروني|عبر التطبيق|تقدم بطلب|قدّم عبر|رد آلي|auto\s*reply/i;
+const RX_DOCS = /قوائم مالية|كشف حساب|مستند|وثائق|مرفق|نموذج|السجل التجاري|ترخيص/;
+const RX_PHONE = /رقم جوال|رقم للتواصل|تزويدنا برقم|رقم الهاتف/;
+
+export function suggestFor(reply: string, officerName: string, officeNumber = '0560721110'): string {
+  const t = String(reply || '');
+  if (t.trim() === '') return '';
+  const who = String(officerName || '').trim() !== ''
+    ? 'ولدينا مسؤول باسمه — تابعي معه.'
+    : 'ولا نعرف مسؤولاً باسمه بعد — اسألي عن مسؤول الائتمان للمنشآت وسجّلي اسمه ورقمه.';
+  if (RX_DOCS.test(t)) return 'طلبوا أوراقاً: صنّفي «طلبوا أوراق» واتركيها للدكتور — لا تُرسل مستندات من هنا. ' + who;
+  if (RX_PHONE.test(t)) return 'طلبوا رقم تواصل: الرقم الذي يُعطى لأي جهة هو ' + officeNumber + ' وحده، ولا يُعطى رقم العميل. ' + who;
+  if (RX_PROMISE.test(t)) return 'وعدوا بالتواصل: صنّفي «طلبوا اتصال» ولا تُرسلي تذكيراً — بابهم مغلق على البريد. ' + who;
+  if (RX_DEFLECT.test(t)) return 'أحالونا إلى الفرع أو الموقع: صنّفي «حوّلونا للموقع/الفرع» — ولا تردّي. ' + who;
+  return 'اقرئي الملخّص وصنّفيه بأحد الأربعة. ' + who;
 }
 
 // تسجيل ما انتزعته بالهاتف، أو تصنيف ردّ — ولا إرسال من هنا إطلاقاً.

@@ -29,6 +29,7 @@ type Row = {
   reply: string; replyStatus: string
   officerName: string; officerPhone: string; officerEmail: string
   note: string; calledAt: number | null
+  suggested?: string
 }
 type Client = { id: string; name: string; city: string; service: string; rows: Row[]; urgent: number; untouched: boolean }
 
@@ -51,6 +52,9 @@ export default function FollowupPage() {
   const [counts, setCounts] = useState({ reply: 0, stale: 0, waiting: 0, done: 0 })
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string>('')
+  // ★ تبويب واحد يُقرأ من بعيد: «الجديد» أوّلها لأنه أوّل عملها في الصباح.
+  //   ولا تدخل صندوق البريد إطلاقاً — الردود تصل إلى هنا وحدها.
+  const [tab, setTab] = useState<'new' | 'late' | 'all'>('new')
   const [busy, setBusy] = useState('')
   // وضع المساعدة: مكالمات فقط — يأتي من الخادم لا يُخمَّن
   const [callsOnly, setCallsOnly] = useState(false)
@@ -106,6 +110,21 @@ export default function FollowupPage() {
           {!callsOnly && <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />}
         </div>
 
+        {/* التبويبات — بابها الذي تفتحه كل صباح */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {([['new', 'الجديد — ردود وصلت'], ['late', 'متأخرة — اتصلي'], ['all', 'الكل']] as const).map(([k, t]) => (
+            <button key={k} onClick={() => setTab(k)}
+              style={{
+                background: tab === k ? '#1A3D34' : '#fff', color: tab === k ? '#fff' : '#33544B',
+                border: '1.5px solid ' + (tab === k ? '#1A3D34' : '#E1EDE8'), borderRadius: 22,
+                padding: '8px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer',
+              }}>
+              {t}{k === 'new' && counts.reply > 0 ? ' (' + counts.reply + ')' : ''}
+              {k === 'late' && counts.stale > 0 ? ' (' + counts.stale + ')' : ''}
+            </button>
+          ))}
+        </div>
+
         {clients.length === 0 && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#9DB3AB', fontWeight: 800, border: '1px solid #E1EDE8' }}>
             {callsOnly ? 'ما في جهة تحتاج مكالمة الآن — أحسنتِ' : 'ما في عملاء للمتابعة الآن'}
@@ -139,7 +158,13 @@ export default function FollowupPage() {
                   </div>
                 )}
 
-                {c.rows.map((r) => {
+                {c.rows.filter((r) => tab === 'all' || (tab === 'new' ? r.kind === 'reply' : r.kind === 'stale')).length === 0 && (
+                  <div style={{ background: '#F2F5F4', border: '1px solid #E1EDE8', borderRadius: 12, padding: 12, fontSize: 12.5, fontWeight: 800, color: '#7E938C' }}>
+                    {tab === 'new' ? 'ما وصل رد جديد لهذا العميل' : 'ما في جهة متأخرة عند هذا العميل'}
+                  </div>
+                )}
+
+                {c.rows.filter((r) => tab === 'all' || (tab === 'new' ? r.kind === 'reply' : r.kind === 'stale')).map((r) => {
                   const k = KIND[r.kind] || KIND.waiting
                   const d = draft[r.id] || { n: r.officerName, p: r.officerPhone, e: r.officerEmail, note: r.note }
                   const set = (f: 'n' | 'p' | 'e' | 'note', v: string) =>
@@ -172,6 +197,15 @@ export default function FollowupPage() {
                             style={{ background: '#2E9E7B', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 18px', fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
                             ✉️ سجّلي الرد
                           </button>
+                        </div>
+                      )}
+
+                      {/* ★ الإجراء المقترح — يُحسب في الخادم من نصّ الردّ ومن وجود مسؤول
+                          باسمه. فتقرأ ما تفعله لا ما وصل فقط، ولا تجتهد في نصٍّ
+                          قد يُساء فهمه، ولا تحتاج فتح صندوق البريد أصلاً. */}
+                      {!callsOnly && r.kind === 'reply' && (r.suggested || '') !== '' && (
+                        <div style={{ background: '#FFF8E6', border: '1px solid #E8D9A8', borderRadius: 9, padding: '9px 12px', fontSize: 12.5, fontWeight: 800, color: '#8A6D1F', lineHeight: 1.9, marginBottom: 8 }}>
+                          ↩︎ {r.suggested}
                         </div>
                       )}
 
