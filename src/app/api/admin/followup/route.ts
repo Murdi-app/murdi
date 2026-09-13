@@ -39,6 +39,7 @@ type Row = {
   officer_phone: string | null;
   officer_email: string | null;
   staff_note: string | null;
+  office_hint: string | null;
   track: string | null;
 };
 
@@ -91,7 +92,7 @@ export async function GET() {
     //   ترَ منها الموظفةُ باباً واحداً، وقيل لها «لوحتكِ فاضية» وهي مليئة.
       const { data: msgs } = await admin
       .from('outreach_messages')
-      .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, contact_method, officer_name, officer_phone, officer_email, staff_note, track')
+      .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, contact_method, officer_name, officer_phone, officer_email, staff_note, office_hint, track')
       .in('company_id', ids)
       .or('sent_at.not.is.null,contact_method.eq.هاتف')
       .order('sent_at', { ascending: false });
@@ -148,6 +149,10 @@ export async function GET() {
           officerPhone: m.officer_phone || '',
           officerEmail: m.officer_email || '',
           note: m.staff_note || '',
+          // ★ توجيه المكتب منفصلٌ عن ملاحظتها: كان يُكتب في `staff_note`
+          //   وهي خانتها هي، فتفتح اللوحة فتجد خانة «ملاحظتك» مملوءةً
+          //   بكلامٍ ليس كلامها فلا تعرف أين تكتب. سألت فعلاً: «ما هذا؟»
+          officeHint: m.office_hint || '',
           calledAt: calledAt || null,
           suggested: needsTriage ? suggestFor(String(m.reply_received || ''), String(m.officer_name || '')) : '',
         };

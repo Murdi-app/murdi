@@ -28,6 +28,7 @@ type Row = {
   sentAt: number | null; daysSince: number | null
   reply: string; replyStatus: string
   officerName: string; officerPhone: string; officerEmail: string
+  officeHint: string
   note: string; calledAt: number | null
   suggested?: string
 }
@@ -222,13 +223,23 @@ export default function FollowupPage() {
                         </div>
                       )}
 
+                      {/* ★ توجيه المكتب — يُقرأ ولا يُكتب فيه.
+                          وكان يُكتب في خانة «ملاحظتك» نفسها، فتفتح اللوحة
+                          فتجد خانتها مملوءةً بكلامٍ ليس كلامها. فصار له
+                          صندوقه، وبقيت خانتها فارغةً تنتظر ما تسمعه. */}
+                      {(r.officeHint || '') !== '' && (
+                        <div style={{ background: '#FBF7EC', border: '1px solid #E8DFC4', borderRadius: 8, padding: '8px 11px', marginBottom: 8, fontSize: 12.5, lineHeight: 1.65, whiteSpace: 'pre-line' }}>
+                          <b style={{ color: '#9A7B2E' }}>توجيه المكتب</b><br />{r.officeHint}
+                        </div>
+                      )}
+
                       {/* اسم مسؤول الائتمان — الغرض الوحيد من مكالمة المتابعة */}
                       <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', marginBottom: 8 }}>
                         <input value={d.n} onChange={(e) => set('n', e.target.value)} placeholder="اسم مسؤول الائتمان" style={IN} />
                         <input value={d.p} onChange={(e) => set('p', e.target.value)} placeholder="رقمه" style={IN} />
                         <input value={d.e} onChange={(e) => set('e', e.target.value)} placeholder="بريده" style={IN} />
                       </div>
-                      <input value={d.note} onChange={(e) => set('note', e.target.value)} placeholder="ملاحظتك — وش قالوا بالضبط" style={{ ...IN, width: '100%', marginBottom: 8 }} />
+                      <input value={d.note} onChange={(e) => set('note', e.target.value)} placeholder="ملاحظتكِ — وش قالوا بالضبط؟ اكتبيها هنا" style={{ ...IN, width: '100%', marginBottom: 8 }} />
 
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button disabled={busy === r.id}
