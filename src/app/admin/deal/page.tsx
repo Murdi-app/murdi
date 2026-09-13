@@ -96,9 +96,12 @@ export default function DealPage() {
       {err && <div style={{ background: '#FDF1F1', border: '1.5px solid #F2D4D4', color: '#B4342A', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 700 }}>{err}</div>}
 
       {!id ? (
-        <div style={{ ...card, textAlign: 'center', color: C.gray, fontSize: 13.5, padding: 32 }}>
-          اختر منشأة لترى خطّ صفقتها.
-        </div>
+        <>
+          <div style={{ ...card, textAlign: 'center', color: C.gray, fontSize: 13.5, padding: 22, marginBottom: 14 }}>
+            اختر منشأة لترى خطّ صفقتها — ودفتر الأسماء أدناه يشمل الجهات كلها.
+          </div>
+          <Directory contacts={contacts} card={card} />
+        </>
       ) : loading ? (
         <div style={{ color: '#9DB3AB', textAlign: 'center', padding: 36 }}>جارٍ التحميل…</div>
       ) : (
@@ -147,26 +150,7 @@ export default function DealPage() {
             </div>
           )}
 
-          {/* دفتر الأسماء */}
-          <div style={card}>
-            <div style={{ fontSize: 14.5, fontWeight: 900, color: C.ink, marginBottom: 4 }}>📇 دفتر الأسماء</div>
-            <div style={{ fontSize: 11.5, color: C.gray, marginBottom: 9, lineHeight: 1.8 }}>
-              يتراكم من كل ردّ ومكالمة. وبه تصير الصفقة الثانية أسرع من الأولى.
-            </div>
-            {contacts.length === 0 ? (
-              <div style={{ color: C.gray, fontSize: 12.5 }}>لم يُسجّل أحد بعد.</div>
-            ) : contacts.map((c, i) => (
-              <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #F1F6F4', fontSize: 12.8 }}>
-                <div style={{ fontWeight: 900, color: C.ink }}>
-                  {c.person_name || '—'} <span style={{ fontWeight: 700, color: C.gray }}>· {c.entity_name}</span>
-                </div>
-                <div style={{ color: C.gray, marginTop: 2 }}>
-                  {[c.role_title, c.email, c.phone].filter(Boolean).join(' · ')}
-                  {c.replies_count > 1 ? ` · ${c.replies_count} تواصل` : ''}
-                </div>
-              </div>
-            ))}
-          </div>
+          <Directory contacts={contacts} card={card} />
 
           {/* الخطّ الزمني */}
           <div style={card}>
@@ -201,6 +185,36 @@ export default function DealPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** 📇 دفتر الأسماء — سجلّ الجهات: من نكلّم في كل باب، وما شروطه، وما لا يُخاطَب منه. */
+function Directory({ contacts, card }: { contacts: Contact[]; card: React.CSSProperties }) {
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 14.5, fontWeight: 900, color: C.ink, marginBottom: 4 }}>📇 دفتر الأسماء</div>
+      <div style={{ fontSize: 11.5, color: C.gray, marginBottom: 9, lineHeight: 1.8 }}>
+        سجلّ الجهات كلّه — يتراكم من كل ردّ ومكالمة وبحث. وبه تصير الصفقة الثانية أسرع من الأولى.
+      </div>
+      {contacts.length === 0 ? (
+        <div style={{ color: C.gray, fontSize: 12.5 }}>لم يُسجّل أحد بعد.</div>
+      ) : contacts.map((c, i) => (
+        <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #F1F6F4', fontSize: 12.8 }}>
+          <div style={{ fontWeight: 900, color: C.ink }}>
+            {c.person_name || '—'} <span style={{ fontWeight: 700, color: C.gray }}>· {c.entity_name}</span>
+          </div>
+          <div style={{ color: C.gray, marginTop: 2 }}>
+            {[c.role_title, c.email, c.phone].filter(Boolean).join(' · ')}
+            {c.replies_count > 1 ? ` · ${c.replies_count} تواصل` : ''}
+          </div>
+          {(c.note || '').trim() !== '' && (
+            <div style={{ marginTop: 5, padding: '7px 10px', background: '#FBF7EC', border: '1px solid #E8DFC4', borderRadius: 7, fontSize: 12, lineHeight: 1.75, whiteSpace: 'pre-line', color: '#4A4335' }}>
+              {c.note}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -25,7 +25,14 @@ export async function GET(req: Request) {
     .select('id, company_name, account_status')
     .order('created_at', { ascending: false });
 
-  if (!companyId) return NextResponse.json({ ok: true, companies: companies || [] });
+  // ★ دفتر الأسماء ليس خاصاً بمنشأة — الاستعلام نفسه لا يُرشّح بـcompany_id،
+  //   وهو سجلّ الجهات كلّه: من نكلّم في كل بابٍ وما شروطه وما لا يُخاطَب منه.
+  //   وكان لا يُرجَع إلا بعد اختيار عميل، فبدا السجل مفقوداً وهو موجود.
+  if (!companyId) {
+    const { data: allContacts } = await sb.from('entity_contacts').select('*')
+      .order('entity_name', { ascending: true }).limit(300);
+    return NextResponse.json({ ok: true, companies: companies || [], contacts: allContacts || [] });
+  }
 
   const [timeline, contacts, outreach, contract] = await Promise.all([
     sb.from('deal_timeline').select('*').eq('company_id', companyId)
