@@ -98,13 +98,13 @@ export default function FollowupPage() {
         </h1>
         <p style={{ color: '#6B8A80', fontWeight: 700, fontSize: 13, margin: '0 0 18px' }}>
           {callsOnly
-            ? 'جهات عدّى عليها يومين وما ردّت — اتصلي واطلبي اسم مسؤول الائتمان ورقمه.'
+            ? 'جهات تنتظر مكالمتك — اتصلي واطلبي اسم مسؤول الائتمان ورقمه وبريده.'
             : 'ما في ملف يقعد ساكت — ابدئي بالأحمر ثم الأخضر.'}
         </p>
 
         {/* ثلاثة أرقام تُقرأ من بعيد — لا تحتاج قراءة جدول لتعرف بماذا تبدأ */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          <Stat n={counts.stale} t="عدّى يومين — اتصلي" bg="#FBEEEC" fg="#B4453C" />
+          <Stat n={counts.stale} t="تحتاج اتصال" bg="#FBEEEC" fg="#B4453C" />
           {!callsOnly && <Stat n={counts.reply} t="ردود تنتظر تصنيفك" bg="#EAF7F0" fg="#1A6B52" />}
           {!callsOnly && <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />}
           {!callsOnly && <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />}

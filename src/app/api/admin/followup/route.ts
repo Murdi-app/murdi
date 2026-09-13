@@ -34,6 +34,7 @@ type Row = {
   sent_at: string | null;
   last_sent_at: string | null;
   last_call_at: string | null;
+  contact_method: string | null;
   officer_name: string | null;
   officer_phone: string | null;
   officer_email: string | null;
@@ -79,11 +80,16 @@ export async function GET() {
     // ★ المسوّدة ليست عملاً لها: رسالةٌ لم تُرسل لا تُتابَع ولا يُتصل بشأنها.
     //   وكانت تُعدّ صفّاً فتقول اللوحة «٧ جهات» لعميلٍ لم تخرج له رسالة
     //   واحدة — فيبدو مشغولاً وهو ساكن.
-    const { data: msgs } = await admin
+    //
+    // ★ ويُستثنى بابُ الهاتف: جهةٌ لا تنشر بريداً أصلاً لا تُخاطَب إلا
+    //   مكالمةً، فـ`sent_at` فيها لا يُملأ أبداً — وكانت تسقط من اللوحة
+    //   سقوطاً تامّاً. فوقع ما لا معنى له: ثمانية أبواب جُهّزت للاتصال ولم
+    //   ترَ منها الموظفةُ باباً واحداً، وقيل لها «لوحتكِ فاضية» وهي مليئة.
+      const { data: msgs } = await admin
       .from('outreach_messages')
-      .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, officer_name, officer_phone, officer_email, staff_note, track')
+      .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, contact_method, officer_name, officer_phone, officer_email, staff_note, track')
       .in('company_id', ids)
-      .not('sent_at', 'is', null)
+      .or('sent_at.not.is.null,contact_method.eq.هاتف')
       .order('sent_at', { ascending: false });
 
     // ★ المساعدة تساعد في المكالمات وحدها: ترى ما تأخّر يومين، ولا ترى نصّ
@@ -110,8 +116,13 @@ export async function GET() {
 
         // «متأخرة» تُقاس من آخر لمسة لا من الإرسال وحده: من اتصلت به أمس
         // ليس متأخراً اليوم، وإن مضى على رسالته أسبوع.
+        //
+        // وبابُ الهاتف يدخل هنا: لا إرسال له يُقاس منه، فيُقاس من المكالمة
+        // وحدها — ومن لم يُتصل به قط فهو مستحقٌّ اليوم لا بعد يومين.
+        const phoneDoor = String(m.contact_method || '') === 'هاتف';
         const lastTouch = Math.max(sentAt, calledAt);
-        const stale = sent && !hasReply && now - lastTouch > STALE_MS;
+        const stale = !hasReply && (sent || phoneDoor)
+          && (lastTouch === 0 || now - lastTouch > STALE_MS);
 
         // ردٌّ وصل ولم يُصنَّف بعد — أول ما يُعمل في الصباح
         const needsTriage = hasReply && String(m.reply_status || '').trim() === '';
