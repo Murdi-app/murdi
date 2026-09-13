@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { CATALOG, displayName, commercialFor, needsDiagnosis } from '@/lib/serviceCatalog';
+import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
 // أربعة حقول: الاسم والجوال والمنشأة وسطرٌ عمّا يريد. وما زاد يُسأل في المكالمة.
@@ -40,6 +41,9 @@ function RequestForm() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
 
+  // حارسُ التحويل: يُطلق مرةً واحدة لا غير مهما تكرّر النداء.
+  const converted = useRef(false);
+
   useEffect(() => {
     try {
       const s = new URLSearchParams(window.location.search).get('s') || '';
@@ -58,6 +62,17 @@ function RequestForm() {
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
+      // هنا — وهنا وحدها — حُفظ الطلب فعلاً في service_inquiries وعاد الخادم
+      // بـok بلا خطأ. فيُطلق تحويل «Murdi - Lead Submitted» مرةً واحدة.
+      //
+      // و`already` استثناءٌ مقصود: الخادم يردّ بنجاحٍ على التكرار خلال ربع
+      // ساعة (نفس الجوال ونفس الخدمة) **بلا صفٍّ جديد** حتى لا يظنّ صاحبه
+      // أن طلبه ضاع. فهو ok بلا حفظ — ولا يُحتسب تحويلاً، وإلا عدّت النقرةُ
+      // المكرّرة عميلاً ثانياً واشترينا حسابنا خطأً.
+      if (!converted.current && !d?.already) {
+        converted.current = true;
+        fireConversion(LEAD_SUBMITTED);
+      }
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');
