@@ -57,7 +57,11 @@ export async function GET() {
     const { data: paid } = await admin
       .from('service_requests')
       .select('company_id, service_title, status, updated_at')
-      .in('status', ['paid', 'delivered', 'in_follow_up', 'completed']);
+      // ★ و`in_progress` منها: هي الحالة التي تعني «نعمل عليه الآن»، وكانت
+      //   وحدها خارج القائمة — فالخدمة المدفوعة متى انتقلت إليها اختفى
+      //   عميلها من لوحة المتابعة اختفاءً تامّاً. وقع فعلاً على صائب: دفع
+      //   ٧٩٠٠ وقُيّدت ورُبطت، ثم غاب عن اللوحة فبدا أنه لم يدفع.
+      .in('status', ['paid', 'in_progress', 'delivered', 'in_follow_up', 'completed']);
 
     const svc = new Map<string, string>();
     for (const r of (paid || []) as { company_id: string; service_title: string | null }[]) {
