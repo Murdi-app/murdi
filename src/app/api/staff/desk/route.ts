@@ -35,12 +35,18 @@ const admin = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
 
-/** من يجلس على هذا المكتب: المساعِدة، والمالك (ليرى ما تراه) */
+/**
+ * من يجلس على هذا المكتب: المساعِدة والمتابِعة، والمالك (ليرى ما ترَيان).
+ *
+ * ★ وفُتح للمتابِعة في ١٤ سبتمبر: انطلقت حملة جوجل للمنصة فصارت تصل
+ *   استفساراتٌ وطلبات خدمة كل يوم، وأُسندت إليها، ولا تُعتمد الطلبات ولا
+ *   يُؤكَّد تحويلُ عميلٍ من شاشةٍ لا تراها.
+ */
 async function atDesk() {
   const { who, error } = await requireStaff();
   if (error || !who) return { who: null, error: error || 'غير مصرح' };
   if (who.role === 'admin') return { who, error: null };
-  if (who.job === 'assistant') return { who, error: null };
+  if (who.job === 'assistant' || who.job === 'followup') return { who, error: null };
   return { who: null, error: 'هذه الشاشة ليست من عملك' };
 }
 

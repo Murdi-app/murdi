@@ -63,6 +63,8 @@ export default function FollowupPage() {
   //   أبحث بها عن اسم الشركة داخل الموقع؟» ولم تكن. والبحث في الشاشة لا
   //   في الخادم: الصفوف كلها محمَّلةٌ أصلاً، فالتصفية فورية بلا انتظار.
   const [q, setQ] = useState('')
+  // خطأ تحميلٍ يُقال صراحةً — لا لوحةٌ فارغة تُقرأ «لا عمل»
+  const [authErr, setAuthErr] = useState('')
   const [busy, setBusy] = useState('')
   // وضع المساعدة: مكالمات فقط — يأتي من الخادم لا يُخمَّن
   const [callsOnly, setCallsOnly] = useState(false)
@@ -75,13 +77,23 @@ export default function FollowupPage() {
       const r = await fetch('/api/admin/followup')
       const d = await r.json()
       if (d?.clients) {
+        setAuthErr('')
         setClients(d.clients); setCounts(d.counts)
         const only = d.callsOnly === true
         setCallsOnly(only)
         // المساعدة تبدأ على «متأخرة»: تبويب الردود ليس من عملها وسيظهر فارغاً
         if (only) setTab((t) => (t === 'new' ? 'late' : t))
+      } else {
+        // ★ العطب الصامت (١٤ سبتمبر): الجلسة تنتهي بعد اثنتي عشرة ساعة،
+        //   فيردّ الخادم «غير مصرح» ولا `clients` — وكانت الشاشة تُبقي
+        //   القوائم فارغةً فتقول «ما في عملاء للمتابعة الآن». فتقرؤها
+        //   الموظفة «لا عمل عندي اليوم» وتجلس، واللوحة مليئة.
+        //   فصار الفشل يُقال لا يُخفى.
+        setAuthErr(String(d?.error || 'تعذّر تحميل اللوحة — أعيدي المحاولة'))
       }
-    } catch {}
+    } catch {
+      setAuthErr('تعذّر الاتصال بالخادم — تحقّقي من الشبكة وأعيدي المحاولة')
+    }
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -139,6 +151,17 @@ export default function FollowupPage() {
             : 'ما في ملف يقعد ساكت — ابدئي بالأحمر ثم الأخضر.'}
         </p>
 
+        {authErr !== '' && (
+          <div style={{ background: '#FBEEEC', border: '1.5px solid #C0564B', borderRadius: 14, padding: '18px 20px', marginBottom: 18 }}>
+            <div style={{ color: '#B4453C', fontWeight: 900, fontSize: 15, marginBottom: 6 }}>⚠️ اللوحة لم تُحمَّل — وهذا لا يعني أن لا عمل عندكِ</div>
+            <div style={{ color: '#8A4A43', fontWeight: 700, fontSize: 13, lineHeight: 1.9, marginBottom: 12 }}>{authErr}</div>
+            <a href="/auth/login"
+              style={{ display: 'inline-block', background: '#1A3D34', color: '#fff', padding: '10px 24px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>
+              سجّلي الدخول من جديد
+            </a>
+          </div>
+        )}
+
         {/* ثلاثة أرقام تُقرأ من بعيد — لا تحتاج قراءة جدول لتعرف بماذا تبدأ */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           <Stat n={counts.stale} t="تحتاج اتصال" bg="#FBEEEC" fg="#B4453C" />
@@ -186,7 +209,7 @@ export default function FollowupPage() {
           )}
         </div>
 
-        {shownClients.length === 0 && (
+        {shownClients.length === 0 && authErr === '' && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#9DB3AB', fontWeight: 800, border: '1px solid #E1EDE8' }}>
             {q.trim() !== ''
               ? 'ما لقينا شيئاً بهذا الاسم — جرّبي جزءاً من الاسم فقط'

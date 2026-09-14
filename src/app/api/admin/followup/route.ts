@@ -94,7 +94,11 @@ export async function GET() {
       .from('outreach_messages')
       .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, contact_method, officer_name, officer_phone, officer_email, staff_note, office_hint, track')
       .in('company_id', ids)
-      .or('sent_at.not.is.null,contact_method.eq.هاتف')
+    // ★ وكذلك كل صفٍّ وقع عليه اتصال (١٤ سبتمبر): سألت ضي «دخلتُ معلومات
+    //   عن الأمثل ولم أجدها». فالصفّ الذي تُسجَّل عليه مكالمة يجب أن يبقى
+    //   مرئياً مهما كانت قناته — وإلا كتبت الموظفةُ ملاحظةً ثم لم تجدها،
+    //   فتظنّ أن عملها ضاع، وتُعيده.
+      .or('sent_at.not.is.null,contact_method.eq.هاتف,last_call_at.not.is.null')
       .order('sent_at', { ascending: false });
 
     // ★ المساعدة تساعد في المكالمات وحدها: ترى ما تأخّر يومين، ولا ترى نصّ
