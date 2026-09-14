@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import WhatsAppFab from "@/components/WhatsAppFab";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,7 +63,9 @@ gtag('config', 'AW-17947401948');`,
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v2.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* الفقاعة في التخطيط الجذر لا في كل صفحة: بابٌ واحد يظهر في الواجهة
+          وصفحة الخدمات والتسجيل وكل ما سواها، ويُخفي نفسه في شاشات الإدارة. */}
+      <body className="min-h-full flex flex-col">{children}<WhatsAppFab /></body>
     </html>
   );
 }
