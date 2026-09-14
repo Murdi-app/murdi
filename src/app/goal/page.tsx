@@ -805,7 +805,7 @@ export default function GoalPage() {
                         return (
                           <div className="flex flex-col gap-2">
                             <button onClick={() => { if (needsForm(title)) { setOrderCategory(cat.label); openOrder(title); } else { submitServiceRequest(title, cat.label); } }} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">{needsForm(title) ? 'اطلبها — واعرف سعرك الآن' : 'تقديم طلب الخدمة'}</button>
-                            <a href={'https://wa.me/966570314005?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + label)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
+                            <a href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + label)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
                           </div>
                         );
                       }

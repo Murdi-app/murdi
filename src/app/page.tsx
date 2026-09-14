@@ -7,8 +7,8 @@ import ServicesBand from '@/components/ServicesBand'
 export default function Home() {
   const router = useRouter()
   const go = () => router.push('/auth/signup')
-  const PHONE = '0570314005'
-  const WHATSAPP = '966570314005'
+  const PHONE = '0570749196'
+  const WHATSAPP = '966570749196'
 
   const paths = [
     { k: 'تمويل', d: 'نقيس جاهزيتك، نكشف ما يمنع قبولك، ونفتح الباب المناسب من بين جهات تمويل محلية وخليجية ودولية — بالمنتج الذي يناسب حالتك لا بالجهة وحدها.' },

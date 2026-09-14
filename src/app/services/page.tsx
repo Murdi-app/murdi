@@ -232,7 +232,7 @@ export default function ServicesPage() {
         <div className="sv-nav-r">
           <Link href="/" className="sv-link">الرئيسية</Link>
           <span className="sv-here">الخدمات</span>
-          <a href="tel:0570314005" className="sv-link">0570314005</a>
+          <a href="tel:0570749196" className="sv-link">0570749196</a>
           <Link href="/auth/login" className="sv-login">تسجيل الدخول</Link>
         </div>
       </nav>

@@ -87,7 +87,7 @@ function RequestForm() {
       <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>وصلنا طلبك</div>
       <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: '0 0 20px' }}>
         نتواصل معك على <b style={{ color: GREEN }}>{phone}</b> اليوم أو صباح الغد على أبعد تقدير.
-        وإن كان الأمر عاجلاً فاتصل مباشرةً على 0570314005.
+        وإن كان الأمر عاجلاً فاتصل مباشرةً على 0570749196.
       </p>
       <Link href="/services" style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '12px 30px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
         عد إلى الخدمات
@@ -167,7 +167,7 @@ export default function ServiceRequestPage() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Link href="/services" style={{ color: MUTED, fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>الخدمات</Link>
-            <a href="tel:0570314005" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570314005</a>
+            <a href="tel:0570749196" style={{ color: MUTED, fontWeight: 800, fontSize: 13.5, textDecoration: 'none' }}>0570749196</a>
           </div>
         </div>
       </nav>

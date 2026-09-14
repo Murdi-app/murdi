@@ -43,7 +43,7 @@ function TransferInner() {
         const { error } = await supabase.storage.from('receipts').upload(path, file);
         // دلو الإيصالات خاص — الرابط العام لا يفتح. نحفظ المسار ويُوقَّع عند عرضه للأدمن
         // فشل رفع الإيصال كان يمضي بصمت: يرى العميل «تم الاستلام» وتصلك دفعة بلا إثبات فلا تُفعَّل
-        if (error) { setErr('تعذّر رفع الإيصال — حاول مرة أخرى أو أرسله واتساب على 0570314005'); setBusy(false); return; }
+        if (error) { setErr('تعذّر رفع الإيصال — حاول مرة أخرى أو أرسله واتساب على 0570749196'); setBusy(false); return; }
         receiptUrl = path;
       }
       const r = await fetch('/api/payments/transfer', {
@@ -53,7 +53,7 @@ function TransferInner() {
       if (r.ok) { setDone(true); }
       else {
         const d = await r.json().catch(() => ({}));
-        setErr(d?.error || 'تعذّر تسجيل التحويل — حاول مرة أخرى أو راسلنا واتساب على 0570314005');
+        setErr(d?.error || 'تعذّر تسجيل التحويل — حاول مرة أخرى أو راسلنا واتساب على 0570749196');
       }
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة ثم أعد المحاولة');

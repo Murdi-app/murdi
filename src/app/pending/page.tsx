@@ -51,7 +51,7 @@ export default function PendingPage() {
   const ACTION: Partial<Record<Status, { label: string; href: string }>> = {
     none: { label: 'سجّل شركتك الآن ←', href: '/register' },
   }
-  const WHATSAPP = '966570314005'
+  const WHATSAPP = '966570749196'
   const content: Record<Status, { icon: string; title: string; msg: string }> = {
     none: { icon: '', title: 'لم تسجّل شركتك بعد', msg: 'ابدأ بتسجيل شركتك لتفعيل حسابك.' },
     pending_payment: { icon: '', title: 'بانتظار التفعيل', msg: 'استلمنا تسجيلك، ونراجع بياناتك الآن. وسنتواصل معك لنتفق على الخدمة المناسبة لملفك قبل أي رسوم.' },
