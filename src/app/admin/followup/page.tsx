@@ -24,7 +24,7 @@ const arEntities = (n: number): string =>
 
 type Row = {
   id: string; entity: string; email: string; track: string
-  kind: 'reply' | 'stale' | 'waiting' | 'done'
+  kind: 'reply' | 'stale' | 'called' | 'waiting' | 'done'
   sentAt: number | null; daysSince: number | null
   reply: string; replyStatus: string
   officerName: string; officerPhone: string; officerEmail: string
@@ -37,6 +37,7 @@ type Client = { id: string; name: string; city: string; service: string; rows: R
 const KIND: Record<string, { t: string; bg: string; fg: string; bd: string }> = {
   reply:   { t: 'وصل رد — صنّفيه', bg: '#EAF7F0', fg: '#1A6B52', bd: '#2E9E7B' },
   stale:   { t: 'عدّى يومين — اتصلي', bg: '#FBEEEC', fg: '#B4453C', bd: '#C0564B' },
+  called:  { t: 'اتصلتِ بهم — ننتظر', bg: '#EDF3FB', fg: '#31557F', bd: '#B9CFE8' },
   waiting: { t: 'بانتظار الرد', bg: '#FBF7EC', fg: '#8A6D1F', bd: '#E8D9A8' },
   done:    { t: 'مصنَّف', bg: '#F2F5F4', fg: '#7E938C', bd: '#E1EDE8' },
 }
@@ -50,12 +51,18 @@ const REPLY_KINDS: { k: string; t: string }[] = [
 
 export default function FollowupPage() {
   const [clients, setClients] = useState<Client[]>([])
-  const [counts, setCounts] = useState({ reply: 0, stale: 0, waiting: 0, done: 0 })
+  const [counts, setCounts] = useState({ reply: 0, stale: 0, called: 0, waiting: 0, done: 0 })
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string>('')
   // ★ تبويب واحد يُقرأ من بعيد: «الجديد» أوّلها لأنه أوّل عملها في الصباح.
   //   ولا تدخل صندوق البريد إطلاقاً — الردود تصل إلى هنا وحدها.
-  const [tab, setTab] = useState<'new' | 'late' | 'all'>('new')
+  //   وللمساعدة تبويبها الأول «متأخرة» لا «الجديد»: لا ردود عندها أصلاً،
+  //   فكانت تفتح اللوحة على تبويبٍ فارغٍ دائماً وتظنّ أن لا عمل لها.
+  const [tab, setTab] = useState<'new' | 'late' | 'called' | 'all'>('new')
+  // ★ بحث باسم المنشأة أو الجهة (١٤ سبتمبر) — طلبته رغد نصّاً: «في طريقة
+  //   أبحث بها عن اسم الشركة داخل الموقع؟» ولم تكن. والبحث في الشاشة لا
+  //   في الخادم: الصفوف كلها محمَّلةٌ أصلاً، فالتصفية فورية بلا انتظار.
+  const [q, setQ] = useState('')
   const [busy, setBusy] = useState('')
   // وضع المساعدة: مكالمات فقط — يأتي من الخادم لا يُخمَّن
   const [callsOnly, setCallsOnly] = useState(false)
@@ -67,7 +74,13 @@ export default function FollowupPage() {
     try {
       const r = await fetch('/api/admin/followup')
       const d = await r.json()
-      if (d?.clients) { setClients(d.clients); setCounts(d.counts); setCallsOnly(d.callsOnly === true) }
+      if (d?.clients) {
+        setClients(d.clients); setCounts(d.counts)
+        const only = d.callsOnly === true
+        setCallsOnly(only)
+        // المساعدة تبدأ على «متأخرة»: تبويب الردود ليس من عملها وسيظهر فارغاً
+        if (only) setTab((t) => (t === 'new' ? 'late' : t))
+      }
     } catch {}
     setLoading(false)
   }
@@ -86,6 +99,29 @@ export default function FollowupPage() {
   }
 
   const untouched = clients.filter((c) => c.untouched).length
+
+  // تصفية البحث: يكفي أن يطابق اسمُ المنشأة أو اسمُ إحدى جهاتها.
+  // والمطابقة بعد إزالة التشكيل والهمزات، فـ«الهمام» تجد «الهمّام»
+  // و«احمد» تجد «أحمد» — الموظفة تكتب بلا تشكيل والبيانات مشكَّلة.
+  const norm = (s: string) =>
+    String(s || '').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').trim()
+  const needle = norm(q)
+  const hit = (c: Client) =>
+    needle === '' || norm(c.name).includes(needle) || c.rows.some((r) => norm(r.entity).includes(needle))
+
+  // وصفوف العميل المعروضة: بحسب التبويب، ثم بحسب البحث إن كان على جهة
+  const rowsOf = (c: Client) => {
+    const byTab = c.rows.filter((r) =>
+      tab === 'all' ? true
+      : tab === 'new' ? r.kind === 'reply'
+      : tab === 'called' ? r.kind === 'called'
+      : r.kind === 'stale')
+    // إن طابق البحثُ اسمَ المنشأة فكل صفوفها تُعرض؛ وإن طابق جهةً فتلك وحدها
+    if (needle === '' || norm(c.name).includes(needle)) return byTab
+    return byTab.filter((r) => norm(r.entity).includes(needle))
+  }
+
+  const shownClients = clients.filter(hit)
 
   if (loading) return <div dir="rtl" style={{ padding: 60, textAlign: 'center', fontFamily: 'Cairo', color: '#6B8A80', fontWeight: 800 }}>جارٍ التحميل…</div>
 
@@ -106,14 +142,19 @@ export default function FollowupPage() {
         {/* ثلاثة أرقام تُقرأ من بعيد — لا تحتاج قراءة جدول لتعرف بماذا تبدأ */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
           <Stat n={counts.stale} t="تحتاج اتصال" bg="#FBEEEC" fg="#B4453C" />
+          {callsOnly && <Stat n={counts.called} t="اتصلتِ بهم" bg="#EDF3FB" fg="#31557F" />}
           {!callsOnly && <Stat n={counts.reply} t="ردود تنتظر تصنيفك" bg="#EAF7F0" fg="#1A6B52" />}
           {!callsOnly && <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />}
           {!callsOnly && <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />}
         </div>
 
-        {/* التبويبات — بابها الذي تفتحه كل صباح */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          {([['new', 'الجديد — ردود وصلت'], ['late', 'متأخرة — اتصلي'], ['all', 'الكل']] as const).map(([k, t]) => (
+        {/* التبويبات — بابها الذي تفتحه كل صباح.
+            وللمساعدة تبويبان لا ثلاثة: ما تحتاج اتصالاً، وما اتصلت به. */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          {(callsOnly
+            ? ([['late', 'تحتاج اتصال'], ['called', 'اتصلتِ بهم'], ['all', 'الكل']] as const)
+            : ([['new', 'الجديد — ردود وصلت'], ['late', 'متأخرة — اتصلي'], ['all', 'الكل']] as const)
+          ).map(([k, t]) => (
             <button key={k} onClick={() => setTab(k)}
               style={{
                 background: tab === k ? '#1A3D34' : '#fff', color: tab === k ? '#fff' : '#33544B',
@@ -122,17 +163,38 @@ export default function FollowupPage() {
               }}>
               {t}{k === 'new' && counts.reply > 0 ? ' (' + counts.reply + ')' : ''}
               {k === 'late' && counts.stale > 0 ? ' (' + counts.stale + ')' : ''}
+              {k === 'called' && counts.called > 0 ? ' (' + counts.called + ')' : ''}
             </button>
           ))}
         </div>
 
-        {clients.length === 0 && (
+        {/* البحث — باسم المنشأة أو باسم الجهة */}
+        <div style={{ marginBottom: 16 }}>
+          <input
+            value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="🔍 ابحثي باسم المنشأة أو اسم الجهة — مثل: الهمام · الراجحي"
+            style={{
+              width: '100%', maxWidth: 460, padding: '11px 15px', borderRadius: 12,
+              border: '1.5px solid #E1EDE8', background: '#fff', fontFamily: 'Cairo',
+              fontWeight: 700, fontSize: 13, color: '#1A3D34', boxSizing: 'border-box',
+            }} />
+          {q.trim() !== '' && (
+            <button onClick={() => setQ('')}
+              style={{ marginRight: 8, background: 'none', border: 'none', color: '#6B8A80', fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
+              إلغاء البحث ✕
+            </button>
+          )}
+        </div>
+
+        {shownClients.length === 0 && (
           <div style={{ background: '#fff', borderRadius: 16, padding: 40, textAlign: 'center', color: '#9DB3AB', fontWeight: 800, border: '1px solid #E1EDE8' }}>
-            {callsOnly ? 'ما في جهة تحتاج مكالمة الآن — أحسنتِ' : 'ما في عملاء للمتابعة الآن'}
+            {q.trim() !== ''
+              ? 'ما لقينا شيئاً بهذا الاسم — جرّبي جزءاً من الاسم فقط'
+              : callsOnly ? 'ما في جهة تحتاج مكالمة الآن — أحسنتِ' : 'ما في عملاء للمتابعة الآن'}
           </div>
         )}
 
-        {clients.map((c) => (
+        {shownClients.map((c) => (
           <div key={c.id} style={{ background: '#fff', border: '1.5px solid ' + (c.untouched ? '#E8D9A8' : '#E1EDE8'), borderRadius: 16, padding: 18, marginBottom: 12 }}>
             <button onClick={() => setOpen(open === c.id ? '' : c.id)}
               style={{ background: 'none', border: 'none', width: '100%', textAlign: 'right', cursor: 'pointer', padding: 0, fontFamily: 'Cairo' }}>
@@ -159,13 +221,15 @@ export default function FollowupPage() {
                   </div>
                 )}
 
-                {c.rows.filter((r) => tab === 'all' || (tab === 'new' ? r.kind === 'reply' : r.kind === 'stale')).length === 0 && (
+                {rowsOf(c).length === 0 && (
                   <div style={{ background: '#F2F5F4', border: '1px solid #E1EDE8', borderRadius: 12, padding: 12, fontSize: 12.5, fontWeight: 800, color: '#7E938C' }}>
-                    {tab === 'new' ? 'ما وصل رد جديد لهذا العميل' : 'ما في جهة متأخرة عند هذا العميل'}
+                    {tab === 'new' ? 'ما وصل رد جديد لهذا العميل'
+                     : tab === 'called' ? 'ما اتصلتِ بجهة عند هذا العميل بعد'
+                     : 'ما في جهة متأخرة عند هذا العميل'}
                   </div>
                 )}
 
-                {c.rows.filter((r) => tab === 'all' || (tab === 'new' ? r.kind === 'reply' : r.kind === 'stale')).map((r) => {
+                {rowsOf(c).map((r) => {
                   const k = KIND[r.kind] || KIND.waiting
                   const d = draft[r.id] || { n: r.officerName, p: r.officerPhone, e: r.officerEmail, note: r.note }
                   const set = (f: 'n' | 'p' | 'e' | 'note', v: string) =>

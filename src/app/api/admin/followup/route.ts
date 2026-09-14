@@ -139,7 +139,15 @@ export async function GET() {
         // ردٌّ وصل ولم يُصنَّف بعد — أول ما يُعمل في الصباح
         const needsTriage = hasReply && String(m.reply_status || '').trim() === '';
 
-        const kind = needsTriage ? 'reply' : stale ? 'stale' : hasReply ? 'done' : 'waiting';
+        // ★ «اتصلتُ بهم» (١٤ سبتمبر): من اتصلت به أمس كان يختفي من لوحتها
+        //   تماماً — لأن المكالمة تُحدِّث آخر لمسة فيسقط شرطُ التأخّر، ولوحةُ
+        //   المساعدة لا تعرض إلا المتأخّر. فسألت: «اللي أمس كلمتهم ما لقيتهم،
+        //   في أي خانة؟» ولم يكن لها خانة. فصار للمكالمة أثرٌ يُرى: صفٌّ
+        //   اتُّصل به ولم يردّ بعدُ ولم يحن موعده ثانيةً — تراه ولا يُطالبها
+        //   بعمل. وبه تعرف ما فعلت أمس، وتُكمل ما نقص من اسمٍ أو رقم.
+        const called = !hasReply && calledAt > 0 && !stale;
+
+        const kind = needsTriage ? 'reply' : stale ? 'stale' : called ? 'called' : hasReply ? 'done' : 'waiting';
         counts[kind as keyof typeof counts] += 1;
 
         return {
@@ -166,12 +174,13 @@ export async function GET() {
       });
 
       // ترتيب الجهات داخل العميل: ما يستحقّ عملاً اليوم أولاً
-      const W: Record<string, number> = { reply: 0, stale: 1, waiting: 2, done: 3 };
+      const W: Record<string, number> = { reply: 0, stale: 1, called: 2, waiting: 3, done: 4 };
       rows.sort((a, b) => (W[a.kind] - W[b.kind]) || ((b.sentAt || 0) - (a.sentAt || 0)));
 
       // المساعدة: صفوف المكالمات وحدها، ونصّ الرد يُحذف قبل الإرسال
       const shown = callsOnly
-        ? rows.filter((r) => r.kind === 'stale').map((r) => ({ ...r, reply: '', replyStatus: '', suggested: '' }))
+        ? rows.filter((r) => r.kind === 'stale' || r.kind === 'called')
+              .map((r) => ({ ...r, reply: '', replyStatus: '', suggested: '' }))
         : rows;
 
       return {
@@ -192,7 +201,9 @@ export async function GET() {
 
     // والمساعدة لا تُعرض عليها إلا مَن لها عنده مكالمة
     const shownClients = callsOnly ? clients.filter((c) => c.rows.length > 0) : clients;
-    const shownCounts = callsOnly ? { ...zero(), stale: counts.stale } : counts;
+    const shownCounts = callsOnly
+      ? { ...zero(), stale: counts.stale, called: counts.called }
+      : counts;
 
     return NextResponse.json({
       ok: true, clients: shownClients, counts: shownCounts,
@@ -205,7 +216,7 @@ export async function GET() {
 }
 
 function zero() {
-  return { reply: 0, stale: 0, waiting: 0, done: 0 };
+  return { reply: 0, stale: 0, called: 0, waiting: 0, done: 0 };
 }
 
 // ★ الإجراء المقترح — ليقرأ الردَّ من لا يفتح صندوق البريد.
