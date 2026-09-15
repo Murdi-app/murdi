@@ -21,7 +21,7 @@ type Stats = { due: number; untouched: number; waiting: number; closed: number; 
 const C = { ink: '#1A3D34', soft: '#5E7C73', line: '#E4EFEA', bg: '#F7FBF9', gold: '#C9A84C', red: '#B4622A', green: '#1A6B55' }
 
 const TIERS: Record<number, { label: string; color: string; why: string }> = {
-  1: { label: 'مال موقّع لم يُحصَّل', color: C.red, why: 'أقرب ريال إلى الحساب — العقد موقّع والأتعاب لم تصل' },
+  1: { label: 'مال موقّع لم يُحصَّل', color: C.red, why: 'أقرب ريال إلى الحساب — العقد موقّع والمستحقّ لم يصل' },
   2: { label: 'ملف مكتمل بلا عقد', color: C.gold, why: 'أتعب نفسه وأكمل بياناته، ولم يُطلب منه القرار بعد' },
   3: { label: 'أنهى التقييم ولم يُتّصل به', color: C.green, why: 'رفع يده بنفسه وكتب رقمه — أدفأ اسم في القائمة' },
   4: { label: 'سجّل ووقف', color: C.soft, why: 'دخل الباب ولم يُكمل — سؤال واحد يكشف ما أوقفه' },
@@ -94,7 +94,7 @@ export default function HotPage() {
           {tile(stats.untouched, 'لم تُلمس بعد', C.red)}
           {tile(stats.waiting, 'لها موعد معاودة', C.gold)}
           {/* البطاقة تختفي عن الموظفة لأن الرقم لم يصلها أصلاً */}
-          {stats.money_on_table !== null && tile(money(stats.money_on_table) + ' ﷼', 'موقّع لم يُحصَّل', C.green)}
+          {stats.money_on_table !== null && tile(money(stats.money_on_table) + ' ﷼', 'مستحقٌّ موقّع لم يُحصَّل', C.green)}
         </div>
       )}
 
