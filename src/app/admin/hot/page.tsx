@@ -21,6 +21,9 @@ type Stats = { due: number; untouched: number; waiting: number; closed: number; 
 const C = { ink: '#1A3D34', soft: '#5E7C73', line: '#E4EFEA', bg: '#F7FBF9', gold: '#C9A84C', red: '#B4622A', green: '#1A6B55' }
 
 const TIERS: Record<number, { label: string; color: string; why: string }> = {
+  // ★ لا تُكتب كلمة «الأتعاب» في هذه الشاشة: الرقم محجوبٌ عن الموظفة في
+  //   الخادم، فلا معنى لأن تبقى الكلمة ظاهرةً لها في وصف الطبقة. والمستحقّ
+  //   يُسمّى مستحقّاً — يفهمه المالك، ولا يفتح للموظفة باب سؤالٍ ليس عملها.
   1: { label: 'مال موقّع لم يُحصَّل', color: C.red, why: 'أقرب ريال إلى الحساب — العقد موقّع والمستحقّ لم يصل' },
   2: { label: 'ملف مكتمل بلا عقد', color: C.gold, why: 'أتعب نفسه وأكمل بياناته، ولم يُطلب منه القرار بعد' },
   3: { label: 'أنهى التقييم ولم يُتّصل به', color: C.green, why: 'رفع يده بنفسه وكتب رقمه — أدفأ اسم في القائمة' },

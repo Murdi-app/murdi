@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { waNumber } from '@/lib/phone'
+import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
 
 export default function RegisterPage() {
@@ -67,6 +68,11 @@ export default function RegisterPage() {
       // صارت على الخدمة نفسها. وإبقاء الحساب «بانتظار الدفع» كان يوقف
       // العميل أمام جدار لا مقابل له، ويناقض ما تقوله له بقية الصفحات.
       await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'active' })
+      // ★ إحالةٌ ناجحة عند **إنشاء** المنشأة لا عند تحديثها: من يصل من
+      //   الإعلان ويسجّل مباشرةً لا يمرّ بالتقييم المبدئي إطلاقاً، فمرّت
+      //   منشأتان ولم يرهما جوجل. أمّا التحديث فعميلٌ قائم لا ليدٌ جديد.
+      // ★ ولا ازدواج: الإحالة مضبوطة على العدّ «واحد» في جوجل.
+      fireConversion(LEAD_SUBMITTED)
     }
     setSaving(false)
     router.push('/goal')

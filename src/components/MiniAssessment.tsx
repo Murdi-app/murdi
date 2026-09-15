@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,6 +60,8 @@ export default function MiniAssessment() {
   const [done, setDone] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  /** حارس الإحالة الناجحة — لا تُطلق مرتين لو ضُغط الزرّ مرّتين */
+  const converted = useRef(false)
 
   // ═══ الموقع يُحفظ إلى جانب القيمة ═══
   // خيارات السؤال الأخير الثلاثة الأولى قيمتها 8 جميعاً — تمويل واستثمار
@@ -125,6 +128,15 @@ export default function MiniAssessment() {
         completed: ans.length >= QUESTIONS.length,
       })
       if (error) { setErr('تعذّر إرسال بياناتك، حاول مرة أخرى أو راسلنا واتساب'); return }
+      // ★ الإحالة الناجحة تُطلق هنا أيضاً لا في طلب الخدمة وحده.
+      //   والسبب أن الحملة تجلب **تقييمات** لا طلبات خدمة: وصلت ثلاثة
+      //   تسجيلات في يومين وبقي عدّاد جوجل صفراً، فلا تتعلّم الحملة على
+      //   شيء وتُنفق بلا إشارة. والليد هو الليد — اسمٌ وجوالٌ ومنشأة.
+      // ★ وبعد الحفظ لا قبله: لا تُعدّ إحالةً ناجحة إلا ما دخل القاعدة فعلاً.
+      if (!converted.current) {
+        converted.current = true
+        fireConversion(LEAD_SUBMITTED)
+      }
       setDone(true)
     } catch {
       setErr('حدث خطأ، حاول مرة أخرى')
