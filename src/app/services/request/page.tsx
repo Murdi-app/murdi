@@ -44,10 +44,20 @@ function RequestForm() {
   // حارسُ التحويل: يُطلق مرةً واحدة لا غير مهما تكرّر النداء.
   const converted = useRef(false);
 
+  // مصدر الزائر — يُقيَّد مع الطلب. وكان الطلب يُسجَّل دائماً بـ«services»
+  // فلا يُعرف أمن الإعلان جاء أم من بحثٍ عاديّ. ومعاملات جوجل (gclid وأخواتها)
+  // تُلحق بكل نقرة إعلان تلقائياً، فهي أصدق دليلٍ بلا ضبطٍ منّا.
+  const [src, setSrc] = useState('');
+
   useEffect(() => {
     try {
-      const s = new URLSearchParams(window.location.search).get('s') || '';
+      const q = new URLSearchParams(window.location.search);
+      const s = q.get('s') || '';
       if (s && DIRECT.includes(s)) setService(s);
+      const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid');
+      const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || '';
+      if (p) { setSrc(p); try { sessionStorage.setItem('murdi_src', p); } catch {} }
+      else { try { const v = sessionStorage.getItem('murdi_src'); if (v) setSrc(v); } catch {} }
     } catch { /* لا شيء — تبقى الخدمة الأولى */ }
   }, []);
 
@@ -58,7 +68,7 @@ function RequestForm() {
     try {
       const r = await fetch('/api/services/inquiry', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_title: service, full_name: name, phone, email, company_name: company, note, website }),
+        body: JSON.stringify({ service_title: service, full_name: name, phone, email, company_name: company, note, website, src: src || undefined }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }

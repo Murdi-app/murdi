@@ -81,10 +81,22 @@ export default function MiniAssessment() {
   const pct = Math.round((score / MAX) * 100)
   const v = verdict(pct)
 
+  // مصدر الزائر — يُقيَّد مع التقييم ليُعرف من أين جاء.
+  //
+  // ★ وكان `src` لا يُملأ إلا إذا حمل الرابط `?src=` بيدنا. فجاء أول تقييمٍ
+  //   بعد إطلاق حملة جوجل بمصدرٍ فارغ، ولم نستطع أن نقول: أمن الإعلان هو
+  //   أم من بحثٍ عاديّ؟ وحملةٌ لا يُعرف عائدها تُصرَف بلا حساب.
+  //
+  // ★ فصار الرابط يُقرأ على ثلاث مراتب: `src` الصريح أولاً، ثم **معاملات
+  //   جوجل نفسها** (gclid · gbraid · wbraid) وهي تُلحق بكل نقرة إعلان
+  //   تلقائياً فلا تحتاج منّا ضبطاً، ثم `utm_source`. ويُحفظ في الجلسة فلا
+  //   يضيع حين ينتقل الزائر بين الصفحات.
   const [adSrc, setAdSrc] = useState('')
   useEffect(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get('src')
+      const q = new URLSearchParams(window.location.search)
+      const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid')
+      const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || ''
       if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
       else { const s = sessionStorage.getItem('murdi_src'); if (s) setAdSrc(s) }
     } catch { /* تجاهل */ }
