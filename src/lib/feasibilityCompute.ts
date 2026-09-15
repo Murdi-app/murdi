@@ -32,6 +32,15 @@ export interface YearProjection {
 
 export const ZAKAT_RATE = 0.025; // تقدير مبسّط؛ الوعاء الزكوي الفعلي وفق قواعد هيئة الزكاة والضريبة والجمارك
 
+// ═══ معدّل الخصم ═══
+// كانت الدراسة تعرض تدفقاً نقدياً وتعادلاً وفترة استرداد، ولا تعرض **قيمة
+// المشروع** — أي أنها تقيس السيولة ولا تقيس الجدوى الاقتصادية. وفرقهما
+// جوهري: مشروعٌ يسدّد أقساطه قد يظلّ مدمّراً للقيمة إن كان عائده دون
+// تكلفة رأس المال. فأُضيفت هنا مؤشرات التقييم الثلاثة التي يسأل عنها
+// المستثمر والمانح: صافي القيمة الحالية، ومعدّل العائد الداخلي، ومؤشر
+// الربحية — ومعها فترة استردادٍ مخصومة لا اسمية.
+export const DISCOUNT_RATE = 0.12; // تكلفة رأس مال مرجّحة لمنشأة سعودية متوسطة
+
 export interface FeasibilityResult {
   years: YearProjection[];
   totalInvestment: number;
@@ -41,6 +50,30 @@ export interface FeasibilityResult {
   breakEvenUnits: number;
   paybackYears: number | null;
   annualInstalment: number;
+  // ═══ مؤشرات الجدوى الاستثمارية ═══
+  discountRate: number;            // المعدّل المعتمد في الخصم
+  npv: number;                     // صافي القيمة الحالية للمشروع
+  irr: number | null;              // معدّل العائد الداخلي — null إن لم يتقاطع
+  profitabilityIndex: number | null; // القيمة الحالية للداخل ÷ القيمة الحالية للخارج
+  discountedPayback: number | null;  // فترة الاسترداد بالقيمة الحالية
+  roi: number | null;              // مجموع صافي الأرباح ÷ إجمالي الاستثمار
+}
+
+/** صافي القيمة الحالية لسلسلة تدفّقات سنوية تبدأ من السنة صفر */
+function npvOf(rate: number, flows: number[]): number {
+  return flows.reduce((s, c, t) => s + c / Math.pow(1 + rate, t), 0);
+}
+
+/** معدّل العائد الداخلي بالتنصيف — يعيد null إن لم تتغيّر إشارة NPV في النطاق */
+function irrOf(flows: number[]): number | null {
+  let lo = -0.9499, hi = 5;
+  const a = npvOf(lo, flows), b = npvOf(hi, flows);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a * b > 0) return null;
+  for (let k = 0; k < 200; k++) {
+    const mid = (lo + hi) / 2;
+    if (npvOf(mid, flows) > 0) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
 }
 
 const n = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
@@ -94,7 +127,33 @@ export function computeFeasibility(i: FeasibilityInputs): FeasibilityResult {
       break;
     }
   }
-  return { years, totalInvestment, fundingGap, contributionMarginPct, breakEvenRevenue, breakEvenUnits, paybackYears, annualInstalment };
+  // ═══ مؤشرات الجدوى الاستثمارية ═══
+  // ★ تُقاس على تدفّق **المشروع** لا على تدفّق المالك: الخارج في السنة صفر
+  //   إجمالي الاستثمار (رأسمالي + رأس مال عامل)، والداخل بعده هو الأرباح
+  //   التشغيلية بعد الزكاة قبل خدمة الدين — لأن خدمة الدين تمويلٌ لا تشغيل،
+  //   وإدخالها هنا يخلط قرار الاستثمار بقرار التمويل ويُنقص العائد مرّتين.
+  const opFlows = years.map((y) => y.ebitda - y.zakat);
+  const flows = [-totalInvestment, ...opFlows];
+  const npv = npvOf(DISCOUNT_RATE, flows);
+  const irr = irrOf(flows);
+  const pvIn = opFlows.reduce((s, c, k) => s + c / Math.pow(1 + DISCOUNT_RATE, k + 1), 0);
+  const profitabilityIndex = totalInvestment > 0 ? pvIn / totalInvestment : null;
+
+  let discountedPayback: number | null = null;
+  let acc = -totalInvestment;
+  for (let k = 0; k < opFlows.length; k++) {
+    const disc = opFlows[k] / Math.pow(1 + DISCOUNT_RATE, k + 1);
+    if (acc + disc >= 0) { discountedPayback = k + (disc > 0 ? -acc / disc : 1); break; }
+    acc += disc;
+  }
+  const sumNet = years.reduce((s, y) => s + y.netProfit, 0);
+  const roi = totalInvestment > 0 ? sumNet / totalInvestment : null;
+
+  return {
+    years, totalInvestment, fundingGap, contributionMarginPct, breakEvenRevenue, breakEvenUnits,
+    paybackYears, annualInstalment,
+    discountRate: DISCOUNT_RATE, npv, irr, profitabilityIndex, discountedPayback, roi,
+  };
 }
 
 const f = (v: number) => Math.round(v).toLocaleString('en-US');
@@ -128,7 +187,26 @@ export function renderFeasibilitySummary(r: FeasibilityResult): string {
     ['فترة الاسترداد', r.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : r.paybackYears.toFixed(1) + ' سنة'],
     ['القسط السنوي للتمويل', f(r.annualInstalment) + ' ريال'],
   ];
-  return '<table class="fz"><tbody>' + rows.map(([k, v]) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
+  // ═══ مؤشرات التقييم ═══
+  // تُعرض في جدولها لا مختلطةً بمؤشرات التشغيل: هذه تجيب «هل يستحق
+  // المشروع رأس المال؟» وتلك تجيب «هل يسدّد؟» — وهما سؤالان لا سؤال.
+  const pct = (v: number) => (v * 100).toFixed(1) + '%';
+  const inv: [string, string][] = [
+    ['معدّل الخصم المعتمد', pct(r.discountRate)],
+    ['صافي القيمة الحالية (NPV)', f(r.npv) + ' ريال' + (r.npv > 0 ? ' — موجبة' : ' — سالبة')],
+    ['معدّل العائد الداخلي (IRR)', r.irr === null ? 'لا يُحتسب بهذه الافتراضات' : pct(r.irr) + (r.irr > r.discountRate ? ' — يفوق معدّل الخصم' : ' — دون معدّل الخصم')],
+    ['مؤشّر الربحية (PI)', r.profitabilityIndex === null ? '—' : r.profitabilityIndex.toFixed(2) + (r.profitabilityIndex >= 1 ? ' — كل ريال يعود بأكثر منه' : ' — دون الواحد')],
+    ['فترة الاسترداد المخصومة', r.discountedPayback === null ? 'لا تُسترد خلال أفق الدراسة' : r.discountedPayback.toFixed(1) + ' سنة'],
+    ['العائد على الاستثمار (٥ سنوات)', r.roi === null ? '—' : pct(r.roi)],
+  ];
+  const tbl = (rs: [string, string][]) =>
+    '<table class="fz"><tbody>' + rs.map(([k, v]) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
+  return tbl(rows)
+    + '<h2>مؤشّرات الجدوى الاستثمارية</h2>' + tbl(inv)
+    + '<div class="note"><b>كيف تُقرأ؟</b> <b>صافي القيمة الحالية</b> هي ما يضيفه المشروع من قيمة اليوم بعد خصم عائدٍ بديل قدره '
+    + pct(r.discountRate) + ' — وموجبُها يعني أن المشروع يخلق قيمةً لا يستهلكها. و<b>معدّل العائد الداخلي</b> هو العائد السنوي الفعلي للمشروع؛ '
+    + 'فمتى فاق معدّل الخصم كان المشروع مجدياً. و<b>مؤشّر الربحية</b> يقول كم يعود كل ريالٍ مستثمَر بالقيمة الحالية. '
+    + 'وتُقاس هذه الثلاثة على تدفّق المشروع قبل خدمة الدين — لأن قرار الاستثمار يُفصل عن قرار التمويل، ولا تُخصم الأقساط مرّتين.</div>';
 }
 
 // ═══ طبقة الائتمان: ما يقرؤه محلل التمويل قبل أي شيء ═══

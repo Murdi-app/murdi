@@ -15,7 +15,10 @@ function publicPrice(c: ServiceCommercial | undefined): { main: string; hint?: s
     (m, o) => (typeof o.price === 'number' && (m === null || o.price < m) ? o.price : m), null);
   const hint = cheapest !== null ? 'ويبدأ بـ ' + cheapest.toLocaleString('en-US') + ' ر.س — ويُخصم منها بالكامل' : undefined;
   if (c.tiers && c.tiers.length) return { main: 'من ' + c.tiers[0].price.toLocaleString('en-US') + ' ر.س', hint };
-  if (typeof c.price === 'number') return { main: c.price.toLocaleString('en-US') + ' ر.س', hint };
+  // ★ وحدة السعر تُظهَر مع الرقم حين لا يكون السعر للملف كلّه — وإلا قرأ
+  //   العميل «١٠٬٠٠٠ ر.س» على ثلاث سنوات فجاء متوقّعاً ثلث الرقم.
+  if (typeof c.price === 'number')
+    return { main: c.price.toLocaleString('en-US') + ' ر.س' + (c.priceUnit ? ' ' + c.priceUnit : ''), hint };
   return { main: 'بعرض خاص', hint: c.quoteBasis ? undefined : hint };
 }
 

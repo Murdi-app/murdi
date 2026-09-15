@@ -33,6 +33,18 @@ export interface FeasibilitySections {
   executiveSummary: string;
   marketStudy: string;
   competition: string;
+  // ═══ أقسام الجدوى الاقتصادية ═══
+  // كانت الوثيقة تقيس السداد وتصف السوق، فتُقرأ ائتمانيةً بحتة. ودراسةُ
+  // الجدوى لا تكتمل بغير أربعةٍ زيادةً على ذلك: **تحليل الموقع التنافسي**
+  // الذي يقول أين يقف المشروع من منافسيه، و**الخطة التشغيلية والتسويقية**
+  // التي تقول كيف يُدار ويُباع، و**الامتثال النظامي** الذي يقول ما الذي
+  // يمنع تشغيله أصلاً، و**الأثر الاقتصادي** الذي يقرؤه المستثمر والجهة
+  // الحكومية معاً. وبغيابها تُجيب الدراسة عن «هل يسدّد؟» وتسكت عن «هل
+  // يستحق؟» — وهو السؤال الذي يدفع العميل ثمن الدراسة لأجله.
+  swot: string;
+  operationalPlan: string;
+  legalCompliance: string;
+  economicImpact: string;
   technicalStudy: string;
   assumptionsNote: string;
   risks: string;
@@ -84,6 +96,12 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + '- هامش المساهمة ' + result.contributionMarginPct.toFixed(1) + '% | نقطة التعادل ' + n(result.breakEvenRevenue) + ' ريال سنوياً\n'
     + '- فترة الاسترداد: ' + (result.paybackYears === null ? 'لا تُسترد خلال خمس سنوات بهذه الافتراضات' : result.paybackYears.toFixed(1) + ' سنة') + '\n'
     + '- القسط السنوي للتمويل ' + n(result.annualInstalment) + ' ريال (محسوب — لا تقل إنه غير محدد ولا تفترض غيره)\n'
+    // مؤشرات التقييم تُمرَّر للنموذج ليبني عليها حكمه الاقتصادي بدل أن يصف
+    // السيولة وحدها: الخلاصة تفصل «هل يستحق رأس المال» عن «هل يسدّد».
+    + '- مؤشرات التقييم عند خصم ' + (result.discountRate * 100).toFixed(0) + '%: صافي القيمة الحالية ' + n(result.npv) + ' ريال'
+      + ' | معدّل العائد الداخلي ' + (result.irr === null ? 'لا يُحتسب' : (result.irr * 100).toFixed(1) + '%')
+      + ' | مؤشّر الربحية ' + (result.profitabilityIndex === null ? '—' : result.profitabilityIndex.toFixed(2))
+      + ' | فترة الاسترداد المخصومة ' + (result.discountedPayback === null ? 'لا تُسترد خلال أفق الدراسة' : result.discountedPayback.toFixed(1) + ' سنة') + '\n'
     + '- صافي الربح المحاسبي (بعد الاستهلاك وكلفة التمويل): السنة الأولى ' + n(result.years[0].netProfit) + ' ريال، والسنة الخامسة ' + n(result.years[4].netProfit) + ' ريال\n'
     + '- صافي التدفق النقدي بعد القسط الكامل: السنة الأولى ' + n(result.years[0].cashFlow) + ' ريال، والسنة الخامسة ' + n(result.years[4].cashFlow) + ' ريال\n'
     + '- الاستهلاك السنوي ' + n(result.years[0].depreciation) + ' ريال، وكلفة التمويل السنوية ' + n(result.years[0].financeCharge) + ' ريال من أصل قسط ' + n(result.years[0].debtService) + ' ريال (الباقي سداد أصل)\n\n'
@@ -119,8 +137,8 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
     + jsonSpec;
 
   // القسمان يُكتبان في نداءين متوازيين: نصف المخرجات لكل نداء فينتصف زمن الانتظار
-  const SPEC_A = '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسة عند حجم المشروع ونطاقه: بنية المنافسة في النطاق ومستوى الأسعار والقنوات، ثم موقع المشروع وعوامل تمايزه ونقاط ضعفه","sources":["اسم المصدر — الرابط — السنة"]}';
-  const SPEC_B = '{"technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً، كل خطر بإجراء تخفيفي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة","funderQA":"ثمانية أسئلة تطرحها لجنة الائتمان على هذا الملف تحديداً وإجابة كل سؤال من أرقام الدراسة — بصيغة جدول بعمودين: السؤال | الإجابة. ابدأ بأصعبها: ضيق التغطية، وسقوط السيناريو المتحفظ، وغياب السجل التشغيلي، وارتفاع سعر الوحدة عن السوق، والضمان. لا تُجمّل، وأجب برقم لا بعبارة عامة"}';
+  const SPEC_A = '{"executiveSummary":"الملخص التنفيذي (فقرتان) مصاغ لجمهور الدراسة","marketStudy":"دراسة السوق: الحجم والنمو والشريحة المستهدفة، كل رقم بمصدره","competition":"المنافسة عند حجم المشروع ونطاقه: بنية المنافسة في النطاق ومستوى الأسعار والقنوات، ثم موقع المشروع وعوامل تمايزه ونقاط ضعفه","swot":"تحليل الموقع التنافسي بصيغة جدول بعمودين وأربعة صفوف: نقاط القوة | نقاط الضعف | الفرص | التهديدات. ثلاث إلى خمس نقاط في كل خانة، كلها خاصة بهذا المشروع في نطاقه لا عبارات عامة، ونقاط الضعف تُكتب بصراحة لا تُجمّل","sources":["اسم المصدر — الرابط — السنة"]}';
+  const SPEC_B = '{"technicalStudy":"الدراسة الفنية: الموقع والطاقة والمعدات والعمالة ومراحل التنفيذ","operationalPlan":"الجدوى التشغيلية وخطة التسويق: الهيكل الإداري ومن يدير المشروع يومياً، وسلسلة التوريد، وخطة جذب العملاء وقنواتها وتكلفة اكتساب العميل التقديرية، وكيف يُسعَّر المنتج مقارنةً بالسوق — بلا عموميات تسويقية","legalCompliance":"الجدوى القانونية والنظامية: التراخيص والاشتراطات اللازمة لهذا النشاط بعينه قبل التشغيل، والجهة المانحة لكل ترخيص، والالتزامات الزكوية والضريبية (القيمة المضافة والزكاة وأي ضريبة قطاعية)، ومتطلبات التوطين والنطاقات إن كانت للنشاط عمالة. وما لم تتيقّن منه قل صراحةً إنه يُراجَع مع مختص","economicImpact":"الأثر الاقتصادي والاجتماعي: فرص العمل المتوقعة في التشغيل وفي التنفيذ، والإنفاق على سلسلة الإمداد المحلية، والعائد على المالية العامة من زكاة وضرائب ورسوم، والتوافق مع التوجه الوطني إن وُجد — بأرقام تقديرية مشتقة من أرقام الدراسة لا بعبارات إنشائية","assumptionsNote":"جدول الافتراضات: كل افتراض بُنيت عليه الأرقام مع مصدره أو وصفه بأنه افتراض العميل","risks":"مخاطر هذا المشروع تحديداً بصيغة جدول بأربعة أعمدة: المخاطرة | الاحتمال (مرتفع/متوسط/منخفض) | الأثر (مرتفع/متوسط/منخفض) | إجراء التخفيف الذي ينفّذه — بلا إحصاءات تعثّر عامة للقطاع","conclusion":"الخلاصة والتوصية بصراحة، وتُفصَل فيها الجدوى الاقتصادية (هل يستحق المشروع رأس المال) عن الجدوى الائتمانية (هل يقدر على السداد) — فقد يكون الجواب مختلفاً فيهما","funderQA":"ثمانية أسئلة تطرحها لجنة الائتمان على هذا الملف تحديداً وإجابة كل سؤال من أرقام الدراسة — بصيغة جدول بعمودين: السؤال | الإجابة. ابدأ بأصعبها: ضيق التغطية، وسقوط السيناريو المتحفظ، وغياب السجل التشغيلي، وارتفاع سعر الوحدة عن السوق، والضمان. لا تُجمّل، وأجب برقم لا بعبارة عامة"}';
 
   // استخراج JSON من نص قد يحوي مقدمة أو عدة كتل — نجرب من آخر '{' للخلف
   const pick = (raw: string, need = 'executiveSummary'): Record<string, unknown> | null => {
@@ -140,7 +158,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
       }
     }
     // رد مقطوع: نلتقط الحقول النصية المكتملة يدوياً حتى لا تضيع الأقسام
-    const keys = ['executiveSummary', 'marketStudy', 'competition', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'funderQA', 'facts'];
+    const keys = ['executiveSummary', 'marketStudy', 'competition', 'swot', 'operationalPlan', 'legalCompliance', 'economicImpact', 'technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'funderQA', 'facts'];
     const out: Record<string, unknown> = {};
     for (const k of keys) {
       const m = c.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
@@ -216,7 +234,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 
   // من «ب» نأخذ حقوله الأربعة فقط — حتى لا يطمس حقل sources القادم من «أ»
   const bOnly: Record<string, unknown> = {};
-  for (const k of ['technicalStudy', 'assumptionsNote', 'risks', 'conclusion', 'funderQA']) if (b && b[k]) bOnly[k] = b[k];
+  for (const k of ['technicalStudy', 'operationalPlan', 'legalCompliance', 'economicImpact', 'assumptionsNote', 'risks', 'conclusion', 'funderQA']) if (b && b[k]) bOnly[k] = b[k];
   const sections = { ...empty(), ...(a || {}), ...bOnly } as FeasibilitySections;
   // قائمة المصادر تُؤخذ من البحث الفعلي لا من كتابة النموذج — هو يعيد صياغتها فتتكرر وتفقد روابطها
   if (foundSources.length) sections.sources = foundSources;
@@ -226,7 +244,7 @@ export async function generateFeasibility(ctx: FeasibilityContext): Promise<{ se
 }
 
 function empty(): FeasibilitySections {
-  return { executiveSummary: '', marketStudy: '', competition: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', funderQA: '', sources: [] };
+  return { executiveSummary: '', marketStudy: '', competition: '', swot: '', operationalPlan: '', legalCompliance: '', economicImpact: '', technicalStudy: '', assumptionsNote: '', risks: '', conclusion: '', funderQA: '', sources: [] };
 }
 
 // النموذج يكتب markdown أحياناً رغم المنع — نحوّله بدل أن يظهر خاماً في وثيقة تُسلَّم لبنك
@@ -392,9 +410,13 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + (ctx.quick ? '' :
         sec('دراسة السوق', s.marketStudy)
       + sec('المنافسون', s.competition)
+      + sec('الموقع التنافسي — القوة والضعف والفرص والتهديدات', s.swot)
       + sec('الدراسة الفنية', s.technicalStudy)
+      + sec('الجدوى التشغيلية وخطة التسويق', s.operationalPlan)
+      + sec('الجدوى القانونية والنظامية', s.legalCompliance)
       + sec('جدول الافتراضات', s.assumptionsNote)
       + sec('المخاطر وإجراءات التخفيف', s.risks)
+      + sec('الأثر الاقتصادي والاجتماعي', s.economicImpact)
       + sec('الخلاصة والتوصية', s.conclusion)
       + funderTable(funders)
       + sec('أسئلة الجهة الممولة المتوقعة وإجاباتها', s.funderQA)
