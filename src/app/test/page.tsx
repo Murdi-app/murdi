@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,6 +76,7 @@ export default function TestPage() {
   const [adSrc, setAdSrc] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const converted = useRef(false)
 
   useEffect(() => {
     try {
@@ -106,7 +108,10 @@ export default function TestPage() {
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), answers: [], score: 0, src: adSrc || null, completed: false }),
       })
       const j = await res.json()
-      if (j.id) setRowId(j.id)
+      if (j.id) {
+        setRowId(j.id)
+        if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED) }
+      }
       setStage('q')
     } catch {
       // حتى لو فشل الحفظ، نكمل التجربة حتى لا نخسر العميل
