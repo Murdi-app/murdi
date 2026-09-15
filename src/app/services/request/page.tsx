@@ -19,6 +19,13 @@ const GOLD = '#C9A84C';
 const MUTED = '#6B8A80';
 const LINE = '#EAF2EE';
 
+/** إخفاءٌ لا يمدّ الصفحة — انظر التعليق عند حقل المصيدة */
+const HONEYPOT: React.CSSProperties = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+  overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap',
+  border: 0, opacity: 0,
+};
+
 const inputCls: React.CSSProperties = {
   width: '100%', padding: '12px 15px', borderRadius: 12, border: '1.5px solid #D9E5DF',
   fontFamily: 'Tajawal, Cairo, sans-serif', fontSize: 14.5, fontWeight: 700, color: GREEN,
@@ -147,8 +154,13 @@ function RequestForm() {
       </div>
 
       {/* المصيدة — مخفية عن الإنسان، مقروءة للآلة */}
+      {/* المصيدة كانت تُخفى بـleft:-9999px، وفي صفحةٍ اتجاهها RTL يصير ذلك
+          امتداداً أفقياً حقيقياً: قِستُ الصفحة على عرض جوّال 430 بكسل فوجدتُ
+          عرضها 10429 — أي أن الزائر يستطيع سحب الصفحة جانباً إلى فراغ، وهذا
+          وحده يكفي ليشكّ في الموقع ويخرج. والإخفاء بالقصّ (clip) يُبقيها في
+          الصفحة للآلة ولا يمدّها بكسلاً واحداً. */}
       <input value={website} onChange={(e) => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off"
-        aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }} />
+        aria-hidden="true" style={HONEYPOT} />
 
       {err && <div style={{ color: '#B4453C', fontWeight: 800, fontSize: 13, marginBottom: 12, lineHeight: 1.85 }}>{err}</div>}
 

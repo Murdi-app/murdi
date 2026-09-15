@@ -26,7 +26,12 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
 
   // مصيدة: حقلٌ مخفيّ لا يملؤه إنسان. تُبتلع بصمت — والآلة لا تُعلَّم أنها كُشفت.
-  if (cut(b?.website, 200) !== '') return NextResponse.json({ ok: true });
+  //
+  // ويُردّ معها `already`: الواجهة لا تُبلغ جوجل بإحالةٍ ناجحة إلا على نجاحٍ
+  // بلا `already`. وكان الردّ نجاحاً صافياً، فتُحتسب كل آلةٍ تقع في المصيدة
+  // إحالةً ونشتري بها حسابنا — والآلة لا تزال لا تُعلَّم أنها كُشفت، لأن
+  // `already` عندها نجاحٌ مثل غيره.
+  if (cut(b?.website, 200) !== '') return NextResponse.json({ ok: true, already: true });
 
   const title = canonicalTitle(cut(b?.service_title, 200));
   const name = cut(b?.full_name, 120);
