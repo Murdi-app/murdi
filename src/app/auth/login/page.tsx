@@ -68,7 +68,7 @@ export default function Login() {
         .au-btn{width:100%;padding:15px;border-radius:2px;border:none;background:#C9A84C;color:#122C26;font-size:16px;font-weight:900;font-family:'Tajawal';cursor:pointer;margin-top:4px;transition:.18s}
         .au-btn:hover{background:#D9BA63}
         .au-btn:disabled{opacity:.55;cursor:default}
-        .au-err{color:#B4453C;text-align:center;margin-top:14px;font-size:13.5px;line-height:1.7;font-weight:600}
+        .au-err{color:#8E2F27;background:#FDECEA;border:1px solid #F3C4BE;border-radius:4px;padding:12px 14px;text-align:center;margin:6px 0 14px;font-size:13.5px;line-height:1.75;font-weight:700}
         .au-links{text-align:center;margin-top:20px;color:#6B8A80;font-size:13.5px;line-height:2.2}
         .au-links b{color:#1A3D34;cursor:pointer;font-weight:600;border-bottom:1px solid #C9A84C;padding-bottom:1px}
         .au-quiet{color:#6B8A80;cursor:pointer;font-size:13px;border-bottom:1px solid #E3EAE7;padding-bottom:1px}
@@ -91,11 +91,12 @@ export default function Login() {
             <div className="au-label">كلمة المرور</div>
             <input className="au-input" placeholder="" type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={onKeyDown} />
 
+            {/* السبب فوق الزرّ لا تحته — انظر التعليق نفسه في صفحة إنشاء الحساب */}
+            {message && <p className="au-err">{message}</p>}
+
             <button className="au-btn" onClick={handleLogin} disabled={loading}>
               {loading ? 'جارٍ الدخول…' : 'دخول'}
             </button>
-
-            {message && <p className="au-err">{message}</p>}
 
             <p className="au-links">
               <span className="au-quiet" onClick={()=>router.push('/auth/reset')}>نسيت كلمة المرور؟</span>

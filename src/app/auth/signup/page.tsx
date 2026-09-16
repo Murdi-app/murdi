@@ -125,9 +125,9 @@ export default function SignUp() {
         .au-btn:hover{background:#D9BA63}
         .au-btn:disabled{opacity:.55;cursor:default}
         .au-err{color:#8E2F27;background:#FDECEA;border:1px solid #F3C4BE;border-radius:4px;padding:12px 14px;text-align:center;margin:6px 0 14px;font-size:13.5px;line-height:1.75;font-weight:700}
-        .au-links{text-align:center;margin-top:20px;color:#6B8A80;font-size:13.5px;line-height:2.2}
-        .au-links b{color:#1A3D34;cursor:pointer;font-weight:600;border-bottom:1px solid #C9A84C;padding-bottom:1px}
-        .au-back{display:block;margin-top:8px;color:#9DB3AB;font-size:12.5px;text-decoration:none}
+        .au-have{text-align:center;margin:-10px 0 22px;color:#6B8A80;font-size:13px}
+        .au-have b{color:#1A3D34;cursor:pointer;font-weight:700;border-bottom:1px solid #C9A84C;padding-bottom:1px}
+        .au-back{display:block;margin-top:22px;color:#B7C6C0;font-size:12px;text-decoration:none;text-align:center}
         .au-ft{text-align:center;color:#9DB3AB;font-size:11.5px;padding:18px;line-height:1.9}
         @media (max-width:620px){.au-mid{align-items:flex-start;padding:26px 16px 12px}.au-brand{font-size:26px}.au-title{margin-top:20px;font-size:19px}}
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -140,6 +140,17 @@ export default function SignUp() {
             <div className="au-rule" />
             <div className="au-title">افتح ملف شركتك</div>
             <div className="au-lead">التقييم مجاني — تعرف درجتك وعوائقك قبل أن تدفع ريالاً.<br />ومشروعك الجديد لا يحتاج سجلاً تجارياً ليُفتح له ملف.</div>
+
+            {/* ★ «عندك حساب؟ تسجيل الدخول» كان تحت الزرّ مباشرةً — أي بعد أن
+                يملأ العميل عشرة حقول. فينتهي النموذج بنداءين متجاورين: زرٌّ
+                يقول «ابدأ التقييم» وتحته سطرٌ مسطَّر يقول «تسجيل الدخول»،
+                وآخر شيء مسطَّر تقع عليه العين هو ما يُضغط. فيذهب من سجّل
+                توّاً إلى شاشة دخولٍ لا حساب له فيها بعد.
+                وموضعه الصحيح هنا: من له حساب يُصرف قبل أن يكتب حرفاً، ومن
+                لا حساب له يمضي إلى نموذجٍ نهايته زرٌّ واحد لا منافس له. */}
+            <div className="au-have">
+              عندك حساب؟ <b onClick={()=>router.push('/auth/login')}>تسجيل الدخول</b>
+            </div>
 
             <div className="au-label">اسم المنشأة أو المشروع</div>
             <input className="au-input" placeholder="كما في السجل — أو اسم مشروعك إن لم يُسجَّل بعد" value={company} onChange={e=>setCompany(e.target.value)} onKeyDown={onKeyDown} />
@@ -164,10 +175,7 @@ export default function SignUp() {
               {loading ? 'جارٍ فتح ملفك…' : 'افتح ملفك وابدأ التقييم ←'}
             </button>
 
-            <p className="au-links">
-              عندك حساب؟ <b onClick={()=>router.push('/auth/login')}>تسجيل الدخول</b>
-              <a className="au-back" href="/">الرجوع للصفحة الرئيسية</a>
-            </p>
+            <a className="au-back" href="/">الرجوع للصفحة الرئيسية</a>
           </div>
         </div>
         <div className="au-ft">منصة استشارية لقياس وتجهيز الجاهزية — لا نمنح تمويلاً ولا نضمن نتيجة</div>
