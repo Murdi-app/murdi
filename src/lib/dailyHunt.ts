@@ -138,7 +138,7 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
         + 'وفي حقل الإشارة اكتب: ما الذي كشف حاجته حرفياً وأين ومتى.',
     },
     {
-      label: 'دراسة الجدوى الائتمانية — مشروع يُبنى أو توسعة',
+      label: 'دراسة الجدوى الاقتصادية والائتمانية — مشروع يُبنى أو توسعة',
       category: 'feasibility',
       count: 12,
       instruction: 'ابحث عن **كل من يبدأ مشروعاً أو يتوسّع** ويحتاج دراسة جدوى. '

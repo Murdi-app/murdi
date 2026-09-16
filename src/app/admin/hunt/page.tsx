@@ -18,7 +18,7 @@ type Lead = {
 const CAT_META: Record<string, { ar: string; icon: string; color: string }> = {
   contract_finance: { ar: 'تمويل العقد — من رسا عليه عقد', icon: '📜', color: '#B4622A' },
   funding_track: { ar: 'مسار التمويل — منشأة قائمة تحتاج تمويلاً', icon: '🏦', color: '#2E9E7B' },
-  feasibility: { ar: 'دراسة الجدوى الائتمانية — مشروع أو توسعة', icon: '📊', color: '#9A7B2E' },
+  feasibility: { ar: 'دراسة الجدوى الاقتصادية والائتمانية — مشروع أو توسعة', icon: '📊', color: '#9A7B2E' },
   funding_reserves: { ar: 'التمويل (جولات سابقة)', icon: '🎯', color: '#7E938C' },
   investment_reserves: { ar: 'الاستثمار (جولات سابقة)', icon: '🎯', color: '#7E938C' },
   ipo_early_intent: { ar: 'الطرح (جولات سابقة)', icon: '🌑', color: '#7E938C' },

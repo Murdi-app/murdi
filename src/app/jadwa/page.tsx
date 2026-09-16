@@ -26,7 +26,7 @@ const GREEN = '#1A3D34';
 const GOLD = '#C9A84C';
 const MUTED = '#6B8A80';
 const LINE = '#EAF2EE';
-const SERVICE = 'دراسة الجدوى الاقتصادية';   // المفتاح المخزَّن — المعروض «الائتمانية»
+const SERVICE = 'دراسة الجدوى الاقتصادية';   // المفتاح المخزَّن — المعروض «الاقتصادية والائتمانية»
 
 type Kind = 'new' | 'expand' | 'working';
 
@@ -225,7 +225,7 @@ export default function JadwaEntryPage() {
 
                 <div style={{ borderTop: '1px solid #DCEDE5', paddingTop: 13 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', marginBottom: 6 }}>
-                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>الدراسة الائتمانية الكاملة</div>
+                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>الدراسة الاقتصادية والائتمانية الكاملة</div>
                     <div style={{ color: GREEN, fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap' }}>{full?.label}</div>
                   </div>
                   <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9 }}>
