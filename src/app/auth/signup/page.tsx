@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { waNumber } from '@/lib/phone'
@@ -27,6 +27,15 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  // ★ الرسالة كانت تُطبع **تحت** الزر، وفقاعة واتساب العائمة تجلس فوق ذلك
+  //   الموضع على الجوّال. فيضغط العميل، ويظهر السبب حيث لا يراه، فيقرأ
+  //   الضغطة «لا شيء» — «الخانة جامدة ولا تحوّله إلى أي باب». فصارت
+  //   الرسالة فوق الزر، وتُمرَّر الشاشة إليها فور ظهورها.
+  const errRef = useRef<HTMLParagraphElement | null>(null)
+  const fail = (m: string) => {
+    setMessage(m)
+    setTimeout(() => errRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+  }
 
   const translateError = (msg: string) => {
     const m = msg.toLowerCase()
@@ -40,25 +49,25 @@ export default function SignUp() {
 
   const handleSignUp = async () => {
     setMessage('')
-    if (!company.trim()) { setMessage('اكتب اسم المنشأة كما في السجل التجاري'); return }
+    if (!company.trim()) { fail('اكتب اسم المنشأة كما في السجل التجاري'); return }
     // ═══ السجل التجاري اختياري عمداً ═══
     // كان إلزامياً، وهو يمنع أكثر من يشتري خدماتنا المباشرة: صاحب المشروع
     // الذي لم يبدأ بعد لا سجلَ له أصلاً. وصفحة الخدمات تقول ذلك بنفسها عن
     // دراسة الجدوى: «من يبدأ مشروعاً جديداً لا منشأة عنده تُقيَّم». فكانت
     // المنصة تبيعه خدمةً ثم تمنعه من فتح الحساب الذي يشتريها به.
     // ويبقى مطلوباً حين يُقيَّم مسار التمويل لمنشأة قائمة — هناك موضعه.
-    if (!owner.trim()) { setMessage('اكتب اسم المالك'); return }
-    if (!waNumber(phone)) { setMessage('اكتب رقم جوال سعودي صحيح — مثال 05xxxxxxxx'); return }
-    if (!city.trim()) { setMessage('اكتب المدينة'); return }
-    if (!sector.trim()) { setMessage('اكتب القطاع أو النشاط'); return }
-    if (!email.trim() || !email.includes('@')) { setMessage('اكتب بريدا إلكترونياً صحيحاً'); return }
-    if (password.length < 6) { setMessage('كلمة المرور يجب ألا تقل عن 6 أحرف'); return }
+    if (!owner.trim()) { fail('اكتب اسم المالك'); return }
+    if (!waNumber(phone)) { fail('اكتب رقم جوال سعودي صحيح — مثال 05xxxxxxxx'); return }
+    if (!city.trim()) { fail('اكتب المدينة'); return }
+    if (!sector.trim()) { fail('اكتب القطاع أو النشاط'); return }
+    if (!email.trim() || !email.includes('@')) { fail('اكتب بريدا إلكترونياً صحيحاً'); return }
+    if (password.length < 6) { fail('كلمة المرور يجب ألا تقل عن 6 أحرف'); return }
 
     setLoading(true)
     const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) { setMessage(translateError(error.message)); setLoading(false); return }
+    if (error) { fail(translateError(error.message)); setLoading(false); return }
     const user = data.user
-    if (!user) { setMessage('تعذّر إنشاء الحساب — حاول مرة أخرى'); setLoading(false); return }
+    if (!user) { fail('تعذّر إنشاء الحساب — حاول مرة أخرى'); setLoading(false); return }
 
     await supabase.from('profiles').insert({ id: user.id, email, company_name: company.trim() })
 
@@ -79,8 +88,15 @@ export default function SignUp() {
     })
     setLoading(false)
 
-    // لو تعثّر حفظ المنشأة فحسابه قائم — يُكمل من صفحة البيانات لا يبدأ من الصفر
-    if (cErr) { router.push('/register'); return }
+    // ★ كان تعثّر حفظ المنشأة يدفعه إلى /register، وتلك تطلب جلسةً فإن لم
+    //   تجدها دفعته إلى /auth/login — فيخرج العميل من زرٍّ ضغطه إلى شاشة
+    //   دخول بلا كلمةٍ واحدة تشرح. حسابه أُنشئ فعلاً، فيُقال له ذلك ويُعطى
+    //   الباب الصحيح بدل أن يُقذف في دائرة.
+    if (cErr) {
+      fail('أُنشئ حسابك، لكن تعذّر حفظ بيانات المنشأة: ' + cErr.message
+        + ' — اضغط «تسجيل الدخول» ثم أكمل بياناتك، أو راسلنا على 0570749196')
+      return
+    }
     router.push('/goal')
   }
 
@@ -108,7 +124,7 @@ export default function SignUp() {
         .au-btn{width:100%;padding:15px;border-radius:2px;border:none;background:#C9A84C;color:#122C26;font-size:16px;font-weight:900;font-family:'Tajawal';cursor:pointer;margin-top:4px;transition:.18s}
         .au-btn:hover{background:#D9BA63}
         .au-btn:disabled{opacity:.55;cursor:default}
-        .au-err{color:#B4453C;text-align:center;margin-top:14px;font-size:13.5px;line-height:1.7;font-weight:600}
+        .au-err{color:#8E2F27;background:#FDECEA;border:1px solid #F3C4BE;border-radius:4px;padding:12px 14px;text-align:center;margin:6px 0 14px;font-size:13.5px;line-height:1.75;font-weight:700}
         .au-links{text-align:center;margin-top:20px;color:#6B8A80;font-size:13.5px;line-height:2.2}
         .au-links b{color:#1A3D34;cursor:pointer;font-weight:600;border-bottom:1px solid #C9A84C;padding-bottom:1px}
         .au-back{display:block;margin-top:8px;color:#9DB3AB;font-size:12.5px;text-decoration:none}
@@ -142,11 +158,11 @@ export default function SignUp() {
             <div className="au-label">كلمة المرور</div>
             <input className="au-input" placeholder="6 أحرف على الأقل" type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={onKeyDown} />
 
+            {message && <p className="au-err" ref={errRef}>{message}</p>}
+
             <button className="au-btn" onClick={handleSignUp} disabled={loading}>
               {loading ? 'جارٍ فتح ملفك…' : 'افتح ملفك وابدأ التقييم ←'}
             </button>
-
-            {message && <p className="au-err">{message}</p>}
 
             <p className="au-links">
               عندك حساب؟ <b onClick={()=>router.push('/auth/login')}>تسجيل الدخول</b>
