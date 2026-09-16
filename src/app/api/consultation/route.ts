@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { sendPush } from '@/lib/push';
 
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
 
@@ -139,6 +140,20 @@ export async function POST(req: Request) {
   await adminClient.from('consultations')
     .update({ status: 'ready', content: result.text, generated_at: new Date().toISOString() })
     .eq('id', created.id);
+
+  // ★ الاستشارة تُكتب باسم الدكتور وتوقيعه، فلا تصل صاحبها إلا بإصداره هو.
+  //   وكانت تُولَّد وتجلس `ready` بلا أن يعلم أحد: ستُّ استشارات جاهزة
+  //   تراكمت بين ٧ و١٥ سبتمبر ولم تُصدَر واحدة، لأن الزرّ في شاشة لا
+  //   يفتحها إلا من يتذكّرها. فصار الإشعار هو الذي يستدعيه إليها.
+  await sendPush({
+    title: 'استشارة جاهزة للاعتماد',
+    body: company.company_name + ' — مسار ' + ATYPE_AR[aType]
+      + (rr && typeof rr.score === 'number' ? ' · الجاهزية ' + rr.score + '/100' : '')
+      + ' · راجِعها ثم أصدِرها للعميل',
+    url: '/admin/approvals',
+    important: true,
+    tag: 'consult-' + created.id,
+  }, 'hololalmurdi.fs@gmail.com').catch(() => {});
 
   return NextResponse.json({ ok: true, status: 'ready' });
 }

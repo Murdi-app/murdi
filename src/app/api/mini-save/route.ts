@@ -1,4 +1,15 @@
 import { NextResponse } from 'next/server'
+import { sendPush } from '@/lib/push'
+
+// ★ التقييم المجاني هو فم القمع: الإعلان يدفع إليه، ومنه يأتي أسخن اسم في
+//   اليوم. وكان هذا المسار **المسار الوحيد** الذي لا يُشعِر أحداً — طلب
+//   الخدمة يُشعر، والعقد يُشعر، والدفع يُشعر، وهذا لا. فدخل عميلان من
+//   الإعلان في ١٦ سبتمبر (٤:٠٦ و٩:٥٩ صباحاً) وأحدهما بدرجة ٧٨ ولم يعلم
+//   بهما أحد حتى فُتحت القاعدة بعد الظهر.
+//
+// وإشعاران لا أكثر لكل عميل: واحدٌ حين يترك اسمه وجواله — وهذه لحظة
+// العميل المحتمل — وواحدٌ حين يُكمل الأسئلة الثمانية فتُعرف درجته. أمّا
+// التحديثات بين السؤال والسؤال فصامتة، وإلا صار الإشعار ضجيجاً يُغلق.
 
 export async function POST(req: Request) {
   try {
@@ -28,12 +39,30 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'تعذّر التحديث' }, { status: 403 })
       }
       await admin.from('mini_assessments').update({ answers, score, track, completed }).eq('id', String(body.id))
+      if (completed) {
+        const verdict = score >= 75 ? 'مؤهَّل' : score >= 50 ? 'فجوة محددة' : 'يحتاج رفعاً'
+        await sendPush({
+          title: 'أكمل التقييم المجاني · ' + verdict,
+          body: name + ' — ' + phone + ' · الدرجة ' + score + '/100'
+            + (track ? ' · ' + track : '') + (src ? ' · من ' + src : ''),
+          url: '/admin/followup',
+          important: true,
+          tag: 'mini-' + String(body.id),
+        }).catch(() => {})
+      }
       return NextResponse.json({ id: String(body.id) })
     }
     const { data, error } = await admin.from('mini_assessments').insert({
       full_name: name, phone, answers, score, track, src, completed,
     }).select('id').single()
     if (error) throw error
+    await sendPush({
+      title: src ? 'عميل محتمل من الإعلان' : 'عميل محتمل جديد',
+      body: name + ' — ' + phone + ' · بدأ التقييم المجاني' + (src ? ' · ' + src : ''),
+      url: '/admin/followup',
+      important: true,
+      tag: 'mini-' + data.id,
+    }).catch(() => {})
     return NextResponse.json({ id: data.id })
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'خطأ' }, { status: 500 })
