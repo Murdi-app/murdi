@@ -716,6 +716,19 @@ export default function GoalPage() {
                   const isHighlighted = highlightService === title;
                   const pr = priceFor(canonicalTitle(title));
                   const isOpen = openDetails === title;
+                  // ★ سعرٌ واحدٌ في البطاقة لا اثنان.
+                  //   رأى صاحب «هرم الإنشاء» في ١٧ سبتمبر بطاقةً مكتوباً في
+                  //   متنها ٧٬٩٠٠ وفي زرّ الدفع ٩٩٠ — لأن المتن يقرأ سعر
+                  //   الكتالوج والزرّ يقرأ سعر الطلب، فإذا سُعِّر الطلب على
+                  //   خيارٍ آخر ظهر الرقمان معاً. والعميل لا يقرأ ذلك سهواً
+                  //   بل يقرؤه تلاعباً بالسعر، وهذا أسوأ ما يُقال عن مكتب.
+                  //   فمتى وُجد للطلب سعرٌ مُعتمد فهو وحده ما يُعرض — والمتن
+                  //   والزرّ يقولان الرقم نفسه دائماً.
+                  const reqNow = serviceRequests[title];
+                  const quotedNow = reqNow && reqNow.price != null && Number(reqNow.price) > 0 ? Number(reqNow.price) : null;
+                  const headline = quotedNow != null
+                    ? { amount: quotedNow, label: quotedNow.toLocaleString('ar-SA') + ' ر.س' }
+                    : pr;
                   return (
                   <div key={ii}
                     ref={isHighlighted ? (el) => { if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400); } : undefined}
@@ -746,11 +759,11 @@ export default function GoalPage() {
 
                     {/* السعر والمدة — معلنان، فلا يحتاج العميل مكالمة ليعرفهما */}
                     <div className="flex items-baseline justify-between gap-2 mb-1 pb-3 border-b border-dashed border-[#EAF2EE]">
-                      <span className="text-[#1A3D34] font-black text-lg">{pr.amount != null ? pr.amount.toLocaleString('ar-SA') + ' ر.س' : (pr.label || 'بعرض خاص')}</span>
-                      <span className="text-[#9DB3AB] text-xs font-bold">{c?.days || ''}</span>
+                      <span className="text-[#1A3D34] font-black text-lg">{headline.amount != null ? headline.amount.toLocaleString('ar-SA') + ' ر.س' : (headline.label || 'بعرض خاص')}</span>
+                      <span className="text-[#9DB3AB] text-xs font-bold">{quotedNow != null ? 'سعر طلبك المعتمد' : (c?.days || '')}</span>
                     </div>
                     {c?.successFee && <div className="text-[#9A7B2E] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.successFee.replace(/\*\*/g, '')}</div>}
-                    {c?.quoteBasis && pr.amount == null && <div className="text-[#9DB3AB] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.quoteBasis}</div>}
+                    {c?.quoteBasis && headline.amount == null && <div className="text-[#9DB3AB] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.quoteBasis}</div>}
 
                     {/* التفاصيل الكاملة داخل البطاقة — لا صفحة أخرى ولا مكالمة */}
                     {c && (
