@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { sendPush } from '@/lib/push'
+import { notifyLead } from '@/lib/notifyLead'
+import { waNumber } from '@/lib/phone'
 
 // ★ التقييم المجاني هو فم القمع: الإعلان يدفع إليه، ومنه يأتي أسخن اسم في
 //   اليوم. وكان هذا المسار **المسار الوحيد** الذي لا يُشعِر أحداً — طلب
@@ -10,6 +11,18 @@ import { sendPush } from '@/lib/push'
 // وإشعاران لا أكثر لكل عميل: واحدٌ حين يترك اسمه وجواله — وهذه لحظة
 // العميل المحتمل — وواحدٌ حين يُكمل الأسئلة الثمانية فتُعرف درجته. أمّا
 // التحديثات بين السؤال والسؤال فصامتة، وإلا صار الإشعار ضجيجاً يُغلق.
+//
+// ★ تصحيحان في ١٧ سبتمبر بعد أن وقف ثمانيةُ عملاءَ يوماً كاملاً بلا اتصال:
+//
+// (١) كان الإخطار هنا **إشعار متصفحٍ وحده وبلا تحديد مستقبِل**، وأجهزةُ
+//     الاشتراك كلُّها للمالك — فيرى المالك ولا ترى الموظفةُ التي تتصل.
+//     صار عبر `notifyLead`: بريدٌ للمكتب كلّه (والبريد يصل بلا إذن متصفح)
+//     ومعه إشعار الجوال لمن أذن به.
+//
+// (٢) وكان الجوال يُخزَّن كما كُتب، فوصلنا رقمان بتسع خاناتٍ بلا صفرٍ في
+//     أولهما — ورابطُ الواتساب المبنيّ عليهما ميت. صار يُطبَّع عند الحفظ
+//     إلى `05xxxxxxxx`، ويُقارَن مطبَّعاً عند التحديث حتى لا يُحرَم من بدأ
+//     قبل هذا الإصلاح من إكمال تقييمه.
 
 export async function POST(req: Request) {
   try {
@@ -20,8 +33,12 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY as string
     )
     const name = String(body.name || '').trim()
-    const phone = String(body.phone || '').trim()
-    if (name.length < 2 || phone.length < 9) {
+    const rawPhone = String(body.phone || '').trim()
+    // التطبيع يقبل ٥xxxxxxxx و٠٥xxxxxxxx و٩٦٦٥xxxxxxxx والأرقام العربية،
+    // ويُخزَّن شكلٌ واحد. وما تعذّر تطبيعه يُحفظ كما كُتب ولا يُرَدّ العميل.
+    const wa = waNumber(rawPhone)
+    const phone = wa ? '0' + wa.slice(3) : rawPhone
+    if (name.length < 2 || (!wa && rawPhone.length < 9)) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 })
     }
     const answers = Array.isArray(body.answers) ? body.answers : []
@@ -35,19 +52,20 @@ export async function POST(req: Request) {
       // نشترط تطابق الجوال المحفوظ، ونمنع الكتابة على تقييم اكتمل.
       const { data: row } = await admin.from('mini_assessments')
         .select('id, phone, completed').eq('id', String(body.id)).maybeSingle()
-      if (!row || String(row.phone || '') !== phone || row.completed === true) {
+      // المقارنة مطبَّعةً من الطرفين: الصفوف المحفوظة قبل هذا الإصلاح فيها
+      // أرقامٌ بلا صفر، ومقارنتُها نصّاً كانت سترُدّ صاحبها بـ403 عند الإكمال.
+      const same = row
+        ? (waNumber(row.phone) && waNumber(phone)
+            ? waNumber(row.phone) === waNumber(phone)
+            : String(row.phone || '').trim() === rawPhone)
+        : false
+      if (!row || !same || row.completed === true) {
         return NextResponse.json({ error: 'تعذّر التحديث' }, { status: 403 })
       }
-      await admin.from('mini_assessments').update({ answers, score, track, completed }).eq('id', String(body.id))
+      await admin.from('mini_assessments').update({ answers, score, track, completed, phone }).eq('id', String(body.id))
       if (completed) {
-        const verdict = score >= 75 ? 'مؤهَّل' : score >= 50 ? 'فجوة محددة' : 'يحتاج رفعاً'
-        await sendPush({
-          title: 'أكمل التقييم المجاني · ' + verdict,
-          body: name + ' — ' + phone + ' · الدرجة ' + score + '/100'
-            + (track ? ' · ' + track : '') + (src ? ' · من ' + src : ''),
-          url: '/admin/followup',
-          important: true,
-          tag: 'mini-' + String(body.id),
+        await notifyLead({
+          id: String(body.id), name, phone, score, track, src, completed: true,
         }).catch(() => {})
       }
       return NextResponse.json({ id: String(body.id) })
@@ -56,12 +74,8 @@ export async function POST(req: Request) {
       full_name: name, phone, answers, score, track, src, completed,
     }).select('id').single()
     if (error) throw error
-    await sendPush({
-      title: src ? 'عميل محتمل من الإعلان' : 'عميل محتمل جديد',
-      body: name + ' — ' + phone + ' · بدأ التقييم المجاني' + (src ? ' · ' + src : ''),
-      url: '/admin/followup',
-      important: true,
-      tag: 'mini-' + data.id,
+    await notifyLead({
+      id: String(data.id), name, phone, score: null, track, src, completed: false,
     }).catch(() => {})
     return NextResponse.json({ id: data.id })
   } catch (e) {

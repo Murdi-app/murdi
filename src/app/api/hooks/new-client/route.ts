@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { prettyPhone } from '@/lib/phone';
 import { sendPush } from '@/lib/push';
+import { teamEmails } from '@/lib/notifyLead';
 
 // إخطار فوري بما لا يحتمل الانتظار.
 //
@@ -51,20 +52,10 @@ const money = (n: unknown) => {
   return Number.isFinite(v) && v > 0 ? v.toLocaleString('en-US') + ' ر.س' : null;
 };
 
-/** الموظفات النشطات — يُشعَرن بالعملاء، لا بالمال */
-async function staffEmails(sb: ReturnType<typeof admin>): Promise<string[]> {
-  const { data: st } = await sb.from('staff').select('user_id').eq('active', true);
-  const ids = (st || []).map((s) => String(s.user_id)).filter(Boolean);
-  if (ids.length === 0) return [];
-  const out: string[] = [];
-  for (const id of ids) {
-    const { data } = await sb.auth.admin.getUserById(id);
-    const e = data?.user?.email;
-    if (e) out.push(e);
-  }
-  return out;
-}
-
+// الموظفات النشطات يُشعَرن بالعملاء لا بالمال. وقائمةُ المكتب صارت في
+// `notifyLead` مصدراً واحداً بعد أن تبيّن في ١٧ سبتمبر أن مسار التقييم
+// المجاني كان يُخطر المالك وحده — فنسخةٌ ثانيةٌ من هذا المنطق هي ما يسمح
+// لمسارٍ أن يسهو عن مسار.
 // من يُشعَر بماذا: العميل الجديد يخصّ المكتب كلّه لأن الموظفة هي من تتصل،
 // والمال والعقود تخصّ المالك وحده.
 const CLIENT_KINDS = new Set(['signup', 'assessment', 'match_request']);
@@ -203,7 +194,7 @@ export async function POST(req: Request) {
   // لما وصلها شيء حتى تفتح لوحتها وتأذن بالإشعار بنفسها — فيمرّ عميل ولا
   // تعلم به. البريد يصلها سواء أذنت أم لا، والإشعار يسبقه حين تأذن.
   const audience = CLIENT_KINDS.has(kind)
-    ? [OWNER, ...(await staffEmails(sb))]
+    ? await teamEmails()
     : [OWNER];
 
   const mail = await sendMail({ from: FROM, to: audience, subject, html });

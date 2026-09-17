@@ -1,0 +1,129 @@
+import { createClient } from '@supabase/supabase-js';
+import { sendMail } from './sendMail';
+import { sendPush } from './push';
+import { prettyPhone } from './phone';
+
+// مَن يعلم بالعميل حين يدخل — ولماذا كاد هذا يُفلس الإعلان.
+//
+// في ١٦ سبتمبر دخل **ثمانية** من الإعلان إلى التقييم المجاني، سبعةٌ منهم
+// أكملوا الأسئلة وكتبوا أرقامهم، وأعلاهم درجةً ٧٨. ولم يتصل بهم أحد ذلك
+// اليوم ولا الذي بعده. والسبب لم يكن إهمالاً: مسار `mini-save` كان يُشعر
+// بإشعار المتصفح **وحده وبلا تحديد مستقبِل**، وجدولُ الاشتراكات فيه ثلاثة
+// أجهزة كلُّها للمالك. فالمالك يرى، والموظفة التي تتصل لا ترى شيئاً.
+//
+// والدرس الذي يُعمَّم: **إشعار المتصفح لا يصلح وحده قناةً لمن يجب أن يعمل**،
+// لأنه معلَّقٌ على إذنٍ يمنحه المستخدم من جهازه — وما لم تأذن الموظفة بنفسها
+// فالقناة مقطوعة وهي لا تعلم أنها مقطوعة. فالبريد هو الأصل لأنه يصل سواء
+// أذنت أم لم تأذن، وإشعار الجوال زيادةٌ تسبقه حين يكون الإذن قائماً.
+//
+// ومسار `hooks/new-client` كان يفعل هذا صحيحاً منذ البداية (بريدٌ للمكتب
+// كلّه وإشعارٌ معه)، فالعطب كان في مسارٍ واحد لا في التصميم. ولذلك جُمع
+// المنطق هنا: قناةٌ واحدة يستعملها المساران، فلا يسهو أحدهما عن الآخر مرة
+// أخرى.
+
+const admin = () =>
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+  );
+
+export const OWNER_EMAIL = 'hololalmurdi.fs@gmail.com';
+const FROM = 'مُرضي <partners@murdi.sa>';
+
+const esc = (s: unknown) =>
+  String(s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
+
+const row = (k: string, v: unknown) =>
+  '<tr><td style="padding:6px 10px;color:#6B8A80;font-size:13px">' + esc(k) +
+  '</td><td style="padding:6px 10px;color:#1A3D34;font-weight:bold;font-size:13.5px">' + esc(v) + '</td></tr>';
+
+/**
+ * المكتب الذي يُخطَر بالعملاء: المالك ومعه الموظفات النشطات — لأن الموظفة
+ * هي من تتصل، فإخطارُ المالك وحده يُبقي الاسم واقفاً حتى يفتح هو لوحته.
+ * وتعذُّرُ قراءة موظفةٍ لا يُسقط البقية، ولا يُسقط الإخطار أصلاً.
+ */
+export async function teamEmails(): Promise<string[]> {
+  const out: string[] = [OWNER_EMAIL];
+  try {
+    const sb = admin();
+    const { data: st } = await sb.from('staff').select('user_id').eq('active', true);
+    for (const s of st || []) {
+      const id = String(s.user_id || '');
+      if (!id) continue;
+      try {
+        const { data } = await sb.auth.admin.getUserById(id);
+        const e = data?.user?.email;
+        if (e && !out.includes(e)) out.push(e);
+      } catch { /* موظفةٌ تعذّر قراءتها لا تُسقط البقية */ }
+    }
+  } catch { /* الإخطار يمضي للمالك على الأقل */ }
+  return out;
+}
+
+export type LeadNotice = {
+  id: string;
+  name: string;
+  phone: string;
+  /** null قبل اكتمال الأسئلة */
+  score: number | null;
+  track?: string | null;
+  src?: string | null;
+  completed: boolean;
+};
+
+/**
+ * إخطار المكتب بعميلٍ دخل من التقييم المجاني. لا يرمي أبداً: فشلُ إخطارٍ
+ * لا يجوز أن يُسقط تسجيل عميل — وهذا هو سبب `catch` عند كل حدّ.
+ */
+export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; push: number }> {
+  const to = await teamEmails();
+  const phone = prettyPhone(lead.phone);
+  const verdict =
+    lead.score === null ? '' : lead.score >= 75 ? 'مؤهَّل' : lead.score >= 50 ? 'فجوة محددة' : 'يحتاج رفعاً';
+
+  const subject = lead.completed
+    ? 'أكمل التقييم: ' + lead.name + ' — ' + String(lead.score ?? '؟') + '/١٠٠' + (verdict ? ' · ' + verdict : '')
+    : 'عميل محتمل جديد: ' + lead.name;
+
+  const head = lead.completed
+    ? 'أنهى التقييم المجاني الآن — وهو ينتظر اتصالاً'
+    : 'بدأ التقييم المجاني وترك اسمه وجواله';
+
+  const html =
+    '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34;max-width:560px">' +
+    '<h2 style="color:#1A3D34;margin:0 0 4px">' + esc(lead.name) + '</h2>' +
+    '<p style="margin:0 0 14px;color:#6B8A80;font-size:13.5px">' + esc(head) + '</p>' +
+    '<table style="border-collapse:collapse;width:100%;background:#F7FBF9;border-radius:8px">' +
+    row('الجوال', phone) +
+    (lead.score === null ? '' : row('الدرجة', String(lead.score) + '/100' + (verdict ? ' — ' + verdict : ''))) +
+    (lead.track ? row('المسار', lead.track) : '') +
+    row('المصدر', lead.src || 'دخول مباشر') +
+    '</table>' +
+    '<p style="margin:18px 0 8px">' +
+    '<a href="https://murdi.sa/admin/followup" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح صفحة المتابعة</a>' +
+    '</p>' +
+    '<p style="margin:0;color:#6B8A80;font-size:12.5px">حرارة العميل تبرد بالساعات — لا بالأيام.</p>' +
+    '</div>';
+
+  let mailOk = false;
+  try {
+    const r = await sendMail({ from: FROM, to, subject, html });
+    mailOk = r.ok;
+  } catch { /* البريد سقط — يبقى إشعار الجوال */ }
+
+  let sent = 0;
+  try {
+    const p = await sendPush({
+      title: lead.completed ? '🔥 أكمل التقييم · ' + verdict : 'عميل محتمل جديد',
+      body: lead.name + ' — ' + phone
+        + (lead.score === null ? ' · بدأ التقييم' : ' · الدرجة ' + lead.score + '/100')
+        + (lead.src ? ' · من ' + lead.src : ''),
+      url: '/admin/followup',
+      important: true,
+      tag: 'mini-' + lead.id,
+    }, to);
+    sent = p.sent;
+  } catch { /* إشعار الجوال سقط — البريد وصل */ }
+
+  return { mail: mailOk, push: sent };
+}
