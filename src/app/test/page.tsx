@@ -1,13 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// لا عميل Supabase هنا: كل الحفظ يمرّ بـ`/api/mini-save` — فهو وحده الذي
+// يُطبّع الجوال ويُخطر المكتب. وكان عميلٌ مباشرٌ مُعرَّفاً بلا استعمال.
 
 const NAVY = '#13302A'
 const GOLD = '#C9A84C'
@@ -70,8 +67,17 @@ export default function TestPage() {
   const [stage, setStage] = useState<'welcome' | 'name' | 'phone' | 'q' | 'analyzing' | 'result'>('welcome')
   const [qIndex, setQIndex] = useState(0)
   const [name, setName] = useState('')
+  // ★ اسم المنشأة واسم صاحبها حقلان لا حقل.
+  //   كانت الصفحة تسأل «ما اسم شركتك؟» وتحفظ الجواب في خانة الاسم، فتفتح
+  //   الموظفة المكالمة فتنادي صاحبَ المنشأة باسم منشأته — ولا يبقى في الصف
+  //   اسمُ إنسانٍ أصلاً.
+  const [company, setCompany] = useState('')
   const [phone, setPhone] = useState('')
   const [ans, setAns] = useState<number[]>([])
+  // ★ المسار كان يُحسب بـ`[8,8,8,6].indexOf(v)` — والثلاثة الأُوَل قيمتها ٨،
+  //   فيُرجع الفهرس صفراً دائماً ويُسجَّل كلُّ عميلٍ «تمويل» ولو اختار
+  //   «استثمار» أو «طرح». فصار الاختيار يُحفظ بفهرسه لا بقيمته.
+  const [picks, setPicks] = useState<number[]>([])
   const [rowId, setRowId] = useState<string | null>(null)
   const [adSrc, setAdSrc] = useState('')
   const [err, setErr] = useState('')
@@ -80,7 +86,14 @@ export default function TestPage() {
 
   useEffect(() => {
     try {
-      const p = new URLSearchParams(window.location.search).get('src')
+      // ★ إعلانُ جوجل لا يمرّر `src` — يمرّر `gclid`. فكانت كلُّ زيارةٍ من
+      //   الإعلان تُحفظ بمصدرٍ فارغ، ونحن ندفع عليها. تُقرأ الآن الوسوم
+      //   الثلاثة كما تُقرأ في بقية الصفحات.
+      const q = new URLSearchParams(window.location.search)
+      const p = q.get('src')
+        || (q.get('gclid') || q.get('gbraid') || q.get('wbraid') ? 'google-ads' : '')
+        || q.get('utm_source')
+        || ''
       if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
       else { const stored = sessionStorage.getItem('murdi_src'); if (stored) setAdSrc(stored) }
     } catch { /* تجاهل */ }
@@ -105,7 +118,7 @@ export default function TestPage() {
     try {
       const res = await fetch('/api/mini-save', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), answers: [], score: 0, src: adSrc || null, completed: false }),
+        body: JSON.stringify({ name: name.trim(), company_name: company.trim(), phone: phone.trim(), answers: [], score: 0, src: adSrc || null, completed: false }),
       })
       const j = await res.json()
       if (j.id) {
@@ -120,14 +133,17 @@ export default function TestPage() {
   }
 
   // تحديث الصف مع كل إجابة
-  const pick = async (v: number) => {
+  const pick = async (v: number, idx: number) => {
     const nextAns = [...ans, v]
+    const nextPicks = [...picks, idx]
     setAns(nextAns)
+    setPicks(nextPicks)
     if (rowId) {
       const done = nextAns.length === QUESTIONS.length
-      const t = done ? (TRACK[[8, 8, 8, 6].indexOf(nextAns[7])] || '') : ''
+      // المسار من فهرس الخيار المختار في السؤال الثامن، لا من قيمته
+      const t = done ? (TRACK[nextPicks[7]] || '') : ''
       const p = done ? Math.round((nextAns.reduce((s, x) => s + x, 0) / MAX) * 100) : 0
-      fetch('/api/mini-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rowId, name, phone, answers: nextAns, score: p, track: t, completed: done }) }).catch(() => {})
+      fetch('/api/mini-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rowId, name, company_name: company.trim(), phone, answers: nextAns, score: p, track: t, completed: done }) }).catch(() => {})
     }
     if (nextAns.length < QUESTIONS.length) {
       setQIndex(qIndex + 1)
@@ -172,10 +188,12 @@ export default function TestPage() {
         {/* السؤال: اسم الشركة */}
         {stage === 'name' && (
           <div>
-            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 22px', textAlign: 'center' }}>ما اسم شركتك؟</h2>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسم المنشأة"
+            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 22px', textAlign: 'center' }}>عرّفنا بك وبمنشأتك</h2>
+            <input value={company} onChange={e => setCompany(e.target.value)} placeholder="اسم المنشأة"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right', marginBottom: 12 }} />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسمك"
               style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
-            <button onClick={() => { if (name.trim().length < 2) { setErr('فضلاً اكتب اسم شركتك'); return } setErr(''); setStage('phone') }}
+            <button onClick={() => { if (company.trim().length < 2) { setErr('فضلاً اكتب اسم منشأتك'); return } if (name.trim().length < 2) { setErr('فضلاً اكتب اسمك'); return } setErr(''); setStage('phone') }}
               style={{ width: '100%', marginTop: 16, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer' }}>التالي ←</button>
             {err && <div style={{ color: '#F3B0A8', fontSize: 14, marginTop: 12, textAlign: 'center' }}>{err}</div>}
           </div>
@@ -201,7 +219,7 @@ export default function TestPage() {
             <h2 style={{ color: '#fff', fontSize: 21, fontWeight: 800, margin: '0 0 24px', textAlign: 'center', lineHeight: 1.5 }}>{QUESTIONS[qIndex].q}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {QUESTIONS[qIndex].opts.map((o, i) => (
-                <button key={i} onClick={() => pick(o.v)}
+                <button key={i} onClick={() => pick(o.v, i)}
                   style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '2px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '15px 18px', fontSize: 16, fontWeight: 600, cursor: 'pointer', textAlign: 'right', transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.background = 'rgba(201,162,75,0.12)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}>
@@ -225,7 +243,7 @@ export default function TestPage() {
         {stage === 'result' && ins && (
           <div style={{ textAlign: 'center' }}>
             <p style={{ color: LIGHT, fontSize: 14, margin: '0 0 6px' }}>النتيجة الأولية لجاهزية</p>
-            <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: '0 0 18px' }}>{name}</p>
+            <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: '0 0 18px' }}>{company || name}</p>
             <div style={{ fontSize: 64, fontWeight: 900, color: v.color, lineHeight: 1 }}>{pct}<span style={{ fontSize: 24, color: LIGHT }}> / 100</span></div>
             <div style={{ display: 'inline-block', background: v.color, color: '#fff', borderRadius: 99, padding: '7px 22px', fontSize: 15, fontWeight: 800, margin: '16px 0 26px' }}>{v.label}</div>
 
@@ -236,8 +254,20 @@ export default function TestPage() {
             </div>
 
             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px', color: LIGHT, fontSize: 14, lineHeight: 1.8 }}>
-              هذه لمحة أولية. سيقوم مستشار مُرضي بمراجعة نتيجتك وإرسال التوصيات المناسبة لرفع جاهزية شركتك نحو رأس المال.
+              هذه لمحة أولية. سيقوم مستشار مُرضي بمراجعة نتيجتك والتواصل معك — وإن أردت أن تسبق الدور، افتح ملف منشأتك الآن فيصلك التقرير الكامل والجهات التي تنطبق شروطها عليك.
             </div>
+
+            {/* ★ كانت هذه الشاشة نهايةَ الطريق: لا زرّ ولا رابط ولا واتساب.
+                وكلُّ نقرةٍ مدفوعةٍ من الإعلان تصل إلى هنا ثم تقف. فصار لها
+                مخرجان: التسجيل لمن أراد المضيّ، والواتساب لمن أراد إنساناً. */}
+            <a href="/auth/signup" style={{ display: 'block', textDecoration: 'none', background: GOLD, color: NAVY, borderRadius: 99, padding: '16px', fontSize: 17, fontWeight: 900, marginTop: 20, boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>
+              افتح ملف منشأتك الآن ←
+            </a>
+            <a href="https://wa.me/966570749196" target="_blank" rel="noopener noreferrer"
+              style={{ display: 'block', textDecoration: 'none', border: '1.5px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 99, padding: '13px', fontSize: 15, fontWeight: 800, marginTop: 12 }}>
+              أو تحدّث مع مستشار واتساب
+            </a>
+
             <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginTop: 20 }}>مُرضي — منصة جاهزية رأس المال</p>
           </div>
         )}

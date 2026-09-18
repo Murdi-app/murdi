@@ -63,6 +63,8 @@ export async function teamEmails(): Promise<string[]> {
 export type LeadNotice = {
   id: string;
   name: string;
+  /** اسم المنشأة — منفصلٌ عن اسم الشخص، فالموظفة تنادي صاحبها باسمه */
+  company?: string | null;
   phone: string;
   /** null قبل اكتمال الأسئلة */
   score: number | null;
@@ -81,9 +83,10 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
   const verdict =
     lead.score === null ? '' : lead.score >= 75 ? 'مؤهَّل' : lead.score >= 50 ? 'فجوة محددة' : 'يحتاج رفعاً';
 
+  const who = lead.company || lead.name;
   const subject = lead.completed
-    ? 'أكمل التقييم: ' + lead.name + ' — ' + String(lead.score ?? '؟') + '/١٠٠' + (verdict ? ' · ' + verdict : '')
-    : 'عميل محتمل جديد: ' + lead.name;
+    ? 'أكمل التقييم: ' + who + ' — ' + String(lead.score ?? '؟') + '/١٠٠' + (verdict ? ' · ' + verdict : '')
+    : 'عميل محتمل جديد: ' + who;
 
   const head = lead.completed
     ? 'أنهى التقييم المجاني الآن — وهو ينتظر اتصالاً'
@@ -91,9 +94,10 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
 
   const html =
     '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34;max-width:560px">' +
-    '<h2 style="color:#1A3D34;margin:0 0 4px">' + esc(lead.name) + '</h2>' +
+    '<h2 style="color:#1A3D34;margin:0 0 4px">' + esc(lead.company || lead.name) + '</h2>' +
     '<p style="margin:0 0 14px;color:#6B8A80;font-size:13.5px">' + esc(head) + '</p>' +
     '<table style="border-collapse:collapse;width:100%;background:#F7FBF9;border-radius:8px">' +
+    (lead.company ? row('الشخص', lead.name) : '') +
     row('الجوال', phone) +
     (lead.score === null ? '' : row('الدرجة', String(lead.score) + '/100' + (verdict ? ' — ' + verdict : ''))) +
     (lead.track ? row('المسار', lead.track) : '') +
@@ -115,7 +119,7 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
   try {
     const p = await sendPush({
       title: lead.completed ? '🔥 أكمل التقييم · ' + verdict : 'عميل محتمل جديد',
-      body: lead.name + ' — ' + phone
+      body: who + ' — ' + phone
         + (lead.score === null ? ' · بدأ التقييم' : ' · الدرجة ' + lead.score + '/100')
         + (lead.src ? ' · من ' + lead.src : ''),
       url: '/admin/followup',

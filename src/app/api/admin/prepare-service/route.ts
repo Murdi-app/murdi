@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { deliverableUpdate } from '@/lib/serviceStatus';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -218,7 +219,7 @@ export async function POST(req: Request) {
       const text = (data.content || []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('').trim();
       const finalText = computedTablesHtml ? text.replace(/\[\[TABLES\]\]/g, computedTablesHtml) : text;
       if (text.length > 80) {
-        await admin.from('service_requests').update({ admin_deliverable: finalText, status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', requestId);
+        await admin.from('service_requests').update(deliverableUpdate(finalText, sr.status)).eq('id', requestId);
         return NextResponse.json({ ok: true, deliverable: text });
       }
     } catch {}

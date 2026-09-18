@@ -57,7 +57,9 @@ export async function POST(req: Request) {
     .select('id, status, price')
     .eq('company_id', co.id)
     .eq('service_title', title)
-    .not('status', 'in', '("completed","cancelled")')
+    // المرفوض ليس طلباً مفتوحاً: كان يسدّ إعادة الطلب للأبد، والبطاقة
+    // تقول «لم تُقبل — راجعنا» بلا زرٍّ واحد. فصار يُعامَل كالمُلغى.
+    .not('status', 'in', '("completed","cancelled","rejected")')
     .maybeSingle();
   if (open) return NextResponse.json({ ok: true, already: true, id: open.id, status: open.status });
 

@@ -46,6 +46,10 @@ export async function POST(req: Request) {
     const track = String(body.track || '')
     const src = body.src ? String(body.src) : null
     const completed = Boolean(body.completed)
+    // اسم المنشأة منفصلٌ عن اسم الشخص: كانت صفحة `/test` تسأل «ما اسم شركتك؟»
+    // وتحفظ الجواب في خانة الاسم، فتفتح الموظفة المكالمة باسم شركةٍ تظنّه
+    // اسم صاحبها، ولا يبقى في الصف اسمُ إنسانٍ يُنادى به.
+    const companyName = body.company_name ? String(body.company_name).trim() : null
     if (body.id) {
       // المسار مفتوح بلا جلسة (التقييم المصغّر يُملأ قبل التسجيل)، فالمعرّف وحده لا يكفي:
       // كان أي أحد يستبدل إجابات ودرجة أي عميل محتمل بمجرد معرفة رقم الصف.
@@ -62,20 +66,24 @@ export async function POST(req: Request) {
       if (!row || !same || row.completed === true) {
         return NextResponse.json({ error: 'تعذّر التحديث' }, { status: 403 })
       }
-      await admin.from('mini_assessments').update({ answers, score, track, completed, phone }).eq('id', String(body.id))
+      await admin.from('mini_assessments').update({
+        answers, score, track, completed, phone,
+        ...(companyName ? { company_name: companyName } : {}),
+      }).eq('id', String(body.id))
       if (completed) {
         await notifyLead({
-          id: String(body.id), name, phone, score, track, src, completed: true,
+          id: String(body.id), name, company: companyName, phone, score, track, src, completed: true,
         }).catch(() => {})
       }
       return NextResponse.json({ id: String(body.id) })
     }
     const { data, error } = await admin.from('mini_assessments').insert({
       full_name: name, phone, answers, score, track, src, completed,
+      ...(companyName ? { company_name: companyName } : {}),
     }).select('id').single()
     if (error) throw error
     await notifyLead({
-      id: String(data.id), name, phone, score: null, track, src, completed: false,
+      id: String(data.id), name, company: companyName, phone, score: null, track, src, completed: false,
     }).catch(() => {})
     return NextResponse.json({ id: data.id })
   } catch (e) {

@@ -114,7 +114,13 @@ export default function FundingResult() {
   if (result === null) {
     return (
       <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
-        <p className="text-[#6B8A80] font-bold">لا توجد نتيجة — ابدأ التقييم أولاً</p>
+        {/* كانت هذه جملةً وحيدةً بلا رابط: من فتح نتيجةً وهو غير مسجَّل
+            الدخول، أو لم يبدأ التقييم بعد، يقف أمام جدارٍ أبيض. */}
+        <p className="text-[#6B8A80] font-bold mb-4">لا توجد نتيجة — ابدأ التقييم أولاً</p>
+        <a href="/goal" className="inline-block bg-[#1A3D34] text-white font-black text-sm rounded-full px-8 py-3" style={{ textDecoration: 'none' }}>الذهاب إلى لوحتك ←</a>
+        <div className="mt-3">
+          <a href="/auth/login" className="text-[#1A7A5A] font-bold text-xs" style={{ textDecoration: 'none' }}>أو سجّل الدخول</a>
+        </div>
       </div>
     );
   }

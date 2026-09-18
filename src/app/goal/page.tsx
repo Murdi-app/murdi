@@ -60,6 +60,9 @@ export default function GoalPage() {
   const [orderCategory, setOrderCategory] = useState<string>('');
   // حوالة بانتظار تأكيدك — بدونها كان العميل الذي حوّل يرى «فعّل الآن» فيحوّل مرة ثانية
   const [pendingTransfer, setPendingTransfer] = useState<{ kind: string; amount: number } | null>(null);
+  // معرّفات طلبات الخدمة التي لها تحويلٌ معلَّق — لكي يُقفل زرُّ الدفع على
+  // صاحبه وحده لا على كل بطاقة.
+  const [pendingSrIds, setPendingSrIds] = useState<Set<string>>(new Set());
   // طبقة الدليل: لماذا هذه الخدمة لك أنت — من بياناتك ومن فجوات جهاتك، لا من وصف تسويقي
   const [reasons, setReasons] = useState<Record<string, { urgency: 'blocking' | 'strong' | 'fit'; evidence: string; hook?: string }>>({});
   const [pitch, setPitch] = useState<{ headline: string; lines: string[]; cta: string } | null>(null);
@@ -181,12 +184,19 @@ export default function GoalPage() {
       const ctrMap: Record<string, { id: string; status: string; body: string; signedUrl: string | null }> = {};
       for (const c of (ctrs || [])) { if (c.status !== 'draft' && !ctrMap[c.contract_type]) ctrMap[c.contract_type] = { id: c.id, status: c.status, body: c.contract_body, signedUrl: c.signed_file_url }; }
       setClientContracts(ctrMap);
+      // ★ التحويل المعلَّق يخصّ طلبه هو لا كلَّ خدمات المنشأة.
+      //   كان يُقرأ أحدثُ تحويلٍ معلَّقٍ للمنشأة بلا `service_request_id`، ثم
+      //   يُخفى زرُّ الدفع في **كل** بطاقةٍ مسعَّرة ويُكتب فيها «استلمنا
+      //   تحويلك لهذه الخدمة» — وهي جملةٌ غير صحيحة، والأسوأ أن من دفع خدمةً
+      //   وأراد دفع الأخرى لا يجد زرّاً. ومسار `/api/payments/transfer`
+      //   يحسب التكرار لكل طلبٍ على حدة، فكانت اللوحة تناقضه.
       const { data: pays } = await supabase
-        .from('payments').select('kind, amount_sar, status, created_at')
+        .from('payments').select('kind, amount_sar, status, created_at, service_request_id')
         .eq('company_id', comp.id).eq('status', 'awaiting_confirmation')
-        .order('created_at', { ascending: false }).limit(1);
+        .order('created_at', { ascending: false }).limit(20);
       const pend = (pays || [])[0];
       if (pend) setPendingTransfer({ kind: String(pend.kind || ''), amount: Number(pend.amount_sar || 0) });
+      setPendingSrIds(new Set((pays || []).map((p) => String(p.service_request_id || '')).filter(Boolean)));
     };
     load();
   }, []);
@@ -696,7 +706,7 @@ export default function GoalPage() {
               ))}
               {/* كان يمضي إلى /pay — بوابة اشتراكٍ أُلغي. والخطوة التالية مجانية،
                   فصار الزرّ ينزل إلى موضع الطلب لا إلى صفحة دفع. */}
-              <a href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
+              <a onClick={(e) => { e.preventDefault(); setShowPaywall(true); }} href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
             </div>
           )}
           {CATALOG.map((cat, ci) => (
@@ -759,11 +769,20 @@ export default function GoalPage() {
 
                     {/* السعر والمدة — معلنان، فلا يحتاج العميل مكالمة ليعرفهما */}
                     <div className="flex items-baseline justify-between gap-2 mb-1 pb-3 border-b border-dashed border-[#EAF2EE]">
-                      <span className="text-[#1A3D34] font-black text-lg">{headline.amount != null ? headline.amount.toLocaleString('ar-SA') + ' ر.س' : (headline.label || 'بعرض خاص')}</span>
+                      <span className="text-[#1A3D34] font-black text-lg">
+                        {headline.amount != null ? headline.amount.toLocaleString('ar-SA') + ' ر.س' : (headline.label || 'بعرض خاص')}
+                        {/* ★ «للسنة المالية الواحدة» كانت تُعرض في الصفحة
+                            العامة وتغيب عن لوحة العميل — فيقرأ «١٠٬٠٠٠ ر.س»
+                            ويظنّها تشمل سنواته الثلاث، ثم يكتشف عند التسليم
+                            أنها لسنةٍ واحدة. وهذا خلافٌ يُشترى بكلمتين. */}
+                        {quotedNow == null && c?.priceUnit && (
+                          <span className="text-[#6B8A80] text-xs font-bold"> · {c.priceUnit}</span>
+                        )}
+                      </span>
                       <span className="text-[#9DB3AB] text-xs font-bold">{quotedNow != null ? 'سعر طلبك المعتمد' : (c?.days || '')}</span>
                     </div>
                     {c?.successFee && <div className="text-[#9A7B2E] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.successFee.replace(/\*\*/g, '')}</div>}
-                    {c?.quoteBasis && headline.amount == null && <div className="text-[#9DB3AB] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.quoteBasis}</div>}
+                    {c?.quoteBasis && quotedNow == null && <div className="text-[#9DB3AB] text-[11px] font-bold leading-relaxed mb-1 pt-2">{c.quoteBasis}</div>}
 
                     {/* التفاصيل الكاملة داخل البطاقة — لا صفحة أخرى ولا مكالمة */}
                     {c && (
@@ -851,10 +870,10 @@ export default function GoalPage() {
                       return (
                         <div className="flex flex-col gap-2">
                           <div className="text-center py-2.5 rounded-full font-black text-sm" style={{ background: st.bg, color: st.fg }}>{st.t}</div>
-                          {req.status === 'priced' && pendingTransfer && pendingTransfer.kind === 'service' && (
+                          {req.status === 'priced' && pendingSrIds.has(String(req.id || '')) && (
                             <div className="text-center text-[#1A7A5A] font-black text-xs leading-relaxed">استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تُحوّل مرة أخرى.</div>
                           )}
-                          {req.status === 'priced' && req.price && !(pendingTransfer && pendingTransfer.kind === 'service') && (
+                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || '')) && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
@@ -1002,10 +1021,22 @@ export default function GoalPage() {
             )}
 
             <div style={{ background: '#F7FBF9', border: '1px solid #EAF2EE', borderRadius: 16, padding: '14px 16px', marginBottom: 16, textAlign: 'center' }}>
-              <div style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 800, marginBottom: 4 }}>سعرك</div>
+              {/* ★ «سعرك» كانت تَعِد برقمٍ نهائي على خدمةٍ تُسعَّر بالشرائح،
+                  ثم يُرسَل الطلب بلا سعر (بقرارٍ مقصود: حجم الاستثمار مُدخَلٌ
+                  يراجعه المكتب) — فتقلب البطاقة إلى «بانتظار الفريق» ويختفي
+                  الرقم الذي رآه العميل قبل ثوانٍ. فالوعدُ هو ما يُصحَّح، لا
+                  آليةُ التسعير: يُقال تقديريٌّ لأنه تقديري. */}
+              <div style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 800, marginBottom: 4 }}>
+                {tiered ? 'سعرك التقديري' : 'سعرك'}
+              </div>
               <div style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900 }}>
                 {ready ? (shown.amount != null ? shown.amount.toLocaleString('ar-SA') + ' ر.س' : 'بعرض خاص') : '—'}
               </div>
+              {tiered && ready && shown.amount != null && (
+                <div style={{ color: '#9A7B2E', fontSize: 11.5, fontWeight: 800, marginTop: 6, lineHeight: 1.8 }}>
+                  يعتمده المكتب بعد مراجعة بياناتك، ويصلك للدفع فور اعتماده.
+                </div>
+              )}
               {!ready && <div style={{ color: '#9A7B2E', fontSize: 11.5, fontWeight: 800, marginTop: 4 }}>أدخل حجم استثمارك ليظهر سعرك</div>}
               {ready && shown.amount == null && c?.quoteBasis && <div style={{ color: '#6B8A80', fontSize: 11.5, fontWeight: 700, marginTop: 6, lineHeight: 1.8 }}>{c.quoteBasis}</div>}
             </div>

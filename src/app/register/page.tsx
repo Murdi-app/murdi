@@ -44,7 +44,10 @@ export default function RegisterPage() {
   // في اللحظة التي يُفترض أن يوقّع فيها. وهو رقم يكتبه صاحب المنشأة في كل تعامل تجاري.
   // رقم الهوية خرج من الشروط: العقد يحتاجه، والتقييم المجاني لا. وطلبُه
   // على الباب يوقف من لا يحمل هويته معه في تلك اللحظة — ويخسر ملفاً كاملاً.
-  const canProceed = form.company_name && form.cr_number && form.owner_name
+  // والسجل التجاري خرج من الشرط أيضاً: حقلُه مكتوبٌ عليه «اختياري لمشروع
+  // لم يُسجَّل بعد»، وكان الزرّ لا يُفتح بدونه — فيقف صاحبُ مشروعٍ جديد أمام
+  // زرٍّ ميتٍ لا يعرف سببه، وصفحةُ التسجيل البديلة تقبل غيابه أصلاً.
+  const canProceed = form.company_name && form.owner_name
     && form.phone && form.city && form.sector
 
   async function saveCompany() {

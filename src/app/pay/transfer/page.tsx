@@ -89,19 +89,52 @@ function TransferInner() {
         </div>
       </div>
 
+      {/* ★ خانةُ الإيصال تُرى أو لا تكون.
+          قال صاحبُ «هرم الإنشاء» في ١٧ سبتمبر: «لا يوجد خانة لرفع الإيصال».
+          وكانت موجودةً في الكود — `<input type="file">` خاماً بلا تنسيق.
+          وهذا على جوّال العميل سطرٌ إنجليزيٌّ صغير («Choose File») لا يُرى
+          وسط بطاقاتٍ عربيةٍ مصمَّمة، ولا يُفهم أنه زرّ. ومعه كان زرُّ
+          الإرسال رمادياً معطَّلاً حتى يُرفق ملفاً — فيرى العميل باباً
+          مغلقاً ولا يجد مفتاحه، فيتصل أو ينصرف.
+          فصارت الخانة مربّعاً كبيراً مكتوباً بالعربية يُضغط كلُّه، ويُظهر
+          اسم الملف بعد اختياره، وتحته طريقُ الواتساب لمن تعذّر عليه. */}
       <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: 20, marginTop: 14 }}>
         <div style={{ color: '#1A3D34', fontSize: 14, fontWeight: 800, marginBottom: 10 }}>📎 أرفق إيصال / إشعار الحوالة</div>
-        <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)}
-          style={{ width: '100%', fontFamily: 'Cairo', fontSize: 13, marginBottom: 12 }} />
+
+        <label htmlFor="receipt-file" style={{
+          display: 'block', cursor: 'pointer', textAlign: 'center',
+          border: '2px dashed ' + (file ? '#1A7A5A' : '#C9A84C'),
+          background: file ? '#F2FAF6' : '#FDF9EF',
+          borderRadius: 12, padding: '22px 14px', marginBottom: 12,
+        }}>
+          <div style={{ fontSize: 30, lineHeight: 1 }}>{file ? '✅' : '📤'}</div>
+          <div style={{ color: file ? '#1A7A5A' : '#9A7B2E', fontSize: 15, fontWeight: 900, marginTop: 8 }}>
+            {file ? 'تم إرفاق الإيصال' : 'اضغط هنا لإرفاق صورة الإيصال'}
+          </div>
+          <div style={{ color: file ? '#1A7A5A' : '#B08D3A', fontSize: 12, fontWeight: 700, marginTop: 4, wordBreak: 'break-all' }}>
+            {file ? file.name + ' — اضغط لتغييره' : 'صورة من الجوال أو ملف PDF'}
+          </div>
+        </label>
+        <input id="receipt-file" type="file" accept="image/*,application/pdf"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />
+
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختياري) — مثل: اسم المُحوِّل أو تاريخ الحوالة"
           style={{ width: '100%', minHeight: 70, border: '1px solid #EAF2EE', borderRadius: 10, padding: 10, fontFamily: 'Cairo', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
       </div>
 
       <button onClick={submit} disabled={busy || !file}
         style={{ width: '100%', background: (busy || !file) ? '#9DB3AB' : '#1A3D34', color: '#fff', border: 'none', padding: '15px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: (busy || !file) ? 'default' : 'pointer', marginTop: 16 }}>
-        {busy ? 'جارٍ الإرسال…' : 'أرسلت الحوالة — أرسل للمراجعة'}
+        {busy ? 'جارٍ الإرسال…' : file ? 'أرسلت الحوالة — أرسل للمراجعة' : 'أرفق الإيصال أولاً ↑'}
       </button>
-      {!file && <p style={{ textAlign: 'center', color: '#9DB3AB', fontSize: 12, marginTop: 8 }}>الرجاء إرفاق الإيصال أولاً</p>}
+      {!file && (
+        <p style={{ textAlign: 'center', color: '#9DB3AB', fontSize: 12, marginTop: 8, lineHeight: 1.9 }}>
+          اضغط المربّع أعلاه لاختيار صورة الإيصال من جوّالك.<br />
+          أو أرسله واتساب على{' '}
+          <a href="https://wa.me/966570749196" target="_blank" rel="noopener noreferrer"
+            style={{ color: '#1A7A5A', fontWeight: 900, textDecoration: 'none' }}>0570749196</a>
+        </p>
+      )}
       {err && <p style={{ textAlign: 'center', color: '#B4453C', fontSize: 13, fontWeight: 800, marginTop: 10, lineHeight: 1.8 }}>{err}</p>}
     </div>
   );

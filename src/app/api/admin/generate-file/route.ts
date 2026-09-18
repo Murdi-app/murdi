@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { keepServiceStatus } from '@/lib/serviceStatus';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
         const adm3 = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
         const { data: cur } = await adm3.from('service_requests').select('status').eq('id', reqId).maybeSingle();
         // ما سُلِّم لا يُستبدل من تحت العميل بنسخة لم يرها
-        const keep = cur && (cur.status === 'delivered' || cur.status === 'completed');
+        const keep = keepServiceStatus(cur?.status);
         await adm3.from('service_requests').update({
           admin_deliverable: html,
           ...(keep ? {} : { status: 'in_progress' }),

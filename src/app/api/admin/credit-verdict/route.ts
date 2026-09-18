@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { deliverableUpdate } from '@/lib/serviceStatus';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditVerdict, VERDICT_CSS, type VerdictMatch } from '@/lib/creditVerdict';
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
 
   const { error } = await sb
     .from('service_requests')
-    .update({ admin_deliverable: html, status: 'in_progress', updated_at: new Date().toISOString() })
+    .update(deliverableUpdate(html, sr.status))
     .eq('id', requestId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

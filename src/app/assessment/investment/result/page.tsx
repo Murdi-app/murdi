@@ -99,7 +99,13 @@ export default function InvestmentResult() {
   if (result === null) {
     return (
       <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
-        <p className="text-[#6B8A80] font-bold">لا توجد نتيجة — ابدأ التقييم أولاً</p>
+        {/* كانت هذه جملةً وحيدةً بلا رابط: من فتح نتيجةً وهو غير مسجَّل
+            الدخول، أو لم يبدأ التقييم بعد، يقف أمام جدارٍ أبيض. */}
+        <p className="text-[#6B8A80] font-bold mb-4">لا توجد نتيجة — ابدأ التقييم أولاً</p>
+        <a href="/goal" className="inline-block bg-[#1A3D34] text-white font-black text-sm rounded-full px-8 py-3" style={{ textDecoration: 'none' }}>الذهاب إلى لوحتك ←</a>
+        <div className="mt-3">
+          <a href="/auth/login" className="text-[#1A7A5A] font-bold text-xs" style={{ textDecoration: 'none' }}>أو سجّل الدخول</a>
+        </div>
       </div>
     );
   }
@@ -424,7 +430,7 @@ export default function InvestmentResult() {
             <div className="flex-1">
               <h2 className="font-black text-[#1A3D34] mb-1">استشارتك الخاصة قيد الإعداد الآن</h2>
               <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">د. عبدالحكيم المرضي وفريقه يُعدّون لك استشارة استثمار مخصّصة لأرقام شركتك — تحليل عميق، خطة نجاح، وتوعية مالية. ستجدها جاهزة في قسم الاستشارات فور مراجعتها واعتمادها.</p>
-              <a href="/goal" className="inline-block px-6 py-2.5 rounded-full bg-[#C9A84C] text-white font-black text-sm">الذهاب لقسم الاستشارات ←</a>
+              <a href="/goal?tab=consult" className="inline-block px-6 py-2.5 rounded-full bg-[#C9A84C] text-white font-black text-sm">الذهاب لقسم الاستشارات ←</a>
             </div>
           </div>
         </div>

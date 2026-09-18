@@ -2,13 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// لا عميل Supabase هنا بعد الآن: الحفظ كلّه عبر `/api/mini-save`.
 
 type Q = { q: string; opts: { t: string; v: number }[] }
 
@@ -118,16 +114,20 @@ export default function MiniAssessment() {
       // فكان indexOf يعيد صفراً دائماً ويُسجَّل كل ليد «تمويل» — بمن فيهم طالبو الاستثمار والطرح.
       const goalIdx = picks[7] ?? -1
       const track = ['تمويل', 'استثمار', 'طرح', 'استكشاف'][goalIdx] || ''
-      // Supabase لا يرمي استثناءً عند رفض الصف — يعيد { error }.
-      // كان الخطأ يمرّ صامتاً فيرى العميل «وصلَنا طلبك» ولا يُحفظ اسمه ولا جواله.
-      // completed لم تكن تُكتب أبداً، فبقيت خمسون تقييماً تامّاً تظهر في القاعدة «غير مكتملة».
-      // والصف لا يُنشأ أصلاً إلا هنا: بعد الأسئلة الثمانية وبعد الاسم والجوال.
-      const { error } = await sb.from('mini_assessments').insert({
-        full_name: name.trim(), company_name: biz.trim(), phone: phone.trim(),
-        track, score: pct, answers: ans, src: adSrc || null,
-        completed: ans.length >= QUESTIONS.length,
+      // ★ يمرّ بـ`/api/mini-save` لا بالكتابة المباشرة في القاعدة — ١٨ سبتمبر.
+      //   كان الإدراج هنا مباشراً بمفتاح المتصفح، فيتخطّى المسار الذي يُطبّع
+      //   الجوال ويُخطر المكتب. ونتيجته أن العميل يدخل من الصفحة الرئيسية
+      //   فلا يعلم به أحد — وهو العطب نفسه الذي أوقف ثمانيةَ عملاءَ يوماً
+      //   كاملاً، لكنه بقي حيّاً في هذا المسار وحده بعد إصلاح الآخر.
+      const res = await fetch('/api/mini-save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(), company_name: biz.trim(), phone: phone.trim(),
+          track, score: pct, answers: ans, src: adSrc || null,
+          completed: ans.length >= QUESTIONS.length,
+        }),
       })
-      if (error) { setErr('تعذّر إرسال بياناتك، حاول مرة أخرى أو راسلنا واتساب'); return }
+      if (!res.ok) { setErr('تعذّر إرسال بياناتك، حاول مرة أخرى أو راسلنا واتساب'); return }
       // ★ الإحالة الناجحة تُطلق هنا أيضاً لا في طلب الخدمة وحده.
       //   والسبب أن الحملة تجلب **تقييمات** لا طلبات خدمة: وصلت ثلاثة
       //   تسجيلات في يومين وبقي عدّاد جوجل صفراً، فلا تتعلّم الحملة على

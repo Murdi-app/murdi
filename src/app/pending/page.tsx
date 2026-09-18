@@ -55,7 +55,7 @@ export default function PendingPage() {
   const content: Record<Status, { icon: string; title: string; msg: string }> = {
     none: { icon: '', title: 'لم تسجّل شركتك بعد', msg: 'ابدأ بتسجيل شركتك لتفعيل حسابك.' },
     pending_payment: { icon: '', title: 'بانتظار التفعيل', msg: 'استلمنا تسجيلك، ونراجع بياناتك الآن. وسنتواصل معك لنتفق على الخدمة المناسبة لملفك قبل أي رسوم.' },
-    pending_approval: { icon: '', title: 'طلبك قيد المراجعة', msg: 'استلمنا طلبك ودفعتك. فريق Murdi يراجع بياناتك، وسنفعّل حسابك قريباً.' },
+    pending_approval: { icon: '', title: 'طلبك قيد المراجعة', msg: 'استلمنا طلبك. فريق مُرضي يراجع بياناتك، وسنفعّل حسابك قريباً.' },
     active: { icon: '✓', title: 'حسابك مفعّل', msg: 'جارٍ تحويلك...' },
     rejected: { icon: '', title: 'لم يُقبل الطلب', msg: 'لم نتمكن من قبول طلبك حالياً. تواصل معنا للمزيد.' },
     suspended: { icon: '', title: 'الحساب موقوف', msg: 'حسابك موقوف مؤقتاً. تواصل مع فريق Murdi.' },
@@ -68,7 +68,9 @@ export default function PendingPage() {
     </div>
   )
 
-  const c = content[status]
+  // حالةٌ غير متوقَّعة (قيمةٌ قديمة أو null) كانت تُسقط الصفحة بيضاء، لأن
+  // `content[status]` يعود undefined ثم يُقرأ منه العنوان.
+  const c = content[status] ?? content.pending_payment
 
   return (
     <>
@@ -95,7 +97,9 @@ export default function PendingPage() {
           {ACTION[status] && (
             <button className="pd-btn" onClick={() => router.push(ACTION[status]!.href)}>{ACTION[status]!.label}</button>
           )}
-          {(status === 'rejected' || status === 'suspended' || status === 'pending_payment' || status === 'expired') && (
+          {/* pending_approval كان بلا زرٍّ ولا رابطٍ ولا واتساب — شاشةٌ
+              فيها عنوانٌ وجملةٌ و«تسجيل الخروج» وحدها. */}
+          {(status === 'rejected' || status === 'suspended' || status === 'pending_payment' || status === 'expired' || status === 'pending_approval') && (
             <a className="pd-btn" style={{ textDecoration: 'none', display: 'inline-block' }}
                href={'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent('السلام عليكم، أستفسر عن حالة حسابي في منصة مُرضي')}
                target="_blank" rel="noopener noreferrer">تواصل معنا على واتساب</a>
