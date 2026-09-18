@@ -123,7 +123,7 @@ export default function TestPage() {
       const j = await res.json()
       if (j.id) {
         setRowId(j.id)
-        if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED) }
+        if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }) }
       }
       setStage('q')
     } catch {

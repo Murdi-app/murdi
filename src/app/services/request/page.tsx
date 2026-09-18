@@ -88,7 +88,7 @@ function RequestForm() {
       // المكرّرة عميلاً ثانياً واشترينا حسابنا خطأً.
       if (!converted.current && !d?.already) {
         converted.current = true;
-        fireConversion(LEAD_SUBMITTED);
+        fireConversion(LEAD_SUBMITTED, { phone, email });
       }
       setDone(true);
     } catch {

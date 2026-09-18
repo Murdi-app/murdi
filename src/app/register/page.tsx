@@ -75,7 +75,7 @@ export default function RegisterPage() {
       //   الإعلان ويسجّل مباشرةً لا يمرّ بالتقييم المبدئي إطلاقاً، فمرّت
       //   منشأتان ولم يرهما جوجل. أمّا التحديث فعميلٌ قائم لا ليدٌ جديد.
       // ★ ولا ازدواج: الإحالة مضبوطة على العدّ «واحد» في جوجل.
-      fireConversion(LEAD_SUBMITTED)
+      fireConversion(LEAD_SUBMITTED, { phone: form.phone, email: user.email })
     }
     setSaving(false)
     router.push('/goal')

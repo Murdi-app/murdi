@@ -135,7 +135,7 @@ export default function MiniAssessment() {
       // ★ وبعد الحفظ لا قبله: لا تُعدّ إحالةً ناجحة إلا ما دخل القاعدة فعلاً.
       if (!converted.current) {
         converted.current = true
-        fireConversion(LEAD_SUBMITTED)
+        fireConversion(LEAD_SUBMITTED, { phone })
       }
       setDone(true)
     } catch {

@@ -117,7 +117,7 @@ export default function JadwaEntryPage() {
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
-      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED); }
+      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }); }
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');
