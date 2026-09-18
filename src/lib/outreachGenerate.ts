@@ -3,6 +3,8 @@
 // يولّد رسالة احترافية مخصّصة لكل جهة، ويبحث عن إيميلها ويصنّف الثقة
 // ════════════════════════════════════════════════════════════════
 
+import { STANCE_RULES_PROMPT, STANCE_RULES_EN, MANDATE_AR, MANDATE_EN, stanceViolations } from './legalStance';
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 const MODEL_WRITER = 'claude-sonnet-4-6';
@@ -43,6 +45,8 @@ export interface GeneratedMessage {
   altContact: string | null;
   contactMethod: string;
   language: 'عربي' | 'إنجليزي';
+  /** ما أفلت من الحارس — يُعرض للمراجعة قبل الإرسال، ويبقى فارغاً في الغالب */
+  stanceFlags: string[];
 }
 
 export async function findEntityEmail(
@@ -123,6 +127,27 @@ ${entity.region ? 'المنطقة: ' + entity.region : ''}
   }
 }
 
+// حارسُ ما بعد التوليد. الموجّه يمنع، وهذا يُصلح ما أفلت — لأن رسالةً
+// واحدة فيها «نيابةً عن» تنقض الموقف النظامي كلَّه أمام جهةٍ رقابية،
+// ولا أحد يقرأ كل رسالة قبل إرسالها.
+const REPAIRS: ReadonlyArray<[RegExp, string]> = [
+  [/نياب(?:ةً|ة)\s*عن\s*(?:العميل|المنشأة|موكّلنا|موكلنا)/g, 'بتكليفٍ من المنشأة'],
+  [/نياب(?:ةً|ة)\s*عن(?:ه|ها)?/g, 'بتكليفٍ منها'],
+  [/وكال(?:ةً|ة)\s*عن(?:ه|ها)?/g, 'بتكليفٍ منها'],
+  [/حتى\s*(?:ال)?حصول(?:ه)?\s*على\s*(?:ال)?تمويل/g, 'حتى يصل ردّكم'],
+  [/\bon\s+behalf\s+of\s+(?:our\s+)?client\b/gi, 'under engagement by the company'],
+  [/\bon\s+behalf\s+of\b/gi, 'under engagement by'],
+  [/\bacting\s+for\s+(?:the\s+)?(?:client|company)\b/gi, 'engaged by the company'],
+  [/\brepresenting\s+the\s+client\b/gi, 'engaged by the company'],
+  [/\bmandated\s+by\b/gi, 'engaged by'],
+];
+
+export function sanitizeOutreach(text: string): { text: string; remaining: string[] } {
+  let out = text;
+  for (const [re, rep] of REPAIRS) out = out.replace(re, rep);
+  return { text: out, remaining: stanceViolations(out) };
+}
+
 export async function generateOutreachMessage(
   client: ClientInput,
   entity: EntityInput
@@ -140,7 +165,11 @@ export async function generateOutreachMessage(
     : 'جهة سعودية محلية — ابنِ الإقناع على الإطار التنظيمي السعودي والقرب والثقة المحلية. اكتب بأسلوب سعودي رسمي مألوف لمؤسسة محلية.'
 
   const prompt = `أنت كاتب مراسلات رسمية محترف في شركة "حلول المرضي للاستشارات المالية" (منصة مُرضي).
-مهمتك: كتابة رسالة بريد إلكتروني رسمية ومهنية موجّهة إلى جهة ${trackWord}، للاستفسار عن إمكانية حصول عميلنا على منتجها.
+مهمتك: كتابة رسالة بريد إلكتروني رسمية ومهنية موجّهة إلى جهة ${trackWord}، تعرض عليها ملفاً أعدّته مُرضي **بتكليفٍ من المنشأة**، وتستفسر عن انطباق شروط منتجها على المنشأة والخطوات التي تلزمها للتقديم.
+
+${STANCE_RULES_PROMPT}
+
+${STANCE_RULES_EN}
 
 ${isAcq ? 'إطار إلزامي — جهة استحواذ: هذه الجهة تشتري الشركة كاملة أو حصة أغلبية ولا تشارك في جولة بحصة أقلية. ممنوع دعوتها للمشاركة في جولة، وممنوع عرض نسبة أقلية أو ذكر تقييم قبل الجولة. اكتب استفساراً مهنياً عن اهتمامها بفرصة تملّك في قطاع العميل: صف النشاط والأداء والأصول التي تنتقل مع الصفقة، واطلب معايير الاستحواذ لديها والخطوات والمستندات. ولا تذكر سعراً ولا نطاق ثمن إطلاقاً.' : isGuar ? 'إطار إلزامي — جهة ضمان لا تمويل: هذه الجهة تضمن أو تؤمّن ولا تمنح العميل مالاً. لا تطلب منها تسهيلاً ائتمانياً ولا مبلغاً. اسأل عن شروط تغطية الضمان أو التأمين الائتماني للعميل، وعن الجهة الممولة التي تعمل معها، وعن المستندات اللازمة لدراسة التغطية. ممنوع أي صيغة توحي بأننا نطلب منها المال.' : isMezz ? 'إطار إلزامي — دين مساند: العميل يجمع جولة، والجهة تقدّم تمويلاً مربوطاً بالجولة لا حصة ملكية. اذكر حجم الجولة والغرض وأفق السداد ومصادر التدفق. ممنوع عرض أي حصة أو تقييم أو نسبة ملكية على هذه الجهة.' : isEquity
   ? 'إطار إلزامي — مسار استثمار: العميل يعرض حصة من ملكيته على مستثمر، ولا يطلب قرضاً. اكتب بلغة الملكية: الجولة، الحصة المعروضة، التقييم قبل الجولة، أفق العائد، قابلية التوسع. ممنوع منعاً باتاً ذكر السداد أو الأقساط أو الضمانات أو تمويل الفواتير أو رأس المال العامل أو الجدارة الائتمانية أو أي لفظ إقراضي — المستثمر يشتري حصة ولا يُسدَّد له. حتى إن كان منتج الجهة ديناً مرناً، فاطلب أهلية المشاركة في الجولة لا تسهيلاً ائتمانياً. إلزامي: اذكر في متن الرسالة نصاً وبالأرقام حجم الجولة والحصة المعروضة والتقييم قبل الجولة كما وردت في بيانات العميل أعلاه — رسالة استثمارية بلا هذي الثلاثة ناقصة ولا تصلح للإرسال. ولا تصف الطلب بأنه «مشاركة في منتجات الجهة»، بل دعوة للمشاركة في جولة الشركة.'
@@ -168,8 +197,8 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
 ═══ ضوابط الكتابة (مهمة) ═══
 1. اللغة: ${language === 'عربي' ? 'العربية الفصحى الرسمية' : 'الإنجليزية الرسمية'}.
 2. النبرة: مهنية ومقنعة كطرف ثالث خبير يزكّي العميل — لا مجرد استفسار. الطول ١٨٠–٢٥٠ كلمة، كثيفة بلا حشو.
-3. عرّف بمُرضي كشركة استشارية سعودية جهّزت ملف العميل ورفعت جاهزيته.
-4. اطلب بأدب توضيح إمكانية حصول العميل على المنتج المذكور والخطوات اللازمة.
+3. عرّف بمُرضي كشركة استشارات مالية سعودية مرخّصة، أعدّت ملف المنشأة ورتّبته **بتكليفٍ منها** — لا كوكيلٍ عنها ولا كوسيط. وأدرج في الرسالة معنى هذا السطر: «${MANDATE_AR}» أو ما يؤدّيه في الإنجليزية: «${MANDATE_EN}».
+4. اطلب بأدب توضيح انطباق شروط المنتج المذكور على المنشأة، والخطوات والمستندات التي تلزمها **لتتقدّم هي**.
 5. لا تَعِد بنتيجة مضمونة ولا تُبالغ، لكن اذكر الأرقام الفعلية للعميل بثقة (الإيراد والربح) كإشارة قوة. ممنوع منعاً باتاً ذكر درجة الجاهزية أو أي تقييم داخلي لمُرضي — رقم داخلي لا يُعرض على جهة خارجية إطلاقاً.
 5ب. ممنوع منعاً باتاً ذكر أي واقعة أو علاقة عن العميل غير مذكورة صراحةً في «معلومات عميلنا» أعلاه — لا حساباً بنكياً، ولا تعاملاً سابقاً مع الجهة، ولا عقداً، ولا أي ادعاء لم يُعطَ لك. استعمل فقط الحقول المعطاة، وإن نقص حقل فلا تخترعه ولا تفترضه.
 5ج. ENGLISH-VERSION HARD RULES — these bind you exactly as the Arabic ones do, and you must NOT relax them when writing in English: (a) NEVER write "on behalf of", "acting for", "representing the client", "authorised by the client" or "mandated by". Murdi PREPARED and STRUCTURED the client's financing file and is writing to introduce it; the client alone decides whether to apply and to contract. (b) NEVER commit the client to anything. Do not state or imply that the client is prepared to pay a down payment, provide collateral, accept a rate, sign, or meet any condition — no percentage, no amount, no willingness, unless that exact commitment appears in the client data above. Ask the entity what it requires; never promise what the client will give. (c) State only facts present in the client data. Any figure, ratio, asset, contract, relationship or intention not given to you is forbidden, however plausible. (d) The firm name is written exactly "Murdi Financial Advisory" and the signature exactly "Partnerships Team — Murdi Financial Advisory | partners@murdi.sa".
@@ -179,7 +208,8 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
 7ب. ممنوع ربط الرسالة بلحظة إرسالها: لا تكتب «اليوم» ولا «هذا الأسبوع» ولا «حالياً» ولا أي إشارة زمنية توحي بتاريخ محدد، لأن الرسالة قد تُقرأ بعد أسابيع فتبدو قديمة. صف الجولة أو الطلب بصيغة قائمة مستمرة.
 8. حلّل مصلحة الجهة تحديداً وابنِ الإقناع عليها: بنك يهمّه أمان السداد وانتظام التدفق والضمان؛ شركة تمويل يهمّها حجم الفرصة وسرعة الدوران وجودة الملف الجاهز؛ مستثمر يهمّه النمو والعائد وقابلية التوسّع؛ جهة خارجية يهمّها آلية التمويل العابر والشريك المحلي. اكتب فقرة تربط قوة العميل بمصلحة هذه الجهة تحديداً.
 9. عالِج تردّد الجهة استباقياً: توقّع أبرز تحفّظ قد يمنعها من الرد (قصر عمر التشغيل، غياب ضمان، حجم الطلب) وعالجه بجملة قبل أن تُسأل، مستنداً إلى أن مُرضي جهّزت الملف ورفعت الجاهزية.
-10. اختم بطلب رد مكتوب محدّد (الخطوات والمستندات المطلوبة لبدء الدراسة) — لا مكالمة ولا دعوة عامة.
+10. اختم بطلب رد مكتوب محدّد: الخطوات والمستندات المطلوبة **ليتقدّم العميل** ولتبدأ الدراسة — لا مكالمة ولا دعوة عامة. ولا تكتب أننا سنتقدّم أو نوقّع أو نلتزم عنه.
+11. ممنوع في كل لغة: «نيابةً عن» · «وكالةً عن» · «نضمن» · «حتى الحصول على التمويل» · «أتعاب نجاح» · أي ذكرٍ لعمولةٍ من الجهة. ومُرضي لا تتقاضى من الجهة الممولة شيئاً، ولا يُذكر هذا في الرسالة إلا إن سُئلنا.
 
 أرجع ردّك بصيغة JSON نقية فقط، بدون أي نص قبله أو بعده:
 {
@@ -236,7 +266,7 @@ ${entity.requirements ? 'متطلبات الجهة: ' + entity.requirements : ''
             : (en ? 'Financing facility enquiry' : 'طلب تسهيل تمويلي');
       return head + ' — ' + client.companyName + ' | ' + entity.provider;
     })(),
-    body: String(parsed.body || '').trim(),
+    body: sanitizeOutreach(String(parsed.body || '').trim()).text,
     language,
   };
 }
@@ -254,6 +284,7 @@ export async function buildFullOutreach(
     subject: msg.subject,
     body: msg.body,
     language: msg.language,
+    stanceFlags: stanceViolations(msg.body),
     email: emailInfo.email,
     emailConfidence: emailInfo.confidence,
     emailSource: emailInfo.source,

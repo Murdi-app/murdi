@@ -436,7 +436,7 @@ export default function FundingResult() {
 
             <div className="rounded-xl py-3 px-4 mb-5 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
               <span className="text-[#CFE0DA] text-xs font-bold leading-relaxed">
-                وأتعاب النجاح على التمويل المنفَّذ <span style={{ color: '#5FD3A6' }}>لا تُدفع إلا بعد صرفه إلى حسابك</span> — لا قبله.
+                والرسم <span style={{ color: '#5FD3A6' }}>ثابت مقابل عملٍ يُسلَّم</span> — لا نسبةَ من تمويلك، ولا عمولةَ من أي جهة ممولة.
               </span>
             </div>
 
