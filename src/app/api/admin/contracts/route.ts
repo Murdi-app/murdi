@@ -169,9 +169,12 @@ export async function PATCH(req: Request) {
   if (body.status === 'issued' && existing) {
     const merged: Record<string, unknown> = { ...existing };
     for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
+    // ★ اسمُ الموقّع وهويتُه خرجا من شروط الإصدار — ١٨ سبتمبر.
+    //   صار العقد يُصدَر بصيغةٍ تمشي مع كل عميل: المنشأة وسجلها معلومان
+    //   ويُطبعان، و**من يمثّلها في التوقيع وهويته يُكتبان بخطّ يده عند
+    //   التوقيع**. وكان اشتراطُهما يوقف إصدار عقدٍ جاهزٍ لعميلٍ دفع، لمجرّد
+    //   أننا لم نجمع رقم هويته بعد — وهو رقمٌ يُكتب في ثانيةٍ على الورقة.
     const LABEL: Record<string, string> = {
-      client_name: 'اسم المالك',
-      client_id_number: 'رقم هوية المالك',
       establishment_name: 'اسم المنشأة',
       establishment_cr: 'رقم السجل التجاري',
     };
@@ -198,10 +201,16 @@ export async function PATCH(req: Request) {
     // إقامة المستثمر الأجنبي تحمل الاسمين، فيسهل أن يُكتب اللاتيني سهواً —
     // ولا يظهر الخلل إلا يوم التنفيذ، وهو أسوأ يوم يظهر فيه.
     const AR = /[\u0621-\u064A]/;
+    // واسمُ الموقّع يُفحص فقط إن كُتب: فراغُه مقصودٌ الآن، وحرفٌ لاتينيٌّ
+    // فيه ليس مقصوداً — والتنفيذ عبر نافذ يطابق الاسم العربي.
     const nonAr = ([
-      ['client_name', 'اسم المالك — اكتبه كما هو في الهوية أو الإقامة بالعربي'],
+      ['client_name', 'اسم الموقّع — اكتبه كما هو في الهوية أو الإقامة بالعربي، أو اتركه فارغاً ليُكتب عند التوقيع'],
       ['establishment_name', 'اسم المنشأة — اكتبه كما هو في السجل التجاري بالعربي'],
-    ] as const).filter(([k]) => !AR.test(String(merged[k] || '')));
+    ] as const).filter(([k]) => {
+      const v = String(merged[k] || '').trim();
+      if (k === 'client_name' && !v) return false;
+      return !AR.test(v);
+    });
     if (nonAr.length) {
       return NextResponse.json({
         error: 'العقد وثيقة عربية والتنفيذ عبر نافذ يطابق الاسم العربي. ' + nonAr.map(([, m]) => m).join(' · '),
