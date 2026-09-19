@@ -13,6 +13,7 @@ type Lead = {
   days: number; band: Band; temp: Temp; registered: boolean;
   headline: string; opener: string; waLink: string;
   contacted_at: string | null; outcome: string | null; contact_note: string | null; next_action_at: string | null;
+  kind?: 'تقييم' | 'تسجيل'; company_name?: string | null;
 };
 type Stats = { total: number; contacted: number; registered: number; open: number; ready: number; gap: number; weak: number; unknown: number; today: number };
 
@@ -120,9 +121,13 @@ export default function LeadsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 320px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ color: '#1A3D34', fontSize: 16.5, fontWeight: 900 }}>{l.full_name || 'بلا اسم'}</span>
+                    <span style={{ color: '#1A3D34', fontSize: 16.5, fontWeight: 900 }}>{l.company_name || l.full_name || 'بلا اسم'}</span>
+                    {l.company_name && l.full_name && <span style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>— {l.full_name}</span>}
+                    {l.kind === 'تسجيل'
+                      ? <span style={{ background: '#EEF3FF', color: '#3A5AA8', border: '1px solid #D6E0F7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>سجّل في المنصة</span>
+                      : <span style={{ background: '#F4F6F5', color: '#6B8A80', border: '1px solid #E3EAE7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>تقييم سريع</span>}
                     <span style={{ background: tone.bg, color: tone.fg, border: '1px solid ' + tone.br, borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>{BAND_LABEL[l.band]}</span>
-                    {l.registered && <span style={{ background: '#EEF3FF', color: '#3A5AA8', border: '1px solid #D6E0F7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>مسجَّل في المنصة</span>}
+                    {l.registered && l.kind !== 'تسجيل' && <span style={{ background: '#EEF3FF', color: '#3A5AA8', border: '1px solid #D6E0F7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>مسجَّل في المنصة</span>}
                     {l.contacted && <span style={{ background: '#EAF7F0', color: '#1E7A5E', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>✓ {l.outcome || 'تم التواصل'}</span>}
                   </div>
                   <div style={{ color: '#6B8A80', fontSize: 12.5, marginTop: 6, fontWeight: 700 }}>{l.headline}</div>
@@ -136,6 +141,13 @@ export default function LeadsPage() {
                     <div style={{ fontSize: 26, fontWeight: 900, color: tone.fg, lineHeight: 1 }}>{l.completed ? (l.score ?? '—') : '—'}</div>
                     <div style={{ fontSize: 10.5, color: '#9DB3AB' }}>{l.completed ? '/ ١٠٠' : 'لم يُكمل'}</div>
                   </div>
+                  <button disabled={busy === l.id} onClick={() => save(l.id, { contacted: !l.contacted })}
+                    style={{
+                      background: l.contacted ? '#EAF7F0' : '#1A3D34', color: l.contacted ? '#1E7A5E' : '#fff',
+                      border: '1.5px solid ' + (l.contacted ? '#BFE6D6' : '#1A3D34'), padding: '9px 18px', borderRadius: 30,
+                      fontSize: 12.5, fontWeight: 900, cursor: 'pointer', fontFamily: 'Cairo',
+                    }}>{l.contacted ? '✓ اتصلتُ' : 'اتصلتُ'}</button>
+                  {l.phone && <a href={'tel:' + l.phone} style={{ background: '#fff', border: '1.5px solid #E8F5EF', color: '#1A3D34', padding: '9px 16px', borderRadius: 30, fontSize: 12.5, fontWeight: 900, textDecoration: 'none' }}>اتصال</a>}
                   {l.waLink && <a href={l.waLink} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', padding: '9px 16px', borderRadius: 30, fontSize: 12.5, fontWeight: 900, textDecoration: 'none' }}>واتساب بالرسالة</a>}
                   <button onClick={() => setOpenId(isOpen ? '' : l.id)} style={{ background: 'transparent', border: '1.5px solid #E8F5EF', color: '#6B8A80', padding: '9px 15px', borderRadius: 30, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Cairo' }}>{isOpen ? 'إغلاق' : 'الرسالة والنتيجة'}</button>
                 </div>
