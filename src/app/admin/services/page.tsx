@@ -528,7 +528,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       id: c.id,
       client_name: pick('client_name'), client_id_number: pick('client_id_number'),
       establishment_name: pick('establishment_name'), establishment_cr: pick('establishment_cr'),
-      fee_type: pick('fee_type') || 'percent',
+      fee_type: pick('fee_type') || 'deferred',
       fee_percent: numOrNull('fee_percent'),
       fixed_amount: numOrNull('fixed_amount'),
       success_min: numOrNull('success_min'),
@@ -981,9 +981,9 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       <input value={val('establishment_cr')} onChange={e=>setC('establishment_cr', e.target.value)} placeholder="السجل التجاري" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                     </div>
                     {(() => {
-                      const ft = String(val('fee_type') || 'percent')
-                      const showPct = ft === 'percent' || ft === 'both'
-                      const showFix = ft === 'fixed' || ft === 'both'
+                      const ft = String(val('fee_type') || 'deferred')
+                      const showPct = ft === 'percent' || ft === 'both' || ft === 'deferred'
+                      const showFix = ft === 'fixed' || ft === 'both' || ft === 'deferred'
                       const BASE: Record<string, string> = { financing: 'التمويل المنفَّذ', deal: 'قيمة الصفقة', saving: 'الوفر المتحقق', round: 'قيمة الجولة' }
                       const defBase = c.contract_type === 'acquisition' ? 'deal' : c.contract_type === 'investment' ? 'round' : 'financing'
                       const inp = { border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 } as const
@@ -991,14 +991,14 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                         <div style={{ background:'#FBFAF5', border:'1px solid #EAD9A8', borderRadius:12, padding:'12px 14px', marginBottom:10 }}>
                           <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>آلية الأتعاب — أنت تحددها، والعقد يُكتب منها</div>
                           <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' }}>
-                            {([['percent','نسبة نجاح فقط'],['fixed','مبلغ ثابت فقط'],['both','ثابت + نسبة نجاح']] as const).map(([k, lb]) => (
+                            {([['deferred','مقدَّم + نسبة عند الصرف'],['fixed','مبلغ ثابت فقط'],['both','ثابت + نسبة نجاح'],['percent','نسبة نجاح فقط']] as const).map(([k, lb]) => (
                               <button key={k} onClick={()=>setC('fee_type', k)} style={{ padding:'7px 14px', borderRadius:30, cursor:'pointer', fontFamily:'Cairo', fontWeight:900, fontSize:12,
                                 background: ft === k ? '#1A3D34' : '#fff', color: ft === k ? '#fff' : '#6B8A80', border: ft === k ? '1.5px solid #1A3D34' : '1.5px solid #EAF2EE' }}>{lb}</button>
                             ))}
                           </div>
                           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                            {showFix && <input value={val('fixed_amount')} onChange={e=>setC('fixed_amount', e.target.value)} type="number" placeholder="المبلغ الثابت (ريال)" style={inp} />}
-                            {showPct && <input value={val('fee_percent')} onChange={e=>setC('fee_percent', e.target.value)} type="number" step="0.1" placeholder="نسبة النجاح ٪" style={inp} />}
+                            {showFix && <input value={val('fixed_amount')} onChange={e=>setC('fixed_amount', e.target.value)} type="number" placeholder={ft === 'deferred' ? "المقدَّم عند التوقيع (ريال)" : "المبلغ الثابت (ريال)"} style={inp} />}
+                            {showPct && <input value={val('fee_percent')} onChange={e=>setC('fee_percent', e.target.value)} type="number" step="0.1" placeholder={ft === 'deferred' ? "النسبة عند الصرف ٪" : "نسبة النجاح ٪"} style={inp} />}
                             {showPct && <input value={val('success_min')} onChange={e=>setC('success_min', e.target.value)} type="number" placeholder="حد أدنى لأتعاب النجاح (اختياري)" style={inp} />}
                             {showPct && (
                               <select value={String(val('success_base') || defBase)} onChange={e=>setC('success_base', e.target.value)} style={{ ...inp, background:'#fff' }}>
@@ -1006,7 +1006,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                               </select>
                             )}
                           </div>
-                          {showPct && (
+                          {(ft === 'percent' || ft === 'both') && (
                             <div style={{ background:'#FCF3F2', border:'1.5px solid #E8C4BF', borderRadius:10, padding:'9px 12px', marginTop:10, color:'#A5281B', fontSize:11.5, lineHeight:1.9, fontWeight:700 }}>
                               ⚠︎ تنبيه نظامي — اقرأه قبل الإصدار.
                               <div style={{ fontWeight:400, marginTop:4 }}>

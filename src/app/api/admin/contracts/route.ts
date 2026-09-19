@@ -15,7 +15,9 @@ function toFields(r: Record<string, unknown>): ContractFields {
     establishmentName: r.establishment_name as string,
     establishmentCr: r.establishment_cr as string,
     feePercent: r.fee_percent as number,
-    feeType: (r.fee_type as FeeType) || 'percent',
+    // ★ ١٩ سبتمبر: صار المؤجَّل هو الأصل — مقدَّمٌ عند التوقيع ونسبةٌ عند
+    //   الصرف. والعقود القديمة تبقى تُقرأ بآليتها المحفوظة في صفّها.
+    feeType: (r.fee_type as FeeType) || 'deferred',
     fixedAmount: r.fixed_amount as number,
     successMin: r.success_min as number,
   };
