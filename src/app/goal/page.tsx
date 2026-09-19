@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { contractHtml } from '@/lib/contractStamp'
 import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -905,14 +906,9 @@ export default function GoalPage() {
                                 يوقّعه — وعليه تقوم عمولة المكتب. وblob عنوانٌ
                                 يقبله المتصفّح كأي صفحة. */}
                             <button onClick={() => {
-                              const safe = String(ctr.body || '')
-                                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                              const html = '<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">'
-                                + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-                                + '<title>عقد الخدمة — مُرضي</title></head>'
-                                + '<body style="font-family:Cairo,system-ui,sans-serif;padding:32px;line-height:2;'
-                                + 'white-space:pre-wrap;color:#12302A;max-width:860px;margin:0 auto">'
-                                + safe + '</body></html>';
+                              // ★ كان يُفتح نصاً خاماً على صفحةٍ بيضاء: بلا ترويسة ولا ختم.
+                              //   ونطلب من العميل أن يوقّع ويختم ونرسل له ما لا يحمل ختمنا.
+                              const html = contractHtml(String(ctr.body || ''));
                               const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
                               const w = window.open(url, '_blank');
                               if (!w) { window.location.href = url; return; }   // ولا يُترك صامتاً إن حُجب
