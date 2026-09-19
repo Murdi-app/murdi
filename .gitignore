@@ -67,3 +67,7 @@ p.js
 q.js
 _backups/
 Claude outputs/
+
+# ملفات العملاء والعقود لا تدخل المستودع — تُبنى وتُسلَّم، ولا تُدفع إلى GitHub
+*.pdf
+*.patch
