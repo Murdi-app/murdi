@@ -64,6 +64,11 @@ export async function GET() {
     if (ask) bits.push('يطلب ' + sar(ask));
     // الطلب الذي يتجاوز الإيراد أضعافاً غالبه خطأ إدخال، ويُقال صراحةً
     const odd = ask > 0 && rev > 0 && ask > rev * 3;
+    // ★ حدٌّ عملي قرّره المالك: دون ثلاثة ملايين إيراداً سنوياً لا تفتح
+    //   جهاتُ التمويل ملفاً جادّاً، فالمكالمة تُوجَّه إلى رفع الجاهزية لا
+    //   إلى التقديم — وتوفيرُ هذه المكالمة على المساعِدة أنفع من إجرائها.
+    const THIN_REVENUE = 3_000_000;
+    const thin = rev > 0 && rev < THIN_REVENUE;
     const phone = String(r.phone || '');
     const wa = phone.replace(/\D/g, '').replace(/^0/, '966');
     return {
@@ -78,12 +83,14 @@ export async function GET() {
       completed: true,
       contacted: Boolean(r.contacted),
       days: Math.max(0, Math.floor((Date.now() - Date.parse(String(r.created_at || ''))) / 86400000)),
-      band: (ask && rev && !odd ? 'ready' : odd ? 'unknown' : 'gap') as 'ready' | 'gap' | 'unknown',
+      band: (odd ? 'unknown' : thin ? 'weak' : ask && rev ? 'ready' : 'gap') as 'ready' | 'gap' | 'weak' | 'unknown',
       temp: 'hot' as const,
       registered: true,
       headline: odd
         ? 'سجّل ويطلب ' + sar(ask) + ' وإيراده ' + sar(rev) + ' — تحقّقي من الرقم قبل أي شيء، فالغالب خطأ إدخال'
-        : (bits.length ? nm + ' — ' + bits.join(' · ') : nm + ' — سجّل ولم يُكمل بياناته'),
+        : thin
+          ? (bits.join(' · ') || nm) + ' — الإيراد دون ثلاثة ملايين، والجهات لا تفتح به ملفاً جادّاً. المكالمة لرفع الجاهزية لا للتقديم'
+          : (bits.length ? nm + ' — ' + bits.join(' · ') : nm + ' — سجّل ولم يُكمل بياناته'),
       opener: 'السلام عليكم' + (r.owner_name ? ' أستاذ ' + String(r.owner_name).split(' ')[0] : '')
         + '، معك ضي من مُرضي للاستشارات المالية. وصلنا تسجيلكم لـ' + nm
         + '، وأتواصل لاستكمال بيانات الملف — دقيقتان لا أكثر.',

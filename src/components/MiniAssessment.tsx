@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { isSaudiMobile } from '@/lib/phone'
 import { useRouter } from 'next/navigation'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
@@ -107,7 +108,8 @@ export default function MiniAssessment() {
     // اسم المنشأة كان لا يُسأل عنه إطلاقاً، فتصل الموظفة قائمةً من الأسماء
     // بلا منشآت — وتفتح المكالمة بسؤالٍ ضعيف: «عن أي شركة نتحدث؟»
     if (biz.trim().length < 2) { setErr('فضلاً اكتب اسم منشأتك'); return }
-    if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
+    // التحقّق من الشكل لا من الطول: «١٢٣٤٥٦٧٨٩» تسع خانات وليس جوالاً
+    if (!isSaudiMobile(phone)) { setErr('رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx'); return }
     setSaving(true)
     try {
       // الهدف يُقرأ بموقع الخيار لا بقيمته: الخيارات الثلاثة الأولى قيمتها 8 جميعاً،
@@ -174,7 +176,7 @@ export default function MiniAssessment() {
               <p className="lp-mini-gate-t">اكتب اسمك وجوالك ليتواصل معك مستشار مُرضي، ويطلعك على نتيجتك التفصيلية وخطوتك التالية نحو رأس المال.</p>
               <input className="lp-mini-input" placeholder="الاسم" value={name} onChange={e => setName(e.target.value)} />
               <input className="lp-mini-input" placeholder="اسم المنشأة" value={biz} onChange={e => setBiz(e.target.value)} />
-              <input className="lp-mini-input" placeholder="رقم الجوال" value={phone} onChange={e => setPhone(e.target.value)} />
+              <input className="lp-mini-input" placeholder="رقم الجوال 05xxxxxxxx" inputMode="tel" maxLength={14} value={phone} onChange={e => setPhone(e.target.value)} />
               {err && <div className="lp-mini-err">{err}</div>}
               <button className="lp-mini-submit" onClick={submit} disabled={saving}>
                 {saving ? 'جارٍ الإرسال…' : 'أبدأ — ليتواصل معي مستشار مُرضي'}

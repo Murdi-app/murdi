@@ -36,9 +36,17 @@ export async function POST(req: Request) {
     const rawPhone = String(body.phone || '').trim()
     // التطبيع يقبل ٥xxxxxxxx و٠٥xxxxxxxx و٩٦٦٥xxxxxxxx والأرقام العربية،
     // ويُخزَّن شكلٌ واحد. وما تعذّر تطبيعه يُحفظ كما كُتب ولا يُرَدّ العميل.
+    // ★ ١٩ سبتمبر — صار الرفض قاطعاً. كان ما تعذّر تطبيعه يُحفظ كما كُتب
+    //   «ولا يُرَدّ العميل»، وهذا رِفقٌ في غير محلّه: صفحةُ هبوطِ إعلانٍ
+    //   مدفوع تقبل «١٢٣٤٥٦٧٨٩» فيُحتسب تحويلاً ناجحاً ويُدفع ثمن النقرة،
+    //   ثم تتصل المساعِدة برقمٍ لا وجود له. ورقمٌ خاطئ ليس عميلاً ناقصاً —
+    //   هو لا شيء. فمن أخطأ في رقمه يُردّ ليصحّحه، وهي ثانيةٌ واحدة عليه.
     const wa = waNumber(rawPhone)
-    const phone = wa ? '0' + wa.slice(3) : rawPhone
-    if (name.length < 2 || (!wa && rawPhone.length < 9)) {
+    if (!wa) {
+      return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx' }, { status: 400 })
+    }
+    const phone = '0' + wa.slice(3)
+    if (name.length < 2) {
       return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 })
     }
     const answers = Array.isArray(body.answers) ? body.answers : []

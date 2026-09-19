@@ -178,9 +178,9 @@ export default function TestPage() {
         {/* شاشة الترحيب */}
         {stage === 'welcome' && (
           <div style={{ textAlign: 'center' }}>
-            <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>اختبار جاهزية رأس المال</h1>
-            <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>هل شركتك جاهزة للحصول على تمويل أو استثمار؟</p>
-            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>اختبار مجاني — 60 ثانية، بلا تسجيل</p>
+            <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>تمويل منشأتك — ابدأ من جاهزيتك</h1>
+            <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>جهات التمويل لا ترفض منشأتك — ترفض ملفاً ناقصاً. اعرف في دقيقة أين تقف، وما الذي ينقصك، وأي الجهات تنطبق عليك شروطها.</p>
+            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٦٠ ثانية · بلا تسجيل</p>
             <button onClick={() => setStage('name')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
           </div>
         )}
@@ -203,7 +203,7 @@ export default function TestPage() {
         {stage === 'phone' && (
           <div>
             <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 10px', textAlign: 'center' }}>رقم جوالك</h2>
-            <p style={{ color: LIGHT, fontSize: 13, textAlign: 'center', margin: '0 0 22px' }}>ليصلك تحليل جاهزيتك ويتواصل معك مستشار مُرضي</p>
+            <p style={{ color: LIGHT, fontSize: 13, textAlign: 'center', margin: '0 0 22px' }}>ليصلك تحليل جاهزيتك للتمويل، ويتواصل معك مستشار مُرضي</p>
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" inputMode="tel"
               style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
             <button onClick={saveInitial} disabled={busy}
@@ -268,7 +268,7 @@ export default function TestPage() {
               أو تحدّث مع مستشار واتساب
             </a>
 
-            <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginTop: 20 }}>مُرضي — منصة جاهزية رأس المال</p>
+            <p style={{ color: GOLD, fontSize: 13, fontWeight: 700, marginTop: 20 }}>مُرضي — جاهزية التمويل للمنشآت</p>
           </div>
         )}
 

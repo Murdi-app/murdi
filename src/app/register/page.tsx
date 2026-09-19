@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { waNumber } from '@/lib/phone'
+import { waNumber, isSaudiMobile } from '@/lib/phone'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
 
@@ -48,15 +48,18 @@ export default function RegisterPage() {
   // لم يُسجَّل بعد»، وكان الزرّ لا يُفتح بدونه — فيقف صاحبُ مشروعٍ جديد أمام
   // زرٍّ ميتٍ لا يعرف سببه، وصفحةُ التسجيل البديلة تقبل غيابه أصلاً.
   const canProceed = form.company_name && form.owner_name
-    && form.phone && form.city && form.sector
+    && isSaudiMobile(form.phone) && form.city && form.sector
 
   async function saveCompany() {
     setSaving(true)
     // «برفية رمز مطبق الابداع» سجّلت رقمها ٥٣٥١٧٥١٦٦ بلا الصفر، فخرج زرّ
     // واتساب في اللوحة يشير إلى رقم لا وجود له. يُطبَّع هنا عند بابه: ما
     // كان جوالاً سعودياً صالحاً يُحفظ بصيغة ٠٥xxxxxxxx، وما عداه كما كتبه.
+    // ★ ١٩ سبتمبر — كان التطبيع اختيارياً: `if (norm)` وإلا بقي ما كُتب
+    //   كما هو فيُحفظ رقمٌ باطل. صار شرطاً في الحفظ لا تجميلاً بعده.
     const norm = waNumber(form.phone)
-    if (norm) form.phone = '0' + norm.slice(3)
+    if (!norm) { setSaving(false); alert('رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx'); return }
+    form.phone = '0' + norm.slice(3)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data: existing } = await supabase

@@ -47,3 +47,20 @@ export function prettyPhone(raw: unknown): string {
   const local = '0' + n.slice(3);
   return local.slice(0, 4) + ' ' + local.slice(4, 7) + ' ' + local.slice(7);
 }
+
+/**
+ * الجوال السعودي بصيغته المحلية `05xxxxxxxx` — أو null إن لم يكن صالحاً.
+ *
+ * ★ أُضيفت في ١٩ سبتمبر بعد أن تبيّن أن التقييم السريع — وهو صفحة هبوط
+ *   إعلان جوجل — يقبل أي تسع خانات: `phone.trim().length < 9` وحدها.
+ *   فكان «١٢٣٤٥٦٧٨٩» يمرّ، وتصل المكالمةُ إلى رقمٍ لا وجود له، ويُحتسب
+ *   الإحالةُ ناجحةً في الحملة ويُدفع ثمنُ نقرةٍ لا تُثمر. والتحقّق موجود
+ *   أصلاً في `waNumber` — لكنه لم يكن يُستدعى عند الإدخال.
+ */
+export function saudiMobile(raw: unknown): string | null {
+  const n = waNumber(raw);
+  return n ? '0' + n.slice(3) : null;
+}
+
+/** هل ما كُتب جوالٌ سعودي صالح؟ */
+export const isSaudiMobile = (raw: unknown): boolean => saudiMobile(raw) !== null;
