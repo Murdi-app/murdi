@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:ads": "node scripts/check-ads-conversion.mjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^149.0.0",
