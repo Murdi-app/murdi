@@ -9,10 +9,25 @@ import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 
 type Q = { q: string; opts: { t: string; v: number }[] }
 
+// ★ ٢٠ سبتمبر — أُعيد ترتيب الأسئلة وأُضيف أوّلها.
+//
+//   كان التقييم **لا يسأل عن الإيراد إطلاقاً**: يسأل عن نموّه وعن انتظام
+//   الربح، ولا يسأل عن حجمه. فمنشأةٌ إيرادها خمسون ألفاً تمرّ بالأسئلة
+//   الثمانية وتخرج بدرجةٍ محترمة وتترك رقمها، وتُحتسب إحالةً ناجحة.
+//   وسجلٌّ تجاري عمره عشرة أشهر يمرّ كذلك — وأغلب الجهات لا تفتح ملفاً
+//   دون سنتين.
+//
+//   فصار الإيراد والعمر **أول سؤالين**، وهما البوّابة: من لم يبلغ الحدّ
+//   الأدنى لا يُكمل ولا يُطلب رقمه ولا تُطلق له إحالة. وهذا يبدو خسارةً
+//   في العدد وهو ربحٌ في الأمر كلّه: العدد الذي نبلّغ به جوجل هو ما
+//   تتعلّم عليه، فكل ليدٍ صغير نُبلّغ به يشتري لنا عشرةً مثله.
 const QUESTIONS: Q[] = [
+  { q: 'كم إيراد منشأتك السنوي تقريباً؟', opts: [
+    { t: 'أقل من مليون ريال', v: 2 }, { t: '1–3 مليون', v: 7 },
+    { t: '3–10 مليون', v: 11 }, { t: 'أكثر من 10 مليون', v: 13 } ] },
   { q: 'منشأتك تعمل منذ كم؟', opts: [
-    { t: 'أقل من سنة', v: 4 }, { t: '1–3 سنوات', v: 8 },
-    { t: '3–7 سنوات', v: 11 }, { t: 'أكثر من 7 سنوات', v: 13 } ] },
+    { t: 'أقل من سنة', v: 2 }, { t: '1–2 سنة', v: 7 },
+    { t: '2–5 سنوات', v: 11 }, { t: 'أكثر من 5 سنوات', v: 13 } ] },
   { q: 'هل لديك قوائم مالية حديثة؟', opts: [
     { t: 'لا يوجد', v: 2 }, { t: 'تقريبية/داخلية', v: 7 },
     { t: 'مدققة لسنة', v: 11 }, { t: 'مدققة 3 سنوات', v: 13 } ] },
@@ -25,9 +40,6 @@ const QUESTIONS: Q[] = [
   { q: 'وضوح فصل الشركة عن مالكها مالياً؟', opts: [
     { t: 'مختلط تماماً', v: 2 }, { t: 'جزئي', v: 6 },
     { t: 'منفصل غالباً', v: 9 }, { t: 'منفصل تماماً', v: 12 } ] },
-  { q: 'هل لديك حوكمة أو هيكل إداري واضح؟', opts: [
-    { t: 'لا', v: 2 }, { t: 'بدائي', v: 6 },
-    { t: 'منظّم', v: 9 }, { t: 'حوكمة كاملة', v: 11 } ] },
   { q: 'مستوى الديون مقارنة بحجم نشاطك؟', opts: [
     { t: 'مرتفع جداً', v: 3 }, { t: 'متوسط', v: 7 },
     { t: 'منخفض', v: 10 }, { t: 'شبه معدوم', v: 12 } ] },
@@ -35,6 +47,22 @@ const QUESTIONS: Q[] = [
     { t: 'تمويل', v: 8 }, { t: 'استثمار/شريك', v: 8 },
     { t: 'طرح مستقبلي', v: 8 }, { t: 'ما زلت أستكشف', v: 6 } ] },
 ]
+
+/** مواضع السؤالين البوّابيّين وخياراتهما المُسقِطة */
+const Q_REVENUE = 0
+const Q_YEARS = 1
+
+/**
+ * وزن الإحالة عند جوجل — مشتقٌّ من الإيراد والعمر.
+ * صفرٌ يعني: لا تُطلق إحالة أصلاً، فلا نُعلّم الحملة على هذا النوع.
+ */
+export function leadWeight(revIdx: number, yearIdx: number): number {
+  if (revIdx <= 0 || yearIdx <= 0) return 0          // دون الحدّ الأدنى
+  if (revIdx >= 3 && yearIdx >= 2) return 100        // عشرة ملايين فأكثر، سنتان فأكثر
+  if (revIdx >= 2 && yearIdx >= 2) return 60         // ثلاثة إلى عشرة
+  if (revIdx >= 2) return 30
+  return 15                                          // مليون إلى ثلاثة — يُقبل بوزنٍ خفيف
+}
 
 const MAX = QUESTIONS.reduce((s, q) => s + Math.max(...q.opts.map(o => o.v)), 0)
 
@@ -59,6 +87,8 @@ export default function MiniAssessment() {
   const [err, setErr] = useState('')
   /** حارس الإحالة الناجحة — لا تُطلق مرتين لو ضُغط الزرّ مرّتين */
   const converted = useRef(false)
+  /** دون الحدّ الأدنى — يُوقَف قبل طلب الرقم ولا تُطلق له إحالة */
+  const [blocked, setBlocked] = useState(false)
 
   // ═══ الموقع يُحفظ إلى جانب القيمة ═══
   // خيارات السؤال الأخير الثلاثة الأولى قيمتها 8 جميعاً — تمويل واستثمار
@@ -71,11 +101,21 @@ export default function MiniAssessment() {
 
   const pick = (val: number, idx: number) => {
     const next = [...ans, val]
+    const nextPicks = [...picks, idx]
     setAns(next)
-    setPicks((p) => [...p, idx])
+    setPicks(nextPicks)
+    // البوّابة: بعد سؤالَي الإيراد والعمر، من لم يبلغ الحدّ الأدنى يُوقَف
+    // هنا — قبل أن يُطلب رقمه وقبل أن تُطلق إحالة. ولا يُحفظ صفّاً في
+    // القاعدة، فلا يظهر في قائمة مكالمات المكتب ولا يُشغل وقت أحد.
+    if (step === Q_YEARS && leadWeight(nextPicks[Q_REVENUE] ?? -1, idx) === 0) {
+      setBlocked(true)
+      return
+    }
     if (step + 1 < QUESTIONS.length) setStep(step + 1)
     else setStep(QUESTIONS.length)
   }
+
+  const weight = leadWeight(picks[Q_REVENUE] ?? -1, picks[Q_YEARS] ?? -1)
 
   const score = ans.reduce((s, val) => s + val, 0)
   const pct = Math.round((score / MAX) * 100)
@@ -114,7 +154,7 @@ export default function MiniAssessment() {
     try {
       // الهدف يُقرأ بموقع الخيار لا بقيمته: الخيارات الثلاثة الأولى قيمتها 8 جميعاً،
       // فكان indexOf يعيد صفراً دائماً ويُسجَّل كل ليد «تمويل» — بمن فيهم طالبو الاستثمار والطرح.
-      const goalIdx = picks[7] ?? -1
+      const goalIdx = picks[QUESTIONS.length - 1] ?? -1
       const track = ['تمويل', 'استثمار', 'طرح', 'استكشاف'][goalIdx] || ''
       // ★ يمرّ بـ`/api/mini-save` لا بالكتابة المباشرة في القاعدة — ١٨ سبتمبر.
       //   كان الإدراج هنا مباشراً بمفتاح المتصفح، فيتخطّى المسار الذي يُطبّع
@@ -135,9 +175,11 @@ export default function MiniAssessment() {
       //   تسجيلات في يومين وبقي عدّاد جوجل صفراً، فلا تتعلّم الحملة على
       //   شيء وتُنفق بلا إشارة. والليد هو الليد — اسمٌ وجوالٌ ومنشأة.
       // ★ وبعد الحفظ لا قبله: لا تُعدّ إحالةً ناجحة إلا ما دخل القاعدة فعلاً.
+      // ★ الإحالة تحمل وزنها. ومن كان وزنه صفراً لا يصل إلى هنا أصلاً
+      //   (أُوقف عند البوّابة)، والحارس في fireConversion طبقةٌ ثانية.
       if (!converted.current) {
         converted.current = true
-        fireConversion(LEAD_SUBMITTED, { phone })
+        fireConversion(LEAD_SUBMITTED, { phone }, { value: weight })
       }
       setDone(true)
     } catch {
@@ -152,7 +194,31 @@ export default function MiniAssessment() {
         <h2>كم شركتك جاهزة لرأس المال؟</h2>
         <p className="lp-mini-sub">أجب عن أسئلة سريعة واعرف مؤشرك المبدئي فوراً، ثم سجّل للتقييم الكامل ومطابقة الجهات.</p>
 
-        {step < QUESTIONS.length && (
+        {blocked && (
+          <div className="lp-mini-done" style={{ textAlign: 'right' }}>
+            <h3 style={{ color: '#1A3D34', fontWeight: 900, fontSize: 19, marginBottom: 10 }}>
+              منشأتك لم تبلغ بعدُ حدَّ ما تفتح له جهاتُ التمويل ملفاً
+            </h3>
+            <p style={{ color: '#5E7C73', fontSize: 14, lineHeight: 2, marginBottom: 12 }}>
+              ونقولها لك صراحةً بدل أن نأخذ وقتك: أغلب جهات التمويل في السعودية تشترط
+              <b> سنتين تشغيلاً </b> و<b> إيراداً سنوياً يتجاوز المليون</b> قبل أن تبدأ الدراسة.
+              وأي مكتبٍ يَعِدك اليوم بغير ذلك يبيعك أملاً لا ملفاً.
+            </p>
+            <div style={{ background: '#F4FAF7', borderRight: '4px solid #2E9E7B', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+              <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5, marginBottom: 6 }}>ما يرفع ملفك من اليوم</div>
+              <div style={{ color: '#5E7C73', fontSize: 13, lineHeight: 2 }}>
+                افصل حساب المنشأة عن حسابك الشخصي تماماً · أصدر فواتيرك نظامياً عبر نظامٍ معتمد ·
+                جهّز قوائم مالية ولو داخلية لكل سنة · واحتفظ بكشف حسابٍ بنكي لنشاطك وحده.
+                <br />هذه الأربعة هي التي تُقرأ في ملفك بعد سنة، وتصنع فرقاً أكبر من أي شيء آخر.
+              </div>
+            </div>
+            <p style={{ color: '#8AA49B', fontSize: 12.5, lineHeight: 1.9 }}>
+              ومتى بلغت المنشأة سنتين وإيراداً فوق المليون — ارجع إلينا وملفك يكون قد صار جاهزاً للقراءة.
+            </p>
+          </div>
+        )}
+
+        {!blocked && step < QUESTIONS.length && (
           <div className="lp-mini-card">
             <div className="lp-mini-progress">
               <div className="lp-mini-bar" style={{ width: `${(step / QUESTIONS.length) * 100}%` }} />
@@ -167,7 +233,7 @@ export default function MiniAssessment() {
           </div>
         )}
 
-        {step === QUESTIONS.length && !done && (
+        {!blocked && step === QUESTIONS.length && !done && (
           <div className="lp-mini-card">
             <div className="lp-mini-score" style={{ color: v.color }}>{pct}<span>/100</span></div>
             <div className="lp-mini-verdict" style={{ background: v.color }}>{v.label}</div>

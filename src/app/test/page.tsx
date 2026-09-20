@@ -179,8 +179,8 @@ export default function TestPage() {
         {stage === 'welcome' && (
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>تمويل منشأتك — ابدأ من جاهزيتك</h1>
-            <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>جهات التمويل لا ترفض منشأتك — ترفض ملفاً ناقصاً. اعرف في دقيقة أين تقف، وما الذي ينقصك، وأي الجهات تنطبق عليك شروطها.</p>
-            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٦٠ ثانية · بلا تسجيل</p>
+            <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>للمنشآت القائمة من سنتين فأكثر بإيراد يتجاوز المليون. جهات التمويل لا ترفض منشأتك — ترفض ملفاً ناقصاً. اعرف في دقيقة أين تقف، وما الذي ينقصك، وأي الجهات تنطبق عليك شروطها.</p>
+            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٦٠ ثانية · بلا تسجيل · تمويل من ٥٠٠ ألف إلى ١٠ ملايين</p>
             <button onClick={() => setStage('name')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
           </div>
         )}

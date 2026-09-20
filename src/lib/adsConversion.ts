@@ -34,6 +34,22 @@ export const LEAD_SUBMITTED = `${ADS_ID}/PWyPCLb8s_YcENy9_uIc`;
 /** ما نعرفه عن صاحب الإحالة وقت إطلاقها — كلّه اختياري */
 export type LeadIdentity = { phone?: unknown; email?: unknown };
 
+/**
+ * ★ قيمة الإحالة (٢٠ سبتمبر) — وهذه أهمّ إضافة في هذا الملف.
+ *
+ * كانت كل إحالةٍ تُرسَل بلا قيمة، فتساوي عند جوجل منشأةٌ إيرادها خمسون
+ * ألفاً ومنشأةٌ إيرادها عشرون مليوناً. والمزايدة الذكية تُحسّن ما يُقاس،
+ * فكانت تتعلّم أن تجلب **الأكثر عدداً** — وهم أصغر المنشآت وأكثرها
+ * يأساً وأقلّها قابليةً للتمويل. أي أننا كنّا ندفع لتدريب الخوارزمية على
+ * النوع الخطأ، ثم نعجب من نوع من يصلنا.
+ *
+ * فصارت الإحالة تحمل قيمةً مشتقّةً من إيراد المنشأة وعمرها. والقيمة ليست
+ * ريالاً حقيقياً — هي وزنٌ نسبي يقول لجوجل: هذا يساوي خمسة أضعاف ذاك.
+ * ومن لا يبلغ الحدّ الأدنى لا تُطلق له إحالةٌ أصلاً (القيمة صفر)، فلا
+ * يدخل التعلّم من بابه.
+ */
+export type LeadValue = { value: number; currency?: string };
+
 /** الجوال بصيغة E.164 (`+9665…`) كما تشترطه الإحالات المحسَّنة */
 function e164(raw: unknown): string | null {
   const n = waNumber(raw);
@@ -68,7 +84,9 @@ function whenTagReady(fn: () => void, tries = 0): void {
  * `who` اختياري: بدونه يعمل كما كان، ومعه تكتمل الإحالة المحسَّنة
  * فيرتفع مطابقةُ النقرة بالعميل ويخرج الإجراء من حالة «الإعداد الخاطئ».
  */
-export function fireConversion(sendTo: string, who?: LeadIdentity): void {
+export function fireConversion(sendTo: string, who?: LeadIdentity, val?: LeadValue): void {
+  // قيمةٌ صفرٌ أو سالبة تعني: هذا ليس عميلاً نريد أمثاله — فلا يُبلَّغ أصلاً
+  if (val && !(val.value > 0)) return;
   whenTagReady(() => {
     const g = window.gtag;
     if (typeof g !== 'function') return;
@@ -80,6 +98,11 @@ export function fireConversion(sendTo: string, who?: LeadIdentity): void {
     if (email) ud.email = email;
     if (Object.keys(ud).length > 0) g('set', 'user_data', ud);
 
-    g('event', 'conversion', { send_to: sendTo });
+    const payload: Record<string, unknown> = { send_to: sendTo };
+    if (val && val.value > 0) {
+      payload.value = val.value;
+      payload.currency = val.currency || 'SAR';
+    }
+    g('event', 'conversion', payload);
   });
 }
