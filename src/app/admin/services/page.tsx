@@ -528,8 +528,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       id: c.id,
       client_name: pick('client_name'), client_id_number: pick('client_id_number'),
       establishment_name: pick('establishment_name'), establishment_cr: pick('establishment_cr'),
-      fee_type: c.status === 'draft' ? 'fixed' : (pick('fee_type') || 'fixed'),
-      fee_percent: c.status === 'draft' ? null : numOrNull('fee_percent'),
+      fee_type: pick('fee_type') || 'deferred',
+      fee_percent: numOrNull('fee_percent'),
       fixed_amount: numOrNull('fixed_amount'),
       success_min: numOrNull('success_min'),
       success_base: pick('success_base') || null,
@@ -981,40 +981,48 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       <input value={val('establishment_cr')} onChange={e=>setC('establishment_cr', e.target.value)} placeholder="السجل التجاري" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                     </div>
                     {(() => {
-                      const isDraft = c.status === 'draft'
-                      const ft = isDraft ? 'fixed' : String(val('fee_type') || 'fixed')
-                      const showPct = !isDraft && (ft === 'percent' || ft === 'both' || ft === 'deferred')
-                      const showFix = isDraft || ft === 'fixed' || ft === 'both' || ft === 'deferred'
+                      const ft = String(val('fee_type') || 'deferred')
+                      const showPct = ft === 'percent' || ft === 'both' || ft === 'deferred'
+                      const showFix = ft === 'fixed' || ft === 'both' || ft === 'deferred'
                       const BASE: Record<string, string> = { financing: 'التمويل المنفَّذ', deal: 'قيمة الصفقة', saving: 'الوفر المتحقق', round: 'قيمة الجولة' }
                       const defBase = c.contract_type === 'acquisition' ? 'deal' : c.contract_type === 'investment' ? 'round' : 'financing'
                       const inp = { border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 } as const
                       return (
                         <div style={{ background:'#FBFAF5', border:'1px solid #EAD9A8', borderRadius:12, padding:'12px 14px', marginBottom:10 }}>
-                          <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>
-                            {isDraft ? 'الأتعاب — مبلغ ثابت مقابل خدمة تُسلَّم' : 'آلية الأتعاب في العقد القائم — للعرض فقط'}
+                          <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:12.5, marginBottom:8 }}>آلية الأتعاب — أنت تحددها، والعقد يُكتب منها</div>
+                          <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' }}>
+                            {([['deferred','مقدَّم + نسبة عند الصرف'],['fixed','مبلغ ثابت فقط'],['both','ثابت + نسبة نجاح'],['percent','نسبة نجاح فقط']] as const).map(([k, lb]) => (
+                              <button key={k} onClick={()=>setC('fee_type', k)} style={{ padding:'7px 14px', borderRadius:30, cursor:'pointer', fontFamily:'Cairo', fontWeight:900, fontSize:12,
+                                background: ft === k ? '#1A3D34' : '#fff', color: ft === k ? '#fff' : '#6B8A80', border: ft === k ? '1.5px solid #1A3D34' : '1.5px solid #EAF2EE' }}>{lb}</button>
+                            ))}
                           </div>
                           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                            {showFix && <input value={val('fixed_amount')} onChange={e=>setC('fixed_amount', e.target.value)} disabled={!isDraft} type="number" placeholder="المبلغ الثابت (ريال)" style={inp} />}
-                            {showPct && <input value={val('fee_percent')} disabled type="number" step="0.1" placeholder="نسبة العقد القائم ٪" style={inp} />}
-                            {showPct && <input value={val('success_min')} disabled type="number" placeholder="حد أدنى في العقد القائم" style={inp} />}
+                            {showFix && <input value={val('fixed_amount')} onChange={e=>setC('fixed_amount', e.target.value)} type="number" placeholder={ft === 'deferred' ? "المقدَّم عند التوقيع (ريال)" : "المبلغ الثابت (ريال)"} style={inp} />}
+                            {showPct && <input value={val('fee_percent')} onChange={e=>setC('fee_percent', e.target.value)} type="number" step="0.1" placeholder={ft === 'deferred' ? "النسبة عند الصرف ٪" : "نسبة النجاح ٪"} style={inp} />}
+                            {showPct && <input value={val('success_min')} onChange={e=>setC('success_min', e.target.value)} type="number" placeholder="حد أدنى لأتعاب النجاح (اختياري)" style={inp} />}
                             {showPct && (
-                              <select value={String(val('success_base') || defBase)} disabled style={{ ...inp, background:'#fff' }}>
+                              <select value={String(val('success_base') || defBase)} onChange={e=>setC('success_base', e.target.value)} style={{ ...inp, background:'#fff' }}>
                                 {Object.entries(BASE).map(([k, lb]) => <option key={k} value={k}>النسبة على: {lb}</option>)}
                               </select>
                             )}
                           </div>
-                          {!isDraft && (ft === 'percent' || ft === 'both' || ft === 'deferred') && (
+                          {(ft === 'percent' || ft === 'both') && (
                             <div style={{ background:'#FCF3F2', border:'1.5px solid #E8C4BF', borderRadius:10, padding:'9px 12px', marginTop:10, color:'#A5281B', fontSize:11.5, lineHeight:1.9, fontWeight:700 }}>
                               ⚠︎ تنبيه نظامي — اقرأه قبل الإصدار.
                               <div style={{ fontWeight:400, marginTop:4 }}>
-                                هذا عقد قائم بصيغة قديمة، ولذلك تُعرض أرقامه كما وُقّعت ولا تُعدّل من هنا.
-                                العقود الجديدة تُصدر برسوم ثابتة فقط وفق الموقف النظامي المعتمد للمنصة.
+                                الأتعاب المشروطة بالنتيجة هي التوصيف الاقتصادي للوساطة لا للاستشارة.
+                                وفي عقود <b>التمويل</b> القيد مطبَّق في الكود: يُقسر العقد إلى الرسم الثابت مهما اخترتَ هنا،
+                                لأن ربط الأتعاب بصرف التمويل يقع في نشاط «الوساطة الرقمية لجهات التمويل» المرخَّص من ساما.
+                                أما في صفقات <b>البيع والاستحواذ</b> فالنسبة على قيمة الصفقة قد تقع في نشاط «الترتيب»
+                                لدى هيئة السوق المالية — والمخرج الآمن هناك أن تكون <b>طرفاً في الصفقة</b> لا وسيطاً بأجر.
+                                لا تُصدر عقداً بنسبةٍ على صفقة إلا بعد رأي محامٍ سعودي على الحالة بعينها.
                               </div>
                             </div>
                           )}
                           <div style={{ color:'#6B8A80', fontSize:11.5, lineHeight:1.8, marginTop:8 }}>
-                            {isDraft ? 'المبلغ مقابل عمل استشاري محدد يُنفّذ ويُسلّم، ولا يرتبط بالموافقة أو الصرف أو قيمة الصفقة.'
-                              : 'العقد القائم محفوظ بصيغته التاريخية ولا يعاد توليده عند تحديث حالته.'}
+                            {ft === 'both' ? 'الثابت يُستحق عند التوقيع ولا يُخصم من نسبة النجاح — ويُنص على ذلك في العقد صراحةً.'
+                              : ft === 'fixed' ? 'مبلغ واحد عند التوقيع، وينص العقد على ألا نسبة نجاح فيه.'
+                              : 'لا مقدّم — لا تُستحق الأتعاب إلا بعد وصول التمويل أو إتمام الصفقة.'}
                           </div>
                         </div>
                       )
@@ -1024,7 +1032,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                     <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                       <button onClick={() => saveContract(c)} disabled={busy === r.id} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'8px 18px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:12.5, cursor:'pointer' }}>حفظ المسودّة</button>
                       <button onClick={() => saveContract(c, 'issued')} disabled={busy === r.id} style={{ background:'#2E9E7B', color:'#fff', border:'none', padding:'8px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>📤 إصدار العقد للعميل</button>
-                      {(c.status === 'signed' || c.status === 'issued') && <button onClick={() => saveContract(c, 'completed')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>🏆 إتمام الخدمة</button>}
+                      {(c.status === 'signed' || c.status === 'issued') && <button onClick={() => saveContract(c, 'completed')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>🏆 إتمام (استحقاق العمولة)</button>}
                     </div>
                     {c.signed_file_url && <a href={'/api/contract-file?redirect=1&id=' + c.id} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:8, color:'#2E9E7B', fontWeight:700, fontSize:12.5 }}>📎 عرض النسخة الموقّعة من العميل</a>}
                   </div>

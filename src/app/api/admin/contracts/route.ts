@@ -15,8 +15,9 @@ function toFields(r: Record<string, unknown>): ContractFields {
     establishmentName: r.establishment_name as string,
     establishmentCr: r.establishment_cr as string,
     feePercent: r.fee_percent as number,
-    // العقود القديمة تُقرأ بآليتها المحفوظة، والجديدة تبدأ ثابتة.
-    feeType: (r.fee_type as FeeType) || 'fixed',
+    // ★ ١٩ سبتمبر: صار المؤجَّل هو الأصل — مقدَّمٌ عند التوقيع ونسبةٌ عند
+    //   الصرف. والعقود القديمة تبقى تُقرأ بآليتها المحفوظة في صفّها.
+    feeType: (r.fee_type as FeeType) || 'deferred',
     fixedAmount: r.fixed_amount as number,
     successMin: r.success_min as number,
   };
@@ -80,10 +81,11 @@ export async function POST(req: Request) {
   };
 
   // آلية الأتعاب المبدئية.
-  // كانت تُقرأ من أعمدة في طلب الخدمة لا يكتبها أحد، فتخرج المسودّة بصيغة
-  // تختلف عن السعر المعلن. المصدر الآن هو سعر الطلب نفسه، كرسم ثابت.
+  // كانت تُقرأ من أعمدة في طلب الخدمة لا يكتبها أحد، فتخرج كل مسودّة «نسبة نجاح بلا مقدّم» —
+  // على خدمة مقدّمها معلن. فالمصدر الصحيح هو سجل الأسعار نفسه: إن كان للخدمة سعر معلن،
+  // فهو مقدّم مستحق، ومعه نسبة نجاح إن نصّ عليها السجل.
   const BASE_BY_TYPE: Record<string, string> = { funding: 'financing', investment: 'round', acquisition: 'deal' };
-  let seed: Record<string, unknown> = { fee_type: 'fixed', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
+  let seed: Record<string, unknown> = { fee_type: 'percent', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
 
   if (serviceRequestId) {
     const { data: sr } = await admin.from('service_requests')
@@ -94,12 +96,16 @@ export async function POST(req: Request) {
       // المقدّم: ما سُعّر به الطلب فعلاً، وإلا السعر المعلن للخدمة في السجل
       const listed = typeof com?.price === 'number' ? com.price : null;
       const upfront = Number(sr.price ?? sr.quoted_price ?? listed ?? 0) || null;
+      // نسبة نجاح يذكرها السجل صراحةً في خانة successFee
+      const hasSuccess = Boolean(com?.successFee);
+      const inferred = upfront && hasSuccess ? 'both' : upfront ? 'fixed' : 'percent';
+
       seed = {
-        fee_type: 'fixed',
-        fee_percent: null,
-        success_min: null,
+        fee_type: sr.fee_type || inferred,
+        fee_percent: sr.success_pct ?? null,
+        success_min: sr.success_min ?? null,
         success_base: sr.success_base || BASE_BY_TYPE[String(contractType)] || 'financing',
-        fixed_amount: upfront,
+        fixed_amount: (sr.fee_type ? (sr.fee_type === 'fixed' || sr.fee_type === 'both') : inferred !== 'percent') ? upfront : null,
       };
     }
   }
@@ -132,15 +138,10 @@ export async function PATCH(req: Request) {
   // إعادة توليد نص العقد بالحقول المعبأة (الحقول هي المصدر، لا النص)
   // السلسلة مكتوبة حرفياً لا مبنيةً من مصفوفة — وإلا فقد Supabase استنتاج النوع وعاد GenericStringError
   const { data: existingRaw } = await admin.from('contracts')
-    .select('contract_type, status, client_name, client_id_number, establishment_name, establishment_cr, fee_percent, deal_value, fee_type, fixed_amount, success_min, success_base')
+    .select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent, deal_value, fee_type, fixed_amount, success_min, success_base')
     .eq('id', body.id).single();
   const existing = existingRaw as unknown as Record<string, unknown> | null;
-  // العقد بعد إصداره وثيقة تاريخية: تحديث الحالة لا يعيد كتابة أطرافه أو
-  // أتعابه. هذا يحمي العقود الموقّعة القديمة عند الضغط على «إتمام».
-  if (existing && String(existing.status || 'draft') !== 'draft') {
-    for (const k of FEE_COLS) delete updates[k];
-  }
-  if (existing && String(existing.status || 'draft') === 'draft') {
+  if (existing) {
     const merged: Record<string, unknown> = { ...existing };
     for (const k of FEE_COLS) if (updates[k] !== undefined) merged[k] = updates[k];
 
@@ -148,11 +149,16 @@ export async function PATCH(req: Request) {
     // كان بالإمكان كتابة مبلغ مقدّم بينما النوع «نسبة»، فيبقى الرقم في الصفّ
     // والنصّ يقول «ولا يستحق الطرف الأول أي مبلغ مقدّم» — فيوقّع العميل على نفي ما ستطالب به.
     // القاعدة: اختيارُك الصريح للنوع يحكم ويمسح ما ينفيه؛ فإن لم تختر، تحكم الأرقام.
-    // كل عقد جديد يصدر برسم ثابت. الأنواع القديمة تبقى للقراءة فقط ولا
-    // يجوز أن تعود من الشاشة إلى عقد جديد بالخطأ.
-    merged.fee_type = 'fixed';
-    merged.fee_percent = null;
-    merged.success_min = null;
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+    if (body.fee_type !== undefined) {
+      const ft = String(merged.fee_type || 'percent');
+      if (ft === 'percent') merged.fixed_amount = null;
+      if (ft === 'fixed')   merged.fee_percent  = null;
+    } else {
+      const hasFixed = n(merged.fixed_amount) > 0;
+      const hasPct   = n(merged.fee_percent)  > 0;
+      merged.fee_type = hasFixed && hasPct ? 'both' : hasFixed ? 'fixed' : 'percent';
+    }
     // ما استقرّ عليه المنطق يُحفظ في الصفّ لا في النص وحده، وإلا عاد التناقض في أول تحرير
     updates.fee_type     = merged.fee_type;
     updates.fixed_amount = merged.fixed_amount ?? null;
