@@ -428,7 +428,7 @@ export default function FundingResult() {
               </div>
               <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
                 نبني ملفك بالعربية والإنجليزية بلغة محلل الائتمان، ونخاطب الجهات
-                <span style={{ color: '#C9A84C' }}> باسمك</span>، ونتابع الردود ونفاوض على الشروط حتى قرار نهائي.
+                <span style={{ color: '#C9A84C' }}> بتكليف خطّي منك</span>، ونتابع الردود ونشرح الشروط حتى قرار نهائي.
                 أنت لا تدور على أحد — نحن ندور عنك.
                 <br /><span style={{ color: '#C9A84C' }}>ويُخصم منها الحكم الائتماني بالكامل إن أكملته خلال ٣٠ يوماً.</span>
               </p>

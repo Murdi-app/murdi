@@ -48,6 +48,7 @@ export default function ApprovalsPage() {
   )
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [authorized, setAuthorized] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
   const [search, setSearch] = useState('')
@@ -97,19 +98,25 @@ export default function ApprovalsPage() {
     setChatBusy(null)
   }
 
-  useEffect(() => { init() }, [])
-
   async function init() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/auth/login'); return }
-    if (user.email !== ADMIN_EMAIL) { setAuthorized(false); setLoading(false); return }
-    setAuthorized(true)
-    await loadCompanies()
-    await loadConsultations()
-    await loadQA()
-    await loadMatchReqs()
-    setLoading(false)
+    setLoadError('')
+    setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth/login'); return }
+      if (user.email !== ADMIN_EMAIL) { setAuthorized(false); return }
+      setAuthorized(true)
+      const work = Promise.all([loadCompanies(), loadConsultations(), loadQA(), loadMatchReqs()])
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
+      await Promise.race([work, timeout])
+    } catch {
+      setLoadError('تعذّر تحميل بعض بيانات الاعتمادات. أعد المحاولة، وإن تكرر الخطأ راجع اتصال قاعدة البيانات.')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  useEffect(() => { void init() }, [])
 
   // واتساب لا يُفتح إلا داخل نقرة المستخدم نفسها — والمتصفح يحجب أي نافذة
   // تُفتح بعد await. فيُبنى الرابط هنا من بيانات الطلب التي بين أيدينا،
@@ -279,6 +286,13 @@ export default function ApprovalsPage() {
       <div style={{ fontSize:40 }}>🔒</div>
       <div style={{ color:'#1A3D34', fontSize:18, fontWeight:700 }}>غير مصرّح</div>
       <div style={{ color:'#6B8A80', fontSize:14 }}>هذه الصفحة مخصصة لإدارة Murdi فقط</div>
+    </div>
+  )
+
+  if (loadError) return (
+    <div dir="rtl" style={{ minHeight:'100vh', background:'#FBFCFB', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:14, fontFamily:'Cairo,sans-serif', padding:24 }}>
+      <div style={{ color:'#A5281B', fontSize:17, fontWeight:800, textAlign:'center' }}>{loadError}</div>
+      <button onClick={() => void init()} style={{ background:'#1A3D34', color:'#fff', border:0, borderRadius:24, padding:'10px 24px', fontFamily:'Cairo', fontWeight:800, cursor:'pointer' }}>إعادة المحاولة</button>
     </div>
   )
 
