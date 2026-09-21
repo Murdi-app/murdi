@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
+import { confirmPayment } from '@/lib/confirmPayment';
 
 // مكتب الطلبات — شاشة المساعِدة.
 //
@@ -66,9 +67,34 @@ export async function GET() {
   //   والسعر والمُخرَج المولَّد عمودان في هذا الجدول نفسه.
   const { data: reqs } = await sb
     .from('service_requests')
-    .select('id, company_id, service_title, service_category, status, client_note, track, created_at, paid_at')
+    .select('id, company_id, service_title, service_category, status, client_note, track, created_at, paid_at, price, quoted_price')
     .order('created_at', { ascending: false })
     .limit(120);
+
+  // ★ قبول الخدمات للموظفتين (٢١ سبتمبر): صار كل طلبٍ من الكتالوج يُسعَّر
+  //   آلياً فيقف «بانتظار الدفع» ولا يمرّ بـ«ينتظر كلمتك» أبداً — فبقي زرّا
+  //   الاعتماد والرفض بلا طلبٍ واحدٍ يقعان عليه. فصار المسعَّر يُعرض عليهما:
+  //   يُرفض إن لم يكن جادّاً، ويُقبل بتأكيد التحويل حين يصل إيصالُه.
+  //   والسعر يخرج للمسعَّر وحده — هو ما يراه العميل نفسه على شاشته، ولا بدّ
+  //   منه لمطابقة التحويل. ونِسب الأتعاب والعقود لا تزال لا تغادر الخادم.
+  const pricedIds = (reqs || []).filter((r) => r.status === 'priced').map((r) => String(r.id));
+  const { data: pend } = pricedIds.length
+    ? await sb.from('payments')
+        .select('id, service_request_id, amount_sar, method, transfer_receipt_url, created_at')
+        .in('service_request_id', pricedIds)
+        .eq('status', 'awaiting_confirmation')
+    : { data: [] as Array<Record<string, unknown>> };
+  const payBy = new Map<string, Record<string, unknown>>();
+  for (const p of (pend || [])) {
+    let receipt = (p.transfer_receipt_url as string | null) || null;
+    if (receipt && !/^https?:/i.test(receipt)) {
+      const { data: sg } = await sb.storage.from('receipts').createSignedUrl(receipt, 60 * 60);
+      receipt = sg?.signedUrl || null;
+    }
+    payBy.set(String(p.service_request_id), {
+      id: p.id, amount_sar: p.amount_sar, method: p.method, receipt_url: receipt, created_at: p.created_at,
+    });
+  }
 
   const { data: matches } = await sb
     .from('match_requests')
@@ -95,7 +121,16 @@ export async function GET() {
 
   return NextResponse.json({
     role: who.role,
-    requests: (reqs || []).map((r) => ({ ...r, company: byId.get(String(r.company_id)) || null })),
+    requests: (reqs || []).map((r) => {
+      const { price, quoted_price, ...rest } = r as Record<string, unknown>;
+      const isPriced = r.status === 'priced';
+      return {
+        ...rest,
+        price: isPriced ? (price ?? quoted_price ?? null) : null,
+        payment: isPriced ? (payBy.get(String(r.id)) || null) : null,
+        company: byId.get(String(r.company_id)) || null,
+      };
+    }),
     matches: (matches || []).map((r) => ({ ...r, company: byId.get(String(r.company_id)) || null })),
   });
 }
@@ -125,22 +160,53 @@ export async function PATCH(req: Request) {
       .eq('id', id)
       .maybeSingle();
     if (!r) return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
-
-    // ★ لا يُعتمد إلا ما ينتظر. وبدون هذا الشرط تُعيد ضغطةٌ متأخرة طلباً
-    //   مُسلَّماً إلى «قيد التجهيز»، فيبدو العمل غير منجزٍ وهو منجز.
-    if (String(r.status) !== AWAITING) {
-      return NextResponse.json({ error: 'هذا الطلب لم يعد بانتظار الاعتماد — حالته: ' + r.status }, { status: 409 });
-    }
-
     companyId = String(r.company_id || '');
-    const { error: upErr } = await sb
-      .from('service_requests')
-      .update({ status: approve ? 'in_progress' : 'rejected', updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('status', AWAITING);
-    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+    const st = String(r.status);
 
-    headline = (approve ? 'اعتُمد طلب خدمة' : 'رُفض طلب خدمة') + ' — ' + String(r.service_title || '');
+    if (st === 'priced') {
+      // المسعَّر: قبولُه = تأكيدُ أن العميل حوّل ثمنه. فلا يُقبل بلا تحويلٍ
+      // وصل إيصالُه — وإلا بدأ المكتب عملاً لم يُدفع ثمنه.
+      if (approve) {
+        const { data: pay } = await sb.from('payments')
+          .select('id, amount_sar')
+          .eq('service_request_id', id)
+          .eq('status', 'awaiting_confirmation')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!pay) {
+          return NextResponse.json({ error: 'لم يصل تحويلٌ لهذا الطلب بعد — يُقبل حين يرفع العميل إيصاله' }, { status: 409 });
+        }
+        const res = await confirmPayment(sb, String(pay.id), who.email || 'المكتب');
+        if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });
+        headline = 'قُبل طلب خدمة وأُكّد تحويله (' + Number(pay.amount_sar || 0).toLocaleString('en-US') + ' ريال) — ' + String(r.service_title || '');
+      } else {
+        const { error: upErr } = await sb
+          .from('service_requests')
+          .update({ status: 'rejected', updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .eq('status', 'priced');
+        if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+        // تحويلٌ معلّق على طلبٍ رُفض لا يبقى معلّقاً في لوحة المدفوعات
+        await sb.from('payments').update({ status: 'rejected' })
+          .eq('service_request_id', id).eq('status', 'awaiting_confirmation')
+          .then(() => null, () => null);
+        headline = 'رُفض طلب خدمة — ' + String(r.service_title || '');
+      }
+    } else {
+      // ★ لا يُعتمد إلا ما ينتظر. وبدون هذا الشرط تُعيد ضغطةٌ متأخرة طلباً
+      //   مُسلَّماً إلى «قيد التجهيز»، فيبدو العمل غير منجزٍ وهو منجز.
+      if (st !== AWAITING) {
+        return NextResponse.json({ error: 'هذا الطلب لم يعد بانتظار الاعتماد — حالته: ' + r.status }, { status: 409 });
+      }
+      const { error: upErr } = await sb
+        .from('service_requests')
+        .update({ status: approve ? 'in_progress' : 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('status', AWAITING);
+      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+      headline = (approve ? 'اعتُمد طلب خدمة' : 'رُفض طلب خدمة') + ' — ' + String(r.service_title || '');
+    }
   } else if (kind === 'match') {
     const { data: r } = await sb
       .from('match_requests')

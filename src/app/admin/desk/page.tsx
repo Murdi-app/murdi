@@ -21,6 +21,8 @@ type Req = {
   id: string; company_id: string; service_title: string | null; service_category: string | null
   status: string; client_note: string | null; track: string | null
   created_at: string; paid_at: string | null; company: Co | null
+  price: number | null
+  payment: { id: string; amount_sar: number | null; method: string | null; receipt_url: string | null; created_at: string } | null
 }
 type MatchReq = {
   id: string; company_id: string; track: string; status: string
@@ -118,8 +120,11 @@ export default function DeskPage() {
     )
   }
 
-  const waiting = reqs.filter(r => r.status === 'submitted')
-  const rest = reqs.filter(r => r.status !== 'submitted')
+  // ★ المسعَّر آلياً صار ينتظر كلمتها أيضاً (٢١ سبتمبر): يُقبل بتأكيد
+  //   التحويل حين يصل إيصاله، ويُرفض إن لم يكن جادّاً.
+  const isWaiting = (s: string) => s === 'submitted' || s === 'priced'
+  const waiting = reqs.filter(r => isWaiting(r.status))
+  const rest = reqs.filter(r => !isWaiting(r.status))
   const shown = showAll ? rest : rest.slice(0, 12)
 
   if (loading) return (
@@ -187,6 +192,7 @@ export default function DeskPage() {
       </h2>
       <p style={{ fontSize: 12.5, color: '#6B8A80', margin: '0 0 12px', lineHeight: 1.8 }}>
         اعتمدي ما اكتملت بيانات صاحبه، واتصلي بمن نقصته بيانات قبل أن ترفضي — فالرفض يغلق باباً.
+        والطلب المسعَّر يُقبل بتأكيد تحويله: افتحي الإيصال، وطابقي المبلغ، ثم أكّدي.
       </p>
       {waiting.length === 0 && (
         <div style={{ ...CARD, color: '#8CA49B', fontSize: 13 }}>لا شيء ينتظر. وهذا خبر جيد.</div>
@@ -205,11 +211,36 @@ export default function DeskPage() {
                   {r.client_note}
                 </div>
               )}
+              {r.status === 'priced' && (
+                <div style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.9, color: '#3E5C53' }}>
+                  <span style={{ background: '#FBF3DC', color: '#B8860B', borderRadius: 999, padding: '3px 10px', fontWeight: 900, fontSize: 11.5 }}>
+                    بانتظار الدفع{r.price ? ' · ' + Number(r.price).toLocaleString('en-US') + ' ريال' : ''}
+                  </span>
+                  {r.payment ? (
+                    <span style={{ marginRight: 8 }}>
+                      وصل تحويلٌ بـ<b>{Number(r.payment.amount_sar || 0).toLocaleString('en-US')} ريال</b>
+                      {r.payment.receipt_url
+                        ? <> · <a href={r.payment.receipt_url} target="_blank" rel="noreferrer" style={{ color: '#1A6B52', fontWeight: 800 }}>افتحي الإيصال</a></>
+                        : ' · بلا إيصال مرفق — اطلبيه من العميل قبل التأكيد'}
+                    </span>
+                  ) : (
+                    <span style={{ marginRight: 8, color: '#8CA49B' }}>لم يصل تحويلٌ بعد — اتصلي بالعميل وذكّريه بالدفع.</span>
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'approve')} style={BTN('#1A3D34')}>
-                {busy === r.id ? '…' : 'اعتمدي'}
-              </button>
+              {r.status === 'priced' ? (
+                <button disabled={busy === r.id || !r.payment} onClick={() => decide('service', r.id, 'approve')}
+                  title={r.payment ? '' : 'يُقبل حين يصل التحويل'}
+                  style={{ ...BTN('#1A3D34'), opacity: r.payment ? 1 : 0.4, cursor: r.payment ? 'pointer' : 'not-allowed' }}>
+                  {busy === r.id ? '…' : 'أكّدي التحويل واقبلي'}
+                </button>
+              ) : (
+                <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'approve')} style={BTN('#1A3D34')}>
+                  {busy === r.id ? '…' : 'اعتمدي'}
+                </button>
+              )}
               <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'reject')} style={BTN('#fff', '#C0564B')}>
                 {confirm === 'service:' + r.id + ':reject' ? 'تأكيد الرفض' : 'ارفضي'}
               </button>
