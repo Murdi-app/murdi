@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import WhatsAppFab from "@/components/WhatsAppFab";
+import TrafficSourceCapture from "@/components/TrafficSourceCapture";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -65,7 +66,11 @@ gtag('config', 'AW-17947401948');`,
       </head>
       {/* الفقاعة في التخطيط الجذر لا في كل صفحة: بابٌ واحد يظهر في الواجهة
           وصفحة الخدمات والتسجيل وكل ما سواها، ويُخفي نفسه في شاشات الإدارة. */}
-      <body className="min-h-full flex flex-col">{children}<WhatsAppFab /></body>
+      <body className="min-h-full flex flex-col">
+        <TrafficSourceCapture />
+        {children}
+        <WhatsAppFab />
+      </body>
     </html>
   );
 }
