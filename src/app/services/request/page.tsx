@@ -98,6 +98,9 @@ function RequestForm() {
   };
 
   const valid = service !== '' && name.trim() !== '' && phone.trim() !== '';
+  const whatsappText = encodeURIComponent(
+    `السلام عليكم، أنا ${name.trim()} من ${company.trim() || 'منشأة'}، أرسلت طلب خدمة «${displayName(service)}» عبر منصة مُرضي وأرغب ببدء التجهيز.`
+  );
 
   if (done) return (
     <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
@@ -106,8 +109,12 @@ function RequestForm() {
         نتواصل معك على <b style={{ color: GREEN }}>{phone}</b> اليوم أو صباح الغد على أبعد تقدير.
         وإن كان الأمر عاجلاً فاتصل مباشرةً على 0570749196.
       </p>
-      <Link href="/services" style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '12px 30px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
-        عد إلى الخدمات
+      <a href={`https://wa.me/966570749196?text=${whatsappText}`} target="_blank" rel="noreferrer"
+        style={{ display: 'block', background: GREEN, color: '#fff', padding: '13px 24px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none', marginBottom: 10 }}>
+        ابدأ الآن عبر واتساب — وأرسل المستندات
+      </a>
+      <Link href="/services" style={{ display: 'inline-block', color: MUTED, padding: '8px 18px', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
+        العودة إلى الخدمات
       </Link>
     </div>
   );
