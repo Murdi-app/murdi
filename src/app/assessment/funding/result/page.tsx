@@ -436,7 +436,7 @@ export default function FundingResult() {
 
             <div className="rounded-xl py-3 px-4 mb-5 text-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
               <span className="text-[#CFE0DA] text-xs font-bold leading-relaxed">
-                والرسم <span style={{ color: '#5FD3A6' }}>ثابت مقابل عملٍ يُسلَّم</span> — لا نسبةَ من تمويلك، ولا عمولةَ من أي جهة ممولة.
+                دفعة التجهيز تقابل ملفاً يُبنى ويُسلَّم، وتُحدَّد في عقد الخدمة أتعاب المرحلة الممتدة للمتابعة والتفاوض ومراجعة الشروط حتى استكمال الصرف.
               </span>
             </div>
 
