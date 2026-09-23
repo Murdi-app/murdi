@@ -13,7 +13,7 @@ const inquiryApi = read('src/app/api/services/inquiry/route.ts');
 requireText(layout, 'googletagmanager.com/gtag/js?id=AW-17947401948', 'وسم Google Ads غير محمّل في التخطيط الجذر');
 requireText(layout, "gtag('config', 'AW-17947401948')", 'تهيئة Google Ads مفقودة');
 requireText(conversion, "const ADS_ID = 'AW-17947401948'", 'معرّف حساب Google Ads تغيّر أو حُذف');
-requireText(conversion, 'PWyPCLb8s_YcENy9_uIc', 'ملصق تحويل العميل المحتمل تغيّر أو حُذف');
+requireText(conversion, 'PWyPCLb8s_YcENy9_u1C', 'ملصق تحويل العميل المحتمل تغيّر أو حُذف');
 requireText(conversion, "g('set', 'user_data', ud)", 'بيانات الإحالة المحسّنة لا تُرسل');
 requireText(conversion, "g('event', 'conversion', payload)", 'حدث التحويل لا يُطلق');
 requireText(conversion, 'send_to: sendTo', 'وجهة التحويل لا تُرسل');
