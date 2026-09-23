@@ -29,7 +29,7 @@ import { waNumber } from './phone';
 const ADS_ID = 'AW-17947401948';
 
 /** معرّف تحويل «Murdi - Lead Submitted» كما صدر من Google Ads */
-export const LEAD_SUBMITTED = `${ADS_ID}/PWyPCLb8s_YcENy9_uIc`;
+export const LEAD_SUBMITTED = `${ADS_ID}/PWyPCLb8s_YcENy9_u1C`;
 
 /** ما نعرفه عن صاحب الإحالة وقت إطلاقها — كلّه اختياري */
 export type LeadIdentity = { phone?: unknown; email?: unknown };
