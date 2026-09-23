@@ -17,7 +17,7 @@ function toFields(r: Record<string, unknown>): ContractFields {
     feePercent: r.fee_percent as number,
     // ★ ١٩ سبتمبر: صار المؤجَّل هو الأصل — مقدَّمٌ عند التوقيع ونسبةٌ عند
     //   الصرف. والعقود القديمة تبقى تُقرأ بآليتها المحفوظة في صفّها.
-    feeType: (r.fee_type as FeeType) || 'deferred',
+    feeType: (r.fee_type as FeeType) || 'fixed',
     fixedAmount: r.fixed_amount as number,
     successMin: r.success_min as number,
   };
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
   // على خدمة مقدّمها معلن. فالمصدر الصحيح هو سجل الأسعار نفسه: إن كان للخدمة سعر معلن،
   // فهو مقدّم مستحق، ومعه نسبة نجاح إن نصّ عليها السجل.
   const BASE_BY_TYPE: Record<string, string> = { funding: 'financing', investment: 'round', acquisition: 'deal' };
-  let seed: Record<string, unknown> = { fee_type: 'percent', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
+  let seed: Record<string, unknown> = { fee_type: contractType === 'acquisition' ? 'percent' : 'fixed', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
 
   if (serviceRequestId) {
     const { data: sr } = await admin.from('service_requests')
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
       const upfront = Number(sr.price ?? sr.quoted_price ?? listed ?? 0) || null;
       // نسبة نجاح يذكرها السجل صراحةً في خانة successFee
       const hasSuccess = Boolean(com?.successFee);
-      const inferred = upfront && hasSuccess ? 'both' : upfront ? 'fixed' : 'percent';
+      const inferred = contractType === 'acquisition' ? (upfront && hasSuccess ? 'both' : upfront ? 'fixed' : 'percent') : 'fixed';
 
       seed = {
         fee_type: sr.fee_type || inferred,
@@ -184,7 +184,11 @@ export async function PATCH(req: Request) {
 
     // الأتعاب لا تُصدَر بقيمة ضمنية. كانت المسودّة تخرج بنسبة فارغة فتُقرأ صفراً،
     // أو بنسبة موروثة من سجل الأسعار لم يقرّها المستشار لهذا العميل بعينه.
-    const ft = String(merged.fee_type || 'percent');
+    const ft = String(merged.fee_type || 'fixed');
+    // لا نصدر تمويل/استثمار بنسبة مؤجلة بينما نص العقد يعرض رسماً ثابتاً.
+    if ((existing.contract_type === 'funding' || existing.contract_type === 'investment') && ft !== 'fixed') {
+      return NextResponse.json({ error: 'يلزم تحديد أتعاب ثابتة مكتوبة مقابل نطاق الخدمة قبل إصدار هذا العقد؛ راجع أي آلية أخرى مع المختص النظامي.' }, { status: 422 });
+    }
     const pct = Number(merged.fee_percent ?? 0);
     const fixed = Number(merged.fixed_amount ?? 0);
     if ((ft === 'percent' || ft === 'both') && !(pct > 0)) missing.push('__pct');
