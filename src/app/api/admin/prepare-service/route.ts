@@ -220,7 +220,7 @@ export async function POST(req: Request) {
       const finalText = computedTablesHtml ? text.replace(/\[\[TABLES\]\]/g, computedTablesHtml) : text;
       if (text.length > 80) {
         await admin.from('service_requests').update(deliverableUpdate(finalText, sr.status)).eq('id', requestId);
-        return NextResponse.json({ ok: true, deliverable: text });
+        return NextResponse.json({ ok: true, deliverable: finalText });
       }
     } catch {}
   }
