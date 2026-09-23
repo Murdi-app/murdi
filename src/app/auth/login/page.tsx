@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { asJob, homeFor } from '@/lib/staffPages'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -29,13 +30,23 @@ export default function Login() {
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
     const { data: { user: u } } = await supabase.auth.getUser()
     if (u?.email === 'hololalmurdi.fs@gmail.com') { router.push('/admin'); return }
-    const { data: stf } = await supabase.from('staff').select('active').eq('user_id', u?.id).maybeSingle()
+    const { data: stf } = await supabase.from('staff').select('active, job').eq('user_id', u?.id).maybeSingle()
     // ═══ الموظفة تنزل على شاشتها هي ═══
     // كان الدخول يُنزلها على «/admin/apply»، وتلك ليست في قائمة صفحاتها
-    // البيضاء (STAFF_PAGES في admin/layout) — فأول ما يستقبلها بعد كتابة
-    // كلمة مرورها: «هذه الصفحة للإدارة فقط». حائطٌ في أول خطوة، ولوحة
-    // التقديم أصلاً ليست عملها: عملها الفرص الساخنة.
-    if (stf && stf.active === true) { router.push('/admin/hot'); return }
+    // البيضاء — فأول ما يستقبلها بعد كتابة كلمة مرورها: «هذه الصفحة
+    // للإدارة فقط». حائطٌ في أول خطوة. فصُرف الدخول إلى «/admin/hot».
+    //
+    // ★ ثم وقع الخطأ نفسه مرةً ثانية (٢٣ سبتمبر). ففي ٢٠ سبتمبر صارت
+    //   الصفحات تُوزَّع على الأدوار في `staffPages`، و«الفرص الساخنة»
+    //   للمساعِدة وحدها — وليست في قائمة المتابِعة. والوجهة هنا مكتوبةٌ
+    //   بيدها لا مقروءةٌ من القائمة، فبقيت على حالها: فكانت المتابِعة منذ
+    //   ذلك اليوم تدخل بكلمة مرورها فيستقبلها الحائطُ نفسه، ولا ترى عميلاً
+    //   جديداً ولا طلب خدمة ولا طلب مطابقة — لا لأن شيئاً منها غاب، بل
+    //   لأنها لم تصل إلى شاشتها أصلاً.
+    //
+    // فلا تُكتب وجهةٌ هنا بعد اليوم: `homeFor` يقرؤها من قائمة الدور نفسها،
+    // فمن فتح لموظفةٍ صفحةً أو أغلقها في `staffPages` صحّ دخولُها معه.
+    if (stf && stf.active === true) { router.push(homeFor(asJob(stf.job))); return }
     const { data: co } = await supabase.from('companies').select('account_status').eq('user_id', u?.id).maybeSingle()
     if (!co) { router.push('/register'); return }
     if (co.account_status === 'active') { router.push('/goal'); return }

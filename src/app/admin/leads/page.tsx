@@ -17,6 +17,18 @@ type Lead = {
 };
 type Stats = { total: number; contacted: number; registered: number; open: number; ready: number; gap: number; weak: number; unknown: number; today: number };
 
+// من يبقى في صفّ المكالمات.
+//
+// ★ «مسجَّل» كان يُخرج الصفَّ من الصف، وذلك صحيحٌ لسببٍ واحد: التكرار —
+//   صاحبُ التقييم السريع فتح حساباً بعده، فيُتابَع من حسابه لا من تقييمه.
+//   لكن صفَّ **التسجيل** نفسه مسجَّلٌ بالضرورة، وهو العميل الجديد عينه. فكان
+//   يسقط بالقاعدة التي وُضعت للمكرَّر: أربعة عشر عميلاً سجّلوا في المنصة ولم
+//   يُتّصل بأحدهم، ولا يظهر منهم واحدٌ إلا في تبويب «الكل». وعدّاد المفتوح
+//   فوقهم يعدّهم فيقول عشرين، والقائمة تحته تعرض ستة — والفرق أربعة عشر
+//   عميلاً جديداً لا يراهم أحد.
+//   فالاستثناء للمكرَّر وحده، لا لمن كان التسجيل هو صفَّه.
+const inQueue = (l: Lead) => !l.contacted && !(l.registered && l.kind !== 'تسجيل');
+
 const OUTCOMES = ['مهتم', 'طلب معاودة', 'لا يرد', 'غير مؤهل الآن', 'تحوّل عميلاً', 'رفض'];
 
 const BAND_TONE: Record<Band, { bg: string; fg: string; br: string }> = {
@@ -63,16 +75,16 @@ export default function LeadsPage() {
   const shown = useMemo(() => leads.filter(l => {
     if (filter === 'all') return true;
     if (filter === 'done') return Boolean(l.contacted);
-    if (filter === 'ready') return !l.contacted && !l.registered && l.band === 'ready';
-    return !l.contacted && !l.registered;
+    if (filter === 'ready') return inQueue(l) && l.band === 'ready';
+    return inQueue(l);
   }), [leads, filter]);
 
   const copyOpener = async (l: Lead) => {
     try { await navigator.clipboard.writeText(l.opener); setCopied(l.id); setTimeout(() => setCopied(''), 1800); } catch { /* المتصفح منع النسخ */ }
   };
 
-  const countOpen = leads.filter(l => !l.contacted && !l.registered).length;
-  const countReady = leads.filter(l => !l.contacted && !l.registered && l.band === 'ready').length;
+  const countOpen = leads.filter(inQueue).length;
+  const countReady = leads.filter(l => inQueue(l) && l.band === 'ready').length;
   const countDone = leads.filter(l => Boolean(l.contacted)).length;
 
   const Chip = ({ k, label, n }: { k: 'open' | 'ready' | 'done' | 'all'; label: string; n: number }) => (
