@@ -4,7 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { canonicalTitle, commercialFor, CATALOG } from '@/lib/serviceCatalog';
 import { priceFor } from '@/lib/servicePricing';
-import { sendPush } from '@/lib/push';
+import { notifyTeam } from '@/lib/notifyLead';
+import { prettyPhone } from '@/lib/phone';
 
 // طلب خدمة — يُسعَّر في الخادم لا في المتصفح.
 //
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   const sa = admin();
   const { data: co } = await sa
     .from('companies')
-    .select('id, company_name')
+    .select('id, company_name, owner_name, phone')
     .eq('user_id', auth.user.id)
     .maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
@@ -116,14 +117,29 @@ export async function POST(req: Request) {
   // العقد» من ٧ سبتمبر إلى ١٢ منه مسعَّراً بلا إصدارٍ للدفع — والعميل يفتح
   // حسابه ويرى «بانتظار التجهيز» ولا يملك زرّ دفع. والعميل حين يطلب يكون
   // أحرّ ما يكون، وحرارته تبرد بالساعات لا بالأيام.
-  await sendPush({
-    title: priced ? '💳 طلب خدمة — مسعَّر آلياً' : '🧾 طلب خدمة يحتاج تسعيرك',
-    body: String(co.company_name || 'منشأة') + ' — ' + title
+  //
+  // ★ وكان إشعار جوالٍ بلا `to` (٢٤ سبتمبر) — أي للمالك وحده، إذ الاشتراكات
+  //   كلّها أجهزته. والتسعيرُ قرارُه هو، لكن **المكالمة** التي تُتبع الطلب
+  //   عملُ الموظفة، ولا تتصل بمن لا تعلم به. فصار للمكتب كلّه.
+  await notifyTeam({
+    subject: (priced ? 'طلب خدمة مسعَّر: ' : 'طلب خدمة يحتاج تسعيرك: ') + title
+      + ' — ' + String(co.company_name || 'منشأة'),
+    head: priced
+      ? 'سُعِّر آلياً وينتظر تحويل صاحبه — ذكّروه برابطه'
+      : 'ينتظر تسعير المالك قبل أن يُصدَر للدفع',
+    facts: [
+      ['الخدمة', title],
+      ['المنشأة', co.company_name],
+      ['صاحبها', co.owner_name],
+      ['الجوال', co.phone ? prettyPhone(co.phone) : ''],
+      ['الحالة', priced ? amount + ' ريال — بانتظار الدفع' : 'بانتظار التسعير'],
+    ],
+    url: '/admin/arrivals',
+    pushTitle: priced ? '💳 طلب خدمة — مسعَّر آلياً' : '🧾 طلب خدمة يحتاج تسعيرك',
+    pushBody: String(co.company_name || 'منشأة') + ' — ' + title
       + (priced ? ' — ' + amount + ' ريال، بانتظار دفعه' : ' — سعّرها ثم أصدرها للدفع'),
-    url: 'https://murdi.sa/admin/services',
-    important: true,
     tag: 'srv-' + row.id,
-  });
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, id: row.id, status: row.status, price: row.price });
 }

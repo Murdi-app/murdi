@@ -4,7 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
-import { waLink } from '@/lib/phone';
+import { notifyTeam } from '@/lib/notifyLead';
+import { prettyPhone, waLink } from '@/lib/phone';
 
 // طلب تشغيل المطابقة.
 //
@@ -22,7 +23,6 @@ const admin = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
 
-const OWNER = 'hololalmurdi.fs@gmail.com';
 const FROM = 'مُرضي <partners@murdi.sa>';
 
 async function currentCompany() {
@@ -36,7 +36,7 @@ async function currentCompany() {
   if (!data?.user) return null;
   const { data: co } = await admin()
     .from('companies')
-    .select('id, company_name, match_credits')
+    .select('id, company_name, owner_name, phone, match_credits')
     .eq('user_id', data.user.id)
     .maybeSingle();
   return co || null;
@@ -114,18 +114,26 @@ export async function POST(req: Request) {
     needs_owner: true,
   });
 
-  // إخطارك فوراً: العميل الذي يطلب المطابقة هو أسخن ما في اليوم
-  await sendMail({
-    from: FROM,
-    to: OWNER,
+  // إخطار المكتب فوراً: العميل الذي يطلب المطابقة هو أسخن ما في اليوم.
+  //
+  // ★ وكان بريداً للمالك وحده (٢٤ سبتمبر). والإذن قراره هو ولا يزال — لكن
+  //   الطلب اسمٌ دخل المنصة، ومن تتصل يجب أن تعلم به وإن لم تكن هي من يأذن.
+  //   فبقي زرّ «الاعتمادات» في نصّه وصار الجمهور المكتبَ كلّه.
+  await notifyTeam({
     subject: 'طلب تشغيل مطابقة — ' + String(co.company_name || ''),
-    html:
-      '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34">' +
-      '<h2 style="color:#1A3D34">طلب تشغيل مطابقة</h2>' +
-      '<p><b>' + String(co.company_name || '') + '</b> — مسار ' + (track === 'investment' ? 'الاستثمار' : 'التمويل') + '</p>' +
-      '<p>لا تعمل حتى تأذن. والتشغيلة تكلّف، فالإذن قرارك لا قراره.</p>' +
-      '<p><a href="https://murdi.sa/admin/approvals" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح الاعتمادات</a></p></div>',
-  });
+    head: 'لا تعمل المطابقة حتى يأذن المالك — والتشغيلة تكلّف، فالإذن قراره',
+    facts: [
+      ['المنشأة', co.company_name],
+      ['صاحبها', co.owner_name],
+      ['الجوال', co.phone ? prettyPhone(co.phone) : ''],
+      ['المسار', track === 'investment' ? 'استثمار' : 'تمويل'],
+    ],
+    url: '/admin/arrivals',
+    pushTitle: '🎯 طلب تشغيل مطابقة',
+    pushBody: String(co.company_name || 'منشأة') + ' — مسار '
+      + (track === 'investment' ? 'الاستثمار' : 'التمويل') + ' · ينتظر إذن المالك',
+    tag: 'mreq-' + String(co.id),
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { CATALOG, canonicalTitle, needsDiagnosis, displayName } from '@/lib/serviceCatalog';
-import { waNumber } from '@/lib/phone';
-import { sendPush } from '@/lib/push';
+import { waNumber, prettyPhone } from '@/lib/phone';
+import { notifyTeam } from '@/lib/notifyLead';
 
 // طلب خدمة من الواجهة العامة — بلا حساب.
 //
@@ -80,12 +80,26 @@ export async function POST(req: Request) {
   });
   if (error) return NextResponse.json({ error: 'تعذّر حفظ طلبك — حاول مرة أخرى' }, { status: 500 });
 
-  // الإشعار لا يُسقط الطلب إن فشل — العميل سجّل، وهذا هو المهم
-  await sendPush({
-    title: 'طلب خدمة جديد',
-    body: displayName(title) + ' — ' + name + (company ? ' · ' + company : ''),
-    url: '/admin/hot',
-    important: true,
+  // الإشعار لا يُسقط الطلب إن فشل — العميل سجّل، وهذا هو المهم.
+  //
+  // ★ وكان `sendPush` وحده بلا `to` (٢٤ سبتمبر): الاشتراكات كلّها للمالك،
+  //   فالطلب — وهو أحرّ ما يصلنا، صاحبه سمّى خدمته وكتب جواله — لا يبلغ
+  //   الموظفة التي تتصل أصلاً. فصار بريداً وإشعاراً للمكتب كلّه.
+  await notifyTeam({
+    subject: 'طلب خدمة من الموقع: ' + displayName(title) + ' — ' + (company || name),
+    head: 'طلبها بنفسه من صفحة الخدمات، ويعرف حاجته — وهو ينتظر اتصالاً',
+    facts: [
+      ['الخدمة', displayName(title)],
+      ['الشخص', name],
+      ['المنشأة', company],
+      ['الجوال', prettyPhone(phone)],
+      ['البريد', email],
+      ['ما كتبه', note],
+    ],
+    url: '/admin/arrivals',
+    pushTitle: '🧾 طلب خدمة من الموقع',
+    pushBody: displayName(title) + ' — ' + name + (company ? ' · ' + company : '') + ' · ' + prettyPhone(phone),
+    tag: 'inq-' + phone,
   }).catch(() => {});
 
   return NextResponse.json({ ok: true });

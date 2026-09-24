@@ -60,6 +60,64 @@ export async function teamEmails(): Promise<string[]> {
   return out;
 }
 
+/**
+ * إخطار المكتب كلّه بواردٍ جديد — بريدٌ وإشعارٌ معاً، ولنفس الجمهور.
+ *
+ * ★ أُضيف في ٢٤ سبتمبر بعد أن تبيّن أن ثلاثة أبوابٍ تُخطر المالك وحده:
+ *   طلب الخدمة من الموقع وطلب الخدمة من الحساب كانا يُرسلان `sendPush` بلا
+ *   `to` — وجدولُ الاشتراكات فيه جهازان كلاهما للمالك، فالإشعار يصله هو
+ *   ولا يصل أحداً سواه. وطلبُ المطابقة كان بريداً للمالك نصّاً.
+ *   فمرّ من الموقع ثلاثةُ طلباتٍ في يومين ولم تعلم بها الموظفة التي تتصل.
+ *
+ *   والدرس نفسه المكتوب أعلاه: من يجب أن يعمل يُخطَر بالبريد أولاً، لأنه
+ *   يصل بلا إذن متصفح — وإشعار الجوال زيادةٌ حين يكون الإذن قائماً.
+ *
+ * ولا يرمي أبداً: فشلُ إخطارٍ لا يُسقط طلبَ عميل.
+ */
+export async function notifyTeam(n: {
+  subject: string;
+  head: string;
+  /** صفوف الجدول: [العنوان، القيمة] — ما فرغ منها يُحذف */
+  facts: Array<[string, unknown]>;
+  /** المسار الذي يُفتح من الزرّ ومن الإشعار */
+  url: string;
+  pushTitle: string;
+  pushBody: string;
+  tag?: string;
+}): Promise<{ mail: boolean; push: number }> {
+  const to = await teamEmails();
+
+  const html =
+    '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34;max-width:560px">' +
+    '<h2 style="color:#1A3D34;margin:0 0 4px">' + esc(n.subject) + '</h2>' +
+    '<p style="margin:0 0 14px;color:#6B8A80;font-size:13.5px">' + esc(n.head) + '</p>' +
+    '<table style="border-collapse:collapse;width:100%;background:#F7FBF9;border-radius:8px">' +
+    n.facts.filter(([, v]) => String(v ?? '').trim() !== '').map(([k, v]) => row(k, v)).join('') +
+    '</table>' +
+    '<p style="margin:18px 0 8px">' +
+    '<a href="https://murdi.sa' + n.url + '" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح الوارد</a>' +
+    '</p>' +
+    '<p style="margin:0;color:#6B8A80;font-size:12.5px">حرارة العميل تبرد بالساعات — لا بالأيام.</p>' +
+    '</div>';
+
+  let mailOk = false;
+  try {
+    const r = await sendMail({ from: FROM, to, subject: n.subject, html });
+    mailOk = r.ok;
+  } catch { /* البريد سقط — يبقى إشعار الجوال */ }
+
+  let sent = 0;
+  try {
+    const p = await sendPush(
+      { title: n.pushTitle, body: n.pushBody, url: n.url, important: true, tag: n.tag },
+      to
+    );
+    sent = p.sent;
+  } catch { /* إشعار الجوال سقط — البريد وصل */ }
+
+  return { mail: mailOk, push: sent };
+}
+
 export type LeadNotice = {
   id: string;
   name: string;

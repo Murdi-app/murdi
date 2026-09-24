@@ -24,6 +24,7 @@ type Link = { href: string; label: string; icon: string; badge?: boolean }
 
 const LINKS: Link[] = [
   { href: '/admin/inbox', label: 'التعميد', icon: '✅', badge: true },
+  { href: '/admin/arrivals', label: 'الوارد', icon: '📥' },
   { href: '/admin/deal', label: 'لوحة الصفقة', icon: '🧭' },
   { href: '/admin/services', label: 'الخدمات', icon: '🗂' },
   { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬' },
