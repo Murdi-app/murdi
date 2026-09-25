@@ -63,12 +63,15 @@ function RequestForm() {
       if (s && DIRECT.includes(s)) setService(s);
       const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid');
       const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || '';
-      if (p) { setSrc(p); try { sessionStorage.setItem('murdi_src', p); } catch {} }
+      const campaign = q.get('utm_campaign') || '';
+      const origin = p && campaign ? `${p}:${campaign}`.slice(0, 40) : p;
+      if (origin) { setSrc(origin); try { sessionStorage.setItem('murdi_src', origin); } catch {} }
       else { try { const v = sessionStorage.getItem('murdi_src'); if (v) setSrc(v); } catch {} }
     } catch { /* لا شيء — تبقى الخدمة الأولى */ }
   }, []);
 
   const c = service ? commercialFor(service) : undefined;
+  const isContract = service === 'تمويل العقد';
 
   const submit = async () => {
     setErr(''); setBusy(true);
@@ -121,6 +124,17 @@ function RequestForm() {
 
   return (
     <div style={{ background: '#fff', border: '1.5px solid ' + LINE, borderRadius: 18, padding: '28px 26px' }}>
+      {isContract && (
+        <div style={{ background: '#F4F8F5', border: '1px solid #D9E5DF', borderRadius: 13, padding: '18px 20px', marginBottom: 22, color: GREEN }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>فزت بعقد؟ اعرف سيولة تنفيذه قبل أن تبدأ</h2>
+          <p style={{ margin: '0 0 10px', fontSize: 14, lineHeight: 1.9 }}>
+            نراجع بنود العقد وتوقيت المستخلصات والضمانات، ونجهز خريطة السيولة وملف مخاطبة الجهات المناسبة لحالتك.
+          </p>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+            الخدمة تبدأ من ٢٥٬٠٠٠ ريال بحسب قيمة العقد. طلبك الآن بلا دفع، ونراجع ملاءمة الخدمة قبل الاتفاق.
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>الخدمة</label>
         <select value={service} onChange={(e) => setService(e.target.value)} style={inputCls}>
@@ -154,9 +168,13 @@ function RequestForm() {
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>باختصار — ما الذي تريده؟</label>
+        <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>
+          {isContract ? 'عن العقد — الجهة، القيمة، مرحلة الترسية واحتياج السيولة' : 'باختصار — ما الذي تريده؟'}
+        </label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}
-          placeholder="مثال: مشروع مطعم جديد في الرياض، رأس المال المتوقع مليون ونصف، وأحتاج دراسة يقبلها البنك."
+          placeholder={isContract
+            ? 'مثال: ترسية عقد توريد بقيمة ٨ ملايين ريال، التوقيع الشهر المقبل، وأحتاج تجهيز الضمان وتمويل المشتريات قبل أول مستخلص.'
+            : 'مثال: مشروع مطعم جديد في الرياض، رأس المال المتوقع مليون ونصف، وأحتاج دراسة يقبلها البنك.'}
           style={{ ...inputCls, resize: 'vertical', lineHeight: 1.9 }} />
       </div>
 
