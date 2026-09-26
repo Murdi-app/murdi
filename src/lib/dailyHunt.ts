@@ -160,12 +160,30 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
 
   const results = await Promise.all(axes.map((a) => huntAxis(a.label, a.category, a.instruction, a.count, dateContext + dedupContext)));
 
+  // النتائج المولّدة اقتراحات فقط: لا تُخزّن شركة مباشرة بلا رابط دليل،
+  // ولا تكرّر شركة موجودة أو وردت في أكثر من محور في الجولة نفسها.
+  const known = new Set(recentNames.map((name) => name.toLocaleLowerCase('ar').replace(/\s+/g, ' ')));
+  const validUrl = (value: string) => {
+    try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+  };
+  const filtered = results.map((r) => ({ ...r, leads: r.leads.filter((lead) => {
+    const name = lead.company_name.toLocaleLowerCase('ar').replace(/\s+/g, ' ');
+    if (!name || known.has(name)) return false;
+    if (lead.lead_kind === 'direct' && !validUrl(lead.source)) return false;
+    if (lead.lead_kind === 'scout' && !validUrl(lead.contact_social) && !validUrl(lead.source)) return false;
+    known.add(name);
+    return true;
+  }) }));
+  // إذا فشل البحث كله فلا تمسّ قائمة اليوم السابقة.
+  if (!filtered.some((r) => r.leads.length)) throw new Error('لم ينتج البحث فرصاً موثقة؛ احتُفظ بقائمة اليوم السابقة.');
+
   const today = fmt(now);
-  await adminClient.from('daily_leads').delete().eq('hunt_date', today).neq('saved', true);
+  const { error: deleteError } = await adminClient.from('daily_leads').delete().eq('hunt_date', today).neq('saved', true);
+  if (deleteError) throw deleteError;
 
   const byCategory: Record<string, number> = {};
   let total = 0;
-  for (const r of results) {
+  for (const r of filtered) {
     if (r.leads.length === 0) { byCategory[r.category] = 0; continue; }
     const rows = r.leads.map((l) => ({
       hunt_date: today, category: r.category, company_name: l.company_name, sector: l.sector,
@@ -173,7 +191,8 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
       contact_social: l.contact_social || null, source: l.source || null, notes: l.notes || null,
       lead_kind: l.lead_kind, hotness: l.hotness || null, entry_angle: l.entry_angle || null,
     }));
-    await adminClient.from('daily_leads').insert(rows);
+    const { error: insertError } = await adminClient.from('daily_leads').insert(rows);
+    if (insertError) throw insertError;
     byCategory[r.category] = rows.length;
     total += rows.length;
   }

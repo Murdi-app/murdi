@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { CATALOG, displayName, commercialFor, needsDiagnosis } from '@/lib/serviceCatalog';
+import { DIRECT_ORDER, displayName, commercialFor } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
@@ -32,7 +32,8 @@ const inputCls: React.CSSProperties = {
   background: '#fff', boxSizing: 'border-box',
 };
 
-const DIRECT = CATALOG.flatMap((c) => c.items).filter((t) => !needsDiagnosis(t));
+const DIRECT = DIRECT_ORDER;
+const FUNDING_SERVICE = 'تجهيز ملف التمويل والتفاوض';
 
 function RequestForm() {
   // القيمة الأولى تُختار من الفهرس لا من الرابط، فيُصيَّر النموذج مسبقاً
@@ -72,6 +73,7 @@ function RequestForm() {
 
   const c = service ? commercialFor(service) : undefined;
   const isContract = service === 'تمويل العقد';
+  const isFunding = service === FUNDING_SERVICE;
 
   const submit = async () => {
     setErr(''); setBusy(true);
@@ -135,6 +137,17 @@ function RequestForm() {
           </div>
         </div>
       )}
+      {isFunding && (
+        <div style={{ background: '#F4F8F5', border: '1px solid #D9E5DF', borderRadius: 13, padding: '18px 20px', marginBottom: 22, color: GREEN }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>تبحث عن تمويل لمنشأتك؟ ابدأ بالملف المناسب</h2>
+          <p style={{ margin: '0 0 10px', fontSize: 14, lineHeight: 1.9 }}>
+            نراجع قدرة السداد والمتطلبات، ونحدد الجهات المناسبة، ثم نجهز ملف التقديم والمخاطبة بحسب وضع منشأتك.
+          </p>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+            الفحص الائتماني ٩٩٠ ريال، وتجهيز الملف والمخاطبة ٧٬٩٠٠ ريال. نحدد معك الخيار المناسب قبل أي دفع.
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>الخدمة</label>
         <select value={service} onChange={(e) => setService(e.target.value)} style={inputCls}>
@@ -144,6 +157,12 @@ function RequestForm() {
         {c?.notForWho && (
           <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 10, padding: '10px 13px', marginTop: 10, color: '#8A6D1F', fontSize: 12.5, fontWeight: 700, lineHeight: 1.85 }}>
             <b>ليست لمن: </b>{c.notForWho}
+            {isContract && (
+              <button type="button" onClick={() => setService(FUNDING_SERVICE)}
+                style={{ display: 'block', marginTop: 10, padding: '9px 14px', border: '1px solid #8A6D1F', borderRadius: 8, color: GREEN, background: '#fff', fontFamily: 'Tajawal, Cairo, sans-serif', fontWeight: 900, cursor: 'pointer' }}>
+                لا يوجد عقد؟ اطلب تجهيز ملف تمويل المنشأة
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -169,11 +188,15 @@ function RequestForm() {
 
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>
-          {isContract ? 'عن العقد — الجهة، القيمة، مرحلة الترسية واحتياج السيولة' : 'باختصار — ما الذي تريده؟'}
+          {isContract ? 'عن العقد — الجهة، القيمة، مرحلة الترسية واحتياج السيولة'
+            : isFunding ? 'عن منشأتك — النشاط، الإيراد التقريبي، مبلغ التمويل والغرض منه'
+            : 'باختصار — ما الذي تريده؟'}
         </label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}
           placeholder={isContract
             ? 'مثال: ترسية عقد توريد بقيمة ٨ ملايين ريال، التوقيع الشهر المقبل، وأحتاج تجهيز الضمان وتمويل المشتريات قبل أول مستخلص.'
+            : isFunding
+              ? 'مثال: منشأة خدمات قائمة، إيرادها السنوي نحو ٥ ملايين ريال، نحتاج تمويل رأس مال عامل ونريد معرفة الجهات المناسبة وتجهيز ملف التقديم.'
             : 'مثال: مشروع مطعم جديد في الرياض، رأس المال المتوقع مليون ونصف، وأحتاج دراسة يقبلها البنك.'}
           style={{ ...inputCls, resize: 'vertical', lineHeight: 1.9 }} />
       </div>
