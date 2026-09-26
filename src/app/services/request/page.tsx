@@ -74,6 +74,7 @@ function RequestForm() {
   const c = service ? commercialFor(service) : undefined;
   const isContract = service === 'تمويل العقد';
   const isFunding = service === FUNDING_SERVICE;
+  const isStatements = service === 'إعداد القوائم المالية المعتمدة';
 
   const submit = async () => {
     setErr(''); setBusy(true);
@@ -148,6 +149,17 @@ function RequestForm() {
           </div>
         </div>
       )}
+      {isStatements && (
+        <div style={{ background: '#F4F8F5', border: '1px solid #D9E5DF', borderRadius: 13, padding: '18px 20px', marginBottom: 22, color: GREEN }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>جهّز قوائم منشأتك للتقديم على التمويل</h2>
+          <p style={{ margin: '0 0 10px', fontSize: 14, lineHeight: 1.9 }}>
+            نرتب الحركة المالية ونعد القوائم والإيضاحات، ثم ننسق استكمال اعتمادها عبر محاسب قانوني مرخّص.
+          </p>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+            السعر ١٠٬٠٠٠ ريال للسنة المالية الواحدة، والمدة المعتادة ٥ إلى ١٠ أيام عمل بحسب عدد السنوات. اطلبها الآن ونتأكد من نطاق العمل قبل أي دفع.
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>الخدمة</label>
         <select value={service} onChange={(e) => setService(e.target.value)} style={inputCls}>
@@ -190,6 +202,7 @@ function RequestForm() {
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>
           {isContract ? 'عن العقد — الجهة، القيمة، مرحلة الترسية واحتياج السيولة'
             : isFunding ? 'عن منشأتك — النشاط، الإيراد التقريبي، مبلغ التمويل والغرض منه'
+            : isStatements ? 'عن قوائمك — السنوات المطلوبة وحالة الدفاتر والحركة المالية'
             : 'باختصار — ما الذي تريده؟'}
         </label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}
@@ -197,6 +210,8 @@ function RequestForm() {
             ? 'مثال: ترسية عقد توريد بقيمة ٨ ملايين ريال، التوقيع الشهر المقبل، وأحتاج تجهيز الضمان وتمويل المشتريات قبل أول مستخلص.'
             : isFunding
               ? 'مثال: منشأة خدمات قائمة، إيرادها السنوي نحو ٥ ملايين ريال، نحتاج تمويل رأس مال عامل ونريد معرفة الجهات المناسبة وتجهيز ملف التقديم.'
+            : isStatements
+              ? 'مثال: نحتاج قوائم السنة الماضية للتقديم على تمويل، ولدينا كشوف بنكية وفواتير لكن القوائم لم تُجهّز بعد.'
             : 'مثال: مشروع مطعم جديد في الرياض، رأس المال المتوقع مليون ونصف، وأحتاج دراسة يقبلها البنك.'}
           style={{ ...inputCls, resize: 'vertical', lineHeight: 1.9 }} />
       </div>
