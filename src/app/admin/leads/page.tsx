@@ -29,6 +29,36 @@ type Stats = { total: number; contacted: number; registered: number; open: numbe
 //   فالاستثناء للمكرَّر وحده، لا لمن كان التسجيل هو صفَّه.
 const inQueue = (l: Lead) => !l.contacted && !(l.registered && l.kind !== 'تسجيل');
 
+// مكالمةٌ وقعت ولم تُكتب نتيجتها — وهذه مكالمةٌ ضائعة.
+//
+// ★ كان زرّ «اتصلتُ» وحده يُخرج الصفَّ من الصف ويُدخله «تم التواصل»، والنتيجةُ
+//   والملاحظةُ تحت زرٍّ ثانٍ لا يُضغط. فبلغ المُعلَّم مئةَ صفٍّ ولم تُكتب نتيجةٌ
+//   على منشأةٍ واحدة: لا يُعرف ماذا قال أحدُهم ولا لماذا اتُّصل به، ولا أيُّ
+//   إعلانٍ جلب عميلاً جادّاً وأيُّه أحرق المال. والمكالمة نفسُها تُنفق مرتين.
+//   فالاتصالُ لا يُتمّ الصفَّ وحده بعد اليوم: الصفُّ يبقى معلّقاً في تبويبٍ
+//   خاصٍّ اسمُه «بلا نتيجة» حتى تُكتب، و«تم التواصل» لمن كُتبت نتيجتُه فقط.
+const needsResult = (l: Lead) => Boolean(l.contacted) && !l.outcome;
+const isDone = (l: Lead) => Boolean(l.contacted) && Boolean(l.outcome);
+
+export type Filter = 'open' | 'ready' | 'noresult' | 'done' | 'all';
+
+/** تبويبٌ واحد. معرَّفٌ خارج الصفحة: المكوّن الذي يُبنى داخل الرسم يُبنى من جديد كل مرة. */
+function Chip({ k, label, n, warn, on, pick }: {
+  k: Filter; label: string; n: number; warn?: boolean; on: boolean; pick: (k: Filter) => void;
+}) {
+  // «بلا نتيجة» يُصبغ بالأحمر حين يكون فيه أحد — فهو دَينٌ على المكتب لا تبويبٌ محايد
+  const idle = warn && n > 0
+    ? { bg: '#FDF1EC', fg: '#B4453C', br: '#F0D6D2' }
+    : { bg: '#fff', fg: '#6B8A80', br: '#E8F5EF' };
+  return (
+    <div onClick={() => pick(k)} style={{
+      padding: '7px 15px', borderRadius: 30, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 900 : 700,
+      background: on ? '#1A3D34' : idle.bg, color: on ? '#fff' : idle.fg,
+      border: '1.5px solid ' + (on ? '#1A3D34' : idle.br),
+    }}>{label} <span style={{ opacity: .75 }}>{n}</span></div>
+  );
+}
+
 const OUTCOMES = ['مهتم', 'طلب معاودة', 'لا يرد', 'غير مؤهل الآن', 'تحوّل عميلاً', 'رفض'];
 
 const BAND_TONE: Record<Band, { bg: string; fg: string; br: string }> = {
@@ -45,7 +75,7 @@ export default function LeadsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [filter, setFilter] = useState<'open' | 'ready' | 'done' | 'all'>('open');
+  const [filter, setFilter] = useState<Filter>('open');
   const [openId, setOpenId] = useState('');
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
@@ -74,7 +104,8 @@ export default function LeadsPage() {
 
   const shown = useMemo(() => leads.filter(l => {
     if (filter === 'all') return true;
-    if (filter === 'done') return Boolean(l.contacted);
+    if (filter === 'done') return isDone(l);
+    if (filter === 'noresult') return needsResult(l);
     if (filter === 'ready') return inQueue(l) && l.band === 'ready';
     return inQueue(l);
   }), [leads, filter]);
@@ -85,14 +116,11 @@ export default function LeadsPage() {
 
   const countOpen = leads.filter(inQueue).length;
   const countReady = leads.filter(l => inQueue(l) && l.band === 'ready').length;
-  const countDone = leads.filter(l => Boolean(l.contacted)).length;
+  const countNoResult = leads.filter(needsResult).length;
+  const countDone = leads.filter(isDone).length;
 
-  const Chip = ({ k, label, n }: { k: 'open' | 'ready' | 'done' | 'all'; label: string; n: number }) => (
-    <div onClick={() => setFilter(k)} style={{
-      padding: '7px 15px', borderRadius: 30, cursor: 'pointer', fontSize: 12.5, fontWeight: filter === k ? 900 : 700,
-      background: filter === k ? '#1A3D34' : '#fff', color: filter === k ? '#fff' : '#6B8A80',
-      border: '1.5px solid ' + (filter === k ? '#1A3D34' : '#E8F5EF'),
-    }}>{label} <span style={{ opacity: .75 }}>{n}</span></div>
+  const chip = (k: Filter, label: string, n: number, warn?: boolean) => (
+    <Chip key={k} k={k} label={label} n={n} warn={warn} on={filter === k} pick={setFilter} />
   );
 
   return (
@@ -115,10 +143,11 @@ export default function LeadsPage() {
       )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
-        <Chip k="open" label="الصف" n={countOpen} />
-        <Chip k="ready" label="المؤهَّلون" n={countReady} />
-        <Chip k="done" label="تم التواصل" n={countDone} />
-        <Chip k="all" label="الكل" n={leads.length} />
+        {chip('open', 'الصف', countOpen)}
+        {chip('ready', 'المؤهَّلون', countReady)}
+        {chip('noresult', 'بلا نتيجة', countNoResult, true)}
+        {chip('done', 'تم التواصل', countDone)}
+        {chip('all', 'الكل', leads.length)}
       </div>
 
       {err && <div style={{ background: '#FDF1F1', border: '1.5px solid #F2D4D4', color: '#B4342A', borderRadius: 12, padding: '12px 16px', marginBottom: 14, fontSize: 13, fontWeight: 700 }}>{err}</div>}
@@ -140,7 +169,9 @@ export default function LeadsPage() {
                       : <span style={{ background: '#F4F6F5', color: '#6B8A80', border: '1px solid #E3EAE7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>تقييم سريع</span>}
                     <span style={{ background: tone.bg, color: tone.fg, border: '1px solid ' + tone.br, borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>{BAND_LABEL[l.band]}</span>
                     {l.registered && l.kind !== 'تسجيل' && <span style={{ background: '#EEF3FF', color: '#3A5AA8', border: '1px solid #D6E0F7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>مسجَّل في المنصة</span>}
-                    {l.contacted && <span style={{ background: '#EAF7F0', color: '#1E7A5E', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>✓ {l.outcome || 'تم التواصل'}</span>}
+                    {l.contacted && (l.outcome
+                      ? <span style={{ background: '#EAF7F0', color: '#1E7A5E', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>✓ {l.outcome}</span>
+                      : <span style={{ background: '#FDF1EC', color: '#B4453C', border: '1px solid #F0D6D2', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>اتُّصل — سجّلي النتيجة</span>)}
                   </div>
                   <div style={{ color: '#6B8A80', fontSize: 12.5, marginTop: 6, fontWeight: 700 }}>{l.headline}</div>
                   <div style={{ color: '#9DB3AB', fontSize: 12, marginTop: 4 }}>
@@ -153,10 +184,16 @@ export default function LeadsPage() {
                     <div style={{ fontSize: 26, fontWeight: 900, color: tone.fg, lineHeight: 1 }}>{l.completed ? (l.score ?? '—') : '—'}</div>
                     <div style={{ fontSize: 10.5, color: '#9DB3AB' }}>{l.completed ? '/ ١٠٠' : 'لم يُكمل'}</div>
                   </div>
-                  <button disabled={busy === l.id} onClick={() => save(l.id, { contacted: !l.contacted })}
+                  {/* ★ والضغطةُ تفتح البطاقة معها حين تُعلَّم مكالمةً جديدة: فأزرارُ
+                      النتيجة والملاحظة تصير تحت إصبعها في اللحظة التي تذكر فيها
+                      ما قاله الرجل — لا تحت زرٍّ ثانٍ تنساه بعد خمس مكالمات. */}
+                  <button disabled={busy === l.id}
+                    onClick={() => { const on = !l.contacted; void save(l.id, { contacted: on }); if (on) setOpenId(l.id); }}
                     style={{
-                      background: l.contacted ? '#EAF7F0' : '#1A3D34', color: l.contacted ? '#1E7A5E' : '#fff',
-                      border: '1.5px solid ' + (l.contacted ? '#BFE6D6' : '#1A3D34'), padding: '9px 18px', borderRadius: 30,
+                      background: l.contacted ? (l.outcome ? '#EAF7F0' : '#FDF1EC') : '#1A3D34',
+                      color: l.contacted ? (l.outcome ? '#1E7A5E' : '#B4453C') : '#fff',
+                      border: '1.5px solid ' + (l.contacted ? (l.outcome ? '#BFE6D6' : '#F0D6D2') : '#1A3D34'),
+                      padding: '9px 18px', borderRadius: 30,
                       fontSize: 12.5, fontWeight: 900, cursor: 'pointer', fontFamily: 'Cairo',
                     }}>{l.contacted ? '✓ اتصلتُ' : 'اتصلتُ'}</button>
                   {l.phone && <a href={'tel:' + l.phone} style={{ background: '#fff', border: '1.5px solid #E8F5EF', color: '#1A3D34', padding: '9px 16px', borderRadius: 30, fontSize: 12.5, fontWeight: 900, textDecoration: 'none' }}>اتصال</a>}
@@ -172,6 +209,11 @@ export default function LeadsPage() {
                   <button onClick={() => copyOpener(l)} style={{ marginTop: 8, background: 'transparent', border: '1.5px solid #E8F5EF', color: '#2E9E7B', padding: '7px 15px', borderRadius: 30, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'Cairo' }}>{copied === l.id ? '✓ نُسخت' : 'نسخ الرسالة'}</button>
 
                   <div style={{ fontSize: 12, fontWeight: 900, color: '#1A3D34', margin: '16px 0 6px' }}>النتيجة</div>
+                  {needsResult(l) && (
+                    <div style={{ background: '#FDF1EC', border: '1px solid #F0D6D2', color: '#B4453C', borderRadius: 10, padding: '9px 12px', fontSize: 12.5, fontWeight: 700, marginBottom: 8, lineHeight: 1.8 }}>
+                      هذه المكالمة بلا نتيجة، وتبقى في صفّك حتى تُسجَّل. اختاري نتيجةً، واكتبي في الملاحظة سببَ اتصالك وماذا قال.
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                     {OUTCOMES.map(o => (
                       <button key={o} disabled={busy === l.id} onClick={() => save(l.id, { outcome: l.outcome === o ? '' : o })}
