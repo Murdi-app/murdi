@@ -12,6 +12,7 @@ type Row = {
   kind_label: string; name: string | null; person: string | null;
   phone: string | null; phone_pretty: string; wa: string | null;
   email: string | null; city: string | null; detail: string | null;
+  marketing_source: string | null;
   contacted: boolean; contacted_at: string | null; outcome: string | null;
 };
 
@@ -159,6 +160,11 @@ export default function ArrivalsPage() {
                     <div style={{ fontSize: 12.5, color: '#6B8A80', marginTop: 3 }}>
                       {r.detail}{r.city ? ' · ' + r.city : ''}
                     </div>
+                    {r.source === 'inquiry' && (
+                      <div style={{ fontSize: 12, color: '#4A6B60', marginTop: 4 }}>
+                        المصدر: {r.marketing_source || 'غير محدد'}
+                      </div>
+                    )}
                   </div>
                   <div style={{ fontSize: 11.5, color: '#94ADA4', whiteSpace: 'nowrap' }}>{ago(r.at)}</div>
                 </div>

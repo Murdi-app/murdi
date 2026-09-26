@@ -63,6 +63,12 @@ export async function GET(req: Request) {
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
   const all = (data || []) as Arrival[];
+  const inquiryIds = all.filter((a) => a.source === 'inquiry').map((a) => a.ref_id);
+  const { data: inquiries, error: sourceErr } = inquiryIds.length
+    ? await sb.from('service_inquiries').select('id, src').in('id', inquiryIds)
+    : { data: [], error: null };
+  if (sourceErr) return NextResponse.json({ error: sourceErr.message }, { status: 500 });
+  const inquirySources = new Map((inquiries || []).map((i) => [String(i.id), String(i.src || '')]));
 
   // صفوف الاختبار لا تُعرض على من يتصل: رقمٌ داخلي أو اسمٌ مكتوب عليه «يُحذف».
   const STAFF_PHONES = ['966570314005', '966570749196', '966560721110'];
@@ -74,6 +80,7 @@ export async function GET(req: Request) {
 
   const rows = all.filter((a) => !isTest(a)).map((a) => ({
     ...a,
+    marketing_source: a.source === 'inquiry' ? inquirySources.get(a.ref_id) || null : null,
     phone_pretty: a.phone ? prettyPhone(a.phone) : '',
     wa: a.phone ? waLink(a.phone) : null,
     // ★ الجوال يخرج كاملاً للموظفة عمداً: هي من تتصل، ورقمٌ محجوبٌ يوقف العمل.
