@@ -68,7 +68,8 @@ export async function GET(req: Request) {
   const { data: inquiries, error: sourceErr } = inquiryIds.length
     ? await sb.from('service_inquiries').select('id, src').in('id', inquiryIds)
     : { data: [], error: null };
-  if (sourceErr) return NextResponse.json({ error: sourceErr.message }, { status: 500 });
+  // مصدر التسويق معلومة إضافية؛ لا تحجب قائمة العملاء إن تعذّرت قراءته.
+  if (sourceErr) console.error('Unable to load inquiry marketing sources:', sourceErr.message);
   const inquirySources = new Map((inquiries || []).map((i) => [String(i.id), String(i.src || '')]));
 
   // صفوف الاختبار لا تُعرض على من يتصل: رقمٌ داخلي أو اسمٌ مكتوب عليه «يُحذف».

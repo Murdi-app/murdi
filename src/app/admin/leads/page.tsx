@@ -80,13 +80,19 @@ export default function LeadsPage() {
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState('');
 
-  const load = async () => {
-    const r = await fetch('/api/admin/leads');
-    const d = await r.json();
-    if (!r.ok) { setErr(d.error || 'تعذّر التحميل'); setLoading(false); return; }
-    setLeads(d.leads || []); setStats(d.stats || null); setLoading(false);
-  };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/admin/leads', { signal: controller.signal })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'تعذّر التحميل');
+        setLeads(d.leads || []);
+        setStats(d.stats || null);
+      })
+      .catch((error) => { if (!controller.signal.aborted) setErr(error instanceof Error ? error.message : 'تعذّر التحميل'); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, []);
 
   const save = async (id: string, patch: Record<string, unknown>) => {
     setBusy(id);
@@ -187,14 +193,14 @@ export default function LeadsPage() {
                   {/* ★ والضغطةُ تفتح البطاقة معها حين تُعلَّم مكالمةً جديدة: فأزرارُ
                       النتيجة والملاحظة تصير تحت إصبعها في اللحظة التي تذكر فيها
                       ما قاله الرجل — لا تحت زرٍّ ثانٍ تنساه بعد خمس مكالمات. */}
-                  <button disabled={busy === l.id}
-                    onClick={() => { const on = !l.contacted; void save(l.id, { contacted: on }); if (on) setOpenId(l.id); }}
+                  <button disabled={busy === l.id || Boolean(l.contacted)} title={l.contacted ? 'سُجّل التواصل؛ عدّلي النتيجة من بطاقة المكالمة' : undefined}
+                    onClick={() => { void save(l.id, { contacted: true }); setOpenId(l.id); }}
                     style={{
                       background: l.contacted ? (l.outcome ? '#EAF7F0' : '#FDF1EC') : '#1A3D34',
                       color: l.contacted ? (l.outcome ? '#1E7A5E' : '#B4453C') : '#fff',
                       border: '1.5px solid ' + (l.contacted ? (l.outcome ? '#BFE6D6' : '#F0D6D2') : '#1A3D34'),
                       padding: '9px 18px', borderRadius: 30,
-                      fontSize: 12.5, fontWeight: 900, cursor: 'pointer', fontFamily: 'Cairo',
+                      fontSize: 12.5, fontWeight: 900, cursor: l.contacted ? 'default' : 'pointer', fontFamily: 'Cairo',
                     }}>{l.contacted ? '✓ اتصلتُ' : 'اتصلتُ'}</button>
                   {l.phone && <a href={'tel:' + l.phone} style={{ background: '#fff', border: '1.5px solid #E8F5EF', color: '#1A3D34', padding: '9px 16px', borderRadius: 30, fontSize: 12.5, fontWeight: 900, textDecoration: 'none' }}>اتصال</a>}
                   {l.waLink && <a href={l.waLink} target="_blank" rel="noopener noreferrer" style={{ background: '#25D366', color: '#fff', padding: '9px 16px', borderRadius: 30, fontSize: 12.5, fontWeight: 900, textDecoration: 'none' }}>واتساب بالرسالة</a>}
@@ -216,7 +222,7 @@ export default function LeadsPage() {
                   )}
                   <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                     {OUTCOMES.map(o => (
-                      <button key={o} disabled={busy === l.id} onClick={() => save(l.id, { outcome: l.outcome === o ? '' : o })}
+                      <button key={o} disabled={busy === l.id || l.outcome === o} onClick={() => save(l.id, { outcome: o })}
                         style={{
                           background: l.outcome === o ? '#1A3D34' : '#fff', color: l.outcome === o ? '#fff' : '#6B8A80',
                           border: '1.5px solid ' + (l.outcome === o ? '#1A3D34' : '#E8F5EF'), padding: '7px 14px', borderRadius: 30,

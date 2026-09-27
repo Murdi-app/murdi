@@ -8,7 +8,7 @@ import { notifyTeam } from '@/lib/notifyLead';
 //
 // البوابات كانت أربعاً قبل أن يعرف الزائر ما نبيع: تسجيل، ثم منشأة، ثم
 // تقييم، ثم يرى البطاقة. وهذا يستقبل من يعرف حاجته بنفسه في شاشة واحدة،
-// فينزل طلبه فرصةً ساخنة تتصل بها رغد اليوم.
+// فينزل طلبه فرصةً ساخنة تتصل بها ضي اليوم.
 //
 // ولا يفتح حساباً ولا يُنشئ صفّ خدمة ولا يمسّ مسار الدفع: الحساب يُفتح حين
 // تصير الصفقة حقيقية. فما يدخل من باب مفتوح للعموم لا يُكتب في جداول المال.
@@ -60,13 +60,14 @@ export async function POST(req: Request) {
 
   // نفس الرقم لنفس الخدمة خلال ربع ساعة = نقرة مكررة أو إلحاح، لا طلب ثانٍ.
   // يُردّ بنجاح حتى لا يظنّ صاحبه أن طلبه ضاع فيعيده مرة ثالثة.
-  const { data: dup } = await sb
+  const { data: dup, error: duplicateError } = await sb
     .from('service_inquiries')
     .select('id')
     .eq('phone', phone)
     .eq('service_title', title)
     .gte('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString())
     .limit(1);
+  if (duplicateError) return NextResponse.json({ error: 'تعذّر التحقق من طلبك — حاول مرة أخرى' }, { status: 500 });
   if (dup && dup.length > 0) return NextResponse.json({ ok: true, already: true });
 
   const { error } = await sb.from('service_inquiries').insert({

@@ -178,11 +178,14 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
   if (!filtered.some((r) => r.leads.length)) throw new Error('لم ينتج البحث فرصاً موثقة؛ احتُفظ بقائمة اليوم السابقة.');
 
   const today = fmt(now);
-  const { error: deleteError } = await adminClient.from('daily_leads').delete().eq('hunt_date', today).neq('saved', true);
-  if (deleteError) throw deleteError;
+  // خزّن الجولة الجديدة أولاً؛ إن فشل الحفظ تبقى جولة اليوم السابقة كما هي.
+  const { data: previous, error: previousError } = await adminClient.from('daily_leads')
+    .select('id').eq('hunt_date', today).neq('saved', true);
+  if (previousError) throw previousError;
 
   const byCategory: Record<string, number> = {};
   let total = 0;
+  const newRows = [];
   for (const r of filtered) {
     if (r.leads.length === 0) { byCategory[r.category] = 0; continue; }
     const rows = r.leads.map((l) => ({
@@ -191,10 +194,16 @@ export async function runDailyHunt(): Promise<{ total: number; byCategory: Recor
       contact_social: l.contact_social || null, source: l.source || null, notes: l.notes || null,
       lead_kind: l.lead_kind, hotness: l.hotness || null, entry_angle: l.entry_angle || null,
     }));
-    const { error: insertError } = await adminClient.from('daily_leads').insert(rows);
-    if (insertError) throw insertError;
+    newRows.push(...rows);
     byCategory[r.category] = rows.length;
     total += rows.length;
+  }
+  const { error: insertError } = await adminClient.from('daily_leads').insert(newRows);
+  if (insertError) throw insertError;
+  const previousIds = (previous || []).map((row) => row.id);
+  if (previousIds.length) {
+    const { error: deleteError } = await adminClient.from('daily_leads').delete().in('id', previousIds);
+    if (deleteError) throw deleteError;
   }
   return { total, byCategory };
 }
