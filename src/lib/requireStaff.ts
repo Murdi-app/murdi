@@ -6,12 +6,18 @@ import { MAX_SESSION_MS } from './requireAdmin';
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 // أُضيف البريد لأن إشعارات المتصفح تُخزَّن باسم صاحبها: جهاز المالك
 // وجهاز الموظفة اشتراكان مختلفان، ولا يجوز أن يصل أحدهما إشعارَ الآخر.
-// `job` يفرّق موظفتين ليست صلاحيتهما واحدة: المساعدة تصيد العملاء وتراسلهم،
-// والمتابِعة تلاحق مخاطبات الجهات وردودها. والفرق يُقرأ من الحقل لا من البريد،
-// فتُضاف ثالثة غداً بلا لمس كود، ولا يُكتب بريد أحد في الشيفرة.
-export type StaffJob = 'assistant' | 'followup';
-const JOBS: StaffJob[] = ['assistant', 'followup'];
-const asJob = (v: unknown): StaffJob => JOBS.find((j: StaffJob) => j === String(v ?? '')) || 'assistant';
+//
+// و`job` يفرّق موظفتين ليست صلاحيتهما واحدة — والقسمة **قسمةُ مرحلة**:
+// ضي من الباب إلى الدفع، ورغد ما بعد الدفع وجهات التمويل. والفرق يُقرأ من
+// الحقل لا من البريد، فتُضاف ثالثة غداً بلا لمس كود.
+//
+// ★ وكان `StaffJob` و`asJob` مكتوبَين هنا **وفي `@/lib/staffPages` معاً** —
+//   نسختان لتعريفٍ واحد، وهو بعينه العطب الذي أوقع «نتيجة المكالمة» و«وجهة
+//   الدخول» من قبل. فمن أضاف دوراً ثالثاً في أحدهما وجد الآخر يردّه إلى
+//   `assistant` صامتاً. فصار التعريف هناك وحده، ويُستورَد هنا.
+export type { StaffJob } from './staffPages';
+import { asJob } from './staffPages';
+import type { StaffJob } from './staffPages';
 
 export type Who = {
   role: 'admin' | 'staff';

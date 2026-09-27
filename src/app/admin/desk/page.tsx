@@ -67,6 +67,11 @@ export default function DeskPage() {
   const [err, setErr] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showAll, setShowAll] = useState(false)
+  // ★ مَن يقرّر في هذا المكتب يقوله **الخادم** لا الشاشة (٢٧ سبتمبر).
+  //   فالقرار — اعتماداً أو رفضاً أو تأكيد تحويل — واقعٌ على عميلٍ لم يدفع
+  //   بعد، وذاك صفُّ ضي بقسمة المالك. ورغد تفتح المكتب لترى ملفّاتها
+  //   المدفوعة وأرقام أصحابها، فلا تُعرض لها أزرارٌ سيردّها الخادم.
+  const [mayDecide, setMayDecide] = useState(false)
 
   const load = async () => {
     const r = await fetch('/api/staff/desk')
@@ -76,6 +81,7 @@ export default function DeskPage() {
     }
     const d = await r.json()
     setReqs(d.requests || []); setMatches(d.matches || [])
+    setMayDecide(d.may_decide === true)
     setLoading(false)
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -141,9 +147,13 @@ export default function DeskPage() {
     <div dir="rtl" style={{ padding: '20px 18px 60px', fontFamily: 'Tajawal,sans-serif', background: '#FBFCFB', minHeight: '100vh' }}>
       <AdminNav />
 
-      <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>مكتب الطلبات</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>
+        {mayDecide ? 'مكتب الطلبات' : 'ملفّات العملاء'}
+      </h1>
       <p style={{ fontSize: 13, color: '#6B8A80', margin: '0 0 22px', lineHeight: 1.9, maxWidth: 640 }}>
-        ما ينتظر كلمتك أولاً، ثم بقية الطلبات للعلم. وكل اعتماد أو رفض يصل المكتب فوراً.
+        {mayDecide
+          ? 'ما ينتظر كلمتك أولاً، ثم بقية الطلبات للعلم. وكل اعتماد أو رفض يصل المكتب فوراً.'
+          : 'ملفّات العملاء وأرقامهم — للاطلاع والاتصال. واعتمادُ الطلبات وتأكيد التحويلات ليس من عملك، فابدئي بالملفّات المدفوعة.'}
       </p>
 
       {err && (
@@ -170,14 +180,16 @@ export default function DeskPage() {
                     طُلبت {fmt(m.requested_at)} · منذ {daysAgo(m.requested_at)} يوماً
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button disabled={busy === m.id} onClick={() => decide('match', m.id, 'approve')} style={BTN('#1A3D34')}>
-                    {busy === m.id ? '…' : 'امنح'}
-                  </button>
-                  <button disabled={busy === m.id} onClick={() => decide('match', m.id, 'reject')} style={BTN('#fff', '#C0564B')}>
-                    {confirm === 'match:' + m.id + ':reject' ? 'تأكيد الرفض' : 'ارفض'}
-                  </button>
-                </div>
+                {mayDecide && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button disabled={busy === m.id} onClick={() => decide('match', m.id, 'approve')} style={BTN('#1A3D34')}>
+                      {busy === m.id ? '…' : 'امنح'}
+                    </button>
+                    <button disabled={busy === m.id} onClick={() => decide('match', m.id, 'reject')} style={BTN('#fff', '#C0564B')}>
+                      {confirm === 'match:' + m.id + ':reject' ? 'تأكيد الرفض' : 'ارفض'}
+                    </button>
+                  </div>
+                )}
               </div>
               <Contact c={m.company} />
             </div>
@@ -188,11 +200,12 @@ export default function DeskPage() {
 
       {/* ===== طلبات خدمة تنتظر ===== */}
       <h2 style={{ fontSize: 16, fontWeight: 900, color: '#1A3D34', margin: '0 0 2px' }}>
-        ينتظر كلمتك · {waiting.length}
+        {mayDecide ? 'ينتظر كلمتك' : 'طلباتٌ لم تُدفع بعد'} · {waiting.length}
       </h2>
       <p style={{ fontSize: 12.5, color: '#6B8A80', margin: '0 0 12px', lineHeight: 1.8 }}>
-        اعتمدي ما اكتملت بيانات صاحبه، واتصلي بمن نقصته بيانات قبل أن ترفضي — فالرفض يغلق باباً.
-        والطلب المسعَّر يُقبل بتأكيد تحويله: افتحي الإيصال، وطابقي المبلغ، ثم أكّدي.
+        {mayDecide
+          ? 'اعتمدي ما اكتملت بيانات صاحبه، واتصلي بمن نقصته بيانات قبل أن ترفضي — فالرفض يغلق باباً. والطلب المسعَّر يُقبل بتأكيد تحويله: افتحي الإيصال، وطابقي المبلغ، ثم أكّدي.'
+          : 'هذه للعلم فقط — أصحابها لم يدفعوا بعد، ومتابعتهم ليست من عملك.'}
       </p>
       {waiting.length === 0 && (
         <div style={{ ...CARD, color: '#8CA49B', fontSize: 13 }}>لا شيء ينتظر. وهذا خبر جيد.</div>
@@ -229,22 +242,24 @@ export default function DeskPage() {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {r.status === 'priced' ? (
-                <button disabled={busy === r.id || !r.payment} onClick={() => decide('service', r.id, 'approve')}
-                  title={r.payment ? '' : 'يُقبل حين يصل التحويل'}
-                  style={{ ...BTN('#1A3D34'), opacity: r.payment ? 1 : 0.4, cursor: r.payment ? 'pointer' : 'not-allowed' }}>
-                  {busy === r.id ? '…' : 'أكّدي التحويل واقبلي'}
+            {mayDecide && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                {r.status === 'priced' ? (
+                  <button disabled={busy === r.id || !r.payment} onClick={() => decide('service', r.id, 'approve')}
+                    title={r.payment ? '' : 'يُقبل حين يصل التحويل'}
+                    style={{ ...BTN('#1A3D34'), opacity: r.payment ? 1 : 0.4, cursor: r.payment ? 'pointer' : 'not-allowed' }}>
+                    {busy === r.id ? '…' : 'أكّدي التحويل واقبلي'}
+                  </button>
+                ) : (
+                  <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'approve')} style={BTN('#1A3D34')}>
+                    {busy === r.id ? '…' : 'اعتمدي'}
+                  </button>
+                )}
+                <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'reject')} style={BTN('#fff', '#C0564B')}>
+                  {confirm === 'service:' + r.id + ':reject' ? 'تأكيد الرفض' : 'ارفضي'}
                 </button>
-              ) : (
-                <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'approve')} style={BTN('#1A3D34')}>
-                  {busy === r.id ? '…' : 'اعتمدي'}
-                </button>
-              )}
-              <button disabled={busy === r.id} onClick={() => decide('service', r.id, 'reject')} style={BTN('#fff', '#C0564B')}>
-                {confirm === 'service:' + r.id + ':reject' ? 'تأكيد الرفض' : 'ارفضي'}
-              </button>
-            </div>
+              </div>
+            )}
           </div>
           <Contact c={r.company} />
         </div>

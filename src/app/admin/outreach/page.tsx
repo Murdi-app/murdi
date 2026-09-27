@@ -25,7 +25,14 @@ export default function OutreachPage() {
   const [fuMsg, setFuMsg] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDueList(d.due || [])).catch(() => {});
+    // ★ الفشل يُقال: قائمةٌ فارغة تُقرأ «لا شيء متأخر»، وهي قد تكون «لم أقرأ».
+    fetch('/api/admin/outreach/followups')
+      .then(async r => {
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d?.error || 'ردّ الخادم بخطأ'); }
+        return r.json();
+      })
+      .then(d => setDueList(d.due || []))
+      .catch(e => setFuMsg('❌ تعذّر تحميل الأبواب المتأخرة — ' + (e?.message || 'حدّث الصفحة')));
   }, []);
 
   async function sendFollowup(item: DueFU) {
@@ -40,12 +47,22 @@ export default function OutreachPage() {
     } catch { setFuMsg('❌ خطأ في الاتصال'); }
   }
 
+  // ★ كانت هذه أسوأ صورةٍ للفشل الصامت (أُصلحت ٢٧ سبتمبر): لا فحص لـ`r.ok`،
+  //   فالصفّ يُرفع من القائمة وتظهر «✅ سُجّلت» **ولو ردّ الخادم بخطأ**. أي
+  //   أن الشاشة تخبره بنجاحٍ لم يقع، ويخرج البابُ من دورة التذكير وحالتُه في
+  //   القاعدة على ما كانت. ولا يُعلم بذلك أحد.
   async function setReply(item: DueFU, rs: string) {
+    setFuMsg('…');
     try {
-      await fetch('/api/admin/outreach/followups', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, reply_status: rs }) });
+      const r = await fetch('/api/admin/outreach/followups', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, reply_status: rs }) });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setFuMsg('❌ لم تُسجَّل حالة ' + item.entity_name + ' — ' + (d?.error || 'ردّ الخادم بخطأ'));
+        return;
+      }
       setDueList(prev => prev.filter(x => x.id !== item.id));
       setFuMsg(rs === 'replied' ? '✅ سُجّلت كردّت — تابعها من ملف العميل' : '📁 أُقفلت');
-    } catch { setFuMsg('❌ خطأ'); }
+    } catch { setFuMsg('❌ تعذّر الاتصال — لم تُسجَّل الحالة، أعد المحاولة'); }
   }
   // قراءة العميل تلقائياً من الرابط (?company_id=...)
   useEffect(() => {
@@ -57,6 +74,14 @@ export default function OutreachPage() {
     sb.from('companies').select('id, company_name, cr_number').order('company_name').then(({ data }) => { if (data) setCompanies(data); });
   }, []);
 
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [tab, setTab] = useState('funding');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+
+  // ★ نُقل هذا الأثر إلى ما **بعد** حالاته (٢٧ سبتمبر): كان مكتوباً فوق
+  //   `setMsgs` و`setNote`، فيقرأ متغيّراً لم يُعلَن بعد. ويعمل اليوم لأن
+  //   الاستدعاء مؤجَّل، لكنه نمطٌ ينكسر بأول إعادة ترتيب.
   useEffect(() => {
     if (!companyId) return;
     const u = new URL(window.location.href);
@@ -65,12 +90,14 @@ export default function OutreachPage() {
       window.history.replaceState(null, '', u.toString());
     }
     fetch('/api/admin/outreach/manage?company_id=' + companyId)
-      .then(r => r.json()).then(d => { if (d.ok) setMsgs(d.messages); }).catch(() => {});
+      .then(async r => {
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d?.error || 'ردّ الخادم بخطأ'); }
+        return r.json();
+      })
+      .then(d => { if (d.ok) setMsgs(d.messages); else throw new Error(d?.error || 'تعذّرت القراءة'); })
+      // ★ شاشةٌ بلا مخاطبات تُقرأ «لم يُخاطَب أحد»، وقد تكون «لم أستطع القراءة».
+      .catch(e => { setMsgs([]); setNote('❌ تعذّر تحميل مخاطبات هذا العميل — ' + (e?.message || 'حدّث الصفحة')); });
   }, [companyId]);
-  const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [tab, setTab] = useState('funding');
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState('');
   const [editId, setEditId] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editEmail, setEditEmail] = useState('');

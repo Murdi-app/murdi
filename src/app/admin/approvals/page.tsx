@@ -173,16 +173,39 @@ export default function ApprovalsPage() {
     } catch {}
   }
 
+  /**
+   * كتابةٌ تُفحص — ★ أُضيفت ٢٧ سبتمبر.
+   *
+   * كانت الكتابات الثلاث أدناه (توليد جواب · اعتماد جواب أو رفضه · إطلاق
+   * استشارة) تُرسل `await fetch(...)` بلا فحصٍ للردّ، ثم تُعاد القراءة.
+   * فإن ردّ الخادم بخطأ لم يقع شيء ولم يُقل شيء — ويبدو الزرُّ معطَّلاً.
+   * وهذه كتاباتٌ تمسّ العميل: جوابٌ يُعتمد، واستشارةٌ تُطلق.
+   */
+  async function write(url: string, method: 'POST' | 'PATCH', body: unknown, what: string): Promise<boolean> {
+    try {
+      const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        alert('لم يقع شيء — ' + what + ': ' + (d?.error || 'ردّ الخادم بخطأ ' + r.status))
+        return false
+      }
+      return true
+    } catch {
+      alert('تعذّر الاتصال بالخادم — ' + what + ' لم يُنفَّذ.')
+      return false
+    }
+  }
+
   async function generateAnswer(id: string) {
     setBusy(id)
-    await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await write('/api/questions', 'POST', { id }, 'توليد الجواب')
     await loadQA()
     setBusy(null)
   }
 
   async function qaAction(id: string, type: string) {
     setBusy(id)
-    await fetch('/api/questions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, type }) })
+    await write('/api/questions', 'PATCH', { id, type }, 'حفظ قرار السؤال')
     await loadQA()
     setBusy(null)
   }
@@ -201,7 +224,7 @@ export default function ApprovalsPage() {
 
   async function releaseConsultation(id: string) {
     setBusy(id)
-    await fetch('/api/consultation', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    await write('/api/consultation', 'PATCH', { id }, 'إطلاق الاستشارة')
     await loadConsultations()
     setBusy(null)
   }
@@ -210,7 +233,13 @@ export default function ApprovalsPage() {
     const tk = String(c.track_request || '')
     if (!tk) return
     const cur = Array.isArray(c.approved_tracks) ? c.approved_tracks : []
-    await supabase.from('companies').update({ approved_tracks: cur.concat([tk]), track_request: null }).eq('id', c.id)
+    // ★ الكتابة المباشرة على القاعدة تُفحص كما يُفحص المسار (٢٧ سبتمبر):
+    //   كان الخطأ يُبتلع، فيبقى `track_request` قائماً ويظنّ المسار معتمَداً.
+    const { error: trErr } = await supabase
+      .from('companies')
+      .update({ approved_tracks: cur.concat([tk]), track_request: null })
+      .eq('id', c.id)
+    if (trErr) { alert('لم يُعتمد المسار: ' + trErr.message); return }
     loadCompanies()
   }
 

@@ -45,11 +45,28 @@ export default function PaymentsPage() {
     setLoading(false);
   }
 
+  // ★ كان الفشل هنا صامتاً مرّتين (أُصلح ٢٧ سبتمبر):
+  //
+  //   · `load` تبتلع ردّ الخادم غير الناجح وتبتلع انقطاع الشبكة معاً، فتبقى
+  //     القائمة فارغة — **والشاشة الفارغة تُقرأ «لا تحويلات تنتظر»**، وهي في
+  //     الحقيقة «لم أستطع القراءة». وهذا أخطر ما في هذه الصفحة بالذات: ما
+  //     يقف هنا مالٌ وصل الحساب ولم يُقيَّد.
+  //   · و`act` لا تفحص `r.ok` أصلاً: يُضغط «تأكيد استلام المبلغ»، يردّ
+  //     الخادم بخطأ، فتُعاد القراءة وتبقى البطاقة كما هي — فيبدو الزرّ
+  //     معطَّلاً بلا سبب، ويُعاد الضغط، ولا شيء يقع.
   async function load() {
     try {
       const r = await fetch('/api/admin/payments');
-      if (r.ok) { const d = await r.json(); setPayments(d.payments || []); }
-    } catch { /* تجاهل */ }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setNotice(d?.error || 'تعذّر تحميل المدفوعات — حدّث الصفحة');
+        return;
+      }
+      const d = await r.json();
+      setPayments(d.payments || []);
+    } catch {
+      setNotice('تعذّر الاتصال بالخادم — تحقّق من الإنترنت وحدّث الصفحة');
+    }
   }
 
   async function act(id: string, action: 'confirm' | 'reject') {
@@ -63,9 +80,16 @@ export default function PaymentsPage() {
       });
       // حين يتعذّر ربط الدفعة بطلبها تلقائياً، يُقال ذلك صراحةً بدل أن يُصمَت عنه
       const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setNotice(d?.error || (action === 'confirm' ? 'تعذّر تأكيد التحويل — لم يُقيَّد المبلغ' : 'تعذّر رفض التحويل'));
+        setBusy(null);
+        return;
+      }
       if (d?.note) setNotice(String(d.note));
       await load();
-    } catch { /* تجاهل */ }
+    } catch {
+      setNotice('تعذّر الاتصال بالخادم — لم يُنفَّذ شيء، أعد المحاولة');
+    }
     setBusy(null);
   }
 

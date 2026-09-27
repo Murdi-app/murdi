@@ -110,7 +110,18 @@ export default function ApplyPage() {
     setDrafts(dr);
   }).catch(() => {});
   useEffect(() => { load(); }, [coId]);
-  useEffect(() => { load(); fetch('/api/admin/outreach/followups').then(r => r.json()).then(d => setDue(d.due || [])).catch(() => {}); }, []);
+  // ★ الفشل يُقال (٢٧ سبتمبر): قائمةُ متأخّراتٍ فارغة تُقرأ «لا شيء متأخر»،
+  //   وقد تكون «لم أستطع القراءة» — فيُترك بابٌ ينتظر وهو يظنّ اللوحة نظيفة.
+  useEffect(() => {
+    load();
+    fetch('/api/admin/outreach/followups')
+      .then(async r => {
+        if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d?.error || 'ردّ الخادم بخطأ'); }
+        return r.json();
+      })
+      .then(d => setDue(d.due || []))
+      .catch(e => setFuMsg('تعذّر تحميل الأبواب المتأخرة — ' + (e?.message || 'حدّث الصفحة')));
+  }, []);
 
   async function sendFU(item: DueFU) {
     setFuMsg('جارٍ إرسال المتابعة لـ ' + item.entity_name + '\u2026');

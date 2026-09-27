@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
+import { asJob, decidesAtDesk } from '@/lib/staffPages';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { confirmPayment } from '@/lib/confirmPayment';
@@ -119,8 +120,14 @@ export async function GET() {
   const mail = new Map((contacts || []).map((c) => [String(c.company_id), c.contact_email]));
   const byId = new Map((cos || []).map((c) => [String(c.id), { ...c, contact_email: mail.get(String(c.id)) || null }]));
 
+  // ★ الشاشة لا تخمّن مَن يقرّر: الخادم يقوله. فإن تغيّرت القسمة غداً في
+  //   `staffPages` تغيّرت الشاشة والخادم معاً، ولا يبقى زرٌّ يظهر بلا مسار
+  //   يقبله، ولا مسارٌ مفتوح خلف زرٍّ مخفيّ.
+  const mayDecide = who.role === 'admin' || decidesAtDesk(asJob(who.job));
+
   return NextResponse.json({
     role: who.role,
+    may_decide: mayDecide,
     requests: (reqs || []).map((r) => {
       const { price, quoted_price, ...rest } = r as Record<string, unknown>;
       const isPriced = r.status === 'priced';
@@ -138,6 +145,17 @@ export async function GET() {
 export async function PATCH(req: Request) {
   const { who, error } = await atDesk();
   if (!who) return NextResponse.json({ error }, { status: 401 });
+
+  // ★ القرار في هذا المكتب واقعٌ على عميلٍ **لم يدفع بعد** — اعتمادُ طلبٍ،
+  //   أو رفضُه، أو تأكيدُ تحويله. وذاك صفُّ ضي وحدها بقسمة المالك
+  //   (٢٧ سبتمبر). ورغد ترى المكتب لتعرف ملفّاتها المدفوعة وأرقام أصحابها،
+  //   ولا تقرّر فيه. ويُمنع هنا لا بإخفاء الزرّ: ما وصل الجهازَ وُصل إليه.
+  if (who.role !== 'admin' && !decidesAtDesk(asJob(who.job))) {
+    return NextResponse.json(
+      { error: 'هذه الشاشة للاطلاع عندك — اعتمادُ الطلبات وتأكيد التحويلات ليس من عملك' },
+      { status: 403 }
+    );
+  }
 
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const kind = String(b?.kind || '');

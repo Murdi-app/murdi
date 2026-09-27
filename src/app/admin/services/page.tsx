@@ -97,11 +97,22 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
 
+  // \u2605 \u0648\u0644\u0648\u062d\u0629\u064c \u0641\u0627\u0631\u063a\u0629 \u062a\u064f\u0642\u0631\u0623 \u00ab\u0644\u0627 \u0637\u0644\u0628\u0627\u062a\u00bb\u060c \u0648\u0642\u062f \u062a\u0643\u0648\u0646 \u00ab\u0644\u0645 \u0623\u0633\u062a\u0637\u0639 \u0627\u0644\u0642\u0631\u0627\u0621\u0629\u00bb. \u0641\u064a\u064f\u0642\u0627\u0644 \u0627\u0644\u0641\u0634\u0644.
   async function load() {
-    const res = await fetch('/api/admin/service-requests')
-    if (res.ok) { const d = await res.json(); setReqs(d.requests || []); loadFeasibility((d.requests || []).map((x: { id: string }) => x.id)); loadPitchNums((d.requests || []).filter((x: { service_title?: string }) => String(x.service_title || '').includes('\u0627\u0644\u0645\u0633\u062a\u062b\u0645\u0631')).map((x: { id: string }) => x.id)) }
-    const cr = await fetch('/api/admin/contracts')
-    if (cr.ok) { const cd = await cr.json(); const map: Record<string, any> = {}; for (const c of (cd.contracts || [])) { if (c.service_request_id && !map[c.service_request_id]) map[c.service_request_id] = c; } setContracts(map); }
+    try {
+      const res = await fetch('/api/admin/service-requests')
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        alert('\u062a\u0639\u0630\u0651\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0637\u0644\u0628\u0627\u062a \u2014 ' + (d.error || '\u0631\u062f\u0651 \u0627\u0644\u062e\u0627\u062f\u0645 \u0628\u062e\u0637\u0623 ' + res.status) + '. \u0645\u0627 \u062a\u0631\u0627\u0647 \u0627\u0644\u0622\u0646 \u0642\u062f \u064a\u0643\u0648\u0646 \u0646\u0627\u0642\u0635\u0627\u064b.')
+      } else {
+        const d = await res.json(); setReqs(d.requests || []); loadFeasibility((d.requests || []).map((x: { id: string }) => x.id)); loadPitchNums((d.requests || []).filter((x: { service_title?: string }) => String(x.service_title || '').includes('\u0627\u0644\u0645\u0633\u062a\u062b\u0645\u0631')).map((x: { id: string }) => x.id))
+      }
+      const cr = await fetch('/api/admin/contracts')
+      if (cr.ok) { const cd = await cr.json(); const map: Record<string, any> = {}; for (const c of (cd.contracts || [])) { if (c.service_request_id && !map[c.service_request_id]) map[c.service_request_id] = c; } setContracts(map); }
+      else alert('\u062a\u0639\u0630\u0651\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0639\u0642\u0648\u062f \u2014 \u0642\u062f \u0644\u0627 \u062a\u0638\u0647\u0631 \u062d\u0627\u0644\u0629 \u0627\u0644\u062a\u0648\u0642\u064a\u0639 \u0639\u0644\u0649 \u0627\u0644\u0628\u0637\u0627\u0642\u0627\u062a.')
+    } catch (e) {
+      alert('\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u0627\u0644\u062e\u0627\u062f\u0645 \u2014 \u0627\u0644\u0635\u0641\u062d\u0629 \u0642\u062f \u062a\u0643\u0648\u0646 \u0646\u0627\u0642\u0635\u0629: ' + String(e).slice(0, 120))
+    }
     setLoading(false)
   }
 
@@ -503,9 +514,26 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
     }
   }
 
+  // ★ كانت هذه الدالة تكتب السعر والحالة **بلا فحصٍ للردّ** (أُصلح ٢٧ سبتمبر).
+  //   فمن سعّر خدمةً بعشرة آلاف وضغط «احفظ» ثم ردّ الخادم بخطأ: تُعاد القراءة،
+  //   ويظهر الحقل بقيمته القديمة، ولا تُقال كلمة. فيظنّ السعرَ محفوظاً وهو
+  //   ليس كذلك — والعميل لا يرى ثمناً فلا يدفع. وهذه أغلى صورةٍ للفشل
+  //   الصامت في المنصة كلّها، لأنها تقف على المال مباشرة.
   async function save(id: string, deliverable: string, price: string, status?: string) {
     setBusy(id)
-    await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status, credited_from: creditFrom[id] || undefined }) })
+    try {
+      const res = await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, admin_deliverable: deliverable, price: price ? Number(price) : null, status, credited_from: creditFrom[id] || undefined }) })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        alert('لم يُحفظ شيء: ' + (d.error || 'ردّ الخادم بخطأ ' + res.status))
+        setBusy('')
+        return
+      }
+    } catch (e) {
+      alert('تعذّر الاتصال بالخادم — لم يُحفظ شيء: ' + String(e).slice(0, 120))
+      setBusy('')
+      return
+    }
     await load()
     setBusy('')
   }
