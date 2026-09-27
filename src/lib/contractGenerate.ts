@@ -12,6 +12,7 @@ import {
   type ContractInputs, type ContractPack, type ContractScenario, type FundingLeg,
   money, pct, times, arMonths, arEntities, renderContractFlow, renderScenarios, awarderNote,
 } from './contractCompute';
+import { studySeal } from './contractStamp';
 
 export type ContractCompany = {
   company_name?: string | null;
@@ -325,10 +326,7 @@ export function buildContractFile(
     وما نلتزم به: أن نعرض ملفك عليها بتكليفٍ منك، ونتابع حتى يصل ردّها، ونقرأ لك ما تطلبه ونبيّن لك أثره. ويبقى التقديم والتعاقد بينك وبين الجهة مباشرةً. وأتعابنا رسمٌ ثابت دفعتَه مقابل هذا العمل، لا نسبةَ فيه من تمويلك ولا عمولةَ من أي جهة — فلا مصلحة لنا في جهةٍ دون أخرى، ولا في أن يكبر مبلغك فوق ما تحتمله.
   </div>
 
-  <div class="sig">
-    <div class="sn">د. عبدالحكيم المرضي</div>
-    <div class="sl">مستشار مالي معتمد · ترخيص FL-457927015 · حلول المرضي للاستشارات المالية</div>
-  </div>
+  ${studySeal()}
   <div class="foot">أُعدّ لصالح ${esc(co.company_name || '')}${co.owner_name ? ' — ' + esc(co.owner_name) : ''} · وثيقة سرّية لا تُتداول خارج أطرافها · ${today}</div>
 </div>`;
 }

@@ -2,6 +2,7 @@
 // الأرقام تُحسب في feasibilityCompute (كود)، والنموذج يكتب التحليل والسوق فقط
 import { computeFeasibility, renderProjectionTable, renderCashflowTable, renderFeasibilitySummary, computeCredit, renderCreditTable, renderMonthlyTable, renderScenarioTable, computeBreakPoints, renderBreakPointsTable, renderCombinedTable, type FeasibilityInputs, type FeasibilityResult, type CreditPack } from './feasibilityCompute';
 import { orderForClient, familyOf, pledgeWarning, FAMILY_LABEL } from './productPreference';
+import { studySeal } from './contractStamp';
 
 // صف جهة تمويل مرشحة — يُقرأ من match_results ولا يُولَّد بنموذج
 export interface FunderRow {
@@ -494,8 +495,8 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
       + 'ولا يشمل هذا الفحص دراسة السوق بمصادرها، ولا تحليل المنافسة في نطاق المشروع، ولا الدراسة الفنية والمخاطر، ولا قائمة الجهات التمويلية المرشّحة بفجواتها ومتطلباتها وطرق التقديم إليها — وهذه كلها في دراسة الجدوى الكاملة. '
       + 'وقيمة هذا الفحص تُخصم بالكامل من الدراسة الكاملة عند إكمالها.</div>' : '')
     + '</div>'
-    + '<div class="ft"><b style="color:#1A3D34;font-size:13px">د. عبدالحكيم المرضي</b><br>'
-    + 'مستشار مالي معتمد · ترخيص FL-457927015 · حلول المرضي للاستشارات المالية · سجل تجاري 7039663724<br>'
+    + '<div style="padding:0 30px">' + studySeal() + '</div>'
+    + '<div class="ft">'
     + 'وثيقة سرّية أُعدّت لصالح ' + ctx.companyName + ' — لا تُتداول خارج أطرافها<br><br>'
     // السطر الأخير ليس تزيّناً: بغيره تُقرأ الوثيقة تعهّداً، فيُفاوَض العميل
     // على ما لم يلتزم به، ويُحمَّل المكتبُ وعداً بتمويلٍ لا يملكه أحد.

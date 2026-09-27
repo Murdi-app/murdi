@@ -10,7 +10,7 @@
 // العقد الذي هو فوقه. ومن أراد وضع ختمه المصوَّر بدلاً منه فموضعُه
 // `STAMP_IMAGE_URL` وحده.
 
-import { LICENCE_NO, CR_NO } from './legalStance';
+import { LICENCE_NO, CR_NO, ADVISOR_LINE } from './legalStance';
 
 /** ختمٌ مصوَّر إن وُجد — وإلا رُسم الختم أدناه */
 export const STAMP_IMAGE_URL = '';
@@ -46,10 +46,28 @@ export function stampSvg(size = 168): string {
 </svg>`;
 }
 
-const stampBlock = (): string =>
+const stampBlock = (size = 168): string =>
   STAMP_IMAGE_URL
-    ? `<img src="${STAMP_IMAGE_URL}" alt="ختم المكتب" style="width:168px;height:168px;object-fit:contain">`
-    : stampSvg();
+    ? `<img src="${STAMP_IMAGE_URL}" alt="ختم المكتب" style="width:${size}px;height:${size}px;object-fit:contain">`
+    : stampSvg(size);
+
+/**
+ * توقيع المستشار وختم المكتب في آخر كل دراسة تُسلَّم (بأمر المالك، ٢٧ سبتمبر).
+ *
+ * وكان كل مولّدٍ يكتب توقيعه بيده — الجدوى والحكم الائتماني وملف العقد —
+ * بصيغة ترخيصٍ غير المعتمدة، وبلا ختم. فصار هنا وحده، وتستورده المولّدات:
+ * من غيّر الختم أو الصيغة غيّرها في كل دراسة معاً. والأنماط مضمّنة لأن
+ * الكتلة تُزرع في وثائق لكلٍّ منها ورقة أنماطه.
+ */
+export function studySeal(): string {
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:30px;padding-top:14px;border-top:2px solid #EDF4F1;break-inside:avoid;page-break-inside:avoid">
+  <div style="line-height:1.9">
+    <div style="font-size:15px;font-weight:900;color:#1A3D34">د. عبدالحكيم المرضي</div>
+    <div style="font-size:12px;color:#5E7C73;font-weight:700">${ADVISOR_LINE}<br>حلول المرضي للاستشارات المالية · سجل تجاري ${CR_NO}</div>
+  </div>
+  <div style="flex:0 0 auto">${stampBlock(128)}</div>
+</div>`;
+}
 
 /**
  * يلفّ نصّ العقد بترويسةٍ وختم. والختم يُوضع عند توقيع الطرف الأول —

@@ -13,6 +13,7 @@
 import { blockersFromMatches, cycleDays, isImporter, type Blocker } from './gapDemand';
 import { COMMERCIAL } from './servicePricing';
 import { displayName } from './serviceCatalog';
+import { studySeal } from './contractStamp';
 
 // ── ثوابت الحساب ───────────────────────────────────────────────────
 // هي نفسها ثوابت ملف غرض التمويل (creditMemo.dscr) عمداً: وثيقتان تخرجان
@@ -430,10 +431,7 @@ export function buildCreditVerdict(
     وهذه هي «تجهيز ملف التمويل والمخاطبة والتفاوض»، ويُخصم منها ما دفعته في هذا الفحص بالكامل إن أكملت خلال ثلاثين يوماً.
   </div>
 
-  <div class="sig">
-    <div class="sn">د. عبدالحكيم المرضي</div>
-    <div class="sl">مستشار مالي معتمد · ترخيص FL-457927015 · حلول المرضي للاستشارات المالية</div>
-  </div>
+  ${studySeal()}
   <div class="foot">أُعدّ لصالح ${esc(c.company_name || '')}${c.owner_name ? ' — ' + esc(c.owner_name) : ''} · وثيقة سرّية لا تُتداول خارج أطرافها · ${today}</div>
 </div>`;
 }
