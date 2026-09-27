@@ -186,7 +186,7 @@ export default function UqudEntryPage() {
 
         <div style={{ textAlign: 'center', marginBottom: 26 }}>
           <div style={{ color: GOLD, fontWeight: 900, fontSize: 12, letterSpacing: '.12em', marginBottom: 8 }}>
-            حلول المرضي للاستشارات المالية · ترخيص FL-457927015
+            الدكتور عبدالحكيم المرضي · مستشار مالي معتمد — ترخيص رقم FL-457927015
           </div>
           <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px', fontFamily: 'Amiri, serif' }}>
             عندك عقد؟ الفوز شيء والتنفيذ شيء آخر
@@ -194,6 +194,12 @@ export default function UqudEntryPage() {
           <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
             أربعة أسئلة عن عقدك — لا عن منشأتك — وتخرج بقراءة أولية.
           </p>
+          
+            href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، عندي عقد وأبغى أعرف كيف أموّل تنفيذه')}
+            target="_blank" rel="noopener noreferrer"
+            style={{ display: 'inline-block', marginTop: 14, background: '#fff', color: GREEN, border: '1.5px solid ' + GREEN, padding: '9px 22px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
+            مستعجل؟ كلّمنا واتساب مباشرة
+          </a>
         </div>
 
         {done ? (
