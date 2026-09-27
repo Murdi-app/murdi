@@ -20,7 +20,7 @@ type Co = {
 type Req = {
   id: string; company_id: string; service_title: string | null; service_category: string | null
   status: string; client_note: string | null; track: string | null
-  created_at: string; paid_at: string | null; company: Co | null
+  created_at: string; updated_at: string | null; paid_at: string | null; company: Co | null
   price: number | null
   payment: { id: string; amount_sar: number | null; method: string | null; receipt_url: string | null; created_at: string } | null
 }
@@ -133,6 +133,18 @@ export default function DeskPage() {
   const rest = reqs.filter(r => !isWaiting(r.status))
   const shown = showAll ? rest : rest.slice(0, 12)
 
+  // ★ ملفّات العميل الذي أتمّ اتفاقه — صفُّ مَن تتابع ما بعد الاتفاق (٢٧ سبتمبر).
+  //
+  //   وكانت هذه الصفوف تسقط في قائمة «البقية للعلم» مرتَّبةً بالأحدث ومقصوصةً
+  //   عند اثني عشر — أي أن أقدمَ ملفٍّ واقف، وهو **أولى ما يُعمل**، يقع في
+  //   الذيل أو خارج الشاشة أصلاً. فوقفت خمسةُ ملفّات بين ستة أيام وأربعين
+  //   ولم يرها أحد. فصارت تُرفع إلى الرأس، **والأقدمُ سكوناً أولاً**.
+  const ACTIVE = ['paid', 'in_progress', 'in_follow_up', 'delivered']
+  const idleDays = (r: Req) => daysAgo(r.updated_at || r.created_at)
+  const active = reqs
+    .filter(r => ACTIVE.includes(r.status))
+    .sort((a, b) => idleDays(b) - idleDays(a))
+
   if (loading) return (
     <div dir="rtl" style={{ padding: 40, fontFamily: 'Tajawal,sans-serif', color: '#6B8A80' }}>جارٍ التحميل…</div>
   )
@@ -160,8 +172,49 @@ export default function DeskPage() {
         <div style={{ background: '#FBEEEC', color: '#C0564B', border: '1px solid #F0D6D1', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{err}</div>
       )}
 
-      {/* ===== طلبات المطابقة ===== */}
-      {matches.length > 0 && (
+      {/* ===== ملفّات العملاء الذين أتمّوا اتفاقهم — رأسُ شاشة مَن تتابع ===== */}
+      {!mayDecide && (
+        <>
+          <h2 style={{ fontSize: 16, fontWeight: 900, color: '#1A3D34', margin: '0 0 2px' }}>
+            ملفّات تنتظرك · {active.length}
+          </h2>
+          <p style={{ fontSize: 12.5, color: '#6B8A80', margin: '0 0 12px', lineHeight: 1.8 }}>
+            هؤلاء أتمّوا اتفاقهم معنا، فهم أولى من كل شيء. الأقدمُ وقوفاً أولاً — اتصلي واسألي: ما الذي ينقص ملفك عندنا؟ ثم اكتبي جوابه كما قاله.
+          </p>
+          {active.length === 0 && (
+            <div style={{ ...CARD, color: '#8CA49B', fontSize: 13 }}>لا ملفّ واقفاً الآن.</div>
+          )}
+          {active.map(r => {
+            const d = idleDays(r)
+            const hot = d >= 7
+            return (
+              <div key={r.id} style={{ ...CARD, borderRight: '4px solid ' + (hot ? '#C0564B' : '#C9A84C') }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 220 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 900, color: '#1A3D34' }}>
+                      {r.company?.company_name || 'منشأة بلا اسم'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#8CA49B', marginTop: 2 }}>
+                      {r.service_title || 'خدمة'} · {statOf(r.status).t}
+                    </div>
+                  </div>
+                  <span style={{
+                    background: hot ? '#FBEEEC' : '#FBF5E8', color: hot ? '#C0564B' : '#9A7B2E',
+                    borderRadius: 999, padding: '4px 12px', fontSize: 11.5, fontWeight: 900,
+                  }}>
+                    {d === 0 ? 'تحرّك اليوم' : 'واقف منذ ' + d + ' يوماً'}
+                  </span>
+                </div>
+                <Contact c={r.company} />
+              </div>
+            )
+          })}
+          <div style={{ height: 26 }} />
+        </>
+      )}
+
+      {/* ===== طلبات المطابقة — صفُّ مَن تقرّر وحدها، فلا تُعرض لغيرها ===== */}
+      {mayDecide && matches.length > 0 && (
         <>
           <h2 style={{ fontSize: 16, fontWeight: 900, color: '#1A3D34', margin: '0 0 2px' }}>
             طلبات المطابقة · {matches.length}

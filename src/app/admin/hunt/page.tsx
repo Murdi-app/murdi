@@ -60,24 +60,39 @@ export default function HuntPage() {
     setLoading(false);
   }
 
+  // ★ الفشل يُقال (٢٧ سبتمبر): قائمةٌ فارغة تُقرأ «لا فرص اليوم»، وقد تكون
+  //   «لم أستطع القراءة». ورسمٌ متفائلٌ بلا فحص يقول «حُذفت» و«حُفظت» ولم يقع
+  //   شيء — فتختفي الفرصة من الشاشة وهي قائمةٌ في القاعدة، أو العكس.
   async function loadLeads(mode: 'today' | 'saved' = 'today') {
     try {
       const r = await fetch('/api/admin/daily-hunt' + (mode === 'saved' ? '?saved=true' : ''));
-      if (r.ok) { const d = await r.json(); setLeads(d.leads || []); setDate(d.date || ''); }
-    } catch { /* تجاهل */ }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setMsg('تعذّر تحميل الفرص — ' + (d?.error || 'ردّ الخادم بخطأ ' + r.status));
+        return;
+      }
+      const d = await r.json(); setLeads(d.leads || []); setDate(d.date || '');
+    } catch { setMsg('تعذّر الاتصال بالخادم — حدّث الصفحة'); }
   }
   function switchView(mode: 'today' | 'saved') { setViewMode(mode); loadLeads(mode); }
 
   async function toggleSave(id: string, current: boolean) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, saved: !current } : l));
-    try { await fetch('/api/admin/save-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, saved: !current }) }); }
-    catch { setLeads(prev => prev.map(l => l.id === id ? { ...l, saved: current } : l)); }
+    const undo = () => setLeads(prev => prev.map(l => l.id === id ? { ...l, saved: current } : l));
+    try {
+      const r = await fetch('/api/admin/save-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, saved: !current }) });
+      if (!r.ok) { undo(); const d = await r.json().catch(() => ({})); setMsg('لم يُحفظ التغيير — ' + (d?.error || 'ردّ الخادم بخطأ')); }
+    } catch { undo(); setMsg('تعذّر الاتصال — لم يُحفظ التغيير'); }
   }
 
   async function deleteLead(id: string) {
     if (!confirm('حذف هذه الفرصة نهائياً؟')) return;
+    const before = leads;
     setLeads(prev => prev.filter(l => l.id !== id));
-    try { await fetch('/api/admin/save-lead?id=' + id, { method: 'DELETE' }); } catch { /* تجاهل */ }
+    try {
+      const r = await fetch('/api/admin/save-lead?id=' + id, { method: 'DELETE' });
+      if (!r.ok) { setLeads(before); const d = await r.json().catch(() => ({})); setMsg('لم تُحذف — ' + (d?.error || 'ردّ الخادم بخطأ')); }
+    } catch { setLeads(before); setMsg('تعذّر الاتصال — لم تُحذف الفرصة'); }
   }
 
   async function runHunt() {

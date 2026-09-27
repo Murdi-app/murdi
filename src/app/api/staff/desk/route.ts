@@ -68,7 +68,9 @@ export async function GET() {
   //   والسعر والمُخرَج المولَّد عمودان في هذا الجدول نفسه.
   const { data: reqs } = await sb
     .from('service_requests')
-    .select('id, company_id, service_title, service_category, status, client_note, track, created_at, paid_at, price, quoted_price')
+    // `updated_at` لازمٌ لقياس السكون: «هذا الملفّ لم يتحرّك منذ كذا يوماً»
+    // هو الرقم الذي يرتّب يومَ مَن تتابع ملفّات العملاء.
+    .select('id, company_id, service_title, service_category, status, client_note, track, created_at, updated_at, paid_at, price, quoted_price')
     .order('created_at', { ascending: false })
     .limit(120);
 

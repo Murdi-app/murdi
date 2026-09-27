@@ -80,11 +80,18 @@ export default function ClientHuntPage() {
     setLoading(false);
   }
 
+  // ★ الفشل يُقال (٢٧ سبتمبر): شاشةٌ فارغة تُقرأ «لا شركات في القائمة»،
+  //   وقد تكون «لم أستطع القراءة» — فيُظنّ الصيد فارغاً وهو ممتلئ.
   async function load() {
     try {
       const r = await fetch('/api/admin/client-hunt');
-      if (r.ok) { const d = await r.json(); setLeads(d.leads || []); }
-    } catch { /* تجاهل */ }
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setMsg('تعذّر تحميل القائمة — ' + (d?.error || 'ردّ الخادم بخطأ ' + r.status));
+        return;
+      }
+      const d = await r.json(); setLeads(d.leads || []);
+    } catch { setMsg('تعذّر الاتصال بالخادم — حدّث الصفحة'); }
   }
 
   const [view, setView] = useState<'all' | 'call_list'>('all');
