@@ -212,7 +212,7 @@ export default function Home() {
 
       <div className="lp">
 
-        <div className="bar"><b>حلول المرضي للاستشارات المالية</b> · رخصة استشارة FL-457927015 · سجل تجاري 7039663724</div>
+        <div className="bar"><b>حلول المرضي للاستشارات المالية</b> · مستشار مالي معتمد — ترخيص رقم FL-457927015 · سجل تجاري 7039663724</div>
 
         <nav className="nav">
           <div className="logo">مُرضي <i>MURDI</i></div>
@@ -238,6 +238,10 @@ export default function Home() {
             <p className="hero-sub">نقيس أين تقف منشأتك بالضبط، ونكشف ما يمنع قبولها، ونجهّز ملفها — ونبيّن لك الجهات التي تنطبق عليك شروطها المعلنة، ثم نعرض ملفك عليها بتكليفٍ خطّي منك ونتابع حتى يصل الرد. ويبقى التقديم والتعاقد بيدك.</p>
             <div className="chip">منصة استشارية لقياس وتجهيز الجاهزية — لا نمنح تمويلاً ولا نضمن نتيجة</div>
             <div><button className="cta" onClick={go}>افتح ملف شركتك — التقييم مجاني</button></div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+              <a href="/uqud" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>عندك عقد مُرسى؟ موّل تنفيذه ←</a>
+              <a href="/jadwa" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج دراسة جدوى تقبلها الجهات؟ ←</a>
+            </div>
             <div className="cta-note">التقييم مجاناً. وبعده تختار: الحكم الائتماني لمنشأتك بـ 990 ر.س، أو تجهيز الملف والمخاطبة ابتداءً من 7,900 ر.س ويُخصم منها الحكم. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
           </div>
         </section>
