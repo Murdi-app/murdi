@@ -90,8 +90,12 @@ export async function POST(req: Request) {
       ...(companyName ? { company_name: companyName } : {}),
     }).select('id').single()
     if (error) throw error
+    // صفحة `/test` تحفظ مرةً واحدة بعد الأسئلة الثمانية (٢٧ سبتمبر ٢٠٢٦ صار
+    // الجوال بوّابةَ النتيجة لا بوّابةَ الأسئلة)، فالصفّ يولد مكتملاً — ويحمل
+    // إشعارُه الدرجةَ والمسار، وإلا وصل المكتبَ اسمٌ بلا درجة.
     await notifyLead({
-      id: String(data.id), name, company: companyName, phone, score: null, track, src, completed: false,
+      id: String(data.id), name, company: companyName, phone,
+      score: completed ? score : null, track, src, completed,
     }).catch(() => {})
     return NextResponse.json({ id: data.id })
   } catch (e) {

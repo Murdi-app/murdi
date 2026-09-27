@@ -7,6 +7,7 @@ import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 // يُطبّع الجوال ويُخطر المكتب. وكان عميلٌ مباشرٌ مُعرَّفاً بلا استعمال.
 
 const NAVY = '#13302A'
+const FONT = 'Tajawal, Cairo, sans-serif'
 const GOLD = '#C9A84C'
 const LIGHT = '#9DB3AB'
 
@@ -64,7 +65,11 @@ function insights(ans: number[]) {
 }
 
 export default function TestPage() {
-  const [stage, setStage] = useState<'welcome' | 'name' | 'phone' | 'q' | 'analyzing' | 'result'>('welcome')
+  // ★ ٢٧ سبتمبر ٢٠٢٦ — الأسئلة أولاً، والاسم والجوال بوّابةُ النتيجة.
+  //   كانت الترحيبية تَعِد «بلا تسجيل · ٦٠ ثانية» ثم تطلب ثلاثة حقول قبل
+  //   أول سؤال، فينقض الوعدُ نفسَه في الخطوة الأولى لزائرٍ دُفع ثمنُ نقرته.
+  //   والآن يُجيب أولاً، ثم يُطلب منه ما يكشف نتيجته — وقد استثمر فيها.
+  const [stage, setStage] = useState<'welcome' | 'q' | 'gate' | 'analyzing' | 'result'>('welcome')
   const [qIndex, setQIndex] = useState(0)
   const [name, setName] = useState('')
   // ★ اسم المنشأة واسم صاحبها حقلان لا حقل.
@@ -78,7 +83,6 @@ export default function TestPage() {
   //   فيُرجع الفهرس صفراً دائماً ويُسجَّل كلُّ عميلٍ «تمويل» ولو اختار
   //   «استثمار» أو «طرح». فصار الاختيار يُحفظ بفهرسه لا بقيمته.
   const [picks, setPicks] = useState<number[]>([])
-  const [rowId, setRowId] = useState<string | null>(null)
   const [adSrc, setAdSrc] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -102,67 +106,63 @@ export default function TestPage() {
   const score = ans.reduce((s, v) => s + v, 0)
   const pct = ans.length === QUESTIONS.length ? Math.round((score / MAX) * 100) : 0
 
-  // شريط التقدم: اسم + جوال + 8 أسئلة = 10 خطوات
-  const totalSteps = 2 + QUESTIONS.length
+  // شريط التقدم: 8 أسئلة + بوّابة النتيجة = 9 خطوات
+  const totalSteps = QUESTIONS.length + 1
   let stepDone = 0
-  if (stage === 'phone') stepDone = 1
-  else if (stage === 'q') stepDone = 2 + qIndex
+  if (stage === 'q') stepDone = qIndex
+  else if (stage === 'gate') stepDone = QUESTIONS.length
   else if (stage === 'analyzing' || stage === 'result') stepDone = totalSteps
   const progress = Math.round((stepDone / totalSteps) * 100)
 
-  // حفظ فوري بعد الجوال — يرجع id
-  const saveInitial = async () => {
+  const pick = (v: number, idx: number) => {
+    setAns([...ans, v])
+    setPicks([...picks, idx])
+    if (ans.length + 1 < QUESTIONS.length) setQIndex(qIndex + 1)
+    else setStage('gate')
+  }
+
+  // حفظٌ واحد بعد الأسئلة كلّها — والنتيجة لا تنكشف إلا بعد نجاحه.
+  // والفشل يُقال ويبقى الزائر على البوّابة ليصحّح (غالباً رقمٌ خاطئ يردّه
+  // الخادم برسالته)؛ فلو مضى إلى النتيجة وقد فشل الحفظ، خسرنا عميلاً دُفع
+  // ثمنُ نقرته ولم يعلم به أحد.
+  const reveal = async () => {
     setErr('')
+    if (company.trim().length < 2) { setErr('فضلاً اكتب اسم منشأتك'); return }
+    if (name.trim().length < 2) { setErr('فضلاً اكتب اسمك'); return }
     if (phone.trim().length < 9) { setErr('فضلاً اكتب رقم جوال صحيح'); return }
     setBusy(true)
     try {
+      // المسار من فهرس الخيار المختار في السؤال الثامن، لا من قيمته
+      const track = TRACK[picks[7]] || ''
       const res = await fetch('/api/mini-save', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), company_name: company.trim(), phone: phone.trim(), answers: [], score: 0, src: adSrc || null, completed: false }),
+        body: JSON.stringify({ name: name.trim(), company_name: company.trim(), phone: phone.trim(), answers: ans, score: pct, track, src: adSrc || null, completed: true }),
       })
-      const j = await res.json()
-      if (j.id) {
-        setRowId(j.id)
-        if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }) }
-      }
-      setStage('q')
-    } catch {
-      // حتى لو فشل الحفظ، نكمل التجربة حتى لا نخسر العميل
-      setStage('q')
-    } finally { setBusy(false) }
-  }
-
-  // تحديث الصف مع كل إجابة
-  const pick = async (v: number, idx: number) => {
-    const nextAns = [...ans, v]
-    const nextPicks = [...picks, idx]
-    setAns(nextAns)
-    setPicks(nextPicks)
-    if (rowId) {
-      const done = nextAns.length === QUESTIONS.length
-      // المسار من فهرس الخيار المختار في السؤال الثامن، لا من قيمته
-      const t = done ? (TRACK[nextPicks[7]] || '') : ''
-      const p = done ? Math.round((nextAns.reduce((s, x) => s + x, 0) / MAX) * 100) : 0
-      fetch('/api/mini-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rowId, name, company_name: company.trim(), phone, answers: nextAns, score: p, track: t, completed: done }) }).catch(() => {})
-    }
-    if (nextAns.length < QUESTIONS.length) {
-      setQIndex(qIndex + 1)
-    } else {
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j.id) { setErr(j.error || 'تعذّر الحفظ — أعد المحاولة'); return }
+      if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }) }
       setStage('analyzing')
       setTimeout(() => setStage('result'), 2200)
-    }
+    } catch {
+      setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة')
+    } finally { setBusy(false) }
   }
 
   const v = verdict(pct)
   const ins = ans.length === QUESTIONS.length ? insights(ans) : null
 
   return (
-    <div style={{ minHeight: '100vh', background: NAVY, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 18px', fontFamily: 'system-ui, -apple-system, Arial', direction: 'rtl' }}>
+    <div style={{ minHeight: '100vh', background: NAVY, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 18px', fontFamily: FONT, direction: 'rtl' }}>
       <div style={{ width: '100%', maxWidth: 460 }}>
 
-        {/* الشعار */}
-        <div style={{ textAlign: 'center', marginBottom: 22 }}>
-          <span style={{ color: GOLD, fontSize: 22, fontWeight: 900, letterSpacing: 1 }}>مُرضي</span>
+        {/* ★ الشعار والرقم والترخيص — كانت الصفحة تطلب جوال الزائر وليس فيها
+            ما يقول له مع مَن يتعامل. وهي وحدها بين صفحات الإعلان بلا ذلك. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <a href="/" style={{ color: GOLD, fontSize: 22, fontWeight: 900, letterSpacing: 1, textDecoration: 'none' }}>مُرضي</a>
+          <a href="tel:0570749196" style={{ color: '#fff', fontSize: 14, fontWeight: 800, textDecoration: 'none', direction: 'ltr' }}>0570749196</a>
+        </div>
+        <div style={{ color: LIGHT, fontSize: 11.5, fontWeight: 700, textAlign: 'center', marginBottom: 22, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          الدكتور عبدالحكيم المرضي · مستشار مالي معتمد — <span style={{ whiteSpace: 'nowrap' }}>ترخيص رقم FL-457927015</span>
         </div>
 
         {/* شريط التقدم */}
@@ -180,35 +180,23 @@ export default function TestPage() {
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>تمويل منشأتك — ابدأ من جاهزيتك</h1>
             <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>للمنشآت القائمة من سنتين فأكثر بإيراد يتجاوز المليون. جهات التمويل لا ترفض منشأتك — ترفض ملفاً ناقصاً. اعرف في دقيقة أين تقف، وما الذي ينقصك، وأي الجهات تنطبق عليك شروطها.</p>
-            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٦٠ ثانية · بلا تسجيل · تمويل من ٥٠٠ ألف إلى ١٠ ملايين</p>
-            <button onClick={() => setStage('name')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
+            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٨ أسئلة · بلا تسجيل · تمويل من ٥٠٠ ألف إلى ١٠ ملايين</p>
+            <button onClick={() => setStage('q')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
           </div>
         )}
 
-        {/* السؤال: اسم الشركة */}
-        {stage === 'name' && (
+        {/* بوّابة النتيجة */}
+        {stage === 'gate' && (
           <div>
-            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 22px', textAlign: 'center' }}>عرّفنا بك وبمنشأتك</h2>
-            <input value={company} onChange={e => setCompany(e.target.value)} placeholder="اسم المنشأة"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right', marginBottom: 12 }} />
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسمك"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
-            <button onClick={() => { if (company.trim().length < 2) { setErr('فضلاً اكتب اسم منشأتك'); return } if (name.trim().length < 2) { setErr('فضلاً اكتب اسمك'); return } setErr(''); setStage('phone') }}
-              style={{ width: '100%', marginTop: 16, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer' }}>التالي ←</button>
+            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 10px', textAlign: 'center' }}>نتيجتك جاهزة ✓</h2>
+            <p style={{ color: LIGHT, fontSize: 14, lineHeight: 1.8, textAlign: 'center', margin: '0 0 22px' }}>اكتب بياناتك لتظهر درجتك الآن، ويراجعها مستشار مُرضي ويتواصل معك بالجهات التي تنطبق عليك شروطها.</p>
+            <input value={company} onChange={e => setCompany(e.target.value)} placeholder="اسم المنشأة" style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right', fontFamily: FONT, marginBottom: 12 }} />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="اسمك" style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right', fontFamily: FONT, marginBottom: 12 }} />
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" inputMode="tel" autoComplete="tel" style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right', fontFamily: FONT, marginBottom: 12 }} />
+            <button onClick={reveal} disabled={busy}
+              style={{ width: '100%', marginTop: 4, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer', fontFamily: FONT, opacity: busy ? 0.6 : 1 }}>{busy ? 'لحظة…' : 'اعرض نتيجتي ←'}</button>
             {err && <div style={{ color: '#F3B0A8', fontSize: 14, marginTop: 12, textAlign: 'center' }}>{err}</div>}
-          </div>
-        )}
-
-        {/* السؤال: الجوال */}
-        {stage === 'phone' && (
-          <div>
-            <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: '0 0 10px', textAlign: 'center' }}>رقم جوالك</h2>
-            <p style={{ color: LIGHT, fontSize: 13, textAlign: 'center', margin: '0 0 22px' }}>ليصلك تحليل جاهزيتك للتمويل، ويتواصل معك مستشار مُرضي</p>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="05xxxxxxxx" inputMode="tel"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '15px 18px', fontSize: 16, borderRadius: 14, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#fff', outline: 'none', textAlign: 'right' }} />
-            <button onClick={saveInitial} disabled={busy}
-              style={{ width: '100%', marginTop: 16, background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '15px', fontSize: 17, fontWeight: 900, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'لحظة…' : 'ابدأ الاختبار ←'}</button>
-            {err && <div style={{ color: '#F3B0A8', fontSize: 14, marginTop: 12, textAlign: 'center' }}>{err}</div>}
+            <p style={{ color: LIGHT, fontSize: 12, textAlign: 'center', margin: '14px 0 0' }}>بياناتك لا تُشارك مع أي جهة إلا بتكليفٍ خطّي منك.</p>
           </div>
         )}
 
@@ -220,7 +208,7 @@ export default function TestPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {QUESTIONS[qIndex].opts.map((o, i) => (
                 <button key={i} onClick={() => pick(o.v, i)}
-                  style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '2px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '15px 18px', fontSize: 16, fontWeight: 600, cursor: 'pointer', textAlign: 'right', transition: 'all 0.15s' }}
+                  style={{ background: 'rgba(255,255,255,0.06)', color: '#fff', border: '2px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: '15px 18px', fontSize: 16, fontWeight: 600, cursor: 'pointer', textAlign: 'right', fontFamily: FONT, transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.background = 'rgba(201,162,75,0.12)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}>
                   {o.t}

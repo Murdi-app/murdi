@@ -55,6 +55,15 @@ gtag('js', new Date());
 gtag('config', 'AW-17947401948');`,
           }}
         />
+        {/* ★ خطّا الهوية (Tajawal وCairo) لم يكونا محمَّلين إلا في صفحاتٍ
+            تستوردهما بنفسها — فكانت صفحات الإعلان (`/test` · `/uqud` · `/jadwa`)
+            تُعرض بخط النظام. يُحمَّلان هنا مرةً للمنصة كلها. وبالاسم الصريح لا
+            عبر next/font: الأنماط في عشرات الملفات تسمّي 'Tajawal' نصّاً، وnext/font
+            يُعمّي اسم العائلة فلا يطابقها. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;600;700;900&display=swap" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="theme-color" content="#1A3D34" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

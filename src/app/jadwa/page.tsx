@@ -140,9 +140,9 @@ export default function JadwaEntryPage() {
 
         <div style={{ textAlign: 'center', marginBottom: 26 }}>
           <div style={{ color: GOLD, fontWeight: 900, fontSize: 12, letterSpacing: '.12em', marginBottom: 8 }}>
-            حلول المرضي للاستشارات المالية · ترخيص FL-457927015
+            الدكتور عبدالحكيم المرضي · مستشار مالي معتمد — <span style={{ whiteSpace: 'nowrap' }}>ترخيص رقم FL-457927015</span>
           </div>
-          <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px', fontFamily: 'Amiri, serif' }}>
+          <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px' }}>
             دراسة جدوى تُقرأ عند جهة التمويل
           </h1>
           <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
