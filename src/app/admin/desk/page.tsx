@@ -102,8 +102,11 @@ export default function DeskPage() {
       body: JSON.stringify({ kind, id, action }),
     })
     setBusy('')
-    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || 'تعذّر تنفيذ القرار'); return }
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { setErr(d.error || 'تعذّر تنفيذ القرار'); return }
     await load()
+    // التحويل أُكّد، لكن شيئاً بعده لم يكتمل — يُقال ولا يُطوى مع الصف
+    if (d.note) setErr('أُكّد التحويل — ' + d.note)
   }
 
   const Contact = ({ c }: { c: Co | null }) => {

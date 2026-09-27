@@ -26,62 +26,96 @@ const NEEDS_MATCH = new Set<string>([
 
 export type ConfirmResult = { ok: true; note: string | null } | { ok: false; error: string; status: number };
 
+// الحالات التي تُقبل منها الدفعة للتأكيد. وما عداها قد حُسم.
+const CONFIRMABLE = ['awaiting_confirmation', 'pending'];
+
+// طلبٌ تجاوز الدفعَ في مساره لا يُعاد ختمُه «مدفوعاً» — وإلا نزل العمل
+// المنجز إلى الوراء بمجرّد تأكيدٍ متأخّر.
+const PAST_PAYMENT = '(in_progress,in_follow_up,delivered,completed)';
+
 /** يؤكّد دفعةً بمعرّفها. `by` اسمُ من أكّد، يظهر في إشعار المالك حين لا يكون هو. */
 export async function confirmPayment(sb: SupabaseClient, id: string, by?: string): Promise<ConfirmResult> {
-  const { data: pay } = await sb.from('payments').select('*').eq('id', id).maybeSingle();
+  const { data: pay, error: readErr } = await sb.from('payments').select('*').eq('id', id).maybeSingle();
+  if (readErr) return { ok: false, error: 'تعذّرت قراءة الدفعة: ' + readErr.message, status: 500 };
   if (!pay) return { ok: false, error: 'غير موجود', status: 404 };
 
-  // ملاحظة تُعاد حين يتعذّر ربط الدفعة بطلبها تلقائياً
-  let linkNote: string | null = null;
-  await sb.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
+  // ★ التأكيد مرةً واحدة. كان يُعاد بلا شرط: ضغطتان — أو المالك من لوحة
+  //   المدفوعات وضي من المكتب على الدفعة نفسها — تمنحان العميلَ تشغيلتَي
+  //   مطابقة عن ثمنٍ واحد، وتُعيدان طلباً سُلِّم إلى «مدفوع». وكان يقبل
+  //   تحويلاً مرفوضاً فيحييه.
+  if (pay.status === 'paid') return { ok: false, error: 'أُكّدت هذه الدفعة من قبل', status: 409 };
+  if (!CONFIRMABLE.includes(String(pay.status))) {
+    return { ok: false, error: 'هذه الدفعة حُسمت — حالتها: ' + pay.status, status: 409 };
+  }
+
+  // الحجز ذرّي: الانتقال مشروطٌ بالحالة التي قُرئت، فمن سبق أخذها ومن تأخّر يُردّ
+  const { data: claimed, error: claimErr } = await sb.from('payments')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', id).eq('status', pay.status)
+    .select('id');
+  if (claimErr) return { ok: false, error: 'تعذّر قيد الدفعة: ' + claimErr.message, status: 500 };
+  if (!claimed?.length) return { ok: false, error: 'أُكّدت هذه الدفعة للتوّ من مكانٍ آخر', status: 409 };
+
+  // من هنا المال مقيَّد. وكل ما يتعذّر بعده يُقال في الملاحظة ولا يُبتلع:
+  // التأكيد لا يُتراجع عنه لأن المبلغ وصل فعلاً، لكن ما لم يُكمَل يجب أن يُرى.
+  const notes: string[] = [];
+  const grant = async (companyId: string) => {
+    const { error: gErr } = await sb.rpc('grant_match_credit', { p_company: companyId, p_n: 1 });
+    if (gErr) { notes.push('لم تُمنح تشغيلة المطابقة (' + gErr.message + ') — امنحها يدوياً.'); return; }
+    // الحساب يُفتح ليدخل العميل ويشغّل، بلا تاريخ انتهاء يُحاسَب عليه
+    const { error: aErr } = await sb.from('companies')
+      .update({ account_status: 'active', payment_confirmed_at: new Date().toISOString() })
+      .eq('id', companyId);
+    if (aErr) notes.push('مُنحت التشغيلة ولم يُفتح الحساب (' + aErr.message + ').');
+  };
 
   // الاشتراك الربعي أُلغي: الدفعة صارت تشتري تشغيلة مطابقة واحدة لأي مسار.
   // ويبقى المشتركون القدامى على مدتهم — لا نقطع عليهم ما دفعوه قبل التغيير.
   if ((pay.kind === 'subscription' || pay.kind === 'match_run') && pay.company_id) {
-    await sb.rpc('grant_match_credit', { p_company: pay.company_id, p_n: 1 });
-    // الحساب يُفتح ليدخل العميل ويشغّل، بلا تاريخ انتهاء يُحاسَب عليه
-    await sb.from('companies')
-      .update({ account_status: 'active', payment_confirmed_at: new Date().toISOString() })
-      .eq('id', pay.company_id);
+    await grant(String(pay.company_id));
   }
 
   if (pay.kind === 'service' && pay.company_id) {
     const stamp = { status: 'paid', payment_id: id, paid_at: new Date().toISOString(), payment_ref: id, updated_at: new Date().toISOString() };
-    // المعرّف يُلتقط في ثابت قبل الإغلاق: تضييق `pay.company_id` لا يعبر
-    // إلى داخل دالة، فيسقط البناء على «قد يكون undefined».
-    const payCompanyId = String(pay.company_id);
-    const grantIfNeeded = async (title: string | null | undefined) => {
-      if (!title || !NEEDS_MATCH.has(canonicalTitle(String(title)))) return;
-      await sb.rpc('grant_match_credit', { p_company: payCompanyId, p_n: 1 });
-      await sb.from('companies')
-        .update({ account_status: 'active', payment_confirmed_at: new Date().toISOString() })
-        .eq('id', payCompanyId);
-    };
+    const amt = Number(pay.amount_sar || 0);
+    type Sr = { id: string; price: number | null; quoted_price: number | null; service_title: string | null; status: string | null };
+    let target: Sr | null = null;
+
     if (pay.service_request_id) {
-      await sb.from('service_requests').update(stamp).eq('id', pay.service_request_id);
-      const { data: srv } = await sb.from('service_requests')
-        .select('service_title').eq('id', pay.service_request_id).maybeSingle();
-      await grantIfNeeded(srv?.service_title);
+      const { data: srv, error: sErr } = await sb.from('service_requests')
+        .select('id, price, quoted_price, service_title, status').eq('id', pay.service_request_id).maybeSingle();
+      if (sErr || !srv) notes.push('تعذّر العثور على الطلب المربوط بالدفعة — اختمه يدوياً من لوحة الخدمات.');
+      else target = srv as Sr;
     } else {
       // دفعات قديمة بلا رقم طلب: نطابق بالمبلغ، ولا نخمّن حين يتعدد المرشّح
       const { data: cands } = await sb.from('service_requests')
-        .select('id, price, quoted_price, service_title')
+        .select('id, price, quoted_price, service_title, status')
         .eq('company_id', pay.company_id).eq('status', 'priced');
-      const amt = Number(pay.amount_sar || 0);
-      const hit = (cands || []).filter((c: { price: number | null; quoted_price: number | null }) =>
-        Number(c.price ?? c.quoted_price ?? -1) === amt);
-      if (hit.length === 1) {
-        await sb.from('service_requests').update(stamp).eq('id', hit[0].id);
-        const { data: srv2 } = await sb.from('service_requests')
-          .select('service_title').eq('id', hit[0].id).maybeSingle();
-        await grantIfNeeded(srv2?.service_title);
-      } else {
-        linkNote = hit.length === 0
-          ? 'لم يُطابق أي طلب مسعّر مبلغَ هذه الدفعة — اربطها بالطلب يدوياً من لوحة الخدمات.'
-          : 'أكثر من طلب مسعّر بنفس المبلغ — لم يُعلَّم أيٌّ منها تلقائياً حتى لا يُسلَّم طلب بلا دفع. اربطها يدوياً.';
+      const hit = ((cands || []) as Sr[]).filter((c) => Number(c.price ?? c.quoted_price ?? -1) === amt);
+      if (hit.length === 1) target = hit[0];
+      else notes.push(hit.length === 0
+        ? 'لم يُطابق أي طلب مسعّر مبلغَ هذه الدفعة — اربطها بالطلب يدوياً من لوحة الخدمات.'
+        : 'أكثر من طلب مسعّر بنفس المبلغ — لم يُعلَّم أيٌّ منها تلقائياً حتى لا يُسلَّم طلب بلا دفع. اربطها يدوياً.');
+    }
+
+    if (target) {
+      // السعر قد يتغيّر بعد رفع الإيصال: المبلغ المحوَّل أُخذ من سعر لحظتها
+      const due = Number(target.price ?? 0);
+      if (due && due !== amt) {
+        notes.push('المحوَّل ' + amt.toLocaleString('en-US') + ' والسعر الحالي ' + due.toLocaleString('en-US') + ' — راجع الفرق مع العميل.');
       }
+      const { data: stamped, error: stErr } = await sb.from('service_requests')
+        .update(stamp).eq('id', target.id).not('status', 'in', PAST_PAYMENT).select('id');
+      if (stErr) notes.push('قُيّد المبلغ ولم يُختم الطلب مدفوعاً (' + stErr.message + ') — اختمه يدوياً.');
+      else if (stamped?.length) {
+        const title = target.service_title;
+        if (title && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
+      }
+      // وإن لم يُختم لأنه تجاوز الدفع، فلا ملاحظة: العمل جارٍ والدفعة قُيّدت له
     }
   }
+
+  const linkNote = notes.length ? notes.join(' ') : null;
 
   // المال يدخل، فيصل خبره إلى الجوال — ومعه ما ينبغي عمله بعده مباشرة
   try {

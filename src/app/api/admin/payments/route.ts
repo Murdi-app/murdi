@@ -66,7 +66,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, note: res.note });
   }
   if (action === 'reject') {
-    await admin.from('payments').update({ status: 'rejected' }).eq('id', id);
+    // يُرفض ما ينتظر وحده. كان الرفض بلا شرط، فتنقلب دفعةٌ مؤكَّدة «مرفوضة»
+    // ويبقى طلبها مدفوعاً وتشغيلتها ممنوحة — دفترٌ يناقض نفسه.
+    const { data: done, error: rjErr } = await admin.from('payments')
+      .update({ status: 'rejected' })
+      .eq('id', id).eq('status', 'awaiting_confirmation')
+      .select('id');
+    if (rjErr) return NextResponse.json({ error: 'تعذّر رفض التحويل: ' + rjErr.message }, { status: 500 });
+    if (!done?.length) return NextResponse.json({ error: 'هذا التحويل لم يعد بانتظار التأكيد — حالته: ' + pay.status }, { status: 409 });
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: 'إجراء غير معروف' }, { status: 400 });

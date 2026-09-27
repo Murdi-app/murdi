@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { fetchPayment, toSAR } from '@/lib/moyasar';
+import { confirmPayment } from '@/lib/confirmPayment';
 
 function admin() {
   return createClient(
@@ -28,9 +29,28 @@ export async function POST(req: Request) {
   // هل سبق تسجيل هذه الدفعة؟ (idempotent)
   const { data: existing } = await sb
     .from('payments')
-    .select('id')
+    .select('id, status')
     .eq('moyasar_id', mp.id)
     .maybeSingle();
+  // ما قُيّد لا يُعاد فتحه: الصفحة تُحدَّث، والرابط يُفتح مرتين
+  if (existing?.status === 'paid') return NextResponse.json({ ok: true, status: mp.status, paid: true });
+
+  // ★ خدمةٌ تُختم مدفوعةً من بيانات البوابة وحدها، والبيانات الوصفية
+  //   يكتبها من أنشأ الدفعة — لا نحن. فدفعةُ ريالٍ واحد تحمل رقمَ طلبٍ
+  //   بسبعة آلاف كانت تختمه مدفوعاً. فالطلب يُصدَّق هنا: لصاحب الدفعة،
+  //   ومبلغُه سعرُه. وما صدق يمرّ على `confirmPayment` كالتحويل تماماً —
+  //   تشغيلةٌ وإشعار وحراسةُ المرّة الواحدة. وما لم يصدق يبقى «بانتظار
+  //   التأكيد» في لوحة المدفوعات، فيراه المالك ولا يُمنح شيء آلياً.
+  let srId: string | null = null;
+  let autoConfirm = false;
+  if (isPaid && kind === 'service' && meta.sr && companyId) {
+    const { data: sr } = await sb.from('service_requests')
+      .select('id, company_id, price').eq('id', meta.sr).maybeSingle();
+    if (sr && String(sr.company_id) === String(companyId)) {
+      srId = String(sr.id);
+      autoConfirm = Number(sr.price ?? 0) > 0 && Number(sr.price) === toSAR(mp.amount);
+    }
+  }
 
   const row = {
     company_id: companyId,
@@ -38,15 +58,21 @@ export async function POST(req: Request) {
     description: mp.description || null,
     amount_sar: toSAR(mp.amount),
     method: 'online',
-    status: isPaid ? 'paid' : (mp.status === 'failed' ? 'failed' : 'pending'),
+    // المدفوع يدخل منتظراً ثم يُؤكَّد — لا يُكتب «مدفوعاً» مباشرة فيتخطّى التأكيد
+    status: isPaid ? 'awaiting_confirmation' : (mp.status === 'failed' ? 'failed' : 'pending'),
     moyasar_id: mp.id,
-    paid_at: isPaid ? new Date().toISOString() : null,
+    service_request_id: srId,
+    paid_at: null,
   };
 
-  if (existing) {
-    await sb.from('payments').update(row).eq('id', existing.id);
+  let payId = existing?.id ? String(existing.id) : '';
+  if (payId) {
+    const { error } = await sb.from('payments').update(row).eq('id', payId);
+    if (error) return NextResponse.json({ error: 'تعذّر تسجيل الدفعة' }, { status: 500 });
   } else {
-    await sb.from('payments').insert(row);
+    const { data: ins, error } = await sb.from('payments').insert(row).select('id').single();
+    if (error || !ins) return NextResponse.json({ error: 'تعذّر تسجيل الدفعة' }, { status: 500 });
+    payId = String(ins.id);
   }
 
   // كان هنا تفعيلُ اشتراكٍ ربعي: أي دفعة نوعها `subscription` تمنح أربعة
@@ -55,11 +81,10 @@ export async function POST(req: Request) {
   // أشهر لا يقابلها شيء في نموذجنا اليوم. حُذف: لا يُنشأ اشتراك بعد الآن.
   // ومن اشترك قبل الإلغاء يبقى على حقه حتى تنتهي مدّته المسجَّلة.
 
-  // عند نجاح دفع خدمة: تحديث الطلب إلى مدفوع (بانتظار التسليم من الأدمن)
-  if (isPaid && kind === 'service' && meta.sr) {
-    await sb.from('service_requests')
-      .update({ status: 'paid', payment_id: existing?.id || null, updated_at: new Date().toISOString() })
-      .eq('id', meta.sr);
+  if (autoConfirm) {
+    const res = await confirmPayment(sb, payId, 'بوابة الدفع');
+    // سبقٌ مع تحديثٍ آخر للصفحة نفسها: الدفعة قُيّدت هناك
+    if (!res.ok && res.status !== 409) return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
   return NextResponse.json({ ok: true, status: mp.status, paid: isPaid });

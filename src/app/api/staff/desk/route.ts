@@ -170,6 +170,8 @@ export async function PATCH(req: Request) {
   const actor = who.role === 'admin' ? 'المالك' : (who.email || 'المكتب');
 
   let headline = '';
+  // ما لم يكتمل بعد تأكيد التحويل — يُعاد للموظفة ويُكتب للمالك، لا يُبتلع
+  let payNote: string | null = null;
   let companyId = '';
   let companyName = '';
 
@@ -199,6 +201,7 @@ export async function PATCH(req: Request) {
         }
         const res = await confirmPayment(sb, String(pay.id), who.email || 'المكتب');
         if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status });
+        payNote = res.note;
         headline = 'قُبل طلب خدمة وأُكّد تحويله (' + Number(pay.amount_sar || 0).toLocaleString('en-US') + ' ريال) — ' + String(r.service_title || '');
       } else {
         const { error: upErr } = await sb
@@ -272,9 +275,9 @@ export async function PATCH(req: Request) {
     company_id: companyId || null,
     kind: kind === 'match' ? 'match_request' : 'service_request',
     title: headline,
-    detail: 'القرار من: ' + actor + (note ? ' · ' + note : ''),
+    detail: 'القرار من: ' + actor + (note ? ' · ' + note : '') + (payNote ? ' · ⚠️ ' + payNote : ''),
     actor: who.role === 'admin' ? 'admin' : 'staff',
-    needs_owner: false,
+    needs_owner: !!payNote,
   }).then(() => null, () => null);
 
   // ★ المالك يُخبَر بكل قرارٍ تتّخذه المساعِدة — لا قراراته هو.
@@ -290,6 +293,7 @@ export async function PATCH(req: Request) {
         (companyName ? '<p style="margin:0 0 10px"><b>' + esc(companyName) + '</b></p>' : '') +
         '<p style="margin:0 0 6px;font-size:13.5px">اتّخذته: ' + esc(actor) + '</p>' +
         (note ? '<p style="margin:0 0 6px;font-size:13.5px">ملاحظتها: ' + esc(note) + '</p>' : '') +
+        (payNote ? '<p style="margin:10px 0 6px;font-size:13.5px;color:#C0564B"><b>يحتاج يدك:</b> ' + esc(payNote) + '</p>' : '') +
         '<p style="margin:16px 0 0"><a href="https://murdi.sa/admin/services" style="background:#1A3D34;color:#fff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold">افتح الخدمات</a></p>' +
         '<p style="margin:14px 0 0;color:#6B8A80;font-size:12px">إن لم يكن هذا صواباً فالتراجع من صفحة الخدمات عندك.</p>' +
         '</div>',
@@ -303,5 +307,10 @@ export async function PATCH(req: Request) {
     }, OWNER).catch(() => null);
   }
 
-  return NextResponse.json({ ok: true });
+  // تفصيل الملاحظة فيه مبالغ وأسعار، وذاك لا يُكتب للموظفة — يصل المالكَ
+  // كاملاً في البريد أعلاه، وتُخبَر هي بأن أمراً بقي وأنه أُبلغ.
+  const noteForViewer = payNote && who.role !== 'admin'
+    ? 'بقي في هذا التحويل أمرٌ يحتاج المالك، وقد أُبلغ به.'
+    : payNote;
+  return NextResponse.json({ ok: true, note: noteForViewer });
 }

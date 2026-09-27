@@ -260,14 +260,27 @@ export default function ApprovalsPage() {
     window.open(data.signedUrl, '_blank')
   }
 
+  // كتابةٌ على صفّ المنشأة من المتصفح — تُفحص نتيجتها ويُقال فشلها. كانت
+  // الأزرار الأربعة أدناه (تأكيد الدفع · الاعتماد · التفعيل · الحالة) تكتب
+  // ثم تعيد القراءة بلا كلمة: يُضغط «تأكيد الدفع» فيردّ الخادم بخطأ، ويبقى
+  // الصف على حاله كأن الضغطة لم تقع.
+  async function updateCompany(id: string, fields: Record<string, unknown>, what: string): Promise<boolean> {
+    const { data, error } = await supabase.from('companies').update(fields).eq('id', id).select('id')
+    if (error || !data?.length) {
+      alert('لم يقع شيء — ' + what + ': ' + (error?.message || 'لم يُحدَّث أي صف (صلاحية أو معرّف)'))
+      return false
+    }
+    return true
+  }
+
   async function confirmPayment(c: Company) {
     setBusy(c.id)
     const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('companies').update({
+    await updateCompany(c.id, {
       payment_status: 'paid',
       payment_confirmed_at: new Date().toISOString(),
       payment_confirmed_by: user?.email || 'admin',
-    }).eq('id', c.id)
+    }, 'تأكيد الدفع')
     await loadCompanies()
     setBusy(null)
   }
@@ -277,13 +290,13 @@ export default function ApprovalsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     // الاعتماد كان يفتح اشتراكاً ربعياً مع كل ضغطة. ولا اشتراك في المنصة،
     // فالاعتماد اليوم تفعيلُ حسابٍ لا أكثر — والتقييم بعده مجاني.
-    await supabase.from('companies').update({
+    await updateCompany(c.id, {
       account_status: 'active',
       is_locked: true,
       locked_at: new Date().toISOString(),
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
-    }).eq('id', c.id)
+    }, 'الاعتماد')
     await loadCompanies()
     setBusy(null)
   }
@@ -292,14 +305,14 @@ export default function ApprovalsPage() {
   // التجديد كلّه: التفعيل يفتح الحساب، والتقييم مجاني، والمطابقة بإذن.
   async function activate(c: Company) {
     setBusy(c.id)
-    await supabase.from('companies').update({ account_status: 'active' }).eq('id', c.id)
+    await updateCompany(c.id, { account_status: 'active' }, 'تفعيل الحساب')
     await loadCompanies()
     setBusy(null)
   }
 
   async function setStatus(c: Company, status: string) {
     setBusy(c.id)
-    await supabase.from('companies').update({ account_status: status }).eq('id', c.id)
+    await updateCompany(c.id, { account_status: status }, 'تغيير الحالة')
     await loadCompanies()
     setBusy(null)
   }
