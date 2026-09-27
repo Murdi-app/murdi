@@ -50,17 +50,30 @@ export default function MessagePage() {
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+  const [loadErr, setLoadErr] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
 
+  // ★ الشاشة الفارغة تُقرأ «لا عمل عندي»، والفارغةُ من عطبٍ تُقرأ كذلك.
+  //   وكان التحميل يبتلع كل فشل: ردٌّ بـ401 بعد انتهاء الجلسة يترك القوائم
+  //   خاليةً بلا كلمة، فتجلس الموظفة واللوحة مليئة. وهي العلّة التي عُولجت
+  //   في لوحة المتابعة ١٤ سبتمبر وبقيت هنا. فصار الفشل يُقال.
   const load = (check?: boolean) => {
     fetch('/api/admin/message' + (check ? '?check=1' : ''))
-      .then(r => r.ok ? r.json() : null)
+      .then(async (r) => {
+        const d = await r.json().catch(() => null)
+        if (!r.ok) {
+          setLoadErr(String(d?.error || 'تعذّر تحميل الشاشة — أعيدي تسجيل الدخول ثم حدّثي الصفحة'))
+          return null
+        }
+        setLoadErr('')
+        return d
+      })
       .then(d => {
         if (!d) return
         setRole(d.role || ''); setTpls(d.templates || [])
         setCos(d.companies || []); setMsgs(d.messages || [])
       })
-      .catch(() => {})
+      .catch(() => setLoadErr('تعذّر الاتصال بالخادم — تحقّقي من الشبكة وأعيدي المحاولة'))
   }
   useEffect(() => { load() }, [])
 
@@ -121,6 +134,11 @@ export default function MessagePage() {
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo,sans-serif', color: C.ink }}>
       <AdminNav />
+      {loadErr !== '' && (
+        <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '12px 16px', marginBottom: 14, fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+          ⚠️ {loadErr}
+        </div>
+      )}
       <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>مراسلة العملاء</h1>
       <p style={{ fontSize: 12.5, color: C.soft, margin: '0 0 18px', lineHeight: 1.8 }}>
         من هنا تُرسل رسائل العملاء. أما مخاطبة جهات التمويل فتُدار من مكان واحد

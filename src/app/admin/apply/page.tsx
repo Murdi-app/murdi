@@ -120,9 +120,22 @@ export default function ApplyPage() {
   }
 
   async function setStatus(id: string, s: string) {
-    setBusy(id);
-    await fetch('/api/admin/apply', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, apply_status: s }) });
-    setRows(p => p.map(r => r.id === id ? { ...r, apply_status: s } : r));
+    setBusy(id); setFuMsg('');
+    // ★ كانت الحالة تُرسم متفائلةً بلا فحص: تُضغط «قُدِّم» فيسقط الطلب على
+    //   الخادم، وتبقى الشاشة تقول «قُدِّم». فتُقرأ اللوحة بعد أسبوع على أن
+    //   الملف قُدِّم وهو لم يُقدَّم. فلا تُرسم حالةٌ لم يؤكّدها الخادم.
+    try {
+      const r = await fetch('/api/admin/apply', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, apply_status: s }) });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setFuMsg('⚠️ لم تُحفظ الحالة: ' + String(d?.error || 'تعذّر الحفظ') + ' — الحالة على حالها.');
+        setBusy('');
+        return;
+      }
+      setRows(p => p.map(r2 => r2.id === id ? { ...r2, apply_status: s } : r2));
+    } catch {
+      setFuMsg('⚠️ انقطع الاتصال — لم تُحفظ الحالة.');
+    }
     setBusy('');
   }
 

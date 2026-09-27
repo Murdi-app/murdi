@@ -65,6 +65,12 @@ export default function FollowupPage() {
   const [q, setQ] = useState('')
   // خطأ تحميلٍ يُقال صراحةً — لا لوحةٌ فارغة تُقرأ «لا عمل»
   const [authErr, setAuthErr] = useState('')
+  // ★ وخطأُ الكتابة غير خطأِ التحميل: التحميلُ يُخفي اللوحة، والكتابةُ لا.
+  //   وكان `patch` يبتلع كل شيء — `await fetch` بلا فحص و`catch {}` فارغة —
+  //   فتُصنّف الموظفة ردّاً فلا يُحفظ، ثم يُعيد `load()` رسم الحالة القديمة
+  //   فتظنّ أنها صنّفته. وهي العلّة نفسها التي عُولجت في التحميل ١٤ سبتمبر
+  //   ونُسيت في الكتابة.
+  const [saveErr, setSaveErr] = useState('')
   const [busy, setBusy] = useState('')
   // وضع المساعدة: مكالمات فقط — يأتي من الخادم لا يُخمَّن
   const [callsOnly, setCallsOnly] = useState(false)
@@ -99,14 +105,22 @@ export default function FollowupPage() {
   useEffect(() => { load() }, [])
 
   const patch = async (id: string, body: Record<string, unknown>) => {
-    setBusy(id)
+    setBusy(id); setSaveErr('')
     try {
-      await fetch('/api/admin/followup', {
+      const r = await fetch('/api/admin/followup', {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ...body }),
       })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        setSaveErr(String(d?.error || 'لم يُحفظ ما سجّلتِه — أعيدي المحاولة، وإن تكرّر فأبلغي الدكتور'))
+        setBusy('')
+        return
+      }
       await load()
-    } catch {}
+    } catch {
+      setSaveErr('انقطع الاتصال — لم يُحفظ ما سجّلتِه. أعيدي المحاولة.')
+    }
     setBusy('')
   }
 
@@ -150,6 +164,12 @@ export default function FollowupPage() {
             ? 'جهات تنتظر مكالمتك — اتصلي واطلبي اسم مسؤول الائتمان ورقمه وبريده.'
             : 'ما في ملف يقعد ساكت — ابدئي بالأحمر ثم الأخضر.'}
         </p>
+
+        {saveErr !== '' && (
+          <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+            {saveErr}
+          </div>
+        )}
 
         {authErr !== '' && (
           <div style={{ background: '#FBEEEC', border: '1.5px solid #C0564B', borderRadius: 14, padding: '18px 20px', marginBottom: 18 }}>
