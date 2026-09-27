@@ -1,4 +1,5 @@
 // محرك توليد ملف التمويل/الاستثمار الاحترافي — مُرضي
+import { studySeal } from './contractStamp';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-6';
 
@@ -348,6 +349,7 @@ export function buildFileHTML(
     + section(L.strengths, content.strengths)
     + section(L.closing, content.closing)
     + (() => { const t = extractStatementTables(statementsRaw || '', intl); return t ? '<div class="sec"><h2>' + (intl ? 'Financial Statements' : 'القوائم المالية') + '</h2>' + t + '</div>' : ''; })()
+    + studySeal(intl ? 'en' : 'ar')
     + '<div class="footer"><b>' + L.brand + '</b><br>'
     + (intl ? 'Prepared by Holol Almurdi Financial Consulting per the methodology of Dr. Abdulhakim Almurdi. All rights reserved.</div>' : 'أُعدّ هذا الملف وفق منهجية د. عبدالحكيم المرضي — جميع الحقوق محفوظة</div>')
     + '</div></div></body></html>';

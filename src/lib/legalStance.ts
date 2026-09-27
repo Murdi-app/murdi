@@ -35,6 +35,7 @@ export const CR_NO = '7039663724';
 /** سطر المستشار تحت توقيعه — بالصيغة التي اعتمدها المالك حرفاً:
  *  الرقم مجرَّداً، ولا يُنسب لأي جهة تنظيمية. */
 export const ADVISOR_LINE = 'مستشار مالي معتمد — ترخيص رقم ' + LICENCE_NO;
+export const ADVISOR_LINE_EN = 'Certified Financial Advisor — Licence No. ' + LICENCE_NO;
 
 /** سطر الهوية — أينما عُرِّفت الشركة */
 export const IDENTITY_AR =
