@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import AdminNav from '@/components/AdminNav';
+import { OUTCOMES } from '@/lib/outcomes';
 
 // «الوارد» — من طرق بابنا، من أي باب، أحدثُ أولاً.
 //
@@ -28,7 +29,6 @@ const TONE: Record<string, { bg: string; fg: string; br: string; icon: string }>
 };
 const tone = (s: string) => TONE[s] || TONE.signup;
 
-const OUTCOMES = ['لم يرد', 'مهتم', 'طلب معاودة', 'غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً'];
 
 // «قبل ساعتين» أنفع من تاريخٍ يحتاج حساباً
 function ago(iso: string): string {

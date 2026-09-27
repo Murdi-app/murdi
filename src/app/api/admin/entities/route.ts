@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { VERDICTS, isVerdict, BROKEN_LINK } from '@/lib/entityVerdicts';
 
 // كانت هذه الشاشة تدير جدولين ميّتين: financing_products (٤ صفوف) و investment_entities (صفر)،
 // ولا يقرأ منهما محرك المطابقة شيئاً — فكان تبويباً يبدو عاملاً ولا أثر له.
@@ -11,7 +12,6 @@ const admin = () => createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY as string
 );
 
-const BROKEN = ['غير موجودة', 'تعذّر الوصول', 'محجوب آلياً'];
 
 export async function GET(req: Request) {
   const denied = await requireAdmin();
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   if (view === 'once') sel = sel.eq('companies_seen', 1);
   if (view === 'replied') sel = sel.gt('outreach_replied', 0);
   if (view === 'silent') sel = sel.gt('outreach_sent', 0).eq('outreach_replied', 0);
-  if (view === 'broken') sel = sel.in('link_status', BROKEN);
+  if (view === 'broken') sel = sel.in('link_status', BROKEN_LINK as unknown as string[]);
   if (view === 'blocked') sel = sel.eq('blocked', true);
   else sel = sel.eq('blocked', false);
 
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       once: rows.filter(r => (r.companies_seen || 0) === 1).length,
       confirmed: rows.filter(r => r.evidence_grade === 'مؤكّد').length,
       needsCheck: rows.filter(r => r.evidence_grade === 'يحتاج تحقق' || !r.evidence_grade).length,
-      broken: rows.filter(r => BROKEN.includes(String(r.link_status))).length,
+      broken: rows.filter(r => (BROKEN_LINK as readonly string[]).includes(String(r.link_status))).length,
       contacted: rows.filter(r => (r.outreach_sent || 0) > 0).length,
       replied: replied.length,
       blocked: rows.filter(r => r.blocked).length,
@@ -76,7 +76,6 @@ export async function POST() {
   return NextResponse.json({ ok: true, result: r });
 }
 
-const VERDICTS = ['معتمدة', 'قيد التحقق', 'لا تُناسبنا', 'لا وجود لها'];
 
 export async function PATCH(req: Request) {
   const denied = await requireAdmin();
@@ -88,7 +87,9 @@ export async function PATCH(req: Request) {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (b.verdict !== undefined) {
     const v = String(b.verdict || '');
-    if (v && !VERDICTS.includes(v)) return NextResponse.json({ error: 'حكم غير معروف' }, { status: 400 });
+    if (v && !isVerdict(v)) {
+    return NextResponse.json({ error: 'حكم غير معروف: ' + v + ' — المقبول: ' + VERDICTS.join(' · ') }, { status: 400 });
+  }
     patch.verdict = v || null;
     // «لا وجود لها» تُقصى من العرض تلقائياً: لا معنى لإبقائها أمام عينك مرة أخرى
     if (v === 'لا وجود لها') patch.blocked = true;

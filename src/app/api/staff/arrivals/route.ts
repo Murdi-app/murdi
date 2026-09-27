@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
+import { OUTCOMES, isOutcome } from '@/lib/outcomes';
 import { waLink, prettyPhone } from '@/lib/phone';
 
 // «الوارد» — كل من دخل المنصة، لمن يتصل به.
@@ -113,7 +114,6 @@ export async function GET(req: Request) {
 
 // POST — «تواصلتُ معه»: يُكتب على الصفّ نفسه وفي سجلّ اللمسات معاً،
 // فلا يظهر الاسم غداً في شاشةٍ أخرى وقد كُلِّم اليوم.
-const OUTCOMES = ['لم يرد', 'مهتم', 'طلب معاودة', 'غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً'];
 
 export async function POST(req: Request) {
   const { who, error } = await requireStaff();
@@ -126,7 +126,9 @@ export async function POST(req: Request) {
   const note = b?.note ? String(b.note).slice(0, 1000) : null;
 
   if (!source || !refId) return NextResponse.json({ error: 'source و ref_id مطلوبان' }, { status: 400 });
-  if (!OUTCOMES.includes(outcome)) return NextResponse.json({ error: 'نتيجة غير معروفة' }, { status: 400 });
+  if (!isOutcome(outcome)) {
+    return NextResponse.json({ error: 'نتيجة غير معروفة: ' + outcome + ' — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
+  }
 
   const target = MARKABLE[source];
   if (!target) {

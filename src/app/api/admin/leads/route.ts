@@ -121,8 +121,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { error: denied } = await requireStaff();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id || '');
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
@@ -147,9 +147,33 @@ export async function PATCH(req: Request) {
 
   // صفوف المسجّلين تحمل بادئة co: وتُكتب في جدول الشركات لا في التقييم السريع
   const isCo = id.startsWith('co:');
+  const rowId = isCo ? id.slice(3) : id;
+  const sb = admin();
   const { error } = isCo
-    ? await admin().from('companies').update(patch).eq('id', id.slice(3))
-    : await admin().from('mini_assessments').update(patch).eq('id', id);
+    ? await sb.from('companies').update(patch).eq('id', rowId)
+    : await sb.from('mini_assessments').update(patch).eq('id', rowId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ★ واللمسة تُكتب في السجلّ المشترك أيضاً.
+  //
+  //   فشاشة «الفرص الساخنة» لا تقرأ عمود `contacted` — تقرأ `hot_touches`
+  //   وحده لتعرف ما حُسم وما ينتظر موعده. وكانت هذه الشاشة تكتب في العمود
+  //   ولا تكتب لمسة: فتُنهي ضي المكالمة هنا، ويبقى الاسم في صفّ رغد هناك
+  //   «ينتظر اتصالاً اليوم» — فتتصل به ثانيةً في اليوم نفسه.
+  //   والعكس كان مضبوطاً أصلاً: شاشتا الوارد والفرص تكتبان في الموضعين.
+  //   وفشلُ السجلّ لا يُسقط التسجيل — الصفُّ قد كُتب وهو الأصل.
+  if (patch.contacted === true || patch.outcome) {
+    const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
+    await sb.from('hot_touches').insert({
+      source: isCo ? 'signup' : 'assessment',
+      ref_id: rowId,
+      outcome: (patch.outcome as string) || null,
+      note: (patch.contact_note as string) || null,
+      next_action_at: (patch.next_action_at as string) || null,
+      actor: who.userId,
+      actor_name: who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق'),
+    }).then(() => null, () => null);
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { VERDICTS } from '@/lib/entityVerdicts';
 import AdminNav from '@/components/AdminNav';
 
 // سجلّ الجهات. قبله كانت المنصة تكتشف الجهات لكل عميل ثم تنساها:
@@ -29,7 +30,6 @@ const VIEWS: { k: string; t: string }[] = [
   { k: 'once',    t: 'ظهرت مرة — تحتاج تحققاً' },
   { k: 'blocked', t: 'مستبعدة' },
 ];
-const VERDICTS = ['معتمدة', 'قيد التحقق', 'لا تُناسبنا', 'لا وجود لها'];
 
 const GRADE_TONE: Record<string, { bg: string; fg: string }> = {
   'مؤكّد':      { bg: '#EAF7F0', fg: '#1E7A5E' },

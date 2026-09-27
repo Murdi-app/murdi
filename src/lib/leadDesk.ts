@@ -130,6 +130,35 @@ function headlineFor(band: Band, temp: Temp, days: number, registered: boolean):
   return 'لم يُكمل التقييم — رسالة واحدة تكفي' + age;
 }
 
+/**
+ * صفٌّ واحد لكل شخص، لا لكل محاولة.
+ *
+ * ★ التقييم السريع يُعاد: يدخله الرجل مرة فلا يُكمل، ويعيده بعد أسبوع.
+ *   فيصير له صفّان أو ثلاثة بالرقم نفسه. فتتصل الموظفة وتُعلّم واحداً،
+ *   ويبقى الباقيان في صفّها إلى الأبد — فتتصل بالرجل مرةً بعد مرة وقد
+ *   كُلِّم، أو تتركه ظنّاً أنه عُولج. سبعة أرقام كانت مكرَّرة، أحدها بخمسة.
+ *   والمُبقى: المحاولة التي عُلِّم فيها «اتُّصل به» إن وُجدت — فنتيجتها
+ *   وملاحظتها فيها — وإلا فأحدثُ محاولة. والمفتاح آخرُ تسع خانات من الرقم،
+ *   فالجوال يُكتب 05 و966 و+966 لنفس الصاحب.
+ */
+function onePerPerson(rows: RawLead[]): RawLead[] {
+  const byPhone = new Map<string, RawLead>();
+  const keyless: RawLead[] = [];
+  for (const l of rows) {
+    const ph = normPhone(l.phone);
+    if (ph.length < 9) { keyless.push(l); continue; }
+    const k = ph.slice(-9);
+    const kept = byPhone.get(k);
+    if (!kept) { byPhone.set(k, l); continue; }
+    const better =
+      Boolean(l.contacted) !== Boolean(kept.contacted)
+        ? Boolean(l.contacted)
+        : Date.parse(String(l.created_at || '')) > Date.parse(String(kept.created_at || ''));
+    if (better) byPhone.set(k, l);
+  }
+  return [...byPhone.values(), ...keyless];
+}
+
 export function buildLeads(
   rows: RawLead[],
   registeredPhones: string[] = [],
@@ -137,7 +166,7 @@ export function buildLeads(
 ): Lead[] {
   const reg = new Set(registeredPhones.map(p => normPhone(p)).filter(p => p.length >= 9).map(p => p.slice(-9)));
 
-  const out = rows.map((l) => {
+  const out = onePerPerson(rows).map((l) => {
     const days = daysSince(l.created_at, now);
     const done = isComplete(l);
     const band = bandOf(l.score, done);
