@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { priceFor } from '@/lib/servicePricing';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
+import { contractWeight } from '@/lib/leadWeight';
 
 // مدخل تمويل العقود — الصفحة التي ينزل عليها إعلان «تمويل عقد».
 //
@@ -161,7 +162,7 @@ export default function UqudEntryPage() {
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
-      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }); }
+      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: contractWeight(valIdx ?? 0) }); }
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');

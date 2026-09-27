@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { isSaudiMobile } from '@/lib/phone'
 import { useRouter } from 'next/navigation'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
+import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
 
 // لا عميل Supabase هنا بعد الآن: الحفظ كلّه عبر `/api/mini-save`.
 
@@ -22,12 +23,8 @@ type Q = { q: string; opts: { t: string; v: number }[] }
 //   في العدد وهو ربحٌ في الأمر كلّه: العدد الذي نبلّغ به جوجل هو ما
 //   تتعلّم عليه، فكل ليدٍ صغير نُبلّغ به يشتري لنا عشرةً مثله.
 const QUESTIONS: Q[] = [
-  { q: 'كم إيراد منشأتك السنوي تقريباً؟', opts: [
-    { t: 'أقل من مليون ريال', v: 2 }, { t: '1–3 مليون', v: 7 },
-    { t: '3–10 مليون', v: 11 }, { t: 'أكثر من 10 مليون', v: 13 } ] },
-  { q: 'منشأتك تعمل منذ كم؟', opts: [
-    { t: 'أقل من سنة', v: 2 }, { t: '1–2 سنة', v: 7 },
-    { t: '2–5 سنوات', v: 11 }, { t: 'أكثر من 5 سنوات', v: 13 } ] },
+  REVENUE_Q,
+  YEARS_Q,
   { q: 'هل لديك قوائم مالية حديثة؟', opts: [
     { t: 'لا يوجد', v: 2 }, { t: 'تقريبية/داخلية', v: 7 },
     { t: 'مدققة لسنة', v: 11 }, { t: 'مدققة 3 سنوات', v: 13 } ] },
@@ -52,17 +49,7 @@ const QUESTIONS: Q[] = [
 const Q_REVENUE = 0
 const Q_YEARS = 1
 
-/**
- * وزن الإحالة عند جوجل — مشتقٌّ من الإيراد والعمر.
- * صفرٌ يعني: لا تُطلق إحالة أصلاً، فلا نُعلّم الحملة على هذا النوع.
- */
-export function leadWeight(revIdx: number, yearIdx: number): number {
-  if (revIdx <= 0 || yearIdx <= 0) return 0          // دون الحدّ الأدنى
-  if (revIdx >= 3 && yearIdx >= 2) return 100        // عشرة ملايين فأكثر، سنتان فأكثر
-  if (revIdx >= 2 && yearIdx >= 2) return 60         // ثلاثة إلى عشرة
-  if (revIdx >= 2) return 30
-  return 15                                          // مليون إلى ثلاثة — يُقبل بوزنٍ خفيف
-}
+// الوزن والسؤالان البوّابيّان في `@/lib/leadWeight` — مصدرٌ واحد لكل صفحات الدخول.
 
 const MAX = QUESTIONS.reduce((s, q) => s + Math.max(...q.opts.map(o => o.v)), 0)
 

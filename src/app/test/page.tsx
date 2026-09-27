@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
+import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
 
 // لا عميل Supabase هنا: كل الحفظ يمرّ بـ`/api/mini-save` — فهو وحده الذي
 // يُطبّع الجوال ويُخطر المكتب. وكان عميلٌ مباشرٌ مُعرَّفاً بلا استعمال.
@@ -14,9 +15,11 @@ const LIGHT = '#9DB3AB'
 type Q = { q: string; opts: { t: string; v: number }[] }
 
 const QUESTIONS: Q[] = [
-  { q: 'منشأتك تعمل منذ كم؟', opts: [
-    { t: 'أقل من سنة', v: 4 }, { t: '1–3 سنوات', v: 8 },
-    { t: '3–7 سنوات', v: 11 }, { t: 'أكثر من 7 سنوات', v: 13 } ] },
+  // ★ ٢٧ سبتمبر — الإيراد والعمر أولاً، بالسؤالين نفسيهما في الصفحة الرئيسية.
+  //   كانت الترحيبية تقول «للمنشآت من سنتين بإيراد يتجاوز المليون» ولا تسأل
+  //   عن الإيراد أصلاً، فتُبلغ جوجل عن كل من ترك رقمه بوزنٍ واحد.
+  REVENUE_Q,
+  YEARS_Q,
   { q: 'هل لديك قوائم مالية حديثة؟', opts: [
     { t: 'لا يوجد', v: 2 }, { t: 'تقريبية/داخلية', v: 7 },
     { t: 'مدققة لسنة', v: 11 }, { t: 'مدققة 3 سنوات', v: 13 } ] },
@@ -42,6 +45,9 @@ const QUESTIONS: Q[] = [
 
 const MAX = QUESTIONS.reduce((s, q) => s + Math.max(...q.opts.map(o => o.v)), 0)
 const TRACK = ['تمويل', 'استثمار', 'طرح', 'استكشاف']
+const Q_REVENUE = 0
+const Q_YEARS = 1
+const Q_GOAL = QUESTIONS.length - 1
 
 function verdict(pct: number) {
   if (pct >= 75) return { label: 'جاهزية عالية', color: '#2E9E7B' }
@@ -51,7 +57,7 @@ function verdict(pct: number) {
 
 // النقاط الثلاث تُبنى من أضعف وأقوى إجابة فعلياً
 function insights(ans: number[]) {
-  const labels = ['عمر النشاط', 'القوائم المالية', 'نمو الإيرادات', 'انتظام الأرباح', 'الفصل المالي', 'الحوكمة', 'مستوى الديون', 'الهدف']
+  const labels = ['حجم الإيراد', 'عمر النشاط', 'القوائم المالية', 'نمو الإيرادات', 'انتظام الأرباح', 'الفصل المالي', 'الحوكمة', 'مستوى الديون', 'الهدف']
   const ratios = ans.map((v, i) => ({ i, r: v / Math.max(...QUESTIONS[i].opts.map(o => o.v)) }))
   const sorted = [...ratios].sort((a, b) => a.r - b.r)
   const weakest = sorted[0]
@@ -69,7 +75,7 @@ export default function TestPage() {
   //   كانت الترحيبية تَعِد «بلا تسجيل · ٦٠ ثانية» ثم تطلب ثلاثة حقول قبل
   //   أول سؤال، فينقض الوعدُ نفسَه في الخطوة الأولى لزائرٍ دُفع ثمنُ نقرته.
   //   والآن يُجيب أولاً، ثم يُطلب منه ما يكشف نتيجته — وقد استثمر فيها.
-  const [stage, setStage] = useState<'welcome' | 'q' | 'gate' | 'analyzing' | 'result'>('welcome')
+  const [stage, setStage] = useState<'welcome' | 'q' | 'blocked' | 'gate' | 'analyzing' | 'result'>('welcome')
   const [qIndex, setQIndex] = useState(0)
   const [name, setName] = useState('')
   // ★ اسم المنشأة واسم صاحبها حقلان لا حقل.
@@ -114,9 +120,14 @@ export default function TestPage() {
   else if (stage === 'analyzing' || stage === 'result') stepDone = totalSteps
   const progress = Math.round((stepDone / totalSteps) * 100)
 
+  const weight = leadWeight(picks[Q_REVENUE] ?? -1, picks[Q_YEARS] ?? -1)
+
   const pick = (v: number, idx: number) => {
     setAns([...ans, v])
     setPicks([...picks, idx])
+    // البوّابة: من لم يبلغ الحدّ الأدنى يُصارَح هنا — قبل أن يُطلب رقمه وقبل
+    // أن تُطلق إحالة تعلّم الحملة على أمثاله. والمنطق نفسه في الصفحة الرئيسية.
+    if (qIndex === Q_YEARS && leadWeight(picks[Q_REVENUE] ?? -1, idx) === 0) { setStage('blocked'); return }
     if (ans.length + 1 < QUESTIONS.length) setQIndex(qIndex + 1)
     else setStage('gate')
   }
@@ -133,14 +144,14 @@ export default function TestPage() {
     setBusy(true)
     try {
       // المسار من فهرس الخيار المختار في السؤال الثامن، لا من قيمته
-      const track = TRACK[picks[7]] || ''
+      const track = TRACK[picks[Q_GOAL]] || ''
       const res = await fetch('/api/mini-save', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), company_name: company.trim(), phone: phone.trim(), answers: ans, score: pct, track, src: adSrc || null, completed: true }),
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok || !j.id) { setErr(j.error || 'تعذّر الحفظ — أعد المحاولة'); return }
-      if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }) }
+      if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: weight }) }
       setStage('analyzing')
       setTimeout(() => setStage('result'), 2200)
     } catch {
@@ -166,7 +177,7 @@ export default function TestPage() {
         </div>
 
         {/* شريط التقدم */}
-        {stage !== 'welcome' && (
+        {stage !== 'welcome' && stage !== 'blocked' && (
           <div style={{ marginBottom: 26 }}>
             <div style={{ height: 8, background: 'rgba(255,255,255,0.12)', borderRadius: 99, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: progress + '%', background: GOLD, borderRadius: 99, transition: 'width 0.4s ease' }} />
@@ -180,8 +191,21 @@ export default function TestPage() {
           <div style={{ textAlign: 'center' }}>
             <h1 style={{ color: '#fff', fontSize: 27, fontWeight: 900, lineHeight: 1.5, margin: '0 0 14px' }}>تمويل منشأتك — ابدأ من جاهزيتك</h1>
             <p style={{ color: LIGHT, fontSize: 16, lineHeight: 1.8, margin: '0 0 8px' }}>للمنشآت القائمة من سنتين فأكثر بإيراد يتجاوز المليون. جهات التمويل لا ترفض منشأتك — ترفض ملفاً ناقصاً. اعرف في دقيقة أين تقف، وما الذي ينقصك، وأي الجهات تنطبق عليك شروطها.</p>
-            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٨ أسئلة · بلا تسجيل · تمويل من ٥٠٠ ألف إلى ١٠ ملايين</p>
+            <p style={{ color: GOLD, fontSize: 14, fontWeight: 700, margin: '0 0 30px' }}>مجاناً · ٩ أسئلة · بلا تسجيل · تمويل من ٥٠٠ ألف إلى ١٠ ملايين</p>
             <button onClick={() => setStage('q')} style={{ background: GOLD, color: NAVY, border: 'none', borderRadius: 99, padding: '16px 46px', fontSize: 18, fontWeight: 900, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 8px 24px rgba(201,162,75,0.3)' }}>ابدأ الآن ←</button>
+          </div>
+        )}
+
+        {/* دون الحدّ الأدنى — صراحةٌ بدل أن يُؤخذ رقمه ووقته */}
+        {stage === 'blocked' && (
+          <div style={{ textAlign: 'right' }}>
+            <h2 style={{ color: '#fff', fontSize: 21, fontWeight: 800, lineHeight: 1.6, margin: '0 0 14px' }}>منشأتك لم تبلغ بعدُ حدَّ ما تفتح له جهاتُ التمويل ملفاً</h2>
+            <p style={{ color: LIGHT, fontSize: 15, lineHeight: 1.9, margin: '0 0 16px' }}>ونقولها لك صراحةً بدل أن نأخذ وقتك: أغلب جهات التمويل في السعودية تشترط <b style={{ color: '#fff' }}>سنتين تشغيلاً</b> و<b style={{ color: '#fff' }}>إيراداً سنوياً يتجاوز المليون</b> قبل أن تبدأ الدراسة.</p>
+            <div style={{ background: 'rgba(46,158,123,0.12)', borderRight: '4px solid #2E9E7B', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: 14.5, marginBottom: 6 }}>ما يرفع ملفك من اليوم</div>
+              <div style={{ color: LIGHT, fontSize: 14, lineHeight: 1.9 }}>افصل حساب المنشأة عن حسابك الشخصي · أصدر فواتيرك نظامياً · جهّز قوائم مالية ولو داخلية لكل سنة · واحتفظ بكشف حسابٍ بنكي لنشاطك وحده.</div>
+            </div>
+            <p style={{ color: LIGHT, fontSize: 13, lineHeight: 1.9, margin: 0 }}>ومتى بلغت المنشأة سنتين وإيراداً فوق المليون — ارجع إلينا وملفك يكون قد صار جاهزاً للقراءة.</p>
           </div>
         )}
 
