@@ -17,12 +17,42 @@ const b64ToU8 = (s: string) => {
 }
 
 type State = 'checking' | 'unsupported' | 'ios-needs-install' | 'off' | 'on' | 'blocked' | 'working'
+type Device = { id: string; label: string | null; created_at: string; last_sent_at: string | null; last_error: string | null; failures: number | null }
+
+const when = (d: string | null) => d
+  ? new Date(d).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : 'لم يُرسل بعد'
 
 export default function PushToggle() {
   const [state, setState] = useState<State>('checking')
   const [note, setNote] = useState('')
+  const [devices, setDevices] = useState<Device[]>([])
+  const [verdict, setVerdict] = useState('')
+  const [testing, setTesting] = useState(false)
 
-  useEffect(() => { void detect() }, [])
+  // ★ الزرّ وحده لا يكفي: «مفعَّلة» في المتصفح لا تعني أن الإشعار يصل.
+  //   فيُعرض ما يعرفه الخادم — كم جهازاً مسجَّلاً، ومتى آخر إرسالٍ إليه،
+  //   وهل ردّ بخطأ — ومعه زرُّ تجربةٍ يفصل بين عطب المنصة وعطب الجهاز.
+  async function test() {
+    setTesting(true); setVerdict('')
+    try {
+      const r = await fetch('/api/push/subscribe', { method: 'PUT' })
+      const d = await r.json()
+      if (!r.ok) { setVerdict(d?.error || 'تعذّر الإرسال'); setTesting(false); return }
+      setDevices(d.devices || [])
+      const s = Number(d?.result?.sent || 0)
+      const f = Number(d?.result?.failed || 0)
+      const rm = Number(d?.result?.removed || 0)
+      setVerdict(
+        s > 0
+          ? 'أرسله الخادم إلى ' + s + (s === 1 ? ' جهاز' : ' أجهزة') + ' بلا خطأ'
+            + (rm ? ' · وحُذف ' + rm + ' اشتراكاً ميتاً' : '')
+            + '. فإن لم يظهر على شاشتك فالإذن موقوف على الجهاز نفسه أو وضعُ التركيز يكتمه — لا المنصة.'
+          : 'لم يخرج الإشعار: ' + String(d?.result?.reason || (f ? f + ' محاولة فاشلة' : 'لا أجهزة مسجَّلة'))
+      )
+    } catch { setVerdict('انقطع الاتصال بالخادم') }
+    setTesting(false)
+  }
 
   async function detect() {
     if (typeof window === 'undefined') return
@@ -42,8 +72,13 @@ export default function PushToggle() {
       const reg = await navigator.serviceWorker.getRegistration()
       const sub = await reg?.pushManager.getSubscription()
       setState(sub ? 'on' : 'off')
+      fetch('/api/push/subscribe').then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.devices) setDevices(d.devices) }).catch(() => {})
     } catch { setState('off') }
   }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void detect() }, [])
 
   async function enable() {
     setState('working'); setNote('')
@@ -119,15 +154,42 @@ export default function PushToggle() {
   ))
 
   if (state === 'on') return box('#EAF6F1', '#BFE0D3', (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-      <div style={{ color: '#1A5C46', fontSize: 13.5, fontWeight: 800, lineHeight: 1.9 }}>
-        ✓ إشعارات هذا الجهاز مفعّلة — يصلك كل تسجيل وكل تقييم في لحظته.
-        {note && <div style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>{note}</div>}
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ color: '#1A5C46', fontSize: 13.5, fontWeight: 800, lineHeight: 1.9 }}>
+          ✓ إشعارات هذا الجهاز مفعّلة — يصلك كل تسجيل وكل تقييم في لحظته.
+          {note && <div style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>{note}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={test} disabled={testing}
+            style={{ background: '#1A3D34', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            {testing ? 'جارٍ…' : 'جرّبها الآن'}
+          </button>
+          <button onClick={disable}
+            style={{ background: 'transparent', color: '#8A6D1F', border: '1px solid #E0D2A8', padding: '8px 16px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
+            أوقفها على هذا الجهاز
+          </button>
+        </div>
       </div>
-      <button onClick={disable}
-        style={{ background: 'transparent', color: '#8A6D1F', border: '1px solid #E0D2A8', padding: '8px 16px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>
-        أوقفها على هذا الجهاز
-      </button>
+
+      {verdict && (
+        <div style={{ marginTop: 10, background: '#fff', border: '1px solid #CBE6DA', borderRadius: 10, padding: '9px 13px', color: '#1A3D34', fontSize: 12.5, fontWeight: 700, lineHeight: 1.95 }}>
+          {verdict}
+        </div>
+      )}
+
+      {devices.length > 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, color: '#5E7C73', lineHeight: 1.95 }}>
+          <b style={{ color: '#1A5C46' }}>أجهزتك المسجَّلة ({devices.length}):</b>
+          {devices.map(d => (
+            <div key={d.id} style={{ marginTop: 3 }}>
+              · {/iphone|ipad/i.test(d.label || '') ? 'آيفون' : /macintosh|windows/i.test(d.label || '') ? 'حاسوب' : 'جهاز'}
+              {' — آخر إرسال: ' + when(d.last_sent_at)}
+              {d.last_error ? <span style={{ color: '#B4453C', fontWeight: 800 }}>{' · خطأ: ' + d.last_error}</span> : ''}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   ))
 

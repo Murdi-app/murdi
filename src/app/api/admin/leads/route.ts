@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { buildLeads, leadStats, type RawLead } from '@/lib/leadDesk';
+import { OUTCOMES, isOutcome } from '@/lib/outcomes';
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -119,8 +120,6 @@ export async function GET() {
   });
 }
 
-const OUTCOMES = ['لا يرد', 'مهتم', 'طلب معاودة', 'غير مؤهل الآن', 'تحوّل عميلاً', 'رفض'];
-
 export async function PATCH(req: Request) {
   const { error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
@@ -136,7 +135,9 @@ export async function PATCH(req: Request) {
   }
   if (body.outcome !== undefined) {
     const o = String(body.outcome || '');
-    if (o && !OUTCOMES.includes(o)) return NextResponse.json({ error: 'نتيجة غير معروفة' }, { status: 400 });
+    if (o && !isOutcome(o)) {
+      return NextResponse.json({ error: 'نتيجة غير معروفة: ' + o + ' — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
+    }
     patch.outcome = o || null;
     if (o) { patch.contacted = true; patch.contacted_at = patch.contacted_at || new Date().toISOString(); }
   }

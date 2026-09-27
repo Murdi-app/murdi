@@ -1,5 +1,6 @@
 'use client'
 import AdminNav from '@/components/AdminNav'
+import { OUTCOMES } from '@/lib/outcomes'
 import CallIntake from '@/components/CallIntake'
 import { useEffect, useMemo, useState } from 'react'
 import { waNumber } from '@/lib/phone'
@@ -35,7 +36,6 @@ const TIERS: Record<number, { label: string; color: string; why: string }> = {
 // الطبقة الخامسة تُراسَل بالبريد لا بالهاتف، فأُضيفت نتائجها: «أرسلتُ
 // رسالة» تُسجَّل يوم الإرسال لا يوم الردّ — وإلا بقيت الصفوف كأنها لم
 // تُلمس، فأعادت الموظفة مراسلة من راسلته أمس.
-const OUTCOMES = ['أرسلتُ رسالة', 'ردّ — مهتم', 'ردّ — غير مهتم', 'لم يرد', 'طلب معاودة', 'رقم/بريد خاطئ', 'تحوّل عميلاً']
 
 const money = (n: number) => new Intl.NumberFormat('en-US').format(Math.round(n))
 const dayCount = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : null)
@@ -46,10 +46,13 @@ export default function HotPage() {
   const [view, setView] = useState<'due' | 'waiting' | 'closed'>('due')
   const [copied, setCopied] = useState('')
   const [open, setOpen] = useState('')
-  const [outcome, setOutcome] = useState('لم يرد')
+  const [outcome, setOutcome] = useState<string>(OUTCOMES[1])
   const [note, setNote] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
+  // ★ كان الفشل صامتاً: `if (res.ok)` وحدها، فإن ردّ الخادم بخطأٍ لم يقع شيء
+  //   ولم يُقل شيء — تضغط الموظفة فلا تُسجَّل النتيجة ولا تعرف لماذا.
+  const [err, setErr] = useState('')
   // أي صفّ فُتحت له لوحة الملف — أو 'blank' لمن ليس في القائمة
   const [intake, setIntake] = useState('')
 
@@ -62,14 +65,18 @@ export default function HotPage() {
   useEffect(load, [])
 
   const log = async (r: Row) => {
-    setBusy(true)
+    setBusy(true); setErr('')
     try {
       const res = await fetch('/api/admin/hot', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source: r.source, ref_id: r.ref_id, outcome, note, next_action_at: when || null }),
       })
-      if (res.ok) { setOpen(''); setNote(''); setWhen(''); setOutcome('لم يرد'); load() }
-    } catch { /* الشبكة تسقط أحياناً — الصفّ يبقى مكانه ليُعاد */ }
+      if (res.ok) { setOpen(''); setNote(''); setWhen(''); setOutcome(OUTCOMES[1]); load() }
+      else {
+        const d = await res.json().catch(() => ({}))
+        setErr(d?.error || 'تعذّر تسجيل النتيجة — أعيدي المحاولة')
+      }
+    } catch { setErr('انقطع الاتصال — النتيجة لم تُسجَّل، أعيدي المحاولة') }
     setBusy(false)
   }
 
@@ -90,6 +97,12 @@ export default function HotPage() {
         من هو داخل المنصة أصلاً، مرتَّباً بقربه من الدفع. لا اتصال بارد —
         كل اسم هنا عرف مُرضي بنفسه ووقف عند خطوة واحدة.
       </p>
+
+      {err && (
+        <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
+          {err}
+        </div>
+      )}
 
       {stats && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>

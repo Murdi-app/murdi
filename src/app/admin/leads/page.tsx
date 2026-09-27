@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import AdminNav from '@/components/AdminNav';
+import { OUTCOMES } from '@/lib/outcomes';
 import { BAND_LABEL, type Band, type Temp } from '@/lib/leadDesk';
 
 // كانت هذه الصفحة قائمة قراءة فقط: أسماء ودرجات مرتّبة بالأحدث، بلا زر واحد.
@@ -59,7 +60,6 @@ function Chip({ k, label, n, warn, on, pick }: {
   );
 }
 
-const OUTCOMES = ['مهتم', 'طلب معاودة', 'لا يرد', 'غير مؤهل الآن', 'تحوّل عميلاً', 'رفض'];
 
 const BAND_TONE: Record<Band, { bg: string; fg: string; br: string }> = {
   ready:   { bg: '#EAF7F0', fg: '#1E7A5E', br: '#BFE6D6' },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
+import { OUTCOMES, isOutcome, closesOpportunity } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
 //
@@ -53,7 +54,7 @@ export async function GET() {
   const merged = rows.map((r) => {
     const t = last.get(r.source + '|' + r.ref_id) || null;
     // مغلقة = لا تُعرض · مؤجّلة بموعد لم يحن = تنتظر · غير ذلك = اليوم
-    const closed = t?.outcome === 'غير مهتم' || t?.outcome === 'رقم خاطئ' || t?.outcome === 'تحوّل عميلاً';
+    const closed = closesOpportunity(t?.outcome);
     const waiting = !!t?.next_action_at && t.next_action_at > today;
     return {
       ...r,
@@ -87,8 +88,9 @@ export async function GET() {
   });
 }
 
-// POST: تسجيل لمسة — نتيجة المكالمة وموعد المعاودة
-const OUTCOMES = ['لم يرد', 'مهتم', 'طلب معاودة', 'غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً'];
+// POST: تسجيل لمسة — نتيجة المكالمة وموعد المعاودة.
+// والنتائج المقبولة معرَّفة في `@/lib/outcomes` وحده — هي نفسها التي تعرضها
+// الشاشة والتي يقبلها قيد القاعدة، فلا تفترق ثلاثتها كما افترقت.
 
 export async function POST(req: Request) {
   const { who, error: denied } = await requireStaff();
@@ -99,49 +101,54 @@ export async function POST(req: Request) {
   const refId = String(b?.ref_id || '');
   const outcome = String(b?.outcome || '');
   if (!source || !refId) return NextResponse.json({ error: 'source و ref_id مطلوبان' }, { status: 400 });
-  if (!OUTCOMES.includes(outcome)) return NextResponse.json({ error: 'نتيجة غير معروفة' }, { status: 400 });
+  if (!isOutcome(outcome)) {
+    return NextResponse.json({ error: 'نتيجة غير معروفة: ' + outcome + ' — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
+  }
 
   const sb = admin();
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
 
-  const { error } = await sb.from('hot_touches').insert({
-    source,
-    ref_id: refId,
-    outcome,
-    note: b?.note ? String(b.note).slice(0, 2000) : null,
-    next_action_at: b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null,
-    actor: who.userId,
-    actor_name: who.role === 'admin' ? 'د. عبدالحكيم' : String(me?.name || 'الفريق'),
-  });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const note = b?.note ? String(b.note).slice(0, 2000) : null;
+  const when = b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null;
 
-  // التقييم له عمودا اتصال خاصان به — تُحدَّث حتى لا يظهر الاسم مرتين
+  // ★ صفُّ المصدر يُحدَّث **قبل** تسجيل اللمسة، لا بعدها.
+  //   فقد كانت اللمسة تُكتب أولاً ثم يسقط تحديثُ التقييم على قيد القاعدة،
+  //   فيبقى في `hot_touches` أثرُ مكالمةٍ لا يعرفها جدول التقييم — والموظفة
+  //   ترى خطأً أحمر وتظنّ أن شيئاً لم يُسجَّل وقد سُجِّل نصفُه.
+  //   فالآن: إن تعذّر تحديثُ الصفّ لم تُكتب لمسةٌ أصلاً، ويُقال السبب عربياً.
   if (source === 'assessment') {
-    await sb
-      .from('mini_assessments')
-      .update({
-        contacted: true,
-        contacted_at: new Date().toISOString(),
-        outcome,
-        contact_note: b?.note ? String(b.note).slice(0, 1000) : null,
-        next_action_at: b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null,
-      })
-      .eq('id', refId);
+    const { error: upErr } = await sb.from('mini_assessments').update({
+      contacted: true,
+      contacted_at: new Date().toISOString(),
+      outcome,
+      contact_note: note ? note.slice(0, 1000) : null,
+      next_action_at: when,
+    }).eq('id', refId);
+    if (upErr) return NextResponse.json({ error: 'تعذّر تسجيل النتيجة على التقييم — ' + upErr.message }, { status: 500 });
   }
 
   // وطلب الخدمة من الموقع كذلك — وإلا بقي في القائمة بعد أن كُلِّم صاحبه،
   // فيُكلَّم مرتين وقد طلب مرة واحدة.
   if (source === 'inquiry') {
-    await sb
-      .from('service_inquiries')
-      .update({
-        contacted: true,
-        contacted_at: new Date().toISOString(),
-        outcome,
-        contact_note: b?.note ? String(b.note).slice(0, 1000) : null,
-      })
-      .eq('id', refId);
+    const { error: upErr } = await sb.from('service_inquiries').update({
+      contacted: true,
+      contacted_at: new Date().toISOString(),
+      outcome,
+      contact_note: note ? note.slice(0, 1000) : null,
+    }).eq('id', refId);
+    if (upErr) return NextResponse.json({ error: 'تعذّر تسجيل النتيجة على الطلب — ' + upErr.message }, { status: 500 });
   }
+
+  const { error } = await sb.from('hot_touches').insert({
+    source,
+    ref_id: refId,
+    outcome,
+    note,
+    next_action_at: when,
+    actor: who.userId,
+    actor_name: who.role === 'admin' ? 'د. عبدالحكيم' : String(me?.name || 'الفريق'),
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

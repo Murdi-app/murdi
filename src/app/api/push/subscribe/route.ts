@@ -22,14 +22,44 @@ export async function GET() {
 
   const { data } = await admin()
     .from('push_subscriptions')
-    .select('id, label, created_at, last_sent_at')
+    .select('id, label, created_at, last_sent_at, last_error, failures')
     .eq('email', who.email)
     .order('created_at', { ascending: false });
 
   return NextResponse.json({
     publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    keysReady: Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
     devices: data || [],
   });
+}
+
+// PUT — إشعار تجربة الآن، ومعه الحقيقة كاملةً عمّا فعله الخادم.
+//
+// ★ قال المالك إن الإشعارات «توقفت»، وكان الخادم يرسلها بنجاح في اللحظة
+//   نفسها: آخر إرسالٍ مسجَّل بلا خطأ، والاشتراكان حيّان. فالعطب — إن وُجد —
+//   بين خادم الإشعارات وجهازه، لا عندنا. ولم يكن في المنصة ما يفرّق بين
+//   الحالين، فيبقى الشكّ.
+//   فصار هنا زرٌّ يقول أيّهما: كم جهازاً قَبِل الخادمُ الإرسالَ إليه، وكم
+//   اشتراكاً ميتاً حُذف، وما نصّ الخطأ إن وقع. فإن قال «أُرسل إلى جهازين»
+//   ولم يصل شيء، فالخلل في إذن الجهاز أو في وضع التركيز — لا في المنصة.
+export async function PUT() {
+  const { who, error: denied } = await requireStaff();
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+
+  const r = await sendPush({
+    title: '🔔 إشعار تجربة',
+    body: 'إن قرأتَ هذا فالإشعارات تعمل على هذا الجهاز — ' + new Date().toLocaleTimeString('ar-SA', { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit' }),
+    url: '/admin/hot',
+    tag: 'push-test',
+  }, who.email);
+
+  const { data } = await admin()
+    .from('push_subscriptions')
+    .select('id, label, created_at, last_sent_at, last_error, failures')
+    .eq('email', who.email)
+    .order('created_at', { ascending: false });
+
+  return NextResponse.json({ ok: true, result: r, devices: data || [] });
 }
 
 // POST — حفظ اشتراك هذا الجهاز
