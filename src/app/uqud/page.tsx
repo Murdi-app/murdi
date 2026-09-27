@@ -194,7 +194,7 @@ export default function UqudEntryPage() {
           <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
             أربعة أسئلة عن عقدك — لا عن منشأتك — وتخرج بقراءة أولية.
           </p>
-          
+          <a
             href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، عندي عقد وأبغى أعرف كيف أموّل تنفيذه')}
             target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-block', marginTop: 14, background: '#fff', color: GREEN, border: '1.5px solid ' + GREEN, padding: '9px 22px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
