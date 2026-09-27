@@ -239,6 +239,7 @@ export default function Home() {
             <div className="chip">منصة استشارية لقياس وتجهيز الجاهزية — لا نمنح تمويلاً ولا نضمن نتيجة</div>
             <div><button className="cta" onClick={go}>افتح ملف شركتك — التقييم مجاني</button></div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
+              <a href="/test" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج سيولة لمنشأتك؟ جهّز ملفك التمويلي ←</a>
               <a href="/uqud" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>عندك عقد مُرسى؟ موّل تنفيذه ←</a>
               <a href="/jadwa" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج دراسة جدوى تقبلها الجهات؟ ←</a>
             </div>
