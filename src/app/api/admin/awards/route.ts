@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { loadConfig, compose, TRANSITIONS, STAMP, isAddressed, awardSrc, type Award } from '@/lib/awards';
+import { loadConfig, compose, TRANSITIONS, STAMP, isAddressed, awardSrc, type Award, type Touch } from '@/lib/awards';
 
 // الترسيات — للمالك وحده. الجداول بلا منحٍ للمتصفح، فكل قراءةٍ وكتابةٍ من
 // هنا بمفتاح الخدمة بعد `requireAdmin`. والرسالة تُركَّب هنا من القوالب
@@ -22,11 +22,20 @@ export async function GET() {
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const sb = admin();
   try {
-    const [{ data, error }, cfg] = await Promise.all([
+    const [{ data, error }, cfg, tq] = await Promise.all([
       sb.from('contract_awards').select('*').order('created_at', { ascending: false }).limit(1000),
       loadConfig(sb),
+      sb.from('award_touches').select('*').order('created_at', { ascending: true }).limit(10000),
     ]);
     if (error) return NextResponse.json({ error: 'تعذّرت قراءة الترسيات — ' + error.message }, { status: 500 });
+    if (tq.error) return NextResponse.json({ error: 'تعذّرت قراءة المراسلات — ' + tq.error.message }, { status: 500 });
+    // كل مراسلة بحرفها وتاريخها وقناتها ومرسِلها ونتيجتها، والردود الواردة معها
+    const touchesBy = new Map<string, Touch[]>();
+    for (const t of (tq.data || []) as Touch[]) {
+      const k = String(t.award_id);
+      if (!touchesBy.has(k)) touchesBy.set(k, []);
+      (touchesBy.get(k) as Touch[]).push(t);
+    }
     const awards = ((data || []) as Award[]).map((a) => {
       const addressed = isAddressed(a.category);
       const c = addressed ? compose(a, cfg.templates, cfg.settings) : null;
@@ -37,6 +46,7 @@ export async function GET() {
         next: TRANSITIONS[a.status] || [],
         message: c && c.template ? { subject: c.subject, body: c.body, stage: c.stage, link: c.link } : null,
         stage: c?.stage || null,
+        touches: touchesBy.get(String(a.id)) || [],
       };
     });
     return NextResponse.json({ ok: true, awards, templates: cfg.templates, settings: cfg.settings });

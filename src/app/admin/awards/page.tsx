@@ -6,6 +6,7 @@ import AdminNav from '@/components/AdminNav'
 // المحتوى — نصوص الرسائل والحدود — يُقرأ من القاعدة عبر الخادم؛ هذه الصفحة
 // تعرضه وتنسخه وتعدّله، ولا تحمل نصّاً منه (المستودع عام).
 
+type Touch = { id: string; channel: string; direction: string; actor: string; to_address: string | null; subject: string | null; body: string | null; outcome: string | null; created_at: string }
 type Msg = { subject: string; body: string; stage: string; link: string }
 type Award = {
   id: string; source: string; source_ref?: string | null; company_name: string; cr_number: string | null; tender_title: string | null
@@ -14,7 +15,7 @@ type Award = {
   contact_email: string | null; contact_phone: string | null; contact_channel: string | null
   status: string; messaged_at: string | null; reminder_at: string | null; replied_at: string | null
   gap_sent_at: string | null; notes: string | null; created_at: string; updated_at: string
-  addressed: boolean; src: string; next: string[]; message: Msg | null; stage: string | null
+  addressed: boolean; src: string; next: string[]; message: Msg | null; stage: string | null; touches: Touch[]
 }
 type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean }
 
@@ -35,6 +36,8 @@ const SOURCE: Record<string, string> = { etimad: 'اعتماد', tadawul: 'تد�
 const G = '#1A3D34', M = '#6B8A80', LINE = '#E1EDE8'
 const btn = (bg: string, fg = '#fff'): React.CSSProperties => ({ background: bg, color: fg, border: bg === '#fff' ? '1px solid ' + LINE : 'none', padding: '7px 14px', borderRadius: 999, fontFamily: 'inherit', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' })
 const input: React.CSSProperties = { width: '100%', border: '1px solid ' + LINE, borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5, boxSizing: 'border-box' }
+const CH: Record<string, string> = { email: 'بريد', whatsapp: 'واتساب', call: 'اتصال' }
+const when = (t: string) => new Date(t).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' })
 const sar = (n: number | null) => n == null ? '—' : Number(n).toLocaleString('en-US')
 
 export default function AwardsPage() {
@@ -49,6 +52,8 @@ export default function AwardsPage() {
   const [fCat, setFCat] = useState('')
   const [fStatus, setFStatus] = useState('')
   const [showSkip, setShowSkip] = useState(false)
+  const [showDropped, setShowDropped] = useState(false)
+  const [reply, setReply] = useState<Record<string, { channel: string; body: string }>>({})
   const [open, setOpen] = useState('')
   const [copied, setCopied] = useState('')
   const [adding, setAdding] = useState(false)
@@ -88,6 +93,30 @@ export default function AwardsPage() {
     if (to === 'dropped' && !confirm('إسقاط «' + a.company_name + '»؟')) return
     setBusy(a.id)
     if (await call('/api/admin/awards', 'PATCH', { id: a.id, to }, 'الانتقال إلى «' + STATUS[to] + '»')) { flash('صارت «' + STATUS[to] + '»'); await load() }
+    setBusy('')
+  }
+
+  // إرسال البريد من المنصة — يُسجَّل بحرفه في المراسلات
+  const send = async (a: Award) => {
+    if (!a.message || !a.contact_email) return
+    if (!confirm('إرسال البريد إلى ' + a.contact_email + '؟')) return
+    setBusy('send' + a.id); setErr('')
+    try {
+      const r = await fetch('/api/admin/awards/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) setErr('لم يخرج البريد — ' + (d.error || 'خطأ ' + r.status))
+      else { if (d.warn) setErr(d.warn); flash('خرج البريد وسُجّل'); await load() }
+    } catch { setErr('انقطع الاتصال — لم يُرسل') }
+    setBusy('')
+  }
+
+  const logReply = async (a: Award) => {
+    const r = reply[a.id]
+    if (!r?.body?.trim()) return
+    setBusy('reply' + a.id)
+    if (await call('/api/admin/awards/touch', 'POST', { id: a.id, channel: r.channel || 'email', body: r.body }, 'تسجيل الرد')) {
+      flash('سُجّل الرد'); setReply((x) => { const y = { ...x }; delete y[a.id]; return y }); await load()
+    }
     setBusy('')
   }
 
@@ -149,10 +178,11 @@ export default function AwardsPage() {
 
   const shown = useMemo(() => awards.filter((a) =>
     (showSkip || fTrack === 'skip' || a.track !== 'skip')
+    && (showDropped || fStatus === 'dropped' || a.status !== 'dropped')
     && (!fTrack || a.track === fTrack)
     && (!fCat || a.category === fCat)
     && (!fStatus || a.status === fStatus)
-  ), [awards, fTrack, fCat, fStatus, showSkip])
+  ), [awards, fTrack, fCat, fStatus, showSkip, showDropped])
 
   const sel = (v: string, set: (s: string) => void, opts: Record<string, string>, all: string) => (
     <select value={v} onChange={(e) => set(e.target.value)} style={{ ...input, width: 'auto', minWidth: 130 }}>
@@ -173,7 +203,7 @@ export default function AwardsPage() {
             <button onClick={() => setCfgOpen((x) => !x)} style={btn('#fff', G)}>{cfgOpen ? 'إغلاق القوالب' : 'القوالب والإعدادات'}</button>
           </div>
         </div>
-        <p style={{ color: M, fontSize: 13, margin: '4px 0 14px' }}>شركاتٌ رُسّي عليها عقد — تُخاطَب بسيولة التنفيذ. الرسالة تُركَّب من القوالب والإعدادات، وتُنسخ لتُرسل من قناتك.</p>
+        <p style={{ color: M, fontSize: 13, margin: '4px 0 14px' }}>شركاتٌ رُسّي عليها عقد — تُخاطَب بسيولة التنفيذ. الرسالة تُركَّب من القوالب والإعدادات، وتُرسل من هنا بريداً، وكل مراسلةٍ تُسجَّل بحرفها.</p>
 
         {err && <div style={{ background: '#FBEEEC', color: '#A5281B', border: '1px solid #F0D6D1', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, fontWeight: 700, marginBottom: 12 }}>{err}</div>}
         {ok && <div style={{ background: '#EAF6F1', color: '#1A5C46', border: '1px solid #BFE0D3', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 800, marginBottom: 12 }}>✓ {ok}</div>}
@@ -245,6 +275,9 @@ export default function AwardsPage() {
           <label style={{ fontSize: 13, color: M, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={showSkip} onChange={(e) => setShowSkip(e.target.checked)} /> أظهر ما دون الحد
           </label>
+          <label style={{ fontSize: 13, color: M, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} /> أظهر المُسقطة
+          </label>
           <span style={{ color: M, fontSize: 12.5 }}>{shown.length.toLocaleString('ar-SA')} من {awards.length.toLocaleString('ar-SA')}</span>
         </div>
 
@@ -262,6 +295,7 @@ export default function AwardsPage() {
               </div>
               <div style={{ textAlign: 'left' }}>
                 <span style={{ background: '#EAF4F0', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800 }}>{STATUS[a.status] || a.status}</span>
+                <span title="المراسلات" style={{ background: a.touches.length ? '#FFF6E0' : '#F2F5F4', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800, marginRight: 6 }}>✉︎ {a.touches.length.toLocaleString('ar-SA')}{a.touches.some((t) => t.direction === 'in') ? ' · ردّ' : ''}</span>
                 <div style={{ color: M, fontSize: 11, marginTop: 4, direction: 'ltr' }}>{a.src}</div>
                 {a.source_ref && /^https?:/.test(a.source_ref) && <a href={a.source_ref} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>الخبر ↗</a>}
               </div>
@@ -273,7 +307,7 @@ export default function AwardsPage() {
                   style={to === 'dropped' ? btn('#fff', '#B4453C') : btn(G)}>{to === 'dropped' ? 'أسقِط' : '← ' + STATUS[to]}</button>
               ))}
               {a.addressed
-                ? <button onClick={() => setOpen(open === a.id ? '' : a.id)} style={btn('#fff', G)}>{open === a.id ? 'أخفِ الرسالة' : 'الرسالة'}</button>
+                ? <button onClick={() => setOpen(open === a.id ? '' : a.id)} style={btn('#fff', G)}>{open === a.id ? 'أغلِق' : 'الرسالة والمراسلات'}</button>
                 : <span style={{ background: '#F2F5F4', color: '#7E938C', borderRadius: 99, padding: '6px 12px', fontSize: 12, fontWeight: 800 }}>لا تُخاطَب</span>}
             </div>
 
@@ -283,8 +317,35 @@ export default function AwardsPage() {
                   <div style={{ fontSize: 12, color: M, fontWeight: 800 }}>العنوان · قالب {CATEGORY[a.category]} / {STAGE[a.message.stage]}</div>
                   <div style={{ fontWeight: 800, margin: '2px 0 8px' }}>{a.message.subject}</div>
                   <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.95, fontSize: 14, background: '#F7FBF9', borderRadius: 10, padding: 12 }}>{a.message.body}</div>
-                  <button onClick={() => copy(a)} style={{ ...btn(G), marginTop: 8 }}>{copied === a.id ? '✓ نُسخت' : 'انسخ الرسالة'}</button>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+                    <button onClick={() => send(a)} disabled={!a.contact_email || busy === 'send' + a.id || !['qualified', 'messaged', 'reminder_call', 'replied'].includes(a.status)} style={{ ...btn(G), opacity: a.contact_email ? 1 : 0.5 }}>
+                      {busy === 'send' + a.id ? 'جارٍ الإرسال…' : 'أرسل البريد' + (a.contact_email ? ' إلى ' + a.contact_email : '')}
+                    </button>
+                    <button onClick={() => copy(a)} style={btn('#fff', G)}>{copied === a.id ? '✓ نُسخت' : 'انسخ الرسالة'}</button>
+                    {!a.contact_email && <span style={{ color: M, fontSize: 12 }}>لا بريد — أضفه ليُرسل من هنا</span>}
+                  </div>
                 </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».</div>}
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>المراسلات ({a.touches.length.toLocaleString('ar-SA')})</div>
+                  {a.touches.length === 0 && <div style={{ color: M, fontSize: 12.5 }}>لا مراسلة بعد.</div>}
+                  {a.touches.map((t) => (
+                    <div key={t.id} style={{ background: t.direction === 'in' ? '#FFF9EA' : '#F7FBF9', border: '1px solid ' + (t.direction === 'in' ? '#EAD9A8' : LINE), borderRadius: 10, padding: 10, marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: M, fontWeight: 800 }}>
+                        {t.direction === 'in' ? '← وارد' : '→ صادر'} · {CH[t.channel] || t.channel} · {t.actor} · {when(t.created_at)}{t.to_address ? ' · ' + t.to_address : ''}
+                        {t.outcome && <span style={{ color: G }}> · النتيجة: {t.outcome}</span>}
+                      </div>
+                      {t.subject && <div style={{ fontWeight: 800, fontSize: 13.5, marginTop: 4 }}>{t.subject}</div>}
+                      {t.body && <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.85, fontSize: 13.5, marginTop: 4 }}>{t.body}</div>}
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                    <select value={reply[a.id]?.channel || 'email'} onChange={(e) => setReply({ ...reply, [a.id]: { body: reply[a.id]?.body || '', channel: e.target.value } })} style={{ ...input, width: 'auto' }}>
+                      <option value="email">ردّ بالبريد</option><option value="whatsapp">ردّ بالواتساب</option><option value="call">ردّ بمكالمة</option>
+                    </select>
+                    <textarea rows={2} placeholder="الصق الرد الوارد بحرفه" value={reply[a.id]?.body || ''} onChange={(e) => setReply({ ...reply, [a.id]: { channel: reply[a.id]?.channel || 'email', body: e.target.value } })} style={{ ...input, flex: '1 1 240px', width: 'auto', lineHeight: 1.8 }} />
+                    <button onClick={() => logReply(a)} disabled={!reply[a.id]?.body?.trim() || busy === 'reply' + a.id} style={btn(G)}>سجّل الرد</button>
+                  </div>
+                </div>
                 <div style={{ marginTop: 10 }}>
                   <textarea rows={2} placeholder="ملاحظة" value={notes[a.id] ?? a.notes ?? ''} onChange={(e) => setNotes({ ...notes, [a.id]: e.target.value })} style={{ ...input, lineHeight: 1.8 }} />
                   {notes[a.id] !== undefined && notes[a.id] !== (a.notes ?? '') && <button onClick={() => saveNotes(a)} disabled={busy === a.id} style={{ ...btn('#fff', G), marginTop: 6 }}>احفظ الملاحظة</button>}

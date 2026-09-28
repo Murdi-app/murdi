@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminNav from '@/components/AdminNav';
 import { OUTCOMES } from '@/lib/outcomes';
 import { BAND_LABEL, type Band, type Temp } from '@/lib/leadDesk';
+import AwardTasks from '@/components/AwardTasks';
 
 // كانت هذه الصفحة قائمة قراءة فقط: أسماء ودرجات مرتّبة بالأحدث، بلا زر واحد.
 // ولهذا كان عمود contacted صفراً في كل الصفوف منذ يونيو — لم يكن في المنصة مكان يضبطه.
@@ -137,6 +138,7 @@ export default function LeadsPage() {
       <p style={{ color: '#6B8A80', fontSize: 13, marginTop: 6, marginBottom: 16, lineHeight: 1.9 }}>
         من دخل التقييم السريع في الواجهة. الترتيب بالتأهّل أولاً لا بالتاريخ: المؤهَّل يُغلق أسرع ويموّل بقية القائمة.
       </p>
+      <AwardTasks />
 
       {stats && (
         <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 22, flexWrap: 'wrap' }}>

@@ -15,12 +15,20 @@ export const UTM_COOKIE = 'murdi_utm';
 const MAX_AGE = 30 * 24 * 3600;
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const;
 
+/** مصدر تيك توك بصفحة الهبوط: tiktok_uqud · tiktok_jadwa · tiktok_test — وإلا tiktok */
+function tiktokFor(path: string): string {
+  const p = String(path || '').split('/').filter(Boolean)[0] || '';
+  return ['uqud', 'jadwa', 'test'].includes(p) ? 'tiktok_' + p : 'tiktok';
+}
+
 /** يستخرج المصدر من معاملات الرابط — أو '' إن لم يكن فيه مصدر */
-export function detectSource(q: URLSearchParams): string {
+export function detectSource(q: URLSearchParams, path = ''): string {
   const src = (q.get('src') || '').trim();
   if (src) return src.slice(0, 40);
   if (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) return 'google-ads';
-  if (q.get('ttclid')) return 'tiktok';
+  // إعلانات تيك توك تحمل `src=tiktok_uqud` وأخواتها؛ ومن وصل بـ`ttclid` وحده
+  // يُسمّى بصفحة هبوطه — فلا يختلط إعلان العقود بإعلان الجدوى
+  if (q.get('ttclid')) return tiktokFor(path);
   if (q.get('fbclid')) return 'meta';
   if (q.get('ScCid') || q.get('sccid')) return 'snapchat';
   if (q.get('twclid')) return 'x';
@@ -47,7 +55,7 @@ export function captureFirstTouch(): void {
   if (typeof document === 'undefined') return;
   try {
     const q = new URLSearchParams(window.location.search);
-    const src = detectSource(q);
+    const src = detectSource(q, location.pathname);
     if (!src) return;
     if (readCookie(document.cookie, SRC_COOKIE)) return; // الأول يفوز
     const secure = location.protocol === 'https:' ? '; Secure' : '';
@@ -67,7 +75,7 @@ export function captureFirstTouch(): void {
 export function currentSource(): string {
   if (typeof window === 'undefined') return '';
   try {
-    const fromUrl = detectSource(new URLSearchParams(window.location.search));
+    const fromUrl = detectSource(new URLSearchParams(window.location.search), window.location.pathname);
     if (fromUrl) return fromUrl;
     return readCookie(document.cookie, SRC_COOKIE).slice(0, 40);
   } catch {
