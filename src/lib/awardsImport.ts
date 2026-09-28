@@ -14,7 +14,7 @@ const QUERIES = ['ترسية مشروع', 'تتسلم ترسية', 'توقع ع�
 const UA = 'Mozilla/5.0 (compatible; MurdiAwardsBot/1.0; +https://murdi.sa)';
 
 export type Parsed = {
-  company_name: string; tender_title: string; buyer_entity: string | null;
+  company_name: string; tender_title: string | null; headline: string; buyer_entity: string | null;
   contract_value: number | null; awarded_at: string; category: string; link: string; outlet: string;
 };
 
@@ -51,6 +51,22 @@ function buyerOf(t: string): string | null {
   return b && !/إيراد|٪|%|لعام|العام/.test(b) ? b : null;
 }
 
+/**
+ * اسم المشروع لا عنوان الخبر: كان العنوان كلّه يُحفظ اسماً للمنافسة، فتقول
+ * الرسالة «مبارك لكم «"فلان" توقع عقداً…»». يُؤخذ ما بعد «عقد/ترسية» حتى
+ * «بقيمة/من/مع»، وتُحذف لام الغاية قبل المصدر («لتنفيذ» ← «تنفيذ»).
+ */
+function tenderOf(t: string): string | null {
+  // «عقداً مع فلان بقيمة…» لا يسمّي مشروعاً — فلا اسم، ولا يُخترع
+  if (/(?:عقد[\u064Bا]*)\s+مع\s/.test(t) && !/(?:عقد[\u064Bا]*)\s+مع\s[^،]+?\s+(?:لـ?\s?ت|لتنفيذ|لتوريد|لتوفير|لتصنيع|لتشغيل)/.test(t)) return null;
+  const m = /(?:عقد[\u064Bا]*|ترسية)\s+(?:مع\s+[«"“]?[^«»"”]{2,40}?[»"”]?\s+)?(.+?)(?=\s+بقيمة|\s+بـ?\s?[\d٠-٩]|\s+من\s|\s+مع\s|\s+لمدة|\s+-\s|$)/.exec(t);
+  if (!m) return null;
+  let x = clean(m[1]).replace(/^لـ?\s?(?=ت)/, '').replace(/[«»"“”]/g, '').trim();
+  if (x.length < 9) return null; // «مشروعين» ليس اسماً
+  if (x.length > 160) x = x.slice(0, 160).replace(/\s+\S*$/, '') + '…';
+  return x;
+}
+
 function categoryOf(t: string): string {
   if (/تشييد|إنشاء|إنشائي|مقاولات|بناء|تنفيذ أعمال|طرق|جسور/.test(t)) return 'construction';
   if (/تشغيل|صيانة|نظافة|حراسة|إدارة مرافق/.test(t)) return 'om_services';
@@ -60,6 +76,7 @@ function categoryOf(t: string): string {
   return 'other';
 }
 
+export { tenderOf };
 export function parseItem(rawTitle: string, link: string, pubDate: string, outlet: string): Parsed | null {
   // Google News تُلحق « - اسم المنفذ» بالعنوان
   const t = clean(unesc(rawTitle)).replace(/\s+-\s+[^-]{2,80}$/, '');
@@ -74,7 +91,8 @@ export function parseItem(rawTitle: string, link: string, pubDate: string, outle
   const d = new Date(pubDate);
   return {
     company_name: company,
-    tender_title: t.slice(0, 400),
+    tender_title: tenderOf(t),
+    headline: t.slice(0, 400),
     buyer_entity: buyerOf(t),
     contract_value: valueOf(t),
     awarded_at: Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
@@ -131,7 +149,7 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
       source: 'news', source_ref: p.link.slice(0, 500),
       company_name: p.company_name, tender_title: p.tender_title, buyer_entity: p.buyer_entity,
       category: p.category, contract_value: p.contract_value, awarded_at: p.awarded_at,
-      notes: 'من الأخبار — ' + (p.outlet || 'مصدر') + '\n' + p.link.slice(0, 500),
+      notes: 'من الأخبار — ' + (p.outlet || 'مصدر') + ': ' + p.headline + '\n' + p.link.slice(0, 500),
     });
     if (iErr) { if (/duplicate|unique/i.test(iErr.message)) skipped++; else errors.push(p.company_name + ': ' + iErr.message); }
     else inserted++;
