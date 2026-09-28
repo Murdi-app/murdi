@@ -5,6 +5,7 @@ import { logError } from '@/lib/logError';
 import { canonicalTitle, displayName, involvesOutreach } from '@/lib/serviceCatalog';
 import { PAID_STATUSES } from '@/lib/serviceStatus';
 import { isAwaiting, TRIAGE_KINDS } from '@/lib/replyStatus';
+import { isFrozen } from '@/lib/frozen';
 
 // لوحة المتابعة — ما يراه من يلاحق مخاطبات الجهات.
 //
@@ -132,7 +133,7 @@ export async function GET() {
 
     const counts = zero();
 
-    const clients = (cos || []).filter((c: { admin_note: string | null }) => !String(c.admin_note || '').startsWith('⛔')).map((c: { id: string; company_name: string | null; city: string | null; sector: string | null }) => {
+    const clients = (cos || []).filter((c: { admin_note: string | null }) => !isFrozen(c.admin_note)).map((c: { id: string; company_name: string | null; city: string | null; sector: string | null }) => {
       const rows = (byCo.get(c.id) || []).map((m: Row) => {
         const sentAt = Date.parse(String(m.last_sent_at || m.sent_at || '')) || 0;
         const hasReply = String(m.reply_received || '').trim() !== '' || m.reply_at !== null;

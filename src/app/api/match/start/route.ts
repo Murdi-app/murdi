@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { isFrozen, FROZEN_CLIENT_MSG } from '@/lib/frozen';
 
 export async function POST(req: Request) {
   const { track } = await req.json().catch(() => ({}));
@@ -16,8 +17,10 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, approved_tracks, match_credits').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    .select('id, subscription_active, subscription_end, approved_tracks, match_credits, admin_note').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
+  // الملف الموقوف بأمر المالك لا تُشغَّل له مطابقة — ولو بقي له رصيد قديم
+  if (isFrozen(co.admin_note)) return NextResponse.json({ error: FROZEN_CLIENT_MSG, frozen: true }, { status: 423 });
 
   const tk = track === 'investment' ? 'investment' : 'funding';
 

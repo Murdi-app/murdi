@@ -6,6 +6,7 @@ import { requireStaff } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
 import { notifyTeam } from '@/lib/notifyLead';
 import { prettyPhone, waLink } from '@/lib/phone';
+import { isFrozen, FROZEN_CLIENT_MSG } from '@/lib/frozen';
 
 // طلب تشغيل المطابقة.
 //
@@ -36,7 +37,7 @@ async function currentCompany() {
   if (!data?.user) return null;
   const { data: co } = await admin()
     .from('companies')
-    .select('id, company_name, owner_name, phone, match_credits')
+    .select('id, company_name, owner_name, phone, match_credits, admin_note')
     .eq('user_id', data.user.id)
     .order('created_at', { ascending: false }).limit(1)
     .maybeSingle();
@@ -88,6 +89,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const co = await currentCompany();
   if (!co) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+  // الموقوف بأمر المالك لا يُطلب له تشغيل — يتواصل مع الفريق أولاً
+  if (isFrozen((co as { admin_note?: string | null }).admin_note)) return NextResponse.json({ error: FROZEN_CLIENT_MSG, frozen: true }, { status: 423 });
 
   const b = await req.json().catch(() => ({}));
   const track = b?.track === 'investment' ? 'investment' : 'funding';

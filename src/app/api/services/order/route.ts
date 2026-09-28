@@ -7,6 +7,7 @@ import { priceFor } from '@/lib/servicePricing';
 import { notifyTeam } from '@/lib/notifyLead';
 import { prettyPhone } from '@/lib/phone';
 import { isPaidStatus } from '@/lib/serviceStatus';
+import { isFrozen } from '@/lib/frozen';
 
 // طلب خدمة — يُسعَّر في الخادم لا في المتصفح.
 //
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
   // «لا يوجد ملف منشأة» لعميلٍ لوحتُه أمامه (والوحة تأخذ الأحدث)
   const { data: co } = await sa
     .from('companies')
-    .select('id, company_name, owner_name, phone')
+    .select('id, company_name, owner_name, phone, admin_note')
     .eq('user_id', auth.user.id)
     .order('created_at', { ascending: false }).limit(1)
     .maybeSingle();
@@ -139,14 +140,17 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // ★ الملف الموقوف بأمر المالك يبقى له أن يطلب — وهذا ما يُنتظر منه (الدراسة
+  //   الكاملة مثلاً). فيمضي الطلب، ويُعلَّم للمالك أنه من ملفٍ موقوف ليقرّر.
+  const frozen = isFrozen(co.admin_note);
   await sa.from('deal_events').insert({
     company_id: co.id,
     kind: 'service',
-    title: 'طلب العميل خدمة: ' + title,
+    title: (frozen ? '⛔ ملفٌّ موقوف طلب خدمة: ' : 'طلب العميل خدمة: ') + title,
     detail: (priced ? 'سُعِّرت آلياً بـ' + amount + ' ريال — بانتظار الدفع' : 'تحتاج تسعيرك')
       + (creditedFrom ? ' · خُصم منها ما دُفع في الفحص' : ''),
     actor: 'system',
-    needs_owner: !priced,
+    needs_owner: !priced || frozen,
   });
 
   // إشعار الجوال على طلب الخدمة نفسه.
@@ -160,7 +164,7 @@ export async function POST(req: Request) {
   //   كلّها أجهزته. والتسعيرُ قرارُه هو، لكن **المكالمة** التي تُتبع الطلب
   //   عملُ الموظفة، ولا تتصل بمن لا تعلم به. فصار للمكتب كلّه.
   await notifyTeam({
-    subject: (priced ? 'طلب خدمة مسعَّر: ' : 'طلب خدمة يحتاج تسعيرك: ') + title
+    subject: (frozen ? '⛔ ملفٌّ موقوف طلب خدمة: ' : priced ? 'طلب خدمة مسعَّر: ' : 'طلب خدمة يحتاج تسعيرك: ') + title
       + ' — ' + String(co.company_name || 'منشأة'),
     head: priced
       ? 'سُعِّر آلياً وينتظر تحويل صاحبه — ذكّروه برابطه'

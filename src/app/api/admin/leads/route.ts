@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { buildLeads, leadStats, type RawLead } from '@/lib/leadDesk';
 import { OUTCOMES, isOutcome } from '@/lib/outcomes';
+import { isFrozen } from '@/lib/frozen';
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -37,7 +38,7 @@ export async function GET() {
   if (paidErr) return NextResponse.json({ error: 'تعذّرت قراءة المدفوعات — ' + paidErr.message }, { status: 500 });
   const paidCo = new Set((paidRows || []).map((p) => String(p.company_id)));
   const inLane = (c: Record<string, unknown>) =>
-    !paidCo.has(String(c.id)) && !String(c.admin_note || '').startsWith('⛔');
+    !paidCo.has(String(c.id)) && !isFrozen(c.admin_note);
   const phones = (cos || []).map(c => String(c.phone || '')).filter(Boolean);
 
   const leads = buildLeads((rows || []) as unknown as RawLead[], phones);

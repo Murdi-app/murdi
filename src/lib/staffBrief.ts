@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { closesOpportunity } from './outcomes';
 import { OPEN_PAID_STATUSES } from './serviceStatus';
 import { involvesOutreach } from './serviceCatalog';
+import { isFrozen } from './frozen';
 
 // توجيه الصباح للموظفتين — يُكتب من بيانات المنصة نفسها.
 //
@@ -104,7 +105,7 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
     : { data: [], error: null };
   if (cErr) throw new Error('companies: ' + cErr.message);
   const live = new Map((cos || [])
-    .filter((c) => !String(c.admin_note || '').startsWith('⛔') && c.outreach_paused !== true)
+    .filter((c) => !isFrozen(c.admin_note) && c.outreach_paused !== true)
     .map((c) => [String(c.id), String(c.company_name || 'منشأة')]));
 
   const { data: msgs, error: mErr } = live.size
