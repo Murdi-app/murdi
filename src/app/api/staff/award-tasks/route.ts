@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { isOutcome, OUTCOMES } from '@/lib/outcomes';
+import { sendPush } from '@/lib/push';
+import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { staffTasks, statusAfterOutcome, whatsappText, waDigits, loadConfig, type Award } from '@/lib/awards';
 
 // مهام الترسيات في «مكالمات اليوم» — صفّ ضي.
@@ -25,14 +27,14 @@ export async function GET() {
   }
 }
 
-// POST { id, action: 'call' | 'whatsapp' | 'outcome', outcome?, note? }
+// POST { id, action: 'call' | 'whatsapp' | 'outcome' | 'yes', outcome?, note? }
 export async function POST(req: Request) {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
   const action = String(b.action || '');
-  if (!id || !['call', 'whatsapp', 'outcome'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
+  if (!id || !['call', 'whatsapp', 'outcome', 'yes'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
   const outcome = action === 'outcome' ? String(b.outcome || '') : '';
   if (action === 'outcome' && !isOutcome(outcome)) {
     return NextResponse.json({ error: 'نتيجة غير معروفة — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
@@ -42,12 +44,36 @@ export async function POST(req: Request) {
 
   // المهمة قائمةٌ فعلاً: ترسية مؤهَّلة أو «أُرسلت» — لا يُكتب على ما سواها
   const { data: a, error: rErr } = await sb.from('contract_awards')
-    .select('id, status, source, contract_value, is_subcontract, tender_title, buyer_entity, contact_phone, contact_whatsapp').eq('id', id).maybeSingle();
+    .select('id, status, company_name, source, contract_value, is_subcontract, tender_title, buyer_entity, contact_phone, contact_whatsapp').eq('id', id).maybeSingle();
   if (rErr) return NextResponse.json({ error: 'تعذّرت القراءة — ' + rErr.message }, { status: 500 });
   if (!a || !['qualified', 'messaged'].includes(String(a.status))) return NextResponse.json({ error: 'هذه المهمة لم تعد قائمة' }, { status: 409 });
 
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
   const actor = who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق');
+
+  // «ردّ بنعم»: ردٌّ وارد بضغطةٍ واحدة. القناة قناة آخر تواصلٍ صادر منها
+  // (واتساب أو اتصال). والحالة تصير «ردّ» بمشغّل القاعدة على كل صفٍّ وارد —
+  // هو نفسه الذي يحوّل ما يكتبه المالك من Gmail مباشرة — فتخرج من قائمتها.
+  if (action === 'yes') {
+    const { data: last } = await sb.from('award_touches').select('channel')
+      .eq('award_id', id).eq('direction', 'out').in('channel', ['whatsapp', 'call'])
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const { error: yErr } = await sb.from('award_touches').insert({
+      award_id: id, channel: last?.channel === 'whatsapp' ? 'whatsapp' : 'call', direction: 'in', actor,
+      body: note || 'ردّ بنعم', outcome: 'yes',
+    });
+    if (yErr) return NextResponse.json({ error: 'لم يُسجَّل الرد — ' + yErr.message }, { status: 500 });
+    const { error: hErr2 } = await sb.from('hot_touches').insert({
+      source: 'award', ref_id: id, outcome: 'مهتم', note: 'ردّ بنعم' + (note ? ' — ' + note : ''), actor: who.userId, actor_name: actor,
+    });
+    const p = await sendPush({
+      title: '🟢 ردّ بنعم — ترسية',
+      body: String(a.company_name) + ' — سجّلته ' + actor + '. جدول الفجوة ينتظرك.',
+      url: '/admin/awards', important: true, tag: 'award-yes-' + id,
+    }, OWNER_EMAIL);
+    const warns = [hErr2 ? 'لم يُسجَّل في «الفرص الساخنة»' : '', p.sent ? '' : 'لم يصل إشعار الجوال (' + (p.reason || 'فشل') + ')'].filter(Boolean);
+    return NextResponse.json({ ok: true, status: 'replied', warn: warns.length ? warns.join(' · ') : null });
+  }
 
   let body: string | null = null;
   if (action === 'whatsapp') {

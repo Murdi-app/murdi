@@ -31,7 +31,7 @@ export default function AwardTasks() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load() }, [load])
 
-  const post = async (t: Task, action: 'call' | 'whatsapp' | 'outcome'): Promise<boolean> => {
+  const post = async (t: Task, action: 'call' | 'whatsapp' | 'outcome' | 'yes'): Promise<boolean> => {
     setBusy(t.id + action); setErr('')
     try {
       const r = await fetch('/api/staff/award-tasks', {
@@ -70,6 +70,8 @@ export default function AwardTasks() {
             {t.wa_url && (
               <a href={t.wa_url} target="_blank" rel="noopener noreferrer" onClick={() => { void post(t, 'whatsapp') }} style={pill('#25D366')}>واتساب</a>
             )}
+            <button disabled={busy === t.id + 'yes'} onClick={async () => { if (await post(t, 'yes')) await load() }}
+              style={{ ...pill('#fff', G), border: '2px solid ' + G }}>{busy === t.id + 'yes' ? '…' : '✓ ردّ بنعم'}</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
             <select value={pick[t.id] || ''} onChange={(e) => setPick({ ...pick, [t.id]: e.target.value })}

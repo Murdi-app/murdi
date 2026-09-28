@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 
 // تسجيل ردٍّ وارد على ترسية — بريداً أو واتساب أو مكالمة. المنصة لا تستقبل
-// البريد الوارد آلياً بعد، فيُلصق الرد هنا بحرفه، وتصير الترسية «ردّ».
+// البريد الوارد آلياً، فيُلصق الرد هنا بحرفه — أو يُكتب في القاعدة مباشرة.
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
 
 export async function POST(req: Request) {
@@ -22,10 +22,6 @@ export async function POST(req: Request) {
     award_id: id, channel, direction: 'in', actor: String(b.from || 'صاحب الترسية').slice(0, 120), body,
   });
   if (tErr) return NextResponse.json({ error: 'لم يُسجَّل الرد — ' + tErr.message }, { status: 500 });
-  if (['new', 'qualified', 'messaged', 'reminder_call'].includes(String(a.status))) {
-    const now = new Date().toISOString();
-    const { error: uErr } = await sb.from('contract_awards').update({ status: 'replied', replied_at: now, updated_at: now }).eq('id', id).eq('status', a.status);
-    if (uErr) return NextResponse.json({ ok: true, warn: 'سُجّل الرد ولم تتغيّر الحالة — ' + uErr.message });
-  }
+  // الحالة تصير «ردّ» بمشغّل القاعدة `award_touch_in_replied` على كل صفٍّ وارد
   return NextResponse.json({ ok: true });
 }

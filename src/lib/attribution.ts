@@ -26,8 +26,9 @@ export function detectSource(q: URLSearchParams, path = ''): string {
   const src = (q.get('src') || '').trim();
   if (src) return src.slice(0, 40);
   if (q.get('gclid') || q.get('gbraid') || q.get('wbraid')) return 'google-ads';
-  // إعلانات تيك توك تحمل `src=tiktok_uqud` وأخواتها؛ ومن وصل بـ`ttclid` وحده
-  // يُسمّى بصفحة هبوطه — فلا يختلط إعلان العقود بإعلان الجدوى
+  // ★ `src` الصريح يُحفظ حرفياً ويسبق كل شيء (أعلاه) — فإعلان العقود الذي يهبط
+  //   على /test يبقى `tiktok_uqud` ولا يُسمّى بالصفحة. والتسمية بصفحة الهبوط
+  //   (tiktok_uqud · tiktok_jadwa · tiktok_test) لمن جاء بـ`ttclid` بلا `src` فقط.
   if (q.get('ttclid')) return tiktokFor(path);
   if (q.get('fbclid')) return 'meta';
   if (q.get('ScCid') || q.get('sccid')) return 'snapchat';
