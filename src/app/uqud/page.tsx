@@ -186,14 +186,21 @@ export default function UqudEntryPage() {
           <div style={{ color: GOLD, fontWeight: 900, fontSize: 12, letterSpacing: '.12em', marginBottom: 8 }}>
             الدكتور عبدالحكيم المرضي · مستشار مالي معتمد — <span style={{ whiteSpace: 'nowrap' }}>ترخيص رقم FL-457927015</span>
           </div>
+          {/* ★ ٢٨ سبتمبر: رفض تيك توك الصفحة «فرصةً مالية مضلّلة». فالرأس إطارُ
+              تخطيطٍ وإدارةِ نقد — لا وعد بمبلغ ولا بموافقة ولا «فرصة» — ومعه سطرٌ
+              صريح أن قرار أي جهةٍ لها وحدها. والنموذج واسم الخدمة وسعرها ورابط
+              الصفحة كما هي: عليها حملة جوجل للعقود. */}
           <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px' }}>
-            عندك عقد؟ الفوز شيء والتنفيذ شيء آخر
+            تخطيط تنفيذ العقد وإدارة دورته النقدية
           </h1>
           <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
-            أربعة أسئلة عن عقدك — لا عن منشأتك — وتخرج بقراءة أولية.
+            أربعة أسئلة عن عقدك — لا عن منشأتك — وتخرج بقراءة أولية لدورته النقدية: متى تُنفق على التنفيذ، ومتى يُصرف لك.
+          </p>
+          <p style={{ color: '#8A9E97', fontSize: 12.5, fontWeight: 700, lineHeight: 1.9, margin: '10px auto 0', maxWidth: 520 }}>
+            مُرضي مكتب استشارات مالية، لا جهة تمويل. لا نَعِد بمبلغٍ ولا بموافقة، وقرار أي جهةٍ يعود إليها وحدها.
           </p>
           <a
-            href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، عندي عقد وأبغى أعرف كيف أموّل تنفيذه')}
+            href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، عندي عقد وأبغى أخطط تنفيذه ودورته النقدية')}
             target="_blank" rel="noopener noreferrer"
             style={{ display: 'inline-block', marginTop: 14, background: '#fff', color: GREEN, border: '1.5px solid ' + GREEN, padding: '9px 22px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
             مستعجل؟ كلّمنا واتساب مباشرة
