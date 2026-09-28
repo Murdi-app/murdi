@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { CATALOG, canonicalTitle, needsDiagnosis, displayName } from '@/lib/serviceCatalog';
 import { waNumber, prettyPhone } from '@/lib/phone';
 import { notifyTeam } from '@/lib/notifyLead';
+import { sourceFromRequest } from '@/lib/attribution';
 
 // طلب خدمة من الواجهة العامة — بلا حساب.
 //
@@ -76,7 +77,8 @@ export async function POST(req: Request) {
     email: email || null,
     company_name: company || null,
     note: note || null,
-    src: cut(b?.src, 40) || 'services',
+    // من النموذج، وإلا من كوكي أول لمسة، وإلا «services»
+    src: cut(b?.src, 40) || sourceFromRequest(req) || 'services',
   });
   if (error) return NextResponse.json({ error: 'تعذّر حفظ طلبك — حاول مرة أخرى' }, { status: 500 });
 

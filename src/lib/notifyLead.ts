@@ -84,6 +84,8 @@ export async function notifyTeam(n: {
   pushTitle: string;
   pushBody: string;
   tag?: string;
+  /** منشأة الحدث إن وُجدت — يُكتب عليها أثر الإخطار */
+  companyId?: string | null;
 }): Promise<{ mail: boolean; push: number }> {
   const to = await teamEmails();
 
@@ -114,6 +116,21 @@ export async function notifyTeam(n: {
     );
     sent = p.sent;
   } catch { /* إشعار الجوال سقط — البريد وصل */ }
+
+  // ★ أثرُ الإخطار يُكتب — كان طلب الخدمة من الموقع يُخطر ولا يترك أثراً،
+  //   فسُئل «هل وصلك طلب ١٢:٤٣؟» ولا جواب في المنصة. والتسجيل والتقييم
+  //   يكتبان سطرهما من قبل؛ فصار كل إخطارٍ يمرّ من هنا يكتبه كذلك.
+  //   والبريد الذي لم يخرج يُعلَّم للمالك لا يُطوى.
+  try {
+    await admin().from('deal_events').insert({
+      company_id: n.companyId || null,
+      kind: 'note',
+      title: n.subject.slice(0, 300),
+      detail: (mailOk ? 'أُخطر المكتب بالبريد' : '⚠️ لم يخرج بريد الإخطار') + ' · إشعار الجوال: ' + sent + ' جهاز',
+      actor: 'system',
+      needs_owner: !mailOk,
+    });
+  } catch { /* الأثر لا يُسقط الإخطار */ }
 
   return { mail: mailOk, push: sent };
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
+import { captureFirstTouch, currentSource } from '@/lib/attribution'
 
 // لا عميل Supabase هنا: كل الحفظ يمرّ بـ`/api/mini-save` — فهو وحده الذي
 // يُطبّع الجوال ويُخطر المكتب. وكان عميلٌ مباشرٌ مُعرَّفاً بلا استعمال.
@@ -95,18 +96,11 @@ export default function TestPage() {
   const converted = useRef(false)
 
   useEffect(() => {
-    try {
-      // ★ إعلانُ جوجل لا يمرّر `src` — يمرّر `gclid`. فكانت كلُّ زيارةٍ من
-      //   الإعلان تُحفظ بمصدرٍ فارغ، ونحن ندفع عليها. تُقرأ الآن الوسوم
-      //   الثلاثة كما تُقرأ في بقية الصفحات.
-      const q = new URLSearchParams(window.location.search)
-      const p = q.get('src')
-        || (q.get('gclid') || q.get('gbraid') || q.get('wbraid') ? 'google-ads' : '')
-        || q.get('utm_source')
-        || ''
-      if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
-      else { const stored = sessionStorage.getItem('murdi_src'); if (stored) setAdSrc(stored) }
-    } catch { /* تجاهل */ }
+    // ★ المصدر من الرابط (src · gclid · ttclid · fbclid · utm_source)، وإلا من
+    //   كوكي أول لمسة — التعريف في `@/lib/attribution`. كان تيك توك يصل بـ`ttclid`
+    //   فلا يُقرأ، و٩١٩ نقرة في يومين دخلت بلا مصدر.
+    captureFirstTouch()
+    setAdSrc(currentSource())
   }, [])
 
   const score = ans.reduce((s, v) => s + v, 0)

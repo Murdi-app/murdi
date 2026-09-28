@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { priceFor } from '@/lib/servicePricing';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { contractWeight } from '@/lib/leadWeight';
+import { captureFirstTouch, currentSource } from '@/lib/attribution';
 
 // مدخل تمويل العقود — الصفحة التي ينزل عليها إعلان «تمويل عقد».
 //
@@ -130,13 +131,9 @@ export default function UqudEntryPage() {
   const sent = useRef(false);
 
   useEffect(() => {
-    try {
-      const q = new URLSearchParams(window.location.search);
-      const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid');
-      const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || '';
-      if (p) { setSrc(p); try { sessionStorage.setItem('murdi_src', p); } catch {} }
-      else { try { const v = sessionStorage.getItem('murdi_src'); if (v) setSrc(v); } catch {} }
-    } catch { /* لا شيء */ }
+    // المصدر من الرابط، وإلا من كوكي أول لمسة — التعريف في `@/lib/attribution`
+    captureFirstTouch();
+    setSrc(currentSource());
   }, []);
 
   const hasContract = stage !== null && stage !== 'none';

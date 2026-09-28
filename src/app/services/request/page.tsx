@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { DIRECT_ORDER, displayName, commercialFor } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
+import { captureFirstTouch, currentSource } from '@/lib/attribution';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
 // أربعة حقول: الاسم والجوال والمنشأة وسطرٌ عمّا يريد. وما زاد يُسأل في المكالمة.
@@ -63,12 +64,11 @@ function RequestForm() {
       const q = new URLSearchParams(window.location.search);
       const s = q.get('s') || '';
       if (s && DIRECT.includes(s)) setService(s);
-      const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid');
-      const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || '';
+      // المصدر من الرابط، وإلا من كوكي أول لمسة — التعريف في `@/lib/attribution`
+      captureFirstTouch();
+      const p = currentSource();
       const campaign = q.get('utm_campaign') || '';
-      const origin = p && campaign ? `${p}:${campaign}`.slice(0, 40) : p;
-      if (origin) { setSrc(origin); try { sessionStorage.setItem('murdi_src', origin); } catch {} }
-      else { try { const v = sessionStorage.getItem('murdi_src'); if (v) setSrc(v); } catch {} }
+      setSrc(p && campaign ? `${p}:${campaign}`.slice(0, 40) : p);
     } catch { /* لا شيء — تبقى الخدمة الأولى */ }
   }, []);
 

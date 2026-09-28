@@ -5,6 +5,7 @@ import { isSaudiMobile } from '@/lib/phone'
 import { useRouter } from 'next/navigation'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
+import { captureFirstTouch, currentSource } from '@/lib/attribution'
 
 // لا عميل Supabase هنا بعد الآن: الحفظ كلّه عبر `/api/mini-save`.
 
@@ -120,13 +121,9 @@ export default function MiniAssessment() {
   //   يضيع حين ينتقل الزائر بين الصفحات.
   const [adSrc, setAdSrc] = useState('')
   useEffect(() => {
-    try {
-      const q = new URLSearchParams(window.location.search)
-      const fromAds = q.get('gclid') || q.get('gbraid') || q.get('wbraid')
-      const p = q.get('src') || (fromAds ? 'google-ads' : '') || q.get('utm_source') || ''
-      if (p) { sessionStorage.setItem('murdi_src', p); setAdSrc(p) }
-      else { const s = sessionStorage.getItem('murdi_src'); if (s) setAdSrc(s) }
-    } catch { /* تجاهل */ }
+    // المصدر من الرابط، وإلا من كوكي أول لمسة — التعريف في `@/lib/attribution`
+    captureFirstTouch()
+    setAdSrc(currentSource())
   }, [])
 
   const submit = async () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { notifyLead } from '@/lib/notifyLead'
 import { waNumber } from '@/lib/phone'
+import { sourceFromRequest } from '@/lib/attribution'
 
 // ★ التقييم المجاني هو فم القمع: الإعلان يدفع إليه، ومنه يأتي أسخن اسم في
 //   اليوم. وكان هذا المسار **المسار الوحيد** الذي لا يُشعِر أحداً — طلب
@@ -52,7 +53,8 @@ export async function POST(req: Request) {
     const answers = Array.isArray(body.answers) ? body.answers : []
     const score = Number(body.score) || 0
     const track = String(body.track || '')
-    const src = body.src ? String(body.src) : null
+    // النموذج يرسل مصدره؛ وإن غاب قُرئ من كوكي أول لمسة — آخرُ حزامٍ قبل أن يُحفظ الصفّ بلا مصدر
+    const src = (body.src ? String(body.src).slice(0, 40) : '') || sourceFromRequest(req) || null
     const completed = Boolean(body.completed)
     // اسم المنشأة منفصلٌ عن اسم الشخص: كانت صفحة `/test` تسأل «ما اسم شركتك؟»
     // وتحفظ الجواب في خانة الاسم، فتفتح الموظفة المكالمة باسم شركةٍ تظنّه
