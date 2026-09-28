@@ -38,6 +38,7 @@ async function currentCompany() {
     .from('companies')
     .select('id, company_name, owner_name, phone, match_credits')
     .eq('user_id', data.user.id)
+    .order('created_at', { ascending: false }).limit(1)
     .maybeSingle();
   return co || null;
 }

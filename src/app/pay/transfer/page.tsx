@@ -1,5 +1,5 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -11,9 +11,11 @@ const BANK = { name: 'البنك الأهلي السعودي SNB', beneficiary: 
 function TransferInner() {
   const params = useSearchParams();
   const router = useRouter();
-  // لم يبقَ رسمُ اشتراك ولا رسمُ تشغيل — كل تحويل هنا مقابل خدمة بمبلغها.
-  // والمبلغ يأتي من الرابط الذي أصدره المكتب، ولا افتراضيَّ له.
-  const amountSar = Number(params.get('amount') || 0);
+  // ★ المبلغ من الخادم لا من الرابط. كان يُعرض ?amount= ويُقيَّد سعرُ الطلب،
+  //   فرابطٌ قديم أو سعرٌ خُصم منه بعد إرساله يجعل العميل يحوّل مبلغاً ويُقيَّد
+  //   له غيره. فالصفحة تسأل الخادم عن المستحق، ولا تعرض الرابطَ إلا حين لا
+  //   رقم طلبٍ فيه (رابطٌ يدوي قديم) — ويُعلَّم أنه تقديري.
+  const linkAmount = Number(params.get('amount') || 0);
   const kind = kindOf(params);
   const companyId = params.get('company_id') || '';
   // رقم طلب الخدمة — كان يُمرَّر في الرابط ويُهمَل هنا، فتضيع صلة الإيصال بالطلب
@@ -24,11 +26,26 @@ function TransferInner() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
+  const [due, setDue] = useState<number | null>(null);
+  const [dueState, setDueState] = useState<'loading' | 'ok' | 'none' | 'error'>(serviceRequestId ? 'loading' : 'none');
+  useEffect(() => {
+    if (!serviceRequestId) return;
+    fetch('/api/payments/transfer?sr=' + encodeURIComponent(serviceRequestId))
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { setErr(d.error || 'تعذّر التحقق من الطلب'); setDueState('error'); return; }
+        if (d.amount === null) { setErr('هذا الطلب لا ينتظر دفعاً الآن — لا تحوّل، وراجع لوحتك.'); setDueState('none'); return; }
+        setDue(Number(d.amount)); setDueState('ok');
+      })
+      .catch(() => { setErr('تعذّر الاتصال — أعد فتح الصفحة'); setDueState('error'); });
+  }, [serviceRequestId]);
+  const amountSar = serviceRequestId ? (due ?? 0) : linkAmount;
+  const canPay = serviceRequestId ? dueState === 'ok' : linkAmount > 0;
 
   const copyIban = () => { navigator.clipboard.writeText(BANK.iban); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   const submit = async () => {
-    if (busy) return;
+    if (busy || !canPay) return;
     setBusy(true);
     setErr('');
     let receiptUrl = '';
@@ -75,7 +92,7 @@ function TransferInner() {
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 560, margin: '0 auto', padding: '40px 20px', minHeight: '100vh', background: '#FBFCFB' }}>
       <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, textAlign: 'center', margin: 0 }}>الدفع عبر تحويل بنكي</h1>
-      <div style={{ color: '#1A3D34', fontSize: 30, fontWeight: 900, textAlign: 'center', margin: '12px 0' }}>{amountSar.toLocaleString('ar-SA')} ريال</div>
+      <div style={{ color: '#1A3D34', fontSize: 30, fontWeight: 900, textAlign: 'center', margin: '12px 0' }}>{dueState === 'loading' ? '…' : canPay ? amountSar.toLocaleString('ar-SA') + ' ريال' : '—'}</div>
 
       <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: 20, marginTop: 16 }}>
         <div style={{ color: '#6B8A80', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>حوّل المبلغ إلى الحساب التالي:</div>
@@ -123,7 +140,7 @@ function TransferInner() {
           style={{ width: '100%', minHeight: 70, border: '1px solid #EAF2EE', borderRadius: 10, padding: 10, fontFamily: 'Cairo', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
       </div>
 
-      <button onClick={submit} disabled={busy || !file}
+      <button onClick={submit} disabled={busy || !file || !canPay}
         style={{ width: '100%', background: (busy || !file) ? '#9DB3AB' : '#1A3D34', color: '#fff', border: 'none', padding: '15px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: (busy || !file) ? 'default' : 'pointer', marginTop: 16 }}>
         {busy ? 'جارٍ الإرسال…' : file ? 'أرسلت الحوالة — أرسل للمراجعة' : 'أرفق الإيصال أولاً ↑'}
       </button>

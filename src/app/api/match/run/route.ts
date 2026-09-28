@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { runAutoMatch } from '@/lib/matchEngine';
 import { logError } from '@/lib/logError';
 import { sendPush } from '@/lib/push';
@@ -17,7 +18,7 @@ export async function GET() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return NextResponse.json({ count: 0 });
   const ad = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
-  const { data: co } = await ad.from('companies').select('id').eq('user_id', user.id).maybeSingle();
+  const { data: co } = await ad.from('companies').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ count: 0 });
   const { count } = await ad.from('match_results').select('id', { count: 'exact', head: true })
     .eq('company_id', co.id).eq('status', 'new').gt('fit_score', 0)
@@ -45,6 +46,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // ★ لا تناديه أي واجهة (اللوحة تقرأ GET وحده، والتشغيل من `/api/match/start`
+  //   الذي يخصم الرصيد). وكان يفحص «رصيدٌ > ٠» ولا يخصم شيئاً — فعميلٌ بتشغيلة
+  //   واحدة يستطيع تشغيل المطابقة المكلفة بلا حدّ. فصار للمالك وحده.
+  const deniedOwner = await requireAdmin();
+  if (deniedOwner) return NextResponse.json({ error: 'التشغيل يمرّ من لوحتك — هذا المسار للمكتب وحده' }, { status: 403 });
   const body = await req.json().catch(() => ({})) as { track?: string; batch?: number };
   const cookieStore = await cookies();
   const supabase = createServerClient(
@@ -60,7 +66,7 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, match_credits').eq('user_id', user.id).maybeSingle();
+    .select('id, subscription_active, subscription_end, match_credits').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
 
   // نفس بوابة /api/match/start: رصيد تشغيلة، أو اشتراك قديم لم تنتهِ مدته.

@@ -7,6 +7,11 @@ import { createClient } from '@supabase/supabase-js';
 // العمود ممنوع على مفتاح المتصفح (REVOKE)، فهذه هي البوابة الوحيدة إليه،
 // وهي تتحقق من أمرين قبل أن تُخرج حرفاً: أن الطلب لهذا العميل، وأن حالته تسمح.
 const RELEASED = ['delivered', 'completed'];
+// ★ وفي المتابعة (`in_follow_up`) بعد إصدار العقد: الملف الذي سُلِّم لصاحبه يبقى
+//   مفتوحاً له — كان يُحجب بـ«لم تُسلَّم بعد» شهوراً حتى الصرف. والشرط أن يكون
+//   قد سُلِّم فعلاً (`delivered_at`)، فلا تُكشف مسوّدةٌ لم تُعتمد.
+const released = (sr: { status?: unknown; delivered_at?: unknown }) =>
+  RELEASED.includes(String(sr.status)) || (String(sr.status) === 'in_follow_up' && !!sr.delivered_at);
 
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id') || '';
@@ -26,7 +31,7 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
   const { data: sr } = await admin.from('service_requests')
-    .select('id, company_id, status, admin_deliverable, service_title')
+    .select('id, company_id, status, admin_deliverable, service_title, delivered_at')
     .eq('id', id).maybeSingle();
   if (!sr) return NextResponse.json({ error: 'غير موجود' }, { status: 404 });
 
@@ -35,7 +40,7 @@ export async function GET(req: Request) {
     .select('id').eq('user_id', user.id).eq('id', sr.company_id).maybeSingle();
   if (!co) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
 
-  if (!RELEASED.includes(String(sr.status))) {
+  if (!released(sr)) {
     return NextResponse.json({ error: 'لم تُسلَّم هذه الخدمة بعد' }, { status: 402 });
   }
   return NextResponse.json({ ok: true, title: sr.service_title, deliverable: sr.admin_deliverable || '' });

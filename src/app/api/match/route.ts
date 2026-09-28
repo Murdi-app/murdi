@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/requireAdmin';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -9,6 +10,11 @@ import { logError } from '@/lib/logError';
 
 
 export async function POST(req: Request) {
+  // ★ مسارٌ قديم لا تناديه أي واجهة، وكان يُشغّل بحثاً مكلفاً على الويب لأي
+  //   حسابٍ «مفعّل» — وكل حسابٍ يُنشأ مفعّلاً — بلا رصيدٍ ولا إذن المكتب.
+  //   فصار للمالك وحده؛ والمطابقة للعميل تمرّ من `/api/match/start` برصيده.
+  const deniedOwner = await requireAdmin();
+  if (deniedOwner) return NextResponse.json({ error: 'هذا المسار للمكتب وحده' }, { status: 403 });
   const cookieStore = await cookies();
 
   const supabase = createServerClient(

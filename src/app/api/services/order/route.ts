@@ -6,6 +6,7 @@ import { canonicalTitle, commercialFor, CATALOG } from '@/lib/serviceCatalog';
 import { priceFor } from '@/lib/servicePricing';
 import { notifyTeam } from '@/lib/notifyLead';
 import { prettyPhone } from '@/lib/phone';
+import { isPaidStatus } from '@/lib/serviceStatus';
 
 // طلب خدمة — يُسعَّر في الخادم لا في المتصفح.
 //
@@ -45,24 +46,35 @@ export async function POST(req: Request) {
   }
 
   const sa = admin();
+  // الأحدث إن تعدّدت المنشآت — كان `maybeSingle` يفشل مع صفّين فيقول
+  // «لا يوجد ملف منشأة» لعميلٍ لوحتُه أمامه (والوحة تأخذ الأحدث)
   const { data: co } = await sa
     .from('companies')
     .select('id, company_name, owner_name, phone')
     .eq('user_id', auth.user.id)
+    .order('created_at', { ascending: false }).limit(1)
     .maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
 
-  // طلب مفتوح واحد لكل خدمة — النقر المتكرر لا يُنشئ طوابير ولا فواتير
-  const { data: open } = await sa
+  // طلب مفتوح واحد لكل خدمة — النقر المتكرر لا يُنشئ طوابير ولا فواتير.
+  // المرفوض والمُلغى والمُكتمل ليست مفتوحة.
+  const { data: live, error: liveErr } = await sa
     .from('service_requests')
-    .select('id, status, price')
+    .select('id, status, price, option_key, paid_at')
     .eq('company_id', co.id)
     .eq('service_title', title)
-    // المرفوض ليس طلباً مفتوحاً: كان يسدّ إعادة الطلب للأبد، والبطاقة
-    // تقول «لم تُقبل — راجعنا» بلا زرٍّ واحد. فصار يُعامَل كالمُلغى.
     .not('status', 'in', '("completed","cancelled","rejected")')
-    .maybeSingle();
-  if (open) return NextResponse.json({ ok: true, already: true, id: open.id, status: open.status });
+    .order('created_at', { ascending: false });
+  if (liveErr) return NextResponse.json({ error: 'تعذّرت قراءة طلباتك — أعد المحاولة' }, { status: 500 });
+  // ما ينتظر (مُقدَّم أو مسعَّر) يُعاد كما هو — ومعه سعره، وإلا اختفى زرّ الدفع
+  const pending = (live || []).find((r) => !isPaidStatus(r.status));
+  if (pending) return NextResponse.json({ ok: true, already: true, id: pending.id, status: pending.status, price: pending.price });
+  // ★ والمدفوع يسدّ إعادة طلب الخدمة نفسها — إلا الترقية من الفحص (٩٩٠) إلى
+  //   الكامل: كان الفحص المدفوع يسدّ طلب الكامل للأبد، والوعد «تُخصم قيمته
+  //   خلال شهر» لا طريق إليه من حساب العميل.
+  const paidLive = (live || []).find((r) => isPaidStatus(r.status));
+  const upgrading = !!paidLive && paidLive.option_key === 'quick' && optionKey !== 'quick';
+  if (paidLive && !upgrading) return NextResponse.json({ ok: true, already: true, id: paidLive.id, status: paidLive.status, price: null });
 
   const c = commercialFor(title);
   const category = CATALOG.find((cat) => cat.items.includes(title))?.label || null;
@@ -78,6 +90,30 @@ export async function POST(req: Request) {
     const investment = c?.tiersBy === 'investment' ? Number((inputs as Record<string, unknown>)?.totalInvestment || 0) : undefined;
     const p = priceFor(title, investment);
     amount = c?.tiersBy === 'investment' ? null : p.amount;
+  }
+
+  // ★ ما سعره «للسنة الواحدة» (القوائم المعتمدة) لا يُسعَّر آلياً: كان يُصدَر
+  //   للدفع فوراً بسعر سنة، فيدفع من يحتاج ثلاث سنوات ثم يُطالَب بالفرق.
+  //   فيقف عند المكتب ليُثبَّت نطاقه أولاً.
+  if (c?.priceUnit) amount = null;
+
+  // ★ خصم الفحص من الكامل: ما دُفع في الفحص خلال ثلاثين يوماً يُخصم من
+  //   سعر الكامل آلياً — كان الخصم زرّاً يدوياً في لوحة المالك، والوعد
+  //   مكتوبٌ للعميل «دفعتَ الفرق لا أكثر».
+  let creditedFrom: string | null = null;
+  if (optionKey !== 'quick' && typeof amount === 'number' && amount > 0) {
+    const { data: quick } = await sa.from('service_requests')
+      .select('id, price, paid_at')
+      .eq('company_id', co.id).eq('service_title', title).eq('option_key', 'quick')
+      .not('paid_at', 'is', null)
+      .gte('paid_at', new Date(Date.now() - 30 * 86400_000).toISOString())
+      .order('paid_at', { ascending: false }).limit(1).maybeSingle();
+    // يُخصم الفحص مرةً واحدة: إن خُصم في طلبٍ سابق لم يُخصم ثانيةً
+    const { data: used } = quick
+      ? await sa.from('service_requests').select('id').eq('credited_from', quick.id).limit(1).maybeSingle()
+      : { data: null };
+    const q = Number(quick?.price || 0);
+    if (quick && !used && q > 0 && q < amount) { amount = amount - q; creditedFrom = String(quick.id); }
   }
 
   // ما له سعر معلن يمضي إلى الدفع فوراً — ولا يجلس العميل ينتظر تسعيراً
@@ -96,6 +132,7 @@ export async function POST(req: Request) {
       priced_at: priced ? new Date().toISOString() : null,
       option_key: optionKey,
       client_inputs: inputs,
+      credited_from: creditedFrom,
     })
     .select('id, status, price')
     .single();
@@ -106,7 +143,8 @@ export async function POST(req: Request) {
     company_id: co.id,
     kind: 'service',
     title: 'طلب العميل خدمة: ' + title,
-    detail: priced ? 'سُعِّرت آلياً بـ' + amount + ' ريال — بانتظار الدفع' : 'تحتاج تسعيرك',
+    detail: (priced ? 'سُعِّرت آلياً بـ' + amount + ' ريال — بانتظار الدفع' : 'تحتاج تسعيرك')
+      + (creditedFrom ? ' · خُصم منها ما دُفع في الفحص' : ''),
     actor: 'system',
     needs_owner: !priced,
   });
@@ -132,12 +170,13 @@ export async function POST(req: Request) {
       ['المنشأة', co.company_name],
       ['صاحبها', co.owner_name],
       ['الجوال', co.phone ? prettyPhone(co.phone) : ''],
-      ['الحالة', priced ? amount + ' ريال — بانتظار الدفع' : 'بانتظار التسعير'],
+      // الإشعار يصل الفريق كلّه — والسعر لا يُكتب للموظفة (قاعدة المالك)
+      ['الحالة', priced ? 'مسعَّر — بانتظار الدفع' : 'بانتظار التسعير'],
     ],
     url: '/admin/arrivals',
     pushTitle: priced ? '💳 طلب خدمة — مسعَّر آلياً' : '🧾 طلب خدمة يحتاج تسعيرك',
     pushBody: String(co.company_name || 'منشأة') + ' — ' + title
-      + (priced ? ' — ' + amount + ' ريال، بانتظار دفعه' : ' — سعّرها ثم أصدرها للدفع'),
+      + (priced ? ' — بانتظار دفعه' : ' — سعّرها ثم أصدرها للدفع'),
     tag: 'srv-' + row.id,
   }).catch(() => {});
 

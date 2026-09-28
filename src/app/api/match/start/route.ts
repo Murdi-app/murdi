@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, approved_tracks, match_credits').eq('user_id', user.id).maybeSingle();
+    .select('id, subscription_active, subscription_end, approved_tracks, match_credits').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
 
   const tk = track === 'investment' ? 'investment' : 'funding';

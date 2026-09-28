@@ -31,7 +31,9 @@ const CONFIRMABLE = ['awaiting_confirmation', 'pending'];
 
 // طلبٌ تجاوز الدفعَ في مساره لا يُعاد ختمُه «مدفوعاً» — وإلا نزل العمل
 // المنجز إلى الوراء بمجرّد تأكيدٍ متأخّر.
-const PAST_PAYMENT = '(in_progress,in_follow_up,delivered,completed)';
+// و`paid` منها: طلبٌ مدفوع لا يُختم ثانيةً بدفعةٍ ثانية — وإلا مُنحت تشغيلةٌ
+// ثانية عن ثمنٍ واحد (رابط تحويلٍ قديم في سجلّ المتصفح كان يصنعها).
+const PAST_PAYMENT = '(paid,in_progress,in_follow_up,delivered,completed)';
 
 /** يؤكّد دفعةً بمعرّفها. `by` اسمُ من أكّد، يظهر في إشعار المالك حين لا يكون هو. */
 export async function confirmPayment(sb: SupabaseClient, id: string, by?: string): Promise<ConfirmResult> {
@@ -78,18 +80,18 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
   if (pay.kind === 'service' && pay.company_id) {
     const stamp = { status: 'paid', payment_id: id, paid_at: new Date().toISOString(), payment_ref: id, updated_at: new Date().toISOString() };
     const amt = Number(pay.amount_sar || 0);
-    type Sr = { id: string; price: number | null; quoted_price: number | null; service_title: string | null; status: string | null };
+    type Sr = { id: string; price: number | null; quoted_price: number | null; service_title: string | null; status: string | null; option_key?: string | null };
     let target: Sr | null = null;
 
     if (pay.service_request_id) {
       const { data: srv, error: sErr } = await sb.from('service_requests')
-        .select('id, price, quoted_price, service_title, status').eq('id', pay.service_request_id).maybeSingle();
+        .select('id, price, quoted_price, service_title, status, option_key').eq('id', pay.service_request_id).maybeSingle();
       if (sErr || !srv) notes.push('تعذّر العثور على الطلب المربوط بالدفعة — اختمه يدوياً من لوحة الخدمات.');
       else target = srv as Sr;
     } else {
       // دفعات قديمة بلا رقم طلب: نطابق بالمبلغ، ولا نخمّن حين يتعدد المرشّح
       const { data: cands } = await sb.from('service_requests')
-        .select('id, price, quoted_price, service_title, status')
+        .select('id, price, quoted_price, service_title, status, option_key')
         .eq('company_id', pay.company_id).eq('status', 'priced');
       const hit = ((cands || []) as Sr[]).filter((c) => Number(c.price ?? c.quoted_price ?? -1) === amt);
       if (hit.length === 1) target = hit[0];
@@ -109,7 +111,13 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
       if (stErr) notes.push('قُيّد المبلغ ولم يُختم الطلب مدفوعاً (' + stErr.message + ') — اختمه يدوياً.');
       else if (stamped?.length) {
         const title = target.service_title;
-        if (title && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
+        // الفحص الائتماني **للمشروع** (خيار quick في دراسة الجدوى) يستثني جدول
+        // الجهات صراحةً في الكتالوج — فلا تُمنح عليه تشغيلة مطابقة لا يشمله
+        // ثمنها. أما «الحكم الائتماني لمنشأتك» (quick في مسار التمويل) فيسمّي
+        // جهاته، فيبقى على المنح.
+        const quickCheck = String(target.option_key || '') === 'quick'
+          && canonicalTitle(String(title || '')) === 'دراسة الجدوى الاقتصادية';
+        if (title && !quickCheck && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
       }
       // وإن لم يُختم لأنه تجاوز الدفع، فلا ملاحظة: العمل جارٍ والدفعة قُيّدت له
     }

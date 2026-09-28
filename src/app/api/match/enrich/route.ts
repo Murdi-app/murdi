@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
-  const { data: co } = await admin.from('companies').select('id, sector, city').eq('user_id', user.id).maybeSingle();
+  const { data: co } = await admin.from('companies').select('id, sector, city').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   const track = body.track === 'investment' ? 'investment' : 'funding';
   const offset = Number(body.offset) || 0;

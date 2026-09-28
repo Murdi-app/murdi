@@ -14,6 +14,11 @@ import { createClient } from '@supabase/supabase-js';
 //   والعمود ممنوع على مفتاح المتصفّح، فهذه بوابته.
 
 const RELEASED = ['delivered', 'completed'];
+// ★ وفي المتابعة (`in_follow_up`) بعد إصدار العقد: الملف الذي سُلِّم لصاحبه يبقى
+//   مفتوحاً له — كان يُحجب بـ«لم تُسلَّم بعد» شهوراً حتى الصرف. والشرط أن يكون
+//   قد سُلِّم فعلاً (`delivered_at`)، فلا تُكشف مسوّدةٌ لم تُعتمد.
+const released = (sr: { status?: unknown; delivered_at?: unknown }) =>
+  RELEASED.includes(String(sr.status)) || (String(sr.status) === 'in_follow_up' && !!sr.delivered_at);
 
 const page = (msg: string, status: number) =>
   new Response(
@@ -49,7 +54,7 @@ export async function GET(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
   const { data: sr } = await admin.from('service_requests')
-    .select('id, company_id, status, admin_deliverable, service_title')
+    .select('id, company_id, status, admin_deliverable, service_title, delivered_at')
     .eq('id', id).maybeSingle();
   if (!sr) return page('هذا الطلب غير موجود.', 404);
 
@@ -58,7 +63,7 @@ export async function GET(req: Request) {
   const mine: string[] = (cos || []).map((c: { id: string }) => c.id);
   if (!mine.includes(String(sr.company_id))) return page('هذه الخدمة غير متاحة لحسابك.', 403);
 
-  if (!RELEASED.includes(String(sr.status))) {
+  if (!released(sr)) {
     return page('لم تُسلَّم هذه الخدمة بعد — سنبلغك حال جاهزيتها.', 402);
   }
 

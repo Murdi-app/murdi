@@ -61,9 +61,12 @@ export default function RegisterPage() {
     if (!norm) { setSaving(false); alert('رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx'); return }
     form.phone = '0' + norm.slice(3)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    // كان يعود بلا كلمة ويبقى الزرّ معطّلاً إلى الأبد
+    if (!user) { setSaving(false); alert('انتهت جلستك — سجّل الدخول ثم أكمل'); router.push('/auth/login'); return }
+    // الأحدث إن تعدّد — `maybeSingle` بلا حدّ كان يفشل مع صفّين فيُدرج ثالثاً
     const { data: existing } = await supabase
-      .from('companies').select('id').eq('user_id', user.id).maybeSingle()
+      .from('companies').select('id').eq('user_id', user.id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (existing) {
       // تحديث بيانات المنشأة لا يمسّ حالة الحساب:
       // كان يُعيد المشترك المفعّل إلى «بانتظار الدفع» فيقطع وصولاً دفع ثمنه.
@@ -73,7 +76,10 @@ export default function RegisterPage() {
       // لم يعد يُطلب دفع عند التسجيل: التقييم والمطابقة مجانيان، والرسوم
       // صارت على الخدمة نفسها. وإبقاء الحساب «بانتظار الدفع» كان يوقف
       // العميل أمام جدار لا مقابل له، ويناقض ما تقوله له بقية الصفحات.
-      await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'active' })
+      // ★ كان الإنشاء لا يُفحص: يفشل، فتُطلق إحالةٌ إعلانية كاذبة، ويُرسَل إلى
+      //   لوحته فلا يجد منشأة فيُعاد إلى هنا — دائرةٌ بلا رسالة.
+      const { error: insErr } = await supabase.from('companies').insert({ user_id: user.id, ...form, account_status: 'active' })
+      if (insErr) { setSaving(false); alert('تعذّر إنشاء ملف منشأتك — حاول مرة أخرى أو راسلنا واتساب على 0570749196'); return }
       // ★ إحالةٌ ناجحة عند **إنشاء** المنشأة لا عند تحديثها: من يصل من
       //   الإعلان ويسجّل مباشرةً لا يمرّ بالتقييم المبدئي إطلاقاً، فمرّت
       //   منشأتان ولم يرهما جوجل. أمّا التحديث فعميلٌ قائم لا ليدٌ جديد.

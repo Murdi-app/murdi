@@ -50,7 +50,7 @@ export default function GoalPage() {
   // وثائق يُسلّمها المكتب خارج الخدمات المدفوعة — قراءة أولية أو ملاحظة.
   // تُعرض أعلى الشاشة لأنها الشيء الوحيد الذي كُتب له هو بيده.
   const [docs, setDocs] = useState<{ id: string; title: string; created_at: string }[]>([]);
-  const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null }>>({});
+  const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null; optionKey?: string | null; deliveredAt?: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
   const [openDetails, setOpenDetails] = useState<string>('');
   const [orderFor, setOrderFor] = useState<string>('');       // الخدمة المفتوح لها نموذج الطلب
@@ -64,6 +64,8 @@ export default function GoalPage() {
   // معرّفات طلبات الخدمة التي لها تحويلٌ معلَّق — لكي يُقفل زرُّ الدفع على
   // صاحبه وحده لا على كل بطاقة.
   const [pendingSrIds, setPendingSrIds] = useState<Set<string>>(new Set());
+  // فشل القراءة يُقال — لا يُقرأ «لا منشأة» فيُطرد العميل، ولا «لا طلبات» فيُعرض زرّ طلبٍ لخدمةٍ دفعها
+  const [loadErr, setLoadErr] = useState('');
   // طبقة الدليل: لماذا هذه الخدمة لك أنت — من بياناتك ومن فجوات جهاتك، لا من وصف تسويقي
   const [reasons, setReasons] = useState<Record<string, { urgency: 'blocking' | 'strong' | 'fit'; evidence: string; hook?: string }>>({});
   const [pitch, setPitch] = useState<{ headline: string; lines: string[]; cta: string } | null>(null);
@@ -126,9 +128,11 @@ export default function GoalPage() {
       );
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: comp } = await supabase
+      const { data: comp, error: compErr } = await supabase
         .from('companies').select('id, company_name, sector, match_credits, subscription_active, subscription_end')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      // ★ خطأٌ مؤقت في القراءة كان يُعامَل «لا منشأة» فيُطرد العميل إلى التسجيل
+      if (compErr) { setLoadErr('تعذّر تحميل حسابك الآن — أعد فتح الصفحة بعد لحظة.'); return; }
 
       // فتحُ المنصة من أيقونة الجوال يبدأ من هنا (start_url في manifest).
       // والمالك والموظفة لا منشأة لهما، فكانت الشاشة تقف فارغة بلا خبر —
@@ -162,20 +166,22 @@ export default function GoalPage() {
       }
       setScores(out);
       setCompanyId(comp.id);
-      const { data: reqs } = await supabase
+      const { data: reqs, error: reqsErr } = await supabase
         .from('service_requests')
-        .select('id, service_title, status, price')
+        .select('id, service_title, status, price, option_key, delivered_at')
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
+      // فشلها كان يُظهر البطاقات بلا طلبات: زرّ «اطلبها» لخدمةٍ مدفوعة
+      if (reqsErr) { setLoadErr('تعذّر تحميل طلباتك الآن — أعد فتح الصفحة بعد لحظة.'); return; }
       fetch('/api/client-documents')
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => { if (d?.documents) setDocs(d.documents); })
         .catch(() => { /* الوثائق إضافة لا تُسقط الشاشة إن تعذّرت */ });
 
-      const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null }> = {};
+      const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null; optionKey?: string | null; deliveredAt?: string | null }> = {};
       // العناوين القديمة تُردّ إلى عنوانها الحالي حتى يظل طلب العميل ظاهراً بعد دمج الخدمات
       // المحتوى المُسلَّم لا يُقرأ هنا — يُطلب من الخادم عند الطباعة، بعد التحقق من الحالة
-      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null }; }
+      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null, optionKey: r.option_key ?? null, deliveredAt: r.delivered_at ?? null }; }
       setServiceRequests(reqMap);
       const { data: ctrs } = await supabase
         .from('contracts')
@@ -191,10 +197,12 @@ export default function GoalPage() {
       //   تحويلك لهذه الخدمة» — وهي جملةٌ غير صحيحة، والأسوأ أن من دفع خدمةً
       //   وأراد دفع الأخرى لا يجد زرّاً. ومسار `/api/payments/transfer`
       //   يحسب التكرار لكل طلبٍ على حدة، فكانت اللوحة تناقضه.
-      const { data: pays } = await supabase
+      const { data: pays, error: paysErr } = await supabase
         .from('payments').select('kind, amount_sar, status, created_at, service_request_id')
         .eq('company_id', comp.id).eq('status', 'awaiting_confirmation')
         .order('created_at', { ascending: false }).limit(20);
+      // فشلها كان يُخفي قفل «لا تحوّل مرة أخرى» — فيحوّل العميل مرتين
+      if (paysErr) setLoadErr('تعذّر التحقق من تحويلاتك — لا تحوّل مرة أخرى قبل أن تعيد فتح الصفحة.');
       const pend = (pays || [])[0];
       if (pend) setPendingTransfer({ kind: String(pend.kind || ''), amount: Number(pend.amount_sar || 0) });
       setPendingSrIds(new Set((pays || []).map((p) => String(p.service_request_id || '')).filter(Boolean)));
@@ -280,7 +288,12 @@ export default function GoalPage() {
     if (upErr) { alert('تعذّر رفع الملف: ' + (upErr.message || JSON.stringify(upErr))); return; }
     // يُخزَّن المسار لا رابطاً عاماً: العقد الموقّع يحمل رقم الهوية،
     // ولا يُفتح إلا برابط موقّع قصير الأجل عبر /api/contract-file
-    await supabase.from('contracts').update({ signed_file_url: path, status: 'signed', signed_at: new Date().toISOString() }).eq('id', contractId);
+    // ★ كان يُقال «تم بنجاح» مهما وقع: رفضٌ من القاعدة يُبقي العقد «صادراً»
+    //   والمكتب لا يعلم أنه وُقّع، والعميل يظنّ أنه أتمّ.
+    const { data: upd, error: sErr } = await supabase.from('contracts')
+      .update({ signed_file_url: path, status: 'signed', signed_at: new Date().toISOString() })
+      .eq('id', contractId).select('id');
+    if (sErr || !upd?.length) { alert('رُفع الملف لكن لم يُسجَّل التوقيع — أعد المحاولة أو أرسله واتساب على 0570749196'); return; }
     setClientContracts((prev) => ({ ...prev, [contractType]: { ...prev[contractType], status: 'signed', signedUrl: path } }));
     alert('تم رفع العقد الموقّع بنجاح، شكراً لك');
   };
@@ -296,6 +309,11 @@ export default function GoalPage() {
 
   return (
     <div dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
+      {loadErr && (
+        <div style={{ background: '#FBEEEC', color: '#A5281B', borderBottom: '1px solid #F0D6D1', padding: '12px 16px', textAlign: 'center', fontWeight: 800, fontSize: 14 }}>
+          {loadErr} <button onClick={() => window.location.reload()} style={{ marginRight: 8, background: '#1A3D34', color: '#fff', border: 0, borderRadius: 20, padding: '4px 14px', fontWeight: 800, cursor: 'pointer' }}>إعادة المحاولة</button>
+        </div>
+      )}
 
       {/* عيبٌ صنعتُه أمس حين سمّيتُ الحقل canMatch: صار عرضُ **النتيجة**
           معلّقاً على **امتلاك تشغيلة**. والتشغيلة تُخصم عند التشغيل، فيصير
@@ -501,11 +519,14 @@ export default function GoalPage() {
                         setMatchPhase(PH[k++ % PH.length]);
                         const rs = await Promise.all([w].map(bn =>
                           fetch('/api/match/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tr, batch: bn }) })
-                            .then(x => x.json()).catch(() => ({ done: true }))
+                            .then(async x => { const d = await x.json().catch(() => ({})); return x.ok ? d : { ...d, failed: true }; })
+                            .catch(() => ({ failed: true, error: 'تعذّر الاتصال' }))
                         ));
                         for (const d of rs) {
                           if (typeof d.count === 'number' && d.count > last) last = d.count;
                           if (d.done) stop = true;
+                          // ★ رفضُ الخادم (بلا رصيد، أو خطأ) كان يُدار أربعين مرة بلا كلمة
+                          if (d.failed) { stop = true; setMatchNotice(d.error || 'تعذّر تشغيل المطابقة الآن — حاول بعد قليل.'); }
                         }
                       }
                     } catch {}
@@ -834,9 +855,12 @@ export default function GoalPage() {
                           </div>
                         );
                       }
-                      if (!req) {
+                      // ★ المرفوض والملغى يُعاد طلبهما — الخادم يسمح بذلك من قبل، وكانت
+                      //   البطاقة تقول «لم تُقبل — راجعنا» بلا زرٍّ واحد.
+                      if (!req || req.status === 'rejected' || req.status === 'cancelled') {
                         return (
                           <div className="flex flex-col gap-2">
+                            {req && <div className="text-center text-[#7E938C] font-bold text-xs">طلبك السابق {req.status === 'rejected' ? 'لم يُقبل' : 'أُلغي'} — يمكنك الطلب من جديد</div>}
                             <button onClick={() => { if (needsForm(title)) { setOrderCategory(cat.label); openOrder(title); } else { submitServiceRequest(title, cat.label); } }} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">{needsForm(title) ? 'اطلبها — واعرف سعرك الآن' : 'تقديم طلب الخدمة'}</button>
                             <a href={'https://wa.me/966570749196?text=' + encodeURIComponent('السلام عليكم، أستفسر عن خدمة: ' + label)} target="_blank" rel="noopener noreferrer" className="text-center py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-xs">استفسار سريع عبر واتساب</a>
                           </div>
@@ -883,11 +907,21 @@ export default function GoalPage() {
                           {/* رابطٌ حقيقي لا نافذةٌ تُكتب بعد انتظار — نفس علّة
                               وثائق العميل التي أخفت استشارة هرم عن صاحبها.
                               والعميل يفتح بهذا الزرّ ملفه الذي دفع ثمنه. */}
-                          {(req.status === 'delivered' || req.status === 'completed') && (
+                          {/* ★ وفي المتابعة بعد إصدار العقد يبقى الملف المُسلَّم مفتوحاً
+                              لصاحبه — كان يُحجب شهوراً حتى الصرف. */}
+                          {(req.status === 'delivered' || req.status === 'completed' || (req.status === 'in_follow_up' && !!req.deliveredAt)) && (
                             <a href={'/api/service-deliverable/view?id=' + encodeURIComponent(req.id)}
                               target="_blank" rel="noopener noreferrer"
                               className="text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs"
                               style={{ textDecoration: 'none' }}>افتح الخدمة</a>
+                          )}
+                          {/* ★ الترقية من الفحص إلى الكامل: الوعد «تُخصم قيمته خلال شهر»
+                              لم يكن له زرّ — والخادم يخصمها الآن آلياً. */}
+                          {req.optionKey === 'quick' && (req.status === 'delivered' || req.status === 'completed') && needsForm(title) && (
+                            <button onClick={() => { setOrderCategory(cat.label); openOrder(title); }}
+                              className="text-center py-2 rounded-full border border-[#1A3D34] text-[#1A3D34] font-black text-xs">
+                              أكمل إلى الخدمة الكاملة — تُخصم قيمة الفحص
+                            </button>
                           )}
                         </div>
                       );
@@ -1073,7 +1107,8 @@ export default function GoalPage() {
                 try {
                   const r = await fetch('/api/match/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: 'funding' }) });
                   if (r.ok) setMatchReq('requested');
-                } catch {}
+                  else { const d = await r.json().catch(() => ({})); alert(d.error || 'تعذّر إرسال الطلب — حاول بعد قليل'); }
+                } catch { alert('تعذّر الاتصال — حاول بعد قليل'); }
                 setReqBusy(false);
               }}
                 style={{ width: '100%', background: '#1A3D34', color: '#fff', border: 'none', padding: '14px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 15, cursor: 'pointer', marginBottom: 10 }}>

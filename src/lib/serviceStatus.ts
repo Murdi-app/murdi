@@ -11,11 +11,18 @@
 //
 // فالقاعدة: التوليد يكتب المحتوى، ولا يُنزل الطلبَ في مساره أبداً.
 
-const PROTECTED = new Set(['paid', 'delivered', 'completed']);
+// (٣) و**ما سُعِّر يُنسى**: كانت القائمة المحميّة paid · delivered · completed
+//     وحدها. فتوليد الحكم الائتماني لطلبٍ مسعَّر لم يُدفع بعد يُنزله إلى
+//     «قيد التجهيز» — فيختفي زرّ الدفع عند العميل، ولا يؤكّد المكتب تحويله
+//     (مشروطٌ بـpriced)، ويرفض التأكيدُ ختمه. و`in_follow_up` كذلك كانت تُداس.
+//
+// فصار الانتقال إلى «قيد التجهيز» من «مُقدَّم» وحده: ما لم يُسعَّر بعد يبدأ
+// العمل عليه، وما عداه يبقى حيث هو.
+const MAY_START = new Set(['', 'submitted']);
 
 /** هل تُترك حالةُ الطلب كما هي عند حفظ مُخرَجٍ جديد؟ */
 export function keepServiceStatus(status: unknown): boolean {
-  return PROTECTED.has(String(status || ''));
+  return !MAY_START.has(String(status || ''));
 }
 
 /**

@@ -191,8 +191,15 @@ export default function ConsultationPanel() {
                 <p className="text-[#8A5A54] text-xs font-bold mt-1 leading-relaxed">لم تكتمل هذه المحاولة. اضغط لإعادة الإعداد — بلا رسوم إضافية.</p>
                 <button onClick={async () => {
                   setRetrying(tk);
-                  try { await fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: tk }) }); } catch {}
+                  // ★ المسار يقرأ `type` لا `track` — فكان كل إعادة إعداد تُعيد استشارة
+                  //   التمويل، وتبقى استشارة الاستثمار أو الطرح متعثّرةً إلى الأبد.
+                  let ok = false;
+                  try {
+                    const r = await fetch('/api/consultation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: tk, track: tk }) });
+                    ok = r.ok;
+                  } catch {}
                   setRetrying('');
+                  if (!ok) { alert('تعذّرت إعادة الإعداد الآن — حاول بعد قليل.'); return; }
                   location.reload();
                 }} disabled={retrying === tk} className="mt-3 px-6 py-2 rounded-full bg-[#1A3D34] text-white font-black text-xs disabled:opacity-60">
                   {retrying === tk ? 'جارٍ إعادة الإعداد…' : 'أعد إعداد الاستشارة'}
