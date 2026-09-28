@@ -17,7 +17,9 @@ const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_c
 
 /** مصدر تيك توك بصفحة الهبوط: tiktok_uqud · tiktok_jadwa · tiktok_test — وإلا tiktok */
 function tiktokFor(path: string): string {
-  const p = String(path || '').split('/').filter(Boolean)[0] || '';
+  // `/t/jadwa` و`/t/test` صفحتا تيك توك — الاسم من الجزء الثاني
+  const parts = String(path || '').split('/').filter(Boolean);
+  const p = (parts[0] === 't' ? parts[1] : parts[0]) || '';
   return ['uqud', 'jadwa', 'test'].includes(p) ? 'tiktok_' + p : 'tiktok';
 }
 
