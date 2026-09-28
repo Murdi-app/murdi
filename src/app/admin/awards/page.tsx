@@ -132,7 +132,8 @@ export default function AwardsPage() {
   // جدول الفجوة: الفارغ يُملأ بمعيار القطاع ويُعلَّم «تقديري» في الملف
   const makeGap = async (a: Award) => {
     const f = gap[a.id] || {}
-    const channel = f.channel || (a.contact_email ? 'email' : 'whatsapp')
+    const emailOk = settings.gap_email_approved === 'true' && !!a.contact_email
+    const channel = f.channel === 'email' && !emailOk ? 'preview' : (f.channel || 'preview')
     if (channel === 'email' && !confirm('يُولَّد الجدول ويُرسل مرفقاً إلى ' + a.contact_email + '؟')) return
     setBusy('gap' + a.id); setErr('')
     try {
@@ -145,7 +146,8 @@ export default function AwardsPage() {
       else {
         if (d.warn) setErr(d.warn)
         setGapOut({ ...gapOut, [a.id]: { url: d.url, line: 'أعمق نقطة ' + Math.abs(d.deepest?.amount || 0).toLocaleString('en-US') + ' ريال في ' + (d.deepest?.month || '') } })
-        flash(channel === 'email' ? 'خرج الجدول بالبريد وسُجّل' : 'حُفظ الجدول وسُجّل — نزّله وأرسله بالواتساب'); await load()
+        flash(channel === 'email' ? 'خرج الجدول بالبريد وسُجّل' : channel === 'preview' ? 'المعاينة جاهزة — لم يُسجَّل شيء' : 'حُفظ الجدول وسُجّل — نزّله وأرسله بالواتساب')
+        if (channel !== 'preview') await load()
       }
     } catch { setErr('انقطع الاتصال — لم يُولَّد الجدول') }
     setBusy('')
@@ -377,13 +379,16 @@ export default function AwardsPage() {
                       </select>
                     </label>
                     <label style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>يُرسل
-                      <select value={gap[a.id]?.channel || (a.contact_email ? 'email' : 'whatsapp')} onChange={(e) => setGap({ ...gap, [a.id]: { ...(gap[a.id] || {}), channel: e.target.value } })} style={input}>
-                        <option value="email" disabled={!a.contact_email}>بالبريد من المنصة</option><option value="whatsapp">أرسله أنا بالواتساب</option>
+                      <select value={gap[a.id]?.channel || 'preview'} onChange={(e) => setGap({ ...gap, [a.id]: { ...(gap[a.id] || {}), channel: e.target.value } })} style={input}>
+                        <option value="preview">معاينة فقط (لا يُسجَّل)</option>
+                        <option value="whatsapp">أرسله أنا بالواتساب</option>
+                        {settings.gap_email_approved === 'true' && a.contact_email && <option value="email">بالبريد من المنصة</option>}
                       </select>
                     </label>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-                    <button onClick={() => makeGap(a)} disabled={busy === 'gap' + a.id} style={btn(G)}>{busy === 'gap' + a.id ? 'جارٍ التوليد…' : 'جدول الفجوة'}</button>
+                    <button onClick={() => makeGap(a)} disabled={busy === 'gap' + a.id} style={btn(G)}>{busy === 'gap' + a.id ? 'جارٍ التوليد…' : (gap[a.id]?.channel || 'preview') === 'preview' ? 'عاين جدول الفجوة' : 'جدول الفجوة'}</button>
+                    {settings.gap_email_approved !== 'true' && <span style={{ color: M, fontSize: 11.5 }}>بريد الجدول غير معتمد — يُفتح بـgap_email_approved = true</span>}
                     {a.gap_pdf_path && <button onClick={() => openGap(a)} style={btn('#fff', G)}>افتح آخر جدول{a.gap_generated_at ? ' (' + a.gap_generated_at.slice(0, 10) + ')' : ''}</button>}
                     {gapOut[a.id] && <span style={{ fontSize: 12.5, fontWeight: 800 }}>{gapOut[a.id].line}{gapOut[a.id].url && <> · <a href={gapOut[a.id].url as string} target="_blank" rel="noopener noreferrer" style={{ color: G }}>نزّل الملف</a></>}</span>}
                   </div>

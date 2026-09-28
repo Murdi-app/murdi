@@ -10,8 +10,10 @@ import { sendMail } from '@/lib/sendMail';
 // «جدول الفجوة» — للمالك. يحسب الجدول ويطبعه PDF صفحةً واحدة، ويحفظه على
 // الترسية (المدخلات والجدول ومسار الملف في الدلو الخاص)، ويسجّله في
 // `award_touches`، وتصير الترسية `gap_sent`.
-// والقناة: «email» يُرسَل من المنصة إلى بريد الترسية مرفقاً؛ و«whatsapp»
-// يرسله المالك بنفسه — فيُسجَّل ويُعاد إليه رابط الملف لينزّله.
+// والقناة: «preview» معاينة فقط — يُولَّد ويُعاد رابطه ولا يُسجَّل شيء؛
+// و«whatsapp» يرسله المالك بنفسه — فيُسجَّل ويُعاد إليه رابط الملف لينزّله؛
+// و«email» يُرسَل من المنصة مرفقاً — ولا يُفتح إلا إن كان
+// `gap_email_approved = 'true'`: نصّ البريد يخرج للعميل فلا يُرسل قبل اعتماده.
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -54,13 +56,13 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, url: sg.signedUrl });
 }
 
-// POST { id, inputs: GapInputs, channel: 'email' | 'whatsapp' }
+// POST { id, inputs: GapInputs, channel: 'preview' | 'whatsapp' | 'email' }
 export async function POST(req: Request) {
   const denied = await requireAdmin();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
-  const channel = b.channel === 'email' ? 'email' : b.channel === 'whatsapp' ? 'whatsapp' : '';
+  const channel = b.channel === 'email' ? 'email' : b.channel === 'whatsapp' ? 'whatsapp' : b.channel === 'preview' ? 'preview' : '';
   if (!id || !channel) return NextResponse.json({ error: 'الترسية والقناة مطلوبتان' }, { status: 400 });
   const sb = admin();
   const { data: a, error } = await sb.from('contract_awards').select('*').eq('id', id).maybeSingle();
@@ -72,6 +74,9 @@ export async function POST(req: Request) {
   let cfg, g;
   try {
     cfg = await loadConfig(sb);
+    if (channel === 'email' && String(cfg.settings.gap_email_approved || '').trim() !== 'true') {
+      return NextResponse.json({ error: 'بريد جدول الفجوة غير معتمد بعد (gap_email_approved) — عاين الجدول، أو أرسله أنت بالواتساب' }, { status: 409 });
+    }
     g = computeGap(a as Award, (b.inputs || {}) as GapInputs, cfg.settings);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّر الحساب' }, { status: 400 });
@@ -81,9 +86,14 @@ export async function POST(req: Request) {
   try { pdf = await toPdf(gapHtml(a as Award, g, cfg.settings)); }
   catch (e) { return NextResponse.json({ error: 'تعذّر توليد الملف — ' + (e instanceof Error ? e.message : '') }, { status: 500 }); }
 
-  const path = 'awards/' + id + '/gap-' + Date.now() + '.pdf';
+  const path = 'awards/' + id + '/' + (channel === 'preview' ? 'preview-' : 'gap-') + Date.now() + '.pdf';
   const up = await sb.storage.from(BUCKET).upload(path, pdf, { contentType: 'application/pdf', upsert: false });
   if (up.error) return NextResponse.json({ error: 'تعذّر حفظ الملف — ' + up.error.message }, { status: 500 });
+
+  if (channel === 'preview') {
+    const { data: pv } = await sb.storage.from(BUCKET).createSignedUrl(path, 600);
+    return NextResponse.json({ ok: true, preview: true, url: pv?.signedUrl || null, deepest: g.deepest, estimated: g.estimated, status: a.status, warn: null });
+  }
 
   const subject = fill(String(cfg.settings.gap_email_subject || ''), a as Award).trim() || 'جدول فجوة السيولة';
   const text = fill(String(cfg.settings.gap_email_body || ''), a as Award).trim();

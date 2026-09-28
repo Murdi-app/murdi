@@ -34,3 +34,7 @@ insert into public.award_settings (key, value) values
   ('gap_email_subject', 'جدول فجوة السيولة في «{tender}»'),
   ('gap_email_body', E'السلام عليكم ورحمة الله،\nكما وعدناكم، مرفقٌ جدولٌ مختصر يبيّن فجوة السيولة في عقدكم شهراً بشهر: ما يُصرف على التنفيذ، وما يُحصَّل من الجهة، وأعمق نقطةٍ تبلغها الفجوة وتاريخها.\nالأرقام المعلَّمة «تقديري» مبنيةٌ على معيار القطاع، ونضبطها بأرقامكم في مكالمة قصيرة متى ناسبكم.')
 on conflict (key) do nothing;
+
+-- بوابة بريد الجدول: نصٌّ يخرج للعميل لا يُرسل قبل أن يعتمده المالك
+insert into public.award_settings (key, value) values ('gap_email_approved', 'false')
+on conflict (key) do nothing;
