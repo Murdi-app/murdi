@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { priceFor } from '@/lib/servicePricing';
+import { FEASIBILITY_QUICK } from '@/lib/servicePricing';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { studyWeight } from '@/lib/leadWeight';
 
@@ -216,7 +217,7 @@ export default function JadwaEntryPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', marginBottom: 6 }}>
                   <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>الفحص الائتماني للمشروع</div>
-                  <div style={{ color: GOLD, fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap' }}>990 ريال</div>
+                  <div style={{ color: GOLD, fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap' }}>{(FEASIBILITY_QUICK() ?? 0).toLocaleString('en-US')} ريال</div>
                 </div>
                 <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9, marginBottom: 14 }}>
                   خلال ساعات: صفحة القرار والمؤشرات، قائمة الدخل والتدفق لخمس سنوات، تغطية خدمة الدين،

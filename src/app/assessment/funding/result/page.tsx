@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { canonicalTitle } from '@/lib/serviceCatalog';
+import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -411,7 +412,7 @@ export default function FundingResult() {
             <div className="rounded-2xl p-5 mb-3" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }}>
               <div className="flex items-baseline justify-between gap-3 mb-1">
                 <span className="text-white font-black text-[15px]">٢) الحكم الائتماني لمنشأتك</span>
-                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>٩٩٠ ر.س</span>
+                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>{arNum(FUNDING_QUICK())} ر.س</span>
               </div>
               <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
                 الجهات <span style={{ color: '#C9A84C' }}>بأسمائها</span> · شروط كل واحدة وحدود مبالغها ·
@@ -424,7 +425,7 @@ export default function FundingResult() {
             <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(201,168,76,0.16)', border: '1.5px solid rgba(201,168,76,0.5)' }}>
               <div className="flex items-baseline justify-between gap-3 mb-1">
                 <span className="text-white font-black text-[15px]">٣) تجهيز الملف والمخاطبة والتفاوض</span>
-                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>٧٬٩٠٠ ر.س</span>
+                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>{arNum(FUNDING_FULL())} ر.س</span>
               </div>
               <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
                 نبني ملفك بالعربية والإنجليزية بلغة محلل الائتمان، ونخاطب الجهات

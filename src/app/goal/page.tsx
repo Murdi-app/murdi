@@ -8,6 +8,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
+import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
 
 const TRACKS = [
@@ -429,7 +430,7 @@ export default function GoalPage() {
                     <div style={{ border: '1px solid #E4EFEA', borderRadius: 12, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
                         <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>الحكم الائتماني لمنشأتك</span>
-                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>٩٩٠ ر.س</span>
+                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>{arNum(FUNDING_QUICK())} ر.س</span>
                       </div>
                       <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
                         الجهات بأسمائها · شروط كل واحدة · ما ينقصك عندها · طريقة التقديم — خلال ساعات
@@ -439,7 +440,7 @@ export default function GoalPage() {
                     <div style={{ border: '1.5px solid #C9A84C', background: '#FFFDF5', borderRadius: 12, padding: '12px 14px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
                         <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>تجهيز ملف التمويل والمخاطبة</span>
-                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>٧٬٩٠٠ ر.س</span>
+                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>{arNum(FUNDING_FULL())} ر.س</span>
                       </div>
                       <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
                         نبني ملفك بالعربية والإنجليزية، ونعرضه على الجهات بتكليف خطّي منك، ونتابع ونشرح الشروط حتى قرار نهائي.
@@ -455,7 +456,7 @@ export default function GoalPage() {
                       وأيّهما تختار؟
                     </div>
                     <div style={{ color: '#3A4D47', fontSize: 12, lineHeight: 1.9 }}>
-                      إن بدأت بالحكم الائتماني ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ ٧٬٩٠٠ لا أكثر</b> — الحكم لا يكلّفك شيئاً إضافياً.
+                      إن بدأت بالحكم الائتماني ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ {arNum(FUNDING_FULL())} لا أكثر</b> — الحكم لا يكلّفك شيئاً إضافياً.
                       والفرق الوحيد أنك عرفت قبل أن تلتزم.
                       <br />أمّا إن اكتفيتَ بالحكم، فستعرف أبوابك ولن يُطرق منها باب — <b>لأن الطرق يحتاج ملفاً</b>.
                     </div>

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import MiniAssessment from '@/components/MiniAssessment'
 import ServicesBand from '@/components/ServicesBand'
+import { FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing'
 
 export default function Home() {
   const router = useRouter()
@@ -243,7 +244,7 @@ export default function Home() {
               <a href="/uqud" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>عندك عقد مُرسى؟ موّل تنفيذه ←</a>
               <a href="/jadwa" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج دراسة جدوى تقبلها الجهات؟ ←</a>
             </div>
-            <div className="cta-note">التقييم مجاناً. وبعده تختار: الحكم الائتماني لمنشأتك بـ 990 ر.س، أو تجهيز الملف والمخاطبة ابتداءً من 7,900 ر.س ويُخصم منها الحكم. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
+            <div className="cta-note">التقييم مجاناً. وبعده تختار: الحكم الائتماني لمنشأتك بـ {(FUNDING_QUICK() ?? 0).toLocaleString('en-US')} ر.س، أو تجهيز الملف والمخاطبة ابتداءً من {(FUNDING_FULL() ?? 0).toLocaleString('en-US')} ر.س ويُخصم منها الحكم. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
           </div>
         </section>
 

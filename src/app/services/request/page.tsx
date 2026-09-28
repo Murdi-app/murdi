@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { DIRECT_ORDER, displayName, commercialFor } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
+import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
 // أربعة حقول: الاسم والجوال والمنشأة وسطرٌ عمّا يريد. وما زاد يُسأل في المكالمة.
@@ -145,7 +146,7 @@ function RequestForm() {
             نراجع قدرة السداد والمتطلبات، ونحدد الجهات المناسبة، ثم نجهز ملف التقديم والمخاطبة بحسب وضع منشأتك.
           </p>
           <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
-            الفحص الائتماني ٩٩٠ ريال، وتجهيز الملف والمخاطبة ٧٬٩٠٠ ريال. نحدد معك الخيار المناسب قبل أي دفع.
+            الفحص الائتماني {arNum(FUNDING_QUICK())} ريال، وتجهيز الملف والمخاطبة {arNum(FUNDING_FULL())} ريال. نحدد معك الخيار المناسب قبل أي دفع.
           </div>
         </div>
       )}

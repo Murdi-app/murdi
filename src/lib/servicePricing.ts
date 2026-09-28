@@ -508,3 +508,30 @@ export function priceFor(title: string, investment?: number): { amount: number |
   if (c.price === null || c.price === undefined) return { amount: null, label: 'بعرض خاص' };
   return { amount: c.price, label: c.price.toLocaleString('en-US') + ' ريال' };
 }
+
+// ═══ السعر المعروض في الصفحات ═══
+// كانت أسعار الفحص (٩٩٠) والملف (٧٬٩٠٠) مكتوبةً بيدٍ في اللوحة ونتيجة التقييم
+// وصفحة الطلب والرئيسية وصفحة الجدوى — والتعليق أعلى هذا الملف يقول «غيّر
+// السعر هنا ولا شيء آخر يحتاج تعديلاً». فتغييرٌ واحد هنا كان سيُظهر سعراً
+// ويُحصّل غيره. فصارت الصفحات تقرأ من هنا.
+
+/** سعر خيارٍ بعينه في خدمة (أو سعرها الثابت إن لم يُذكر الخيار) */
+export function listedPrice(title: string, optionKey?: string): number | null {
+  const c = COMMERCIAL[title];
+  if (!c) return null;
+  if (optionKey) {
+    const o = c.options?.find((x) => x.key === optionKey);
+    return typeof o?.price === 'number' ? o.price : null;
+  }
+  return typeof c.price === 'number' ? c.price : null;
+}
+
+/** الرقم بالأرقام العربية المعتادة في الصفحات: ٧٬٩٠٠ */
+export const arNum = (n: number | null | undefined): string =>
+  typeof n === 'number' ? n.toLocaleString('ar-SA') : '—';
+
+/** السعران اللذان تُعرض بهما عتبة مسار التمويل */
+export const FUNDING_TITLE = 'تجهيز ملف التمويل والتفاوض';
+export const FUNDING_QUICK = () => listedPrice(FUNDING_TITLE, 'quick');
+export const FUNDING_FULL = () => listedPrice(FUNDING_TITLE);
+export const FEASIBILITY_QUICK = () => listedPrice('دراسة الجدوى الاقتصادية', 'quick');
