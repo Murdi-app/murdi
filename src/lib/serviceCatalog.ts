@@ -156,3 +156,18 @@ export function serviceAnchor(title: string): string {
 
 // عدد الخدمات المعروضة — يُقرأ في واجهة المنصة فلا يتخلّف الرقم عن القائمة
 export const SERVICE_COUNT = CATALOG.reduce((n, c) => n + c.items.length, 0);
+
+// ═══ الخدمات التي فيها مخاطبة جهات ═══
+// «دفع ولم يُخاطَب له بابٌ واحد» لا يصحّ إلا على خدمةٍ ثمنُها المخاطبة. وكانت
+// كل خدمةٍ مدفوعة تُعدّ كذلك — فالفحص الائتماني للمشروع (٩٩٠، لا مخاطبة فيه)
+// يظهر في لوحة المتابعة «ما خوطب أحد» ويُطلب البلاغ عنه.
+export const OUTREACH_SERVICES = new Set<string>([
+  'تجهيز ملف التمويل والتفاوض',
+  'تمويل العقد',
+  'ملف الممر الأجنبي',
+  'تجهيز ملف عرض المستثمر والتفاوض',
+]);
+
+/** هل تشمل هذه الخدمة (بخيارها) مخاطبة جهات؟ — والخيار السريع حكمٌ لا مخاطبة */
+export const involvesOutreach = (title: unknown, optionKey?: unknown): boolean =>
+  OUTREACH_SERVICES.has(canonicalTitle(String(title || ''))) && String(optionKey || '') !== 'quick';

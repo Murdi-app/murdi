@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
-import { canonicalTitle, displayName } from '@/lib/serviceCatalog';
+import { canonicalTitle, displayName, involvesOutreach } from '@/lib/serviceCatalog';
 import { PAID_STATUSES } from '@/lib/serviceStatus';
 import { isAwaiting, TRIAGE_KINDS } from '@/lib/replyStatus';
 
@@ -59,7 +59,7 @@ export async function GET() {
     // ومن لم يدفع لا يظهر: المتابعة عملٌ مدفوع، وعرضُه يُشتّت.
     const { data: paid, error: paidErr } = await admin
       .from('service_requests')
-      .select('company_id, service_title, status, updated_at')
+      .select('company_id, service_title, status, updated_at, option_key')
       // ★ و`in_progress` منها: هي الحالة التي تعني «نعمل عليه الآن»، وكانت
       //   وحدها خارج القائمة — فالخدمة المدفوعة متى انتقلت إليها اختفى
       //   عميلها من لوحة المتابعة اختفاءً تامّاً. وقع فعلاً على صائب: دفع
@@ -69,7 +69,9 @@ export async function GET() {
     if (paidErr) return NextResponse.json({ error: 'تعذّرت قراءة الملفّات المدفوعة — ' + paidErr.message }, { status: 500 });
 
     const svc = new Map<string, string>();
-    for (const r of (paid || []) as { company_id: string; service_title: string | null }[]) {
+    // لوحة المتابعة لمن ثمنُ خدمته مخاطبة الجهات — والفحص ليس منها
+    for (const r of (paid || []) as { company_id: string; service_title: string | null; option_key: string | null }[]) {
+      if (!involvesOutreach(r.service_title, r.option_key)) continue;
       // الاسم المعروض لا المفتاح المخزَّن: «الاقتصادية» مفتاح قاعدة،
       // والمنتج اسمه «دراسة الجدوى الائتمانية» في كل شاشة سواها
       if (!svc.has(r.company_id)) svc.set(r.company_id, displayName(canonicalTitle(String(r.service_title || ''))));
