@@ -7,10 +7,10 @@ import AdminNav from '@/components/AdminNav'
 // تعرضه وتنسخه وتعدّله، ولا تحمل نصّاً منه (المستودع عام).
 
 type Touch = { id: string; channel: string; direction: string; actor: string; to_address: string | null; subject: string | null; body: string | null; outcome: string | null; created_at: string }
-type Msg = { subject: string; body: string; stage: string; link: string }
+type Msg = { subject: string; body: string; stage: string; kind: string; link: string }
 type Award = {
   id: string; source: string; source_ref?: string | null; company_name: string; cr_number: string | null; tender_title: string | null
-  buyer_entity: string | null; category: string; contract_value: number | null; awarded_at: string | null
+  buyer_entity: string | null; category: string; contract_value: number | null; is_subcontract: boolean | null; kind: string | null; awarded_at: string | null
   track: string | null; decision_maker_name: string | null; decision_maker_role: string | null
   contact_email: string | null; contact_phone: string | null; contact_channel: string | null
   status: string; messaged_at: string | null; reminder_at: string | null; replied_at: string | null
@@ -117,6 +117,12 @@ export default function AwardsPage() {
     if (await call('/api/admin/awards/touch', 'POST', { id: a.id, channel: r.channel || 'email', body: r.body }, 'تسجيل الرد')) {
       flash('سُجّل الرد'); setReply((x) => { const y = { ...x }; delete y[a.id]; return y }); await load()
     }
+    setBusy('')
+  }
+
+  const setSub = async (a: Award, v: boolean) => {
+    setBusy(a.id)
+    if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: { is_subcontract: v } }, 'تعديل «مقاول باطن»')) { flash(v ? 'صارت مقاول باطن — القالب العام' : 'أُلغي «مقاول باطن»'); await load() }
     setBusy('')
   }
 
@@ -314,7 +320,7 @@ export default function AwardsPage() {
             {open === a.id && a.addressed && (
               <div style={{ marginTop: 10, borderTop: '1px dashed ' + LINE, paddingTop: 10 }}>
                 {a.message ? (<>
-                  <div style={{ fontSize: 12, color: M, fontWeight: 800 }}>العنوان · قالب {CATEGORY[a.category]} / {STAGE[a.message.stage]}</div>
+                  <div style={{ fontSize: 12, color: M, fontWeight: 800 }}>العنوان · {a.message.kind === 'general' ? 'القالب العام (بلا قيمة، أو مقاول باطن، أو من غير اعتماد)' : 'القالب المفصّل — ' + CATEGORY[a.category] + ' / ' + STAGE[a.message.stage]}</div>
                   <div style={{ fontWeight: 800, margin: '2px 0 8px' }}>{a.message.subject}</div>
                   <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.95, fontSize: 14, background: '#F7FBF9', borderRadius: 10, padding: 12 }}>{a.message.body}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
@@ -324,7 +330,10 @@ export default function AwardsPage() {
                     <button onClick={() => copy(a)} style={btn('#fff', G)}>{copied === a.id ? '✓ نُسخت' : 'انسخ الرسالة'}</button>
                     {!a.contact_email && <span style={{ color: M, fontSize: 12 }}>لا بريد — أضفه ليُرسل من هنا</span>}
                   </div>
-                </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».</div>}
+                </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>{a.kind === 'general' ? 'القالب العام ناقص — أكمل general_email_subject وgeneral_email_body من «القوالب والإعدادات».' : 'لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».'}</div>}
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, fontWeight: 700, color: M, marginTop: 10 }}>
+                  <input type="checkbox" checked={!!a.is_subcontract} disabled={busy === a.id} onChange={(e) => setSub(a, e.target.checked)} /> الفائز مقاول باطن (يُخاطَب بالقالب العام)
+                </label>
                 <div style={{ marginTop: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>المراسلات ({a.touches.length.toLocaleString('ar-SA')})</div>
                   {a.touches.length === 0 && <div style={{ color: M, fontSize: 12.5 }}>لا مراسلة بعد.</div>}

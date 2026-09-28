@@ -44,7 +44,8 @@ export async function GET() {
         addressed,
         src: awardSrc(a.id),
         next: TRANSITIONS[a.status] || [],
-        message: c && c.template ? { subject: c.subject, body: c.body, stage: c.stage, link: c.link } : null,
+        message: c && c.ready ? { subject: c.subject, body: c.body, stage: c.stage, kind: c.kind, link: c.link } : null,
+        kind: c?.kind || null,
         stage: c?.stage || null,
         touches: touchesBy.get(String(a.id)) || [],
       };
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
     buyer_entity: cut(b.buyer_entity, 200) || null,
     category,
     contract_value: value,
+    is_subcontract: b.is_subcontract === true || b.is_subcontract === 'true',
     awarded_at: awardedAt || null,
     decision_maker_name: cut(b.decision_maker_name, 120) || null,
     decision_maker_role: cut(b.decision_maker_role, 120) || null,
@@ -135,6 +137,7 @@ export async function PATCH(req: Request) {
     if (!CATEGORIES.includes(String(f.category))) return NextResponse.json({ error: 'فئة غير معروفة' }, { status: 400 });
     patch.category = String(f.category);
   }
+  if (f.is_subcontract !== undefined) patch.is_subcontract = f.is_subcontract === true || f.is_subcontract === 'true';
   if (f.contact_channel !== undefined) patch.contact_channel = CHANNELS.includes(String(f.contact_channel)) ? String(f.contact_channel) : null;
   if (f.contract_value !== undefined) {
     const v = f.contract_value === '' || f.contract_value == null ? null : Number(String(f.contract_value).replace(/[,٬\s]/g, ''));

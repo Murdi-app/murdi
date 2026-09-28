@@ -18,6 +18,7 @@ export type Award = {
   buyer_entity: string | null;
   category: string;
   contract_value: number | null;
+  is_subcontract?: boolean | null;
   awarded_at: string | null;
   track: string | null;
   decision_maker_name: string | null;
@@ -96,24 +97,49 @@ export function fill(text: string, a: Pick<Award, 'tender_title' | 'buyer_entity
   } else {
     t = t.replace(/\{entity\}/g, entity);
   }
-  t = t.replace(/\{tender\}/g, String(a.tender_title || '').trim() || 'العقد');
+  const tender = String(a.tender_title || '').trim();
+  if (!tender) {
+    // بلا اسم مشروع: «في «{tender}»» ← «في العقد»، وما سواها يُحذف بلا أثر
+    t = t.replace(/في\s*«\{tender\}»/g, 'في العقد').replace(/\s*«\{tender\}»/g, '');
+  }
+  t = t.replace(/\{tender\}/g, tender || 'العقد');
   return t.replace(/[ \t]{2,}/g, ' ').replace(/ +([،.])/g, '$1');
 }
 
-export type Composed = { subject: string; body: string; stage: 'early' | 'in_execution'; template: Template | null; link: string };
+/**
+ * قاعدة اختيار القالب (`award_settings.template_selection_rule`): **العام** إن
+ * كانت القيمة فارغة، أو الفائز مقاول باطن، أو المصدر غير «اعتماد» — فلا نبني
+ * رسالةً على تفاصيل لم تثبت. وإلا **المفصّل** بالفئة والمرحلة.
+ */
+export type Kind = 'general' | 'detailed';
+export const kindFor = (a: Pick<Award, 'contract_value' | 'is_subcontract' | 'source'>): Kind =>
+  a.contract_value == null || a.is_subcontract === true || a.source !== 'etimad' ? 'general' : 'detailed';
 
-/** يركّب الرسالة: الافتتاح + فقرة السياق (بالفئة والمرحلة) + العرض + الدعوة + التوقيع ومعه رابط الترسية */
+export type Composed = { subject: string; body: string; stage: 'early' | 'in_execution'; kind: Kind; template: Template | null; ready: boolean; link: string };
+
+/**
+ * يركّب البريد. العام: `general_email_subject` + `general_email_body` + التوقيع.
+ * المفصّل: الافتتاح + فقرة السياق (بالفئة والمرحلة) + العرض + الدعوة + التوقيع.
+ * والتوقيع يحمل رابط الترسية.
+ */
 export function compose(a: Award, templates: Template[], s: Settings): Composed {
   const stage = stageFor(a.awarded_at, s);
+  const kind = kindFor(a);
   const link = awardLink(a.id);
-  const template = templates.find((t) => t.active && t.category === a.category && t.stage === stage) || null;
-  if (!template) return { subject: '', body: '', stage, template: null, link };
   // الرابط داخل التوقيع: مكان `{link}` إن كُتب فيه، وإلا سطرٌ في آخره
   const sig = String(s.signature || '');
   const signature = sig.includes('{link}') ? sig.replace(/\{link\}/g, link) : (sig.trimEnd() + '\n' + link);
+  if (kind === 'general') {
+    const subject = fill(String(s.general_email_subject || ''), a).trim();
+    const body = fill(String(s.general_email_body || ''), a).trim();
+    if (!subject || !body) return { subject: '', body: '', stage, kind, template: null, ready: false, link };
+    return { subject, body: body + '\n\n' + signature, stage, kind, template: null, ready: true, link };
+  }
+  const template = templates.find((t) => t.active && t.category === a.category && t.stage === stage) || null;
+  if (!template) return { subject: '', body: '', stage, kind, template: null, ready: false, link };
   const parts = [s.opening_line, template.context_paragraph, s.offer_paragraph, s.cta_paragraph]
     .map((p) => fill(String(p || ''), a).trim()).filter(Boolean);
-  return { subject: fill(template.subject, a), body: parts.join('\n\n') + '\n\n' + signature, stage, template, link };
+  return { subject: fill(template.subject, a), body: parts.join('\n\n') + '\n\n' + signature, stage, kind, template, ready: true, link };
 }
 
 export async function loadConfig(sb: SupabaseClient): Promise<{ templates: Template[]; settings: Settings }> {
@@ -198,12 +224,14 @@ export function waDigits(raw: unknown): string {
 }
 
 /**
- * نصّ الواتساب من `whatsapp_template` — ولا يُعطى إلا إن كان
- * `whatsapp_template_approved = 'true'`: القالب لا يخرج قبل أن يعتمده المالك.
+ * نصّ الواتساب — `whatsapp_template_general` للعام و`whatsapp_template` للمفصّل
+ * (القاعدة نفسها في `kindFor`). ولا يُعطى إلا إن كان `whatsapp_template_approved
+ * = 'true'`: القالب لا يخرج قبل أن يعتمده المالك.
  */
-export function whatsappText(a: Pick<Award, 'tender_title' | 'buyer_entity'>, s: Settings): string | null {
+type WaFields = Pick<Award, 'tender_title' | 'buyer_entity' | 'contract_value' | 'is_subcontract' | 'source'>;
+export function whatsappText(a: WaFields, s: Settings): string | null {
   if (String(s.whatsapp_template_approved || '').trim() !== 'true') return null;
-  const t = String(s.whatsapp_template || '').trim();
+  const t = String((kindFor(a) === 'general' ? s.whatsapp_template_general : s.whatsapp_template) || '').trim();
   return t ? fill(t, a) : null;
 }
 
@@ -234,7 +262,7 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
   const { settings } = await loadConfig(sb);
   const days = num(settings, 'reminder_after_days');
   const { data, error } = await sb.from('contract_awards')
-    .select('id, status, company_name, tender_title, buyer_entity, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at')
+    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at')
     .in('status', ['qualified', 'messaged']);
   if (error) throw new Error(error.message);
   const cutoff = days === null ? null : Date.now() - days * 86400_000;
@@ -247,7 +275,7 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
     if (a.status === 'qualified') kind = 'first';
     else if (a.status === 'messaged' && cutoff !== null && a.messaged_at && Date.parse(String(a.messaged_at)) <= cutoff) kind = 'reminder';
     if (!kind) continue;
-    const text = whatsappText(a as Pick<Award, 'tender_title' | 'buyer_entity'>, settings);
+    const text = whatsappText(a as WaFields, settings);
     out.push({
       id: String(a.id), kind, company: String(a.company_name),
       person: a.decision_maker_name ? String(a.decision_maker_name) : null,

@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (!subject || !body) {
     const cfg = await loadConfig(sb);
     const c = compose(a as Award, cfg.templates, cfg.settings);
-    if (!c.template) return NextResponse.json({ error: 'لا قالب مفعَّل لهذه الفئة والمرحلة' }, { status: 409 });
+    if (!c.ready) return NextResponse.json({ error: c.kind === 'general' ? 'القالب العام ناقص في الإعدادات' : 'لا قالب مفعَّل لهذه الفئة والمرحلة' }, { status: 409 });
     subject = subject || c.subject; body = body || c.body;
   }
   const html = '<div dir="rtl" style="font-family:Arial,Tahoma;line-height:1.95;color:#1A3D34;font-size:15px;white-space:pre-wrap">' + esc(body) + '</div>';

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
   // المهمة قائمةٌ فعلاً: ترسية مؤهَّلة أو «أُرسلت» — لا يُكتب على ما سواها
   const { data: a, error: rErr } = await sb.from('contract_awards')
-    .select('id, status, tender_title, buyer_entity, contact_phone, contact_whatsapp').eq('id', id).maybeSingle();
+    .select('id, status, source, contract_value, is_subcontract, tender_title, buyer_entity, contact_phone, contact_whatsapp').eq('id', id).maybeSingle();
   if (rErr) return NextResponse.json({ error: 'تعذّرت القراءة — ' + rErr.message }, { status: 500 });
   if (!a || !['qualified', 'messaged'].includes(String(a.status))) return NextResponse.json({ error: 'هذه المهمة لم تعد قائمة' }, { status: 409 });
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   let body: string | null = null;
   if (action === 'whatsapp') {
     const { settings } = await loadConfig(sb);
-    body = whatsappText(a as Pick<Award, 'tender_title' | 'buyer_entity'>, settings);
+    body = whatsappText(a as Parameters<typeof whatsappText>[0], settings);
     if (!body) return NextResponse.json({ error: 'قالب الواتساب غير معتمد بعد' }, { status: 409 });
   }
   const to = action === 'whatsapp' ? waDigits(a.contact_whatsapp || a.contact_phone) : String(a.contact_phone || a.contact_whatsapp || '');
