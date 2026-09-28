@@ -8,7 +8,7 @@ import AdminNav from '@/components/AdminNav'
 
 type Msg = { subject: string; body: string; stage: string; link: string }
 type Award = {
-  id: string; source: string; company_name: string; cr_number: string | null; tender_title: string | null
+  id: string; source: string; source_ref?: string | null; company_name: string; cr_number: string | null; tender_title: string | null
   buyer_entity: string | null; category: string; contract_value: number | null; awarded_at: string | null
   track: string | null; decision_maker_name: string | null; decision_maker_role: string | null
   contact_email: string | null; contact_phone: string | null; contact_channel: string | null
@@ -30,7 +30,7 @@ const TRACK: Record<string, string> = {
   contract_finance: 'تمويل عقد', working_capital: 'رأس مال عامل', skip: 'دون الحد', unknown: 'بلا قيمة',
 }
 const STAGE: Record<string, string> = { early: 'بداية', in_execution: 'في التنفيذ' }
-const SOURCE: Record<string, string> = { etimad: 'اعتماد', tadawul: 'تداول', nomu: 'نمو', linkedin: 'لينكدإن', news: 'أخبار', manual: 'يدوي' }
+const SOURCE: Record<string, string> = { etimad: 'اعتماد', tadawul: 'تداول', nomu: 'نمو', linkedin: 'لينكدإن', news: 'الأخبار', manual: 'يدوي' }
 
 const G = '#1A3D34', M = '#6B8A80', LINE = '#E1EDE8'
 const btn = (bg: string, fg = '#fff'): React.CSSProperties => ({ background: bg, color: fg, border: bg === '#fff' ? '1px solid ' + LINE : 'none', padding: '7px 14px', borderRadius: 999, fontFamily: 'inherit', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' })
@@ -114,6 +114,22 @@ export default function AwardsPage() {
     setBusy('')
   }
 
+  // الاستيراد اليومي آلي (٦ صباحاً)؛ وهذا لمن أراده الآن — بنافذة أسبوع
+  const runImport = async () => {
+    setBusy('import'); setErr('')
+    try {
+      const r = await fetch('/api/admin/awards/import', { method: 'POST' })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) setErr('لم يقع الاستيراد: ' + (d.error || 'خطأ ' + r.status))
+      else {
+        flash('وُجد ' + (d.found ?? 0) + ' خبراً · دخل ' + (d.inserted ?? 0) + ' جديداً · تُرك ' + (d.skipped ?? 0) + ' مكرّراً')
+        if (d.errors?.length) setErr('بعض الاستعلامات تعثّرت: ' + d.errors.join(' · '))
+        await load()
+      }
+    } catch { setErr('انقطع الاتصال — لم يقع الاستيراد') }
+    setBusy('')
+  }
+
   const saveTemplate = async (t: Template) => {
     const d = draftT[t.id]; if (!d) return
     setBusy('t' + t.id)
@@ -153,6 +169,7 @@ export default function AwardsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>الترسيات</h1>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setAdding((x) => !x)} style={btn(G)}>{adding ? 'إغلاق' : '+ ترسية يدوياً'}</button>
+            <button onClick={runImport} disabled={busy === 'import'} style={btn('#fff', G)}>{busy === 'import' ? 'جارٍ الاستيراد…' : 'استورد من الأخبار'}</button>
             <button onClick={() => setCfgOpen((x) => !x)} style={btn('#fff', G)}>{cfgOpen ? 'إغلاق القوالب' : 'القوالب والإعدادات'}</button>
           </div>
         </div>
@@ -246,6 +263,7 @@ export default function AwardsPage() {
               <div style={{ textAlign: 'left' }}>
                 <span style={{ background: '#EAF4F0', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800 }}>{STATUS[a.status] || a.status}</span>
                 <div style={{ color: M, fontSize: 11, marginTop: 4, direction: 'ltr' }}>{a.src}</div>
+                {a.source_ref && /^https?:/.test(a.source_ref) && <a href={a.source_ref} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>الخبر ↗</a>}
               </div>
             </div>
 
