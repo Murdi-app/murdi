@@ -56,11 +56,16 @@ export default function HotPage() {
   // أي صفّ فُتحت له لوحة الملف — أو 'blank' لمن ليس في القائمة
   const [intake, setIntake] = useState('')
 
+  // ★ كان الفشل صامتاً: جلسةٌ منتهية أو خطأ خادم يتركان القائمة فارغة بلا
+  //   كلمة — والشاشة الفارغة تُقرأ «لا عمل عندي اليوم».
   const load = () => {
     fetch('/api/admin/hot')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) { setRows(d.rows || []); setStats(d.stats || null) } })
-      .catch(() => {})
+      .then(async r => {
+        const d = await r.json().catch(() => ({}))
+        if (!r.ok) { setErr(d.error || 'تعذّر تحميل القائمة — أعيدي فتح الصفحة'); return }
+        setRows(d.rows || []); setStats(d.stats || null)
+      })
+      .catch(() => setErr('تعذّر الاتصال بالخادم — أعيدي فتح الصفحة'))
   }
   useEffect(load, [])
 

@@ -16,7 +16,7 @@ const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 //   الدخول» من قبل. فمن أضاف دوراً ثالثاً في أحدهما وجد الآخر يردّه إلى
 //   `assistant` صامتاً. فصار التعريف هناك وحده، ويُستورَد هنا.
 export type { StaffJob } from './staffPages';
-import { asJob } from './staffPages';
+import { isJob, mayVisit } from './staffPages';
 import type { StaffJob } from './staffPages';
 
 export type Who = {
@@ -44,16 +44,35 @@ export async function requireStaff(): Promise<{ who: Who | null; error: string |
     const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
     const { data: st } = await admin.from('staff').select('user_id, active, can_send, job').eq('user_id', u.id).maybeSingle();
     if (!st || st.active !== true) return { who: null, error: 'غير مصرح' };
+    // دورٌ غير معرَّف لا يُحمل على رغد صامتاً — كان `asJob` يفعل ذلك، فموظفةٌ
+    // ثالثة أو خطأٌ إملائي في الحقل تُفتح له شاشاتها ومكتبها بلا تنبيه.
+    if (!isJob(st.job)) return { who: null, error: 'دورٌ غير معرَّف لهذا الحساب — راجع المالك' };
     return {
       who: {
         role: 'staff', userId: u.id, email: String(u.email || ''),
-        canSend: st.can_send !== false, job: asJob(st.job),
+        canSend: st.can_send !== false, job: st.job,
       },
       error: null,
     };
   } catch {
     return { who: null, error: 'غير مصرح' };
   }
+}
+
+/**
+ * حارس الشاشة في الخادم: الموظفة لا تصل إلى مسارٍ إلا إن كانت شاشته من عملها.
+ *
+ * ★ كانت المسارات كلها تكتفي بـ`requireStaff` — أي «موظفةٌ ما» — والإخفاء في
+ *   القائمة وحده يفرّق بين الصفّين. فرغد تستطيع أن تنادي «الفرص الساخنة»
+ *   و«الوارد» وتفتح ملف عميلٍ مسعَّر، وضي تنادي متابعة الجهات. وما وصل
+ *   الجهازَ وُصل إليه. فصار الحكم هنا، ويُقرأ من `staffPages` نفسه الذي
+ *   ترسم منه القائمة — تعريفٌ واحد لا نسختان.
+ */
+export async function requirePage(href: string): Promise<{ who: Who | null; error: string | null; status: number }> {
+  const r = await requireStaff();
+  if (!r.who) return { who: null, error: r.error, status: 401 };
+  if (r.who.role === 'admin' || mayVisit(r.who.job, href)) return { ...r, status: 200 };
+  return { who: null, error: 'هذه الشاشة ليست من عملك', status: 403 };
 }
 
 export async function ownsCompany(who: Who, companyId: string): Promise<boolean> {

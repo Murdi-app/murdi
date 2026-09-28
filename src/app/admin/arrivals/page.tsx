@@ -79,6 +79,7 @@ export default function ArrivalsPage() {
       const d = await res.json();
       if (!res.ok) { setErr(d.error || 'تعذّر التسجيل'); setBusy(''); return; }
       setOpenId(''); setNote(''); await load();
+      if (d.warn) setErr(d.warn);
     } catch { setErr('تعذّر الاتصال'); }
     setBusy('');
   };

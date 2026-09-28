@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
+import { isPaidStatus } from '@/lib/serviceStatus';
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -9,8 +10,8 @@ const admin = () => createClient(
 );
 
 export async function GET(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/apply');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const a = admin();
   let mine: string[] | null = null;
   if (who.role === 'staff') {
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
   for (const t of (atts || [])) { if (t.file_url_ar || t.file_url_en) fileReady.set(t.company_id, true); }
   const contractOk = new Map<string, boolean>();
   for (const r of (srv || [])) {
-    if (['delivered', 'completed', 'paid', 'in_follow_up', 'in_progress'].includes(String(r.status))) fileReady.set(r.company_id, true);
+    if (isPaidStatus(r.status)) fileReady.set(r.company_id, true);
   }
   for (const r of (con || [])) {
     if (['signed', 'issued', 'active'].includes(String(r.status))) contractOk.set(r.company_id, true);

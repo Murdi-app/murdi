@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
 import { waLink } from '@/lib/phone'
+import { OPEN_PAID_STATUSES } from '@/lib/serviceStatus'
 
 // مكتب الطلبات — شاشة المساعِدة.
 //
@@ -74,7 +75,10 @@ export default function DeskPage() {
   const [mayDecide, setMayDecide] = useState(false)
 
   const load = async () => {
-    const r = await fetch('/api/staff/desk')
+    // انقطاع الشبكة كان يُبقي «جارٍ التحميل» إلى الأبد
+    let r: Response
+    try { r = await fetch('/api/staff/desk') }
+    catch { setErr('تعذّر الاتصال بالخادم — أعيدي فتح الصفحة'); setLoading(false); return }
     if (!r.ok) {
       const d = await r.json().catch(() => ({}))
       setDenied(d.error || 'غير مصرح'); setLoading(false); return
@@ -97,10 +101,13 @@ export default function DeskPage() {
       return
     }
     setBusy(id); setErr(''); setConfirm('')
-    const r = await fetch('/api/staff/desk', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, id, action }),
-    })
+    let r: Response
+    try {
+      r = await fetch('/api/staff/desk', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind, id, action }),
+      })
+    } catch { setBusy(''); setErr('تعذّر الاتصال — لم يُنفَّذ القرار'); return }
     setBusy('')
     const d = await r.json().catch(() => ({}))
     if (!r.ok) { setErr(d.error || 'تعذّر تنفيذ القرار'); return }
@@ -142,7 +149,7 @@ export default function DeskPage() {
   //   عند اثني عشر — أي أن أقدمَ ملفٍّ واقف، وهو **أولى ما يُعمل**، يقع في
   //   الذيل أو خارج الشاشة أصلاً. فوقفت خمسةُ ملفّات بين ستة أيام وأربعين
   //   ولم يرها أحد. فصارت تُرفع إلى الرأس، **والأقدمُ سكوناً أولاً**.
-  const ACTIVE = ['paid', 'in_progress', 'in_follow_up', 'delivered']
+  const ACTIVE: readonly string[] = OPEN_PAID_STATUSES
   const idleDays = (r: Req) => daysAgo(r.updated_at || r.created_at)
   const active = reqs
     .filter(r => ACTIVE.includes(r.status))

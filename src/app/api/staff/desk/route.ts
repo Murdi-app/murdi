@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
-import { asJob, decidesAtDesk } from '@/lib/staffPages';
+import { requirePage } from '@/lib/requireStaff';
+import { decidesAtDesk } from '@/lib/staffPages';
+import { OPEN_PAID_STATUSES } from '@/lib/serviceStatus';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { confirmPayment } from '@/lib/confirmPayment';
@@ -44,12 +45,11 @@ const admin = () =>
  *   استفساراتٌ وطلبات خدمة كل يوم، وأُسندت إليها، ولا تُعتمد الطلبات ولا
  *   يُؤكَّد تحويلُ عميلٍ من شاشةٍ لا تراها.
  */
+// ★ كانت هنا قائمة الأدوار مكتوبةً ثانيةً (`assistant || followup`) لا مقروءةً
+//   من `staffPages` — والشرط صادقٌ دائماً. فصار الحكم حارسَ الشاشة الواحد.
 async function atDesk() {
-  const { who, error } = await requireStaff();
-  if (error || !who) return { who: null, error: error || 'غير مصرح' };
-  if (who.role === 'admin') return { who, error: null };
-  if (who.job === 'assistant' || who.job === 'followup') return { who, error: null };
-  return { who: null, error: 'هذه الشاشة ليست من عملك' };
+  const { who, error, status } = await requirePage('/admin/desk');
+  return { who, error: who ? null : (error || 'غير مصرح'), status };
 }
 
 const esc = (s: unknown) =>
@@ -59,20 +59,32 @@ const esc = (s: unknown) =>
 const AWAITING = 'submitted';
 
 export async function GET() {
-  const { who, error } = await atDesk();
-  if (!who) return NextResponse.json({ error }, { status: 401 });
+  const { who, error, status } = await atDesk();
+  if (!who) return NextResponse.json({ error }, { status });
 
   const sb = admin();
+  const fail = (what: string, e: { message: string }) =>
+    NextResponse.json({ error: 'تعذّرت قراءة ' + what + ' — ' + e.message }, { status: 500 });
+
+  // ★ الشاشة لا تخمّن مَن يقرّر: الخادم يقوله. فإن تغيّرت القسمة غداً في
+  //   `staffPages` تغيّرت الشاشة والخادم معاً، ولا يبقى زرٌّ يظهر بلا مسار
+  //   يقبله، ولا مسارٌ مفتوح خلف زرٍّ مخفيّ.
+  const mayDecide = who.role === 'admin' || decidesAtDesk(who.job);
 
   // ★ الأعمدة مذكورةٌ بأسمائها، لا `*`. فـ`*` تُخرج غداً كل عمودٍ يُضاف —
   //   والسعر والمُخرَج المولَّد عمودان في هذا الجدول نفسه.
-  const { data: reqs } = await sb
-    .from('service_requests')
-    // `updated_at` لازمٌ لقياس السكون: «هذا الملفّ لم يتحرّك منذ كذا يوماً»
-    // هو الرقم الذي يرتّب يومَ مَن تتابع ملفّات العملاء.
-    .select('id, company_id, service_title, service_category, status, client_note, track, created_at, updated_at, paid_at, price, quoted_price')
-    .order('created_at', { ascending: false })
-    .limit(120);
+  // ★ كانت القراءة مقصوصةً عند أحدث ١٢٠ طلباً — فالملفّ المدفوع القديم
+  //   الواقف، وهو أولى ما يُعمل، يخرج من الشاشة حين تكبر القائمة. فصار
+  //   كل ما لم يُغلق يُقرأ كاملاً، والمُغلق يُقرأ لتسعين يوماً للعلم.
+  //   ومَن لا تقرّر (رغد) لا يصلها صفُّ ما قبل الدفع أصلاً — ليس من عملها.
+  const since = new Date(Date.now() - 90 * 86400_000).toISOString();
+  const cols = 'id, company_id, service_title, service_category, status, client_note, track, created_at, updated_at, paid_at, price, quoted_price';
+  const reqQ = mayDecide
+    ? sb.from('service_requests').select(cols)
+        .or('status.not.in.(completed,cancelled,rejected),created_at.gte.' + since)
+    : sb.from('service_requests').select(cols).in('status', [...OPEN_PAID_STATUSES]);
+  const { data: reqs, error: reqErr } = await reqQ.order('created_at', { ascending: false });
+  if (reqErr) return fail('الطلبات', reqErr);
 
   // ★ قبول الخدمات للموظفتين (٢١ سبتمبر): صار كل طلبٍ من الكتالوج يُسعَّر
   //   آلياً فيقف «بانتظار الدفع» ولا يمرّ بـ«ينتظر كلمتك» أبداً — فبقي زرّا
@@ -80,13 +92,14 @@ export async function GET() {
   //   يُرفض إن لم يكن جادّاً، ويُقبل بتأكيد التحويل حين يصل إيصالُه.
   //   والسعر يخرج للمسعَّر وحده — هو ما يراه العميل نفسه على شاشته، ولا بدّ
   //   منه لمطابقة التحويل. ونِسب الأتعاب والعقود لا تزال لا تغادر الخادم.
-  const pricedIds = (reqs || []).filter((r) => r.status === 'priced').map((r) => String(r.id));
-  const { data: pend } = pricedIds.length
+  const pricedIds = mayDecide ? (reqs || []).filter((r) => r.status === 'priced').map((r) => String(r.id)) : [];
+  const { data: pend, error: payErr } = pricedIds.length
     ? await sb.from('payments')
         .select('id, service_request_id, amount_sar, method, transfer_receipt_url, created_at')
         .in('service_request_id', pricedIds)
         .eq('status', 'awaiting_confirmation')
-    : { data: [] as Array<Record<string, unknown>> };
+    : { data: [] as Array<Record<string, unknown>>, error: null };
+  if (payErr) return fail('التحويلات', payErr);
   const payBy = new Map<string, Record<string, unknown>>();
   for (const p of (pend || [])) {
     let receipt = (p.transfer_receipt_url as string | null) || null;
@@ -99,12 +112,15 @@ export async function GET() {
     });
   }
 
-  const { data: matches } = await sb
-    .from('match_requests')
-    .select('id, company_id, track, status, requested_at')
-    .eq('status', 'requested')
-    .order('requested_at', { ascending: true })
-    .limit(60);
+  // طلبات المطابقة قرارٌ كلُّها — فلا تُقرأ لمن لا تقرّر
+  const { data: matches, error: mErr } = mayDecide
+    ? await sb.from('match_requests')
+        .select('id, company_id, track, status, requested_at')
+        .eq('status', 'requested')
+        .order('requested_at', { ascending: true })
+        .limit(60)
+    : { data: [] as Array<Record<string, unknown>>, error: null };
+  if (mErr) return fail('طلبات المطابقة', mErr);
 
   // بيانات الاتصال كاملة — بأمر المالك، فبها تعمل: تتصل وتتابع وتُذكّر.
   const ids = Array.from(new Set([
@@ -112,9 +128,10 @@ export async function GET() {
     ...(matches || []).map((r) => String(r.company_id)),
   ].filter(Boolean)));
 
-  const { data: cos } = ids.length
+  const { data: cos, error: cErr } = ids.length
     ? await sb.from('companies').select('id, company_name, owner_name, phone, city, sector, account_status').in('id', ids)
-    : { data: [] as Array<Record<string, unknown>> };
+    : { data: [] as Array<Record<string, unknown>>, error: null };
+  if (cErr) return fail('المنشآت', cErr);
   const { data: contacts } = ids.length
     ? await sb.from('company_contacts').select('company_id, contact_email').in('company_id', ids)
     : { data: [] as Array<Record<string, unknown>> };
@@ -122,17 +139,14 @@ export async function GET() {
   const mail = new Map((contacts || []).map((c) => [String(c.company_id), c.contact_email]));
   const byId = new Map((cos || []).map((c) => [String(c.id), { ...c, contact_email: mail.get(String(c.id)) || null }]));
 
-  // ★ الشاشة لا تخمّن مَن يقرّر: الخادم يقوله. فإن تغيّرت القسمة غداً في
-  //   `staffPages` تغيّرت الشاشة والخادم معاً، ولا يبقى زرٌّ يظهر بلا مسار
-  //   يقبله، ولا مسارٌ مفتوح خلف زرٍّ مخفيّ.
-  const mayDecide = who.role === 'admin' || decidesAtDesk(asJob(who.job));
-
   return NextResponse.json({
     role: who.role,
     may_decide: mayDecide,
     requests: (reqs || []).map((r) => {
       const { price, quoted_price, ...rest } = r as Record<string, unknown>;
-      const isPriced = r.status === 'priced';
+      // السعر ومبلغ التحويل لمن يقرّر وحده — بهما يطابق التحويل. ورغد لا
+      // يصلها سعرٌ ولا ما دفعه عميل (قاعدة المالك)؛ وكانا يصلانها للعلم.
+      const isPriced = mayDecide && r.status === 'priced';
       return {
         ...rest,
         price: isPriced ? (price ?? quoted_price ?? null) : null,
@@ -145,14 +159,14 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { who, error } = await atDesk();
-  if (!who) return NextResponse.json({ error }, { status: 401 });
+  const { who, error, status } = await atDesk();
+  if (!who) return NextResponse.json({ error }, { status });
 
   // ★ القرار في هذا المكتب واقعٌ على عميلٍ **لم يدفع بعد** — اعتمادُ طلبٍ،
   //   أو رفضُه، أو تأكيدُ تحويله. وذاك صفُّ ضي وحدها بقسمة المالك
   //   (٢٧ سبتمبر). ورغد ترى المكتب لتعرف ملفّاتها المدفوعة وأرقام أصحابها،
   //   ولا تقرّر فيه. ويُمنع هنا لا بإخفاء الزرّ: ما وصل الجهازَ وُصل إليه.
-  if (who.role !== 'admin' && !decidesAtDesk(asJob(who.job))) {
+  if (who.role !== 'admin' && !decidesAtDesk(who.job)) {
     return NextResponse.json(
       { error: 'هذه الشاشة للاطلاع عندك — اعتمادُ الطلبات وتأكيد التحويلات ليس من عملك' },
       { status: 403 }
@@ -211,9 +225,11 @@ export async function PATCH(req: Request) {
           .eq('status', 'priced');
         if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
         // تحويلٌ معلّق على طلبٍ رُفض لا يبقى معلّقاً في لوحة المدفوعات
-        await sb.from('payments').update({ status: 'rejected' })
-          .eq('service_request_id', id).eq('status', 'awaiting_confirmation')
-          .then(() => null, () => null);
+        // وكان فشلُه يُبتلع: فيبقى التحويل «ينتظر تأكيدكم» في الوارد والفرص
+        // الساخنة لطلبٍ مرفوض. يُقال للمالك ويُعلَّم أثرُ الصفقة.
+        const { error: rjErr } = await sb.from('payments').update({ status: 'rejected' })
+          .eq('service_request_id', id).eq('status', 'awaiting_confirmation');
+        if (rjErr) payNote = 'رُفض الطلب ولم يُرفض تحويله المعلّق (' + rjErr.message + ') — ارفضه من لوحة المدفوعات.';
         headline = 'رُفض طلب خدمة — ' + String(r.service_title || '');
       }
     } else {
@@ -271,14 +287,17 @@ export async function PATCH(req: Request) {
   }
 
   // أثرٌ مكتوب في خطّ الصفقة — فالقرار يُقرأ بعد شهر كما قُرئ يومه
-  await sb.from('deal_events').insert({
+  const evRes = await sb.from('deal_events').insert({
     company_id: companyId || null,
     kind: kind === 'match' ? 'match_request' : 'service_request',
     title: headline,
     detail: 'القرار من: ' + actor + (note ? ' · ' + note : '') + (payNote ? ' · ⚠️ ' + payNote : ''),
     actor: who.role === 'admin' ? 'admin' : 'staff',
     needs_owner: !!payNote,
-  }).then(() => null, () => null);
+  });
+  // القرار نفذ؛ وسقوطُ أثره يُقال للمالك في بريده بدل أن يُبتلع
+  const { error: evErr } = evRes;
+  if (evErr) payNote = (payNote ? payNote + ' · ' : '') + 'لم يُكتب القرار في خطّ الصفقة (' + evErr.message + ').';
 
   // ★ المالك يُخبَر بكل قرارٍ تتّخذه المساعِدة — لا قراراته هو.
   if (who.role !== 'admin') {

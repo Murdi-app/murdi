@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
+import { ANSWERED } from '@/lib/replyStatus';
 
 // نبض المعاودة — يعمل من داخل القاعدة، بلا جلسة ولا إذن ولا حاسب مفتوح.
 // الفرق بينه وبين المهمة المجدولة: هذا لا يقرأ بريداً ولا يفكّر، بل يحسب من
@@ -39,8 +40,8 @@ const SILENT_AFTER = 5;
 /** الصفّ الذي يُذكر مرةً يُغلق من الدورة — عشر سنين أي: لا يعود */
 const CLOSE_FOR = 3650;
 
-/** ردٌّ هو ردّ — بالبريد أو بالهاتف. ومن أجاب لا يُطرق بابه ثانيةً أبداً. */
-const ANSWERED = new Set(['replied', 'call']);
+// «مُجاب» تعريفه في `@/lib/replyStatus` — ومنه docs وdeclined وdeflect التي
+// كانت تُعدّ هنا صمتاً فيُذكَّر من طلب أوراقاً أو اعتذر.
 
 /** أثرٌ يُكتب في ملاحظة الصفّ حتى لا يُذكر مرتين ولو أُعيد حسابه */
 const CLOSED_MARK = 'أُغلق من دورة التذكير';

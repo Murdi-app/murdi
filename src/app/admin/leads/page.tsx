@@ -81,8 +81,10 @@ export default function LeadsPage() {
   const [copied, setCopied] = useState('');
 
   const load = async () => {
-    const r = await fetch('/api/admin/leads');
-    const d = await r.json();
+    // انقطاع الشبكة كان يُبقي «جارٍ التحميل» إلى الأبد
+    let r: Response, d: { error?: string; leads?: Lead[]; stats?: Stats | null }
+    try { r = await fetch('/api/admin/leads'); d = await r.json(); }
+    catch { setErr('تعذّر الاتصال بالخادم — أعيدي المحاولة'); setLoading(false); return; }
     if (!r.ok) { setErr(d.error || 'تعذّر التحميل'); setLoading(false); return; }
     setLeads(d.leads || []); setStats(d.stats || null); setLoading(false);
   };
@@ -90,12 +92,17 @@ export default function LeadsPage() {
 
   const save = async (id: string, patch: Record<string, unknown>) => {
     setBusy(id);
-    const r = await fetch('/api/admin/leads', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...patch }),
-    });
+    let r: Response
+    try {
+      r = await fetch('/api/admin/leads', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...patch }),
+      });
+    } catch { setBusy(''); setErr('تعذّر الاتصال — لم يُحفظ شيء'); return; }
     setBusy('');
-    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || 'تعذّر الحفظ'); return; }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(d.error || 'تعذّر الحفظ'); return; }
+    if (d.warn) setErr(d.warn);
     // تحديث محلي فوري: البطاقة لا تقفز من تحت يده قبل أن يقرأ ما سجّله
     setLeads(prev => prev.map(l => l.id === id
       ? { ...l, ...(patch as Partial<Lead>), contacted: patch.contacted !== undefined ? Boolean(patch.contacted) : (patch.outcome ? true : l.contacted) }

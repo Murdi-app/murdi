@@ -29,3 +29,18 @@ export function deliverableUpdate(html: string, currentStatus: unknown) {
     updated_at: new Date().toISOString(),
   };
 }
+
+// ═══ ما بعد الدفع ═══
+// كانت قائمة «الحالات المدفوعة» مكتوبةً في أربعة أماكن مختلفة: لوحة
+// المتابعة بخمس حالات، ومكتب الطلبات بأربع بلا `completed`، ولوحة التقديم
+// بخمس بترتيبٍ آخر، والفرص الساخنة في القاعدة. فمن أضاف حالةً في أحدها
+// أسقط العميل المدفوع من شاشة الأخرى صامتاً — وهذا بعينه ما وقع لـ`in_progress`.
+
+/** حالاتٌ لا يبلغها الطلب إلا بعد أن يدفع العميل */
+export const PAID_STATUSES = ['paid', 'in_progress', 'in_follow_up', 'delivered', 'completed'] as const;
+
+/** ما بعد الدفع ولم يُغلق — عملٌ قائم عند من تتابع */
+export const OPEN_PAID_STATUSES = ['paid', 'in_progress', 'in_follow_up', 'delivered'] as const;
+
+export const isPaidStatus = (s: unknown): boolean =>
+  (PAID_STATUSES as readonly string[]).includes(String(s || ''));

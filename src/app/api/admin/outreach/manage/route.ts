@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { requirePage, ownsCompany } from '@/lib/requireStaff';
+import { MANAGE_KINDS } from '@/lib/replyStatus';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -23,8 +24,8 @@ async function getAdmin() {
 
 // GET ?company_id=... : كل رسائل المخاطبة لعميل
 export async function GET(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
 
@@ -47,8 +48,8 @@ export async function GET(req: Request) {
 // POST { id, action, ...fields } : إجراء على رسالة واحدة
 // action: approve | reject | update | delete
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
 
   if (action === 'reply') {
     const rs = String((body as Record<string, unknown>).reply_status || '');
-    if (!['replied', 'declined', 'closed', 'awaiting'].includes(rs)) return NextResponse.json({ error: 'حالة رد غير صالحة' }, { status: 400 });
+    if (!(MANAGE_KINDS as readonly string[]).includes(rs)) return NextResponse.json({ error: 'حالة رد غير صالحة' }, { status: 400 });
     const { error } = await admin.from('outreach_messages')
       .update({ reply_status: rs, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) return NextResponse.json({ error: 'تعذّر تحديث الرد' }, { status: 500 });

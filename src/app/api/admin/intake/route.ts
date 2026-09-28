@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { waNumber } from '@/lib/phone';
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing';
 import { asOwnership, asRoute } from '@/lib/ownership';
 import { canonicalTitle } from '@/lib/serviceCatalog';
+import { isPaidStatus } from '@/lib/serviceStatus';
 
 // فتح ملف عميلٍ باعته الموظفة بالهاتف.
 //
@@ -30,8 +31,8 @@ const cut = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
 const numOf = (v: unknown) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/hot');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const b = await req.json().catch(() => ({}));
   const fullName = cut(b?.full_name, 120);
@@ -126,11 +127,18 @@ export async function POST(req: Request) {
   const opt = COMMERCIAL[title]?.options?.find((o) => o.key === 'quick');
   const amount = typeof opt?.price === 'number' ? opt.price : 990;
 
-  const { data: open } = await sb.from('service_requests')
+  // ★ كان يُلتقط أيُّ طلبٍ «غير مغلق» — ومنه المدفوع والمرفوض — فتُكتب أرقام
+  //   المكالمة فوق مدخلات طلبٍ مدفوع، ويُبلَّغ العميل «جاهز للدفع» عمّا دفعه.
+  //   فالمدفوع يردّ صاحبَه إلى رغد، والمسعَّر وحده يُعاد استعماله.
+  const { data: existing, error: exErr } = await sb.from('service_requests')
     .select('id, status')
     .eq('company_id', companyId).eq('service_title', title)
-    .not('status', 'in', '("completed","cancelled")')
-    .maybeSingle();
+    .order('created_at', { ascending: false });
+  if (exErr) return NextResponse.json({ error: 'تعذّرت قراءة طلبات العميل — ' + exErr.message }, { status: 500 });
+  if ((existing || []).some((r) => isPaidStatus(r.status))) {
+    return NextResponse.json({ error: 'لهذا العميل طلبٌ مدفوع لهذه الخدمة — ملفّه بعد الدفع عند رغد، لا يُفتح له طلبٌ جديد من هنا' }, { status: 409 });
+  }
+  const open = (existing || []).find((r) => r.status === 'priced') || null;
 
   let requestId = open?.id as string | undefined;
   if (!requestId) {
@@ -196,7 +204,7 @@ export async function POST(req: Request) {
     'أهلاً ' + fullName + '،\n\n'
     + 'هذا رابط ملفك في منصة مُرضي — بياناتك وأرقام مشروعك مسجّلة بالفعل:\n'
     + link + '\n\n'
-    + 'افتحه، وضع كلمة المرور، وستجد ' + (opt?.label || 'الفحص الائتماني للمشروع') + ' بـ٩٩٠ ريال جاهزاً للدفع.\n'
+    + 'افتحه، وضع كلمة المرور، وستجد ' + (opt?.label || 'الفحص الائتماني للمشروع') + ' بـ' + amount.toLocaleString('ar-SA') + ' ريال جاهزاً للدفع.\n'
     + 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
     + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
     + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'

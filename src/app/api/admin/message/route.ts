@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { sendMail, mailStatus } from '@/lib/sendMail';
 import { TEMPLATES, findTemplate, fillTemplate } from '@/lib/clientTemplates';
 
@@ -67,8 +67,8 @@ async function logEvent(
 
 // GET: القوالب + آخر الرسائل + ما ينتظر الاعتماد
 export async function GET(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/message');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const sb = admin();
   const url = new URL(req.url);
@@ -160,8 +160,8 @@ export async function GET(req: Request) {
 
 // POST: يرسل قالباً فوراً، أو يودع نصاً حراً بانتظار اعتماد المالك
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/message');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const b = await req.json().catch(() => ({}));
   const toEmail = String(b?.to_email || '').trim();
@@ -269,8 +269,8 @@ export async function POST(req: Request) {
 
 // PATCH: اعتماد نصّ حرّ وإرساله — للمالك وحده
 export async function PATCH(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/message');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   if (who.role !== 'admin') {
     return NextResponse.json({ error: 'الاعتماد للمالك وحده' }, { status: 403 });
   }

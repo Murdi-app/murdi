@@ -106,5 +106,8 @@ export const mayVisit = (job: StaffJob, pathname: string): boolean =>
   (PAGES_BY_JOB[job] || []).some((p) => String(pathname || '').startsWith(p.href));
 
 const JOBS: StaffJob[] = ['assistant', 'followup'];
+/** هل القيمة دورٌ معرَّف؟ — الخادم يردّ غير المعرَّف ولا يحمله على دورٍ ما */
+export const isJob = (v: unknown): v is StaffJob => JOBS.some((j) => j === v);
+
 export const asJob = (v: unknown): StaffJob =>
   JOBS.find((j: StaffJob) => j === String(v ?? '')) || 'assistant';

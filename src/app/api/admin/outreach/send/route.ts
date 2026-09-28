@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { requirePage, ownsCompany } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
 import { guardOutreach } from '@/lib/outreachGuard';
 
@@ -26,8 +26,8 @@ async function getAdmin() {
 
 // POST { company_id } : يرسل كل الرسائل المعتمدة لهذا العميل
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   if (!who.canSend) return NextResponse.json({ error: 'الإرسال غير مصرّح لحسابك' }, { status: 403 });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });

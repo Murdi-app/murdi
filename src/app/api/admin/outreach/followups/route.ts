@@ -3,8 +3,9 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { logError } from '@/lib/logError';
-import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { requirePage, ownsCompany } from '@/lib/requireStaff';
 import { sendMail } from '@/lib/sendMail';
+import { MANAGE_KINDS } from '@/lib/replyStatus';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const FROM = 'فريق الشراكات - حلول المرضي <partners@murdi.sa>';
@@ -46,8 +47,8 @@ function buildFollowup(stage: number, entityName: string, lang: string, companyN
 
 // GET : المتابعات المستحقة اليوم
 export async function GET() {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { data } = await admin
@@ -70,8 +71,8 @@ export async function GET() {
 
 // POST { id, company_name } : إرسال متابعة لرسالة واحدة
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   // صلاحية الإرسال كانت مفروضة في مسار الإرسال وحده، وهذا المسار يرسل فعلاً —
   // فموظف بصلاحية تحضير فقط كان يستطيع مخاطبة جهة تمويل باسم المنصة
   if (!who.canSend) return NextResponse.json({ error: 'لا تملك صلاحية الإرسال' }, { status: 403 });
@@ -132,18 +133,19 @@ export async function POST(req: Request) {
 
 // PATCH { id, reply_status } : تحديث حالة الرد (replied / declined / closed)
 export async function PATCH(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const { id, reply_status } = await req.json();
-  if (!id || !['replied', 'declined', 'closed', 'awaiting'].includes(reply_status)) {
+  if (!id || !(MANAGE_KINDS as readonly string[]).includes(reply_status)) {
     return NextResponse.json({ error: 'طلب غير صالح' }, { status: 400 });
   }
   {
     const { data: own } = await admin.from('outreach_messages').select('company_id').eq('id', id).maybeSingle();
     if (!own || !(await ownsCompany(who, String(own.company_id)))) return NextResponse.json({ error: 'هذا العميل ليس ضمن عملائك' }, { status: 403 });
   }
-  await admin.from('outreach_messages').update({ reply_status, updated_at: new Date().toISOString() }).eq('id', id);
+  const { error: upErr } = await admin.from('outreach_messages').update({ reply_status, updated_at: new Date().toISOString() }).eq('id', id);
+  if (upErr) return NextResponse.json({ error: 'تعذّر تحديث حالة الرد — ' + upErr.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

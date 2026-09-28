@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { buildFullOutreach, type ClientInput, type EntityInput } from '@/lib/outreachGenerate';
 import { logError } from '@/lib/logError';
-import { requireStaff, ownsCompany } from '@/lib/requireStaff';
+import { requirePage, ownsCompany } from '@/lib/requireStaff';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -148,8 +148,8 @@ async function generateForRow(admin: Admin, client: ClientInput, m: MatchRow) {
 // POST { rowId }              : توليد مخاطبة لجهة واحدة عند الطلب  ← المسار الجديد
 // POST { company_id, track }  : الدفعات القديمة (باقية للتوافق، ولم تعد مستعملة من الواجهة)
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/outreach');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const admin = await getAdmin();
   if (!admin) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 

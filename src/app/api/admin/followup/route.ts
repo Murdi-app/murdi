@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
 import { canonicalTitle, displayName } from '@/lib/serviceCatalog';
+import { PAID_STATUSES } from '@/lib/serviceStatus';
+import { isAwaiting, TRIAGE_KINDS } from '@/lib/replyStatus';
 
 // لوحة المتابعة — ما يراه من يلاحق مخاطبات الجهات.
 //
@@ -44,8 +46,8 @@ type Row = {
 };
 
 export async function GET() {
-  const { who, error } = await requireStaff();
-  if (!who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: 401 });
+  const { who, error, status: gate } = await requirePage('/admin/followup');
+  if (!who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: gate });
 
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
@@ -55,14 +57,16 @@ export async function GET() {
   try {
     // العملاء الذين دفعوا خدمةً مخرَجُها مخاطبة — وهم وحدهم من يُتابَع.
     // ومن لم يدفع لا يظهر: المتابعة عملٌ مدفوع، وعرضُه يُشتّت.
-    const { data: paid } = await admin
+    const { data: paid, error: paidErr } = await admin
       .from('service_requests')
       .select('company_id, service_title, status, updated_at')
       // ★ و`in_progress` منها: هي الحالة التي تعني «نعمل عليه الآن»، وكانت
       //   وحدها خارج القائمة — فالخدمة المدفوعة متى انتقلت إليها اختفى
       //   عميلها من لوحة المتابعة اختفاءً تامّاً. وقع فعلاً على صائب: دفع
       //   ٧٩٠٠ وقُيّدت ورُبطت، ثم غاب عن اللوحة فبدا أنه لم يدفع.
-      .in('status', ['paid', 'in_progress', 'delivered', 'in_follow_up', 'completed']);
+      .in('status', [...PAID_STATUSES]);
+    // فشل القراءة لا يُقرأ «لا عمل عندك اليوم» — وهو أخطر ما تقرؤه موظفة
+    if (paidErr) return NextResponse.json({ error: 'تعذّرت قراءة الملفّات المدفوعة — ' + paidErr.message }, { status: 500 });
 
     const svc = new Map<string, string>();
     for (const r of (paid || []) as { company_id: string; service_title: string | null }[]) {
@@ -76,11 +80,13 @@ export async function GET() {
     // ★ الموقوفة لا تظهر: الهمام موقوفة بأمر المالك، ومنشآت الاختبار ليست
     //   عملاء. وظهورهما على لوحة الموظفة يُغريها بالاتصال بمن نُهي عن
     //   مخاطبته، وبعملٍ على ملفٍ ليس ملفاً.
-    const { data: cos } = await admin
+    // والموقوفة بـ⛔ (تعريف `hot_list`) تُستثنى كذلك — كان التعريفان يفترقان
+    const { data: cos, error: coErr } = await admin
       .from('companies')
-      .select('id, company_name, city, sector, assigned_to')
+      .select('id, company_name, city, sector, assigned_to, admin_note')
       .in('id', ids)
       .eq('outreach_paused', false);
+    if (coErr) return NextResponse.json({ error: 'تعذّرت قراءة المنشآت — ' + coErr.message }, { status: 500 });
 
     // ★ المسوّدة ليست عملاً لها: رسالةٌ لم تُرسل لا تُتابَع ولا يُتصل بشأنها.
     //   وكانت تُعدّ صفّاً فتقول اللوحة «٧ جهات» لعميلٍ لم تخرج له رسالة
@@ -90,7 +96,7 @@ export async function GET() {
     //   مكالمةً، فـ`sent_at` فيها لا يُملأ أبداً — وكانت تسقط من اللوحة
     //   سقوطاً تامّاً. فوقع ما لا معنى له: ثمانية أبواب جُهّزت للاتصال ولم
     //   ترَ منها الموظفةُ باباً واحداً، وقيل لها «لوحتكِ فاضية» وهي مليئة.
-      const { data: msgs } = await admin
+      const { data: msgs, error: msgErr } = await admin
       .from('outreach_messages')
       .select('id, company_id, entity_name, entity_email, status, reply_received, reply_at, reply_status, sent_at, last_sent_at, last_call_at, contact_method, officer_name, officer_phone, officer_email, staff_note, office_hint, track')
       .in('company_id', ids)
@@ -107,11 +113,12 @@ export async function GET() {
     //   والحالتان تعنيان «أُغلق بقرار» — فلا عمل فيهما لأحد.
       .not('status', 'in', '("مستبعدة","موقوفة")')
       .order('sent_at', { ascending: false });
+    if (msgErr) return NextResponse.json({ error: 'تعذّرت قراءة المخاطبات — ' + msgErr.message }, { status: 500 });
 
-    // ★ المساعدة تساعد في المكالمات وحدها: ترى ما تأخّر يومين، ولا ترى نصّ
-    //   ردٍّ واصل. والردود تأتي من جهات تمويل وقد تحمل حديثاً عن عمولةٍ أو
-    //   شروطٍ مع المكتب — وهي ليست بابها. ومن رأى نصّاً قرأه.
-    const callsOnly = who.job === 'assistant' && who.role !== 'admin';
+    // ★ الموظفة لا ترى نصّ ردٍّ واصل: الردود تأتي من جهات تمويل وقد تحمل
+    //   حديثاً عن عمولةٍ أو شروطٍ مع المكتب. ومن رأى نصّاً قرأه. وتصنيف الردود
+    //   للمالك. (والشاشة بقسمة ٢٧ سبتمبر لرغد وحدها، والخادم يحرسها بـ`requirePage`.)
+    const callsOnly = who.role !== 'admin';
 
     const now = Date.now();
     const byCo = new Map<string, Row[]>();
@@ -123,7 +130,7 @@ export async function GET() {
 
     const counts = zero();
 
-    const clients = (cos || []).map((c: { id: string; company_name: string | null; city: string | null; sector: string | null }) => {
+    const clients = (cos || []).filter((c: { admin_note: string | null }) => !String(c.admin_note || '').startsWith('⛔')).map((c: { id: string; company_name: string | null; city: string | null; sector: string | null }) => {
       const rows = (byCo.get(c.id) || []).map((m: Row) => {
         const sentAt = Date.parse(String(m.last_sent_at || m.sent_at || '')) || 0;
         const hasReply = String(m.reply_received || '').trim() !== '' || m.reply_at !== null;
@@ -148,7 +155,7 @@ export async function GET() {
           && (lastTouch === 0 || now - lastTouch > STALE_MS);
 
         // ردٌّ وصل ولم يُصنَّف بعد — أول ما يُعمل في الصباح
-        const needsTriage = hasReply && String(m.reply_status || '').trim() === '';
+        const needsTriage = hasReply && isAwaiting(m.reply_status);
 
         // ★ «اتصلتُ بهم» (١٤ سبتمبر): من اتصلت به أمس كان يختفي من لوحتها
         //   تماماً — لأن المكالمة تُحدِّث آخر لمسة فيسقط شرطُ التأخّر، ولوحةُ
@@ -202,16 +209,17 @@ export async function GET() {
         rows: shown,
         urgent: shown.filter((r) => r.kind === 'reply' || r.kind === 'stale').length,
         // ملفٌ دفع صاحبه ولا مخاطبة له إطلاقاً — أخطر حالة في اللوحة.
-        // ولا تُعرض على المساعدة: ليست من عملها، وبلاغُها للمالك عمل المتابِعة.
-        untouched: !callsOnly && rows.length === 0,
+        // ★ وكانت تُحجب عن رغد بقسمةٍ قديمة كانت المتابعة فيها لغيرها؛ وهي
+        //   اليوم صاحبة ما بعد الدفع، فهذه أولُ ما يُعرض عليها.
+        untouched: rows.length === 0,
       };
     });
 
     // العميل الذي عليه عملٌ اليوم يتصدّر، ومن لا مخاطبة له يسبق الجميع
     clients.sort((a, b) => (Number(b.untouched) - Number(a.untouched)) || (b.urgent - a.urgent));
 
-    // والمساعدة لا تُعرض عليها إلا مَن لها عنده مكالمة
-    const shownClients = callsOnly ? clients.filter((c) => c.rows.length > 0) : clients;
+    // الموظفة ترى من لها عنده مكالمة، ومن دفع ولم يُخاطَب له أحد
+    const shownClients = callsOnly ? clients.filter((c) => c.rows.length > 0 || c.untouched) : clients;
     const shownCounts = callsOnly
       ? { ...zero(), stale: counts.stale, called: counts.called }
       : counts;
@@ -259,8 +267,8 @@ export function suggestFor(reply: string, officerName: string, officeNumber = '0
 // تسجيل ما انتزعته بالهاتف، أو تصنيف ردّ — ولا إرسال من هنا إطلاقاً.
 // كل ما يخرج إلى جهة تمويل يمرّ على المالك، وهذه اللوحة تسجّل ولا تُرسل.
 export async function PATCH(req: Request) {
-  const { who, error } = await requireStaff();
-  if (!who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: 401 });
+  const { who, error, status: gate } = await requirePage('/admin/followup');
+  if (!who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: gate });
 
   const b = await req.json().catch(() => ({}));
   const id = String(b?.id || '');
@@ -269,10 +277,10 @@ export async function PATCH(req: Request) {
   // ★ حدّ المساعدة مفروضٌ هنا لا في الشاشة: تسجّل ما انتزعته بالهاتف، ولا
   //   تلصق رداً ولا تصنّفه. فتصنيفُ الردّ حكمٌ على نصٍّ في صندوقٍ لا تقرؤه،
   //   ومن صنّف ما لم يقرأ أفسد الملف بحسن نية.
-  const callsOnly = who.job === 'assistant' && who.role !== 'admin';
+  const callsOnly = who.role !== 'admin';
   if (callsOnly && (b.reply_received !== undefined || b.reply_status !== undefined)) {
     return NextResponse.json(
-      { error: 'تسجيل الردود وتصنيفها من عمل المتابعة. سجّلي اسم المسؤول ورقمه وملاحظتك.' },
+      { error: 'تسجيل الردود وتصنيفها للمالك. سجّلي اسم المسؤول ورقمه وملاحظتك.' },
       { status: 403 }
     );
   }
@@ -302,7 +310,7 @@ export async function PATCH(req: Request) {
   }
 
   // تصنيف الرد — أربع خانات لا خامس لها، ويُرفض ما سواها صراحةً
-  const KINDS = ['docs', 'call', 'deflect', 'declined'] as const;
+  const KINDS = TRIAGE_KINDS;
   if (b.reply_status !== undefined) {
     const k = KINDS.find((x: (typeof KINDS)[number]) => x === String(b.reply_status));
     if (!k && String(b.reply_status) !== '') {

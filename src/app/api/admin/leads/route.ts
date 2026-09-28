@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { buildLeads, leadStats, type RawLead } from '@/lib/leadDesk';
 import { OUTCOMES, isOutcome } from '@/lib/outcomes';
 
@@ -12,8 +12,8 @@ const admin = () => createClient(
 // جدول mini_assessments لم تكن تقرؤه أي صفحة في المنصة: أسماء وهواتف تتراكم منذ يونيو
 // بلا شاشة واحدة تعرضها. هذا المسار هو أول من يفتحه.
 export async function GET() {
-  const { error: denied } = await requireStaff();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const { error: denied, status: gate } = await requirePage('/admin/leads');
+  if (denied) return NextResponse.json({ error: denied }, { status: gate });
   const a = admin();
 
   const { data: rows, error } = await a.from('mini_assessments')
@@ -25,8 +25,19 @@ export async function GET() {
   // ★ كان هذا المسار يقرأ التقييم السريع وحده، فغاب عن الشاشة من سجّل في
   //   المنصة مباشرةً بلا تقييم — وهم أثقل الأسماء وزناً (أربعون سنة تشغيل،
   //   عشرون مليوناً إيراداً). فصار المصدران في تبويبٍ واحد: من قاس ومن سجّل.
-  const { data: cos } = await a.from('companies')
-    .select('id, company_name, owner_name, phone, sector, city, created_at, contacted, contacted_at, outcome, contact_note, next_action_at, file_status');
+  const { data: cos, error: coErr } = await a.from('companies')
+    .select('id, company_name, owner_name, phone, sector, city, created_at, contacted, contacted_at, outcome, contact_note, next_action_at, file_status, admin_note');
+  // فشل القراءة لا يُقرأ «لا مكالمات اليوم»
+  if (coErr) return NextResponse.json({ error: 'تعذّرت قراءة المنشآت — ' + coErr.message }, { status: 500 });
+  // ★ «مكالمات اليوم» صفُّ ما قبل الدفع: من دفع أو حوّل خرج منه إلى رغد،
+  //   والموقوف بأمر المالك (⛔) لا يُتّصل به. وكانا يظهران هنا «سجّل ولم
+  //   يُكمل بياناته» فتتصل ضي بعميلٍ دفع. والتعريفان نفساهما في `hot_list`.
+  const { data: paidRows, error: paidErr } = await a.from('payments')
+    .select('company_id').in('status', ['paid', 'awaiting_confirmation']);
+  if (paidErr) return NextResponse.json({ error: 'تعذّرت قراءة المدفوعات — ' + paidErr.message }, { status: 500 });
+  const paidCo = new Set((paidRows || []).map((p) => String(p.company_id)));
+  const inLane = (c: Record<string, unknown>) =>
+    !paidCo.has(String(c.id)) && !String(c.admin_note || '').startsWith('⛔');
   const phones = (cos || []).map(c => String(c.phone || '')).filter(Boolean);
 
   const leads = buildLeads((rows || []) as unknown as RawLead[], phones);
@@ -40,9 +51,10 @@ export async function GET() {
   }));
 
   // المسجّلون: صفٌّ بنفس شكل صف التقييم ليقرأهما الجدول بلا تفريع
-  const { data: fin } = await a.from('financial_data')
+  const { data: fin, error: finErr } = await a.from('financial_data')
     .select('company_id, requested_amount, annual_revenue, years_operating, created_at')
     .order('created_at', { ascending: false });
+  if (finErr) return NextResponse.json({ error: 'تعذّرت قراءة البيانات المالية — ' + finErr.message }, { status: 500 });
   const finBy = new Map<string, Record<string, unknown>>();
   for (const f of (fin || [])) {
     const k = String((f as Record<string, unknown>).company_id || '');
@@ -52,7 +64,7 @@ export async function GET() {
   const num = (v: unknown) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0; };
   const sar = (n: number) => n.toLocaleString('en-US');
 
-  const regLeads = (cos || []).map((c) => {
+  const regLeads = (cos || []).filter((c) => inLane(c as Record<string, unknown>)).map((c) => {
     const r = c as Record<string, unknown>;
     const f = finBy.get(String(r.id)) || {};
     const ask = num(f.requested_amount);
@@ -121,8 +133,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/leads');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id || '');
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
@@ -162,9 +174,10 @@ export async function PATCH(req: Request) {
   //   «ينتظر اتصالاً اليوم» — فتتصل به ثانيةً في اليوم نفسه.
   //   والعكس كان مضبوطاً أصلاً: شاشتا الوارد والفرص تكتبان في الموضعين.
   //   وفشلُ السجلّ لا يُسقط التسجيل — الصفُّ قد كُتب وهو الأصل.
+  let warn: string | null = null;
   if (patch.contacted === true || patch.outcome) {
     const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
-    await sb.from('hot_touches').insert({
+    const { error: tErr } = await sb.from('hot_touches').insert({
       source: isCo ? 'signup' : 'assessment',
       ref_id: rowId,
       outcome: (patch.outcome as string) || null,
@@ -172,8 +185,11 @@ export async function PATCH(req: Request) {
       next_action_at: (patch.next_action_at as string) || null,
       actor: who.userId,
       actor_name: who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق'),
-    }).then(() => null, () => null);
+    });
+    // ★ كان الفشل يُبتلع: فيبقى الاسم «ينتظر اتصالاً اليوم» في الفرص الساخنة
+    //   ويُتّصل به مرتين. والتسجيل الأصلي كُتب، فلا يُردّ خطأً — يُقال تحذيراً.
+    if (tErr) warn = 'سُجّلت المكالمة، لكن لم تُسجَّل في «الفرص الساخنة» — قد يظهر الاسم هناك مرة أخرى.';
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, warn });
 }

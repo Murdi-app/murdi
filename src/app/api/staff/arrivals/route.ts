@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { OUTCOMES, isOutcome } from '@/lib/outcomes';
 import { waLink, prettyPhone } from '@/lib/phone';
+import { hideMoney } from '@/lib/staffRedact';
 
 // «الوارد» — كل من دخل المنصة، لمن يتصل به.
 //
@@ -49,8 +50,8 @@ const MARKABLE: Record<string, { table: string; hot: string } | undefined> = {
 };
 
 export async function GET(req: Request) {
-  const { who, error } = await requireStaff();
-  if (error || !who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: 401 });
+  const { who, error, status: gate } = await requirePage('/admin/arrivals');
+  if (error || !who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: gate });
 
   const url = new URL(req.url);
   const tab = url.searchParams.get('tab') || 'open';
@@ -79,8 +80,32 @@ export async function GET(req: Request) {
     return /اختبار|يُحذف|test/i.test(n) || STAFF_PHONES.some((s) => p.endsWith(s.slice(-9)));
   };
 
-  const rows = all.filter((a) => !isTest(a)).map((a) => ({
+  // ★ صفُّ ضي ما قبل الدفع. فالمنشأة التي دفعت أو حوّلت خرجت منه إلى رغد،
+  //   والموقوفة بأمر المالك (⛔) لا يُتّصل بها — وكانتا تظهران هنا للاتصال:
+  //   تتصل ضي بعميلٍ دفع فتسأله «ما الذي أوقفك؟». والتعريفان نفساهما في
+  //   `hot_list` — فلا تقرأ الشاشتان المنشأةَ قراءتين.
+  const coIds = Array.from(new Set(all.map((a) => a.company_id).filter(Boolean))) as string[];
+  const [paidQ, frozenQ] = coIds.length
+    ? await Promise.all([
+        sb.from('payments').select('company_id').in('company_id', coIds).in('status', ['paid', 'awaiting_confirmation']),
+        sb.from('companies').select('id').in('id', coIds).like('admin_note', '⛔%'),
+      ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  if (paidQ.error || frozenQ.error) {
+    return NextResponse.json({ error: 'تعذّرت قراءة حالة المنشآت — ' + (paidQ.error || frozenQ.error)?.message }, { status: 500 });
+  }
+  const paidCo = new Set((paidQ.data || []).map((r: { company_id: string }) => String(r.company_id)));
+  const frozenCo = new Set((frozenQ.data || []).map((r: { id: string }) => String(r.id)));
+  // التحويل المنتظر يبقى ظاهراً لضي — تأكيده من عملها في المكتب
+  const outOfLane = (a: Arrival) => !!a.company_id && (frozenCo.has(String(a.company_id))
+    || (paidCo.has(String(a.company_id)) && a.source !== 'payment'));
+
+  const isStaff = who.role !== 'admin';
+  const rows = all.filter((a) => !isTest(a) && !outOfLane(a)).map((a) => ({
     ...a,
+    // ما دفعه العميل وسعر الخدمة لا يُكتبان للموظفة (قاعدة المالك). وكان
+    // المنظر يبني «7900 ريال · مؤكَّد» و«مسعَّر بـ990 ريال» فيخرجان كما هما.
+    detail: isStaff ? hideMoney(String(a.detail || ''), String(a.kind_label || '')) : a.detail,
     marketing_source: a.source === 'inquiry' ? inquirySources.get(a.ref_id) || null : null,
     phone_pretty: a.phone ? prettyPhone(a.phone) : '',
     wa: a.phone ? waLink(a.phone) : null,
@@ -116,8 +141,8 @@ export async function GET(req: Request) {
 // فلا يظهر الاسم غداً في شاشةٍ أخرى وقد كُلِّم اليوم.
 
 export async function POST(req: Request) {
-  const { who, error } = await requireStaff();
-  if (error || !who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: 401 });
+  const { who, error, status: gate } = await requirePage('/admin/arrivals');
+  if (error || !who) return NextResponse.json({ error: error || 'غير مصرح' }, { status: gate });
 
   const b = await req.json().catch(() => ({}));
   const source = String(b?.source || '');
@@ -150,7 +175,7 @@ export async function POST(req: Request) {
   // سجلّ اللمسات مشتركٌ مع «الفرص الساخنة» — فالتسجيل هنا يُسقطها هناك.
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
   // وفشلُ السجلّ لا يُسقط التسجيل نفسه — الصفّ قد كُتب، وهو الأصل.
-  await sb.from('hot_touches').insert({
+  const { error: tErr } = await sb.from('hot_touches').insert({
     source: target.hot,
     ref_id: refId,
     outcome,
@@ -158,6 +183,8 @@ export async function POST(req: Request) {
     actor: who.userId,
     actor_name: me?.name || (who.role === 'admin' ? 'د. عبدالحكيم المرضي' : who.email),
   });
+  // الصفّ الأصلي كُتب؛ وفشل السجلّ يُقال ولا يُبتلع — وإلا اتُّصل بالاسم مرتين
+  const warn = tErr ? 'سُجّلت المكالمة، لكن لم تُسجَّل في «الفرص الساخنة» — قد يظهر الاسم هناك مرة أخرى.' : null;
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, warn });
 }

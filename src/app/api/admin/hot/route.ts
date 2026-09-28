@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireStaff } from '@/lib/requireStaff';
+import { requirePage } from '@/lib/requireStaff';
 import { OUTCOMES, isOutcome, closesOpportunity } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
@@ -31,16 +31,21 @@ type Touch = {
 };
 
 export async function GET() {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/hot');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const sb = admin();
-  const [list, touches] = await Promise.all([
-    sb.from('hot_list').select('*').order('tier').order('at', { ascending: false }).limit(400),
-    sb.from('hot_touches').select('*').order('created_at', { ascending: false }).limit(1000),
-  ]);
-
+  const list = await sb.from('hot_list').select('*').order('tier').order('at', { ascending: false }).limit(400);
+  if (list.error) return NextResponse.json({ error: 'تعذّرت قراءة القائمة — ' + list.error.message }, { status: 500 });
   const rows = (list.data || []) as Row[];
+
+  // ★ اللمسات تُقرأ لصفوف القائمة نفسها لا «آخر ألف في المنصة»: بعد الألف
+  //   كانت الفرصة المغلقة («غير مهتم») تفقد لمستها فتعود «لم تُلمس بعد».
+  const refs = Array.from(new Set(rows.map((r) => r.ref_id)));
+  const touches = refs.length
+    ? await sb.from('hot_touches').select('*').in('ref_id', refs).order('created_at', { ascending: false })
+    : { data: [], error: null };
+  if (touches.error) return NextResponse.json({ error: 'تعذّرت قراءة سجلّ المكالمات — ' + touches.error.message }, { status: 500 });
   const all = (touches.data || []) as Touch[];
 
   // آخر لمسة لكل فرصة — ما يقرّر هل تُعرض اليوم أم تنتظر موعدها
@@ -93,8 +98,8 @@ export async function GET() {
 // الشاشة والتي يقبلها قيد القاعدة، فلا تفترق ثلاثتها كما افترقت.
 
 export async function POST(req: Request) {
-  const { who, error: denied } = await requireStaff();
-  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: 401 });
+  const { who, error: denied, status: gate } = await requirePage('/admin/hot');
+  if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const b = await req.json().catch(() => ({}));
   const source = String(b?.source || '');

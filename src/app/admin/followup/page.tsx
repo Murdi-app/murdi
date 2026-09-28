@@ -187,7 +187,7 @@ export default function FollowupPage() {
           <Stat n={counts.stale} t="تحتاج اتصال" bg="#FBEEEC" fg="#B4453C" />
           {callsOnly && <Stat n={counts.called} t="اتصلتِ بهم" bg="#EDF3FB" fg="#31557F" />}
           {!callsOnly && <Stat n={counts.reply} t="ردود تنتظر تصنيفك" bg="#EAF7F0" fg="#1A6B52" />}
-          {!callsOnly && <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />}
+          <Stat n={untouched} t="دفعوا وما خوطبوا" bg="#FBF7EC" fg="#8A6D1F" />
           {!callsOnly && <Stat n={counts.waiting} t="بانتظار الرد" bg="#F2F5F4" fg="#7E938C" />}
         </div>
 
@@ -373,7 +373,7 @@ export default function FollowupPage() {
         <div style={{ background: '#FBEEEC', border: '1.5px solid #F0D6D2', borderRadius: 12, padding: 14, marginTop: 20, fontSize: 12.5, color: '#8A3B33', fontWeight: 700, lineHeight: 1.9 }}>
           <strong>تذكير:</strong> ما نرسل أي شي لجهة تمويل من هنا — كل شي يطلع للجهات يمرّ على الدكتور عبدالحكيم.
           والرقم اللي يُعطى للجهات هو <strong>{OFFICE}</strong> — ورقم العميل ما يطلع أبداً.
-          {callsOnly && <><br /><strong>وتسجيل الردود وتصنيفها من عمل ضي</strong> — أنتِ تتصلين وتسجّلين الاسم والرقم.</>}
+          {callsOnly && <><br /><strong>وتسجيل الردود وتصنيفها للمالك</strong> — أنتِ تتصلين وتسجّلين الاسم والرقم.</>}
         </div>
 
       </div>
