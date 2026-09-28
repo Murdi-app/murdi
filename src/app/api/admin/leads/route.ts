@@ -25,8 +25,9 @@ export async function GET() {
   // ★ كان هذا المسار يقرأ التقييم السريع وحده، فغاب عن الشاشة من سجّل في
   //   المنصة مباشرةً بلا تقييم — وهم أثقل الأسماء وزناً (أربعون سنة تشغيل،
   //   عشرون مليوناً إيراداً). فصار المصدران في تبويبٍ واحد: من قاس ومن سجّل.
-  const { data: cos } = await a.from('companies')
+  const { data: cos, error: companiesError } = await a.from('companies')
     .select('id, company_name, owner_name, phone, sector, city, created_at, contacted, contacted_at, outcome, contact_note, next_action_at, file_status');
+  if (companiesError) return NextResponse.json({ error: companiesError.message }, { status: 500 });
   const phones = (cos || []).map(c => String(c.phone || '')).filter(Boolean);
 
   const leads = buildLeads((rows || []) as unknown as RawLead[], phones);
@@ -40,9 +41,10 @@ export async function GET() {
   }));
 
   // المسجّلون: صفٌّ بنفس شكل صف التقييم ليقرأهما الجدول بلا تفريع
-  const { data: fin } = await a.from('financial_data')
+  const { data: fin, error: financialError } = await a.from('financial_data')
     .select('company_id, requested_amount, annual_revenue, years_operating, created_at')
     .order('created_at', { ascending: false });
+  if (financialError) return NextResponse.json({ error: financialError.message }, { status: 500 });
   const finBy = new Map<string, Record<string, unknown>>();
   for (const f of (fin || [])) {
     const k = String((f as Record<string, unknown>).company_id || '');
@@ -65,9 +67,8 @@ export async function GET() {
     if (ask) bits.push('يطلب ' + sar(ask));
     // الطلب الذي يتجاوز الإيراد أضعافاً غالبه خطأ إدخال، ويُقال صراحةً
     const odd = ask > 0 && rev > 0 && ask > rev * 3;
-    // ★ حدٌّ عملي قرّره المالك: دون ثلاثة ملايين إيراداً سنوياً لا تفتح
-    //   جهاتُ التمويل ملفاً جادّاً، فالمكالمة تُوجَّه إلى رفع الجاهزية لا
-    //   إلى التقديم — وتوفيرُ هذه المكالمة على المساعِدة أنفع من إجرائها.
+    // انخفاض الإيراد علامة تستدعي التحقق من شروط المنتج والجهة، لا حكماً
+    // مسبقاً باستحالة التمويل لجميع المنشآت.
     const THIN_REVENUE = 3_000_000;
     const thin = rev > 0 && rev < THIN_REVENUE;
     const phone = String(r.phone || '');
@@ -90,7 +91,7 @@ export async function GET() {
       headline: odd
         ? 'سجّل ويطلب ' + sar(ask) + ' وإيراده ' + sar(rev) + ' — تحقّقي من الرقم قبل أي شيء، فالغالب خطأ إدخال'
         : thin
-          ? (bits.join(' · ') || nm) + ' — الإيراد دون ثلاثة ملايين، والجهات لا تفتح به ملفاً جادّاً. المكالمة لرفع الجاهزية لا للتقديم'
+          ? (bits.join(' · ') || nm) + ' — الإيراد دون ثلاثة ملايين؛ تحقّقي من ملاءمة شروط الجهات قبل التقديم'
           : (bits.length ? nm + ' — ' + bits.join(' · ') : nm + ' — سجّل ولم يُكمل بياناته'),
       opener: 'السلام عليكم' + (r.owner_name ? ' أستاذ ' + String(r.owner_name).split(' ')[0] : '')
         + '، معك ضي من مُرضي للاستشارات المالية. وصلنا تسجيلكم لـ' + nm
@@ -126,6 +127,8 @@ export async function PATCH(req: Request) {
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id || '');
   if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+  // سجل اللمسات مشترك بين الشاشات؛ التراجع عن الاتصال هنا وحده يخلق حالتين متعارضتين.
+  if (body.contacted === false) return NextResponse.json({ error: 'سُجّل التواصل في سجل المتابعة؛ يمكن تعديل النتيجة بدلاً من إلغائه' }, { status: 400 });
 
   const patch: Record<string, unknown> = {};
   if (body.contacted !== undefined) {
@@ -138,7 +141,8 @@ export async function PATCH(req: Request) {
     if (o && !isOutcome(o)) {
       return NextResponse.json({ error: 'نتيجة غير معروفة: ' + o + ' — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
     }
-    patch.outcome = o || null;
+    if (!o) return NextResponse.json({ error: 'اختاري نتيجة للمكالمة؛ يمكن تعديل النتيجة المسجلة' }, { status: 400 });
+    patch.outcome = o;
     if (o) { patch.contacted = true; patch.contacted_at = patch.contacted_at || new Date().toISOString(); }
   }
   if (body.contact_note !== undefined) patch.contact_note = String(body.contact_note || '').slice(0, 2000) || null;
