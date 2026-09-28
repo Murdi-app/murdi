@@ -4,6 +4,7 @@ import { CATALOG, canonicalTitle, needsDiagnosis, displayName } from '@/lib/serv
 import { waNumber, prettyPhone } from '@/lib/phone';
 import { notifyTeam } from '@/lib/notifyLead';
 import { sourceFromRequest } from '@/lib/attribution';
+import { linkInquiryToAward } from '@/lib/awards';
 
 // طلب خدمة من الواجهة العامة — بلا حساب.
 //
@@ -70,7 +71,8 @@ export async function POST(req: Request) {
     .limit(1);
   if (dup && dup.length > 0) return NextResponse.json({ ok: true, already: true });
 
-  const { error } = await sb.from('service_inquiries').insert({
+  const srcFinal = cut(b?.src, 40) || sourceFromRequest(req) || 'services';
+  const { data: inq, error } = await sb.from('service_inquiries').insert({
     service_title: title,
     full_name: name,
     phone,
@@ -78,9 +80,14 @@ export async function POST(req: Request) {
     company_name: company || null,
     note: note || null,
     // من النموذج، وإلا من كوكي أول لمسة، وإلا «services»
-    src: cut(b?.src, 40) || sourceFromRequest(req) || 'services',
-  });
-  if (error) return NextResponse.json({ error: 'تعذّر حفظ طلبك — حاول مرة أخرى' }, { status: 500 });
+    src: srcFinal,
+  }).select('id').single();
+  if (error || !inq) return NextResponse.json({ error: 'تعذّر حفظ طلبك — حاول مرة أخرى' }, { status: 500 });
+
+  // جاء من رابط ترسية (`award-xxxxxxxx`)؟ يُربط بها وتصير «ردّ» — ولا يُسقط الطلبَ فشلُه
+  if (srcFinal.startsWith('award-')) {
+    await linkInquiryToAward(sb, srcFinal, String(inq.id)).catch(() => null);
+  }
 
   // الإشعار لا يُسقط الطلب إن فشل — العميل سجّل، وهذا هو المهم.
   //

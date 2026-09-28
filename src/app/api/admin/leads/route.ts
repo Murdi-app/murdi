@@ -116,7 +116,49 @@ export async function GET() {
     };
   });
 
+  // ★ التذكير الواحد للترسيات (بند المالك ٢٨ سبتمبر): ترسيةٌ أُرسلت لها
+  //   الرسالة ومضى عليها `reminder_after_days` بلا رد — مكالمةٌ واحدة من ضي.
+  //   يُعرض لها اسم الشركة وصاحب القرار والهاتف فقط: لا نصّ الرسالة ولا الحدود.
+  //   وبعد تسجيل النتيجة تصير «مكالمة التذكير» ولا تعود إلى هذا الصف أبداً.
+  const { data: rs } = await a.from('award_settings').select('value').eq('key', 'reminder_after_days').maybeSingle();
+  const remindDays = Number(rs?.value);
+  let awardLeads: typeof regLeads = [];
+  if (Number.isFinite(remindDays) && remindDays > 0) {
+    const cutoff = new Date(Date.now() - remindDays * 86400_000).toISOString();
+    const { data: aw, error: awErr } = await a.from('contract_awards')
+      .select('id, company_name, decision_maker_name, decision_maker_role, contact_phone, messaged_at')
+      .eq('status', 'messaged').lte('messaged_at', cutoff);
+    if (awErr) return NextResponse.json({ error: 'تعذّرت قراءة الترسيات — ' + awErr.message }, { status: 500 });
+    awardLeads = (aw || []).map((w) => {
+      const phone = String(w.contact_phone || '');
+      const wa = phone.replace(/\D/g, '').replace(/^0/, '966');
+      const who = [w.decision_maker_name, w.decision_maker_role].filter(Boolean).join(' — ');
+      return {
+        id: 'aw:' + String(w.id),
+        kind: 'ترسية' as unknown as 'تسجيل',
+        created_at: String(w.messaged_at || ''),
+        full_name: String(w.decision_maker_name || ''),
+        company_name: String(w.company_name || 'منشأة'),
+        phone,
+        track: 'تمويل',
+        score: null as number | null,
+        completed: true,
+        contacted: false,
+        days: Math.max(0, Math.floor((Date.now() - Date.parse(String(w.messaged_at || ''))) / 86400000)),
+        band: 'ready' as 'ready' | 'gap' | 'weak' | 'unknown',
+        temp: 'hot' as const,
+        registered: false,
+        headline: String(w.company_name || 'منشأة') + (who ? ' — ' + who : '') + ' — مكالمة التذكير الوحيدة',
+        opener: 'السلام عليكم' + (w.decision_maker_name ? ' أستاذ ' + String(w.decision_maker_name).split(' ')[0] : '')
+          + '، معك ضي من مكتب د. عبدالحكيم المرضي. أتأكد أن رسالتنا وصلتكم قبل أيام.',
+        waLink: wa ? 'https://wa.me/' + wa : '',
+        contacted_at: null, outcome: null, contact_note: null, next_action_at: null,
+      };
+    }) as unknown as typeof regLeads;
+  }
+
   const all = [
+    ...awardLeads,
     ...regLeads,
     ...merged.map(m => ({ ...m, kind: 'تقييم' as const, company_name: null as string | null })),
   ].sort((x, y) => {
@@ -157,6 +199,31 @@ export async function PATCH(req: Request) {
   if (body.contact_note !== undefined) patch.contact_note = String(body.contact_note || '').slice(0, 2000) || null;
   if (body.next_action_at !== undefined) patch.next_action_at = body.next_action_at || null;
   if (!Object.keys(patch).length) return NextResponse.json({ error: 'لا تغيير' }, { status: 400 });
+
+  // صفّ الترسية (`aw:`): النتيجة تُكتب لمسةً في `hot_touches`، وتصير الترسية
+  // «مكالمة التذكير» — مرةً واحدة ولا تعود. و«اتصلتُ» وحدها لا تُتمّ الصف.
+  if (id.startsWith('aw:')) {
+    const awardId = id.slice(3);
+    const o = String(body.outcome || '');
+    if (!o) return NextResponse.json({ ok: true, pending: 'سجّلي نتيجة المكالمة لتُغلق' });
+    const sbA = admin();
+    const { data: me } = await sbA.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
+    const { error: tErr } = await sbA.from('hot_touches').insert({
+      source: 'award', ref_id: awardId, outcome: o,
+      note: (patch.contact_note as string) || null,
+      next_action_at: (patch.next_action_at as string) || null,
+      actor: who.userId,
+      actor_name: who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق'),
+    });
+    if (tErr) return NextResponse.json({ error: 'لم تُسجَّل المكالمة — ' + tErr.message }, { status: 500 });
+    const now = new Date().toISOString();
+    const { data: moved, error: mErr } = await sbA.from('contract_awards')
+      .update({ status: 'reminder_call', reminder_at: now, updated_at: now })
+      .eq('id', awardId).eq('status', 'messaged').select('id');
+    if (mErr) return NextResponse.json({ error: 'سُجّلت المكالمة ولم تُغلق الترسية — ' + mErr.message }, { status: 500 });
+    if (!moved?.length) return NextResponse.json({ ok: true, warn: 'سُجّلت المكالمة — وكانت حالة الترسية قد تغيّرت قبلها' });
+    return NextResponse.json({ ok: true });
+  }
 
   // صفوف المسجّلين تحمل بادئة co: وتُكتب في جدول الشركات لا في التقييم السريع
   const isCo = id.startsWith('co:');

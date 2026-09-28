@@ -14,7 +14,7 @@ type Lead = {
   days: number; band: Band; temp: Temp; registered: boolean;
   headline: string; opener: string; waLink: string;
   contacted_at: string | null; outcome: string | null; contact_note: string | null; next_action_at: string | null;
-  kind?: 'تقييم' | 'تسجيل'; company_name?: string | null;
+  kind?: 'تقييم' | 'تسجيل' | 'ترسية'; company_name?: string | null;
 };
 type Stats = { total: number; contacted: number; registered: number; open: number; ready: number; gap: number; weak: number; unknown: number; today: number };
 
@@ -171,7 +171,9 @@ export default function LeadsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ color: '#1A3D34', fontSize: 16.5, fontWeight: 900 }}>{l.company_name || l.full_name || 'بلا اسم'}</span>
                     {l.company_name && l.full_name && <span style={{ color: '#6B8A80', fontSize: 12.5, fontWeight: 700 }}>— {l.full_name}</span>}
-                    {l.kind === 'تسجيل'
+                    {l.kind === 'ترسية'
+                      ? <span style={{ background: '#FBF5E8', color: '#8A6D1F', border: '1px solid #EAD9A8', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>تذكير ترسية</span>
+                      : l.kind === 'تسجيل'
                       ? <span style={{ background: '#EEF3FF', color: '#3A5AA8', border: '1px solid #D6E0F7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>سجّل في المنصة</span>
                       : <span style={{ background: '#F4F6F5', color: '#6B8A80', border: '1px solid #E3EAE7', borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>تقييم سريع</span>}
                     <span style={{ background: tone.bg, color: tone.fg, border: '1px solid ' + tone.br, borderRadius: 20, padding: '3px 11px', fontSize: 11.5, fontWeight: 900 }}>{BAND_LABEL[l.band]}</span>

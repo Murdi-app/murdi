@@ -1,0 +1,144 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/requireAdmin';
+import { loadConfig, compose, TRANSITIONS, STAMP, isAddressed, awardSrc, type Award } from '@/lib/awards';
+
+// الترسيات — للمالك وحده. الجداول بلا منحٍ للمتصفح، فكل قراءةٍ وكتابةٍ من
+// هنا بمفتاح الخدمة بعد `requireAdmin`. والرسالة تُركَّب هنا من القوالب
+// والإعدادات في القاعدة — لا نصّ في الكود (المستودع عام).
+
+export const dynamic = 'force-dynamic';
+
+const admin = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE_KEY as string
+);
+const cut = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
+const CATEGORIES = ['construction', 'om_services', 'supply_it', 'consulting', 'transport', 'other'];
+const CHANNELS = ['email', 'whatsapp', 'linkedin', 'call'];
+
+export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const sb = admin();
+  try {
+    const [{ data, error }, cfg] = await Promise.all([
+      sb.from('contract_awards').select('*').order('created_at', { ascending: false }).limit(1000),
+      loadConfig(sb),
+    ]);
+    if (error) return NextResponse.json({ error: 'تعذّرت قراءة الترسيات — ' + error.message }, { status: 500 });
+    const awards = ((data || []) as Award[]).map((a) => {
+      const addressed = isAddressed(a.category);
+      const c = addressed ? compose(a, cfg.templates, cfg.settings) : null;
+      return {
+        ...a,
+        addressed,
+        src: awardSrc(a.id),
+        next: TRANSITIONS[a.status] || [],
+        message: c && c.template ? { subject: c.subject, body: c.body, stage: c.stage, link: c.link } : null,
+        stage: c?.stage || null,
+      };
+    });
+    return NextResponse.json({ ok: true, awards, templates: cfg.templates, settings: cfg.settings });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّرت القراءة' }, { status: 500 });
+  }
+}
+
+// إضافة ترسية يدوياً
+export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const b = await req.json().catch(() => ({} as Record<string, unknown>));
+  const company = cut(b.company_name, 200);
+  if (!company) return NextResponse.json({ error: 'اسم الشركة مطلوب' }, { status: 400 });
+  const category = CATEGORIES.includes(String(b.category)) ? String(b.category) : 'other';
+  const value = b.contract_value === '' || b.contract_value == null ? null : Number(String(b.contract_value).replace(/[,٬\s]/g, ''));
+  if (value !== null && !Number.isFinite(value)) return NextResponse.json({ error: 'قيمة العقد غير صحيحة' }, { status: 400 });
+  const awardedAt = cut(b.awarded_at, 10);
+  if (awardedAt && !/^\d{4}-\d{2}-\d{2}$/.test(awardedAt)) return NextResponse.json({ error: 'تاريخ الترسية بصيغة YYYY-MM-DD' }, { status: 400 });
+  const channel = CHANNELS.includes(String(b.contact_channel)) ? String(b.contact_channel) : null;
+  const { data, error } = await admin().from('contract_awards').insert({
+    source: 'manual',
+    company_name: company,
+    cr_number: cut(b.cr_number, 20) || null,
+    tender_title: cut(b.tender_title, 400) || null,
+    buyer_entity: cut(b.buyer_entity, 200) || null,
+    category,
+    contract_value: value,
+    awarded_at: awardedAt || null,
+    decision_maker_name: cut(b.decision_maker_name, 120) || null,
+    decision_maker_role: cut(b.decision_maker_role, 120) || null,
+    contact_email: cut(b.contact_email, 160) || null,
+    contact_phone: cut(b.contact_phone, 40) || null,
+    contact_channel: channel,
+    notes: cut(b.notes, 2000) || null,
+  }).select('id').single();
+  if (error) {
+    const dup = /duplicate|unique/i.test(error.message);
+    return NextResponse.json({ error: dup ? 'هذه الترسية مسجّلة من قبل (الشركة والمنافسة نفسهما)' : 'تعذّر الحفظ — ' + error.message }, { status: dup ? 409 : 500 });
+  }
+  return NextResponse.json({ ok: true, id: data.id });
+}
+
+// انتقال حالة { id, to } — أو تعديل حقول { id, fields }
+export async function PATCH(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  const b = await req.json().catch(() => ({} as Record<string, unknown>));
+  const id = cut(b.id, 40);
+  if (!id) return NextResponse.json({ error: 'id مطلوب' }, { status: 400 });
+  const sb = admin();
+  const { data: cur, error: rErr } = await sb.from('contract_awards').select('id, status, category').eq('id', id).maybeSingle();
+  if (rErr) return NextResponse.json({ error: 'تعذّرت القراءة — ' + rErr.message }, { status: 500 });
+  if (!cur) return NextResponse.json({ error: 'غير موجودة' }, { status: 404 });
+  const now = new Date().toISOString();
+
+  if (b.to !== undefined) {
+    const to = String(b.to);
+    const allowed = TRANSITIONS[String(cur.status)] || [];
+    if (!allowed.includes(to)) {
+      return NextResponse.json({ error: 'لا يُنتقل من «' + cur.status + '» إلى «' + to + '»' }, { status: 409 });
+    }
+    // لا تُرسل رسالة لفئةٍ لا تُخاطَب
+    if (to === 'messaged' && !isAddressed(String(cur.category))) {
+      return NextResponse.json({ error: 'هذه الفئة لا تُخاطَب' }, { status: 409 });
+    }
+    const patch: Record<string, unknown> = { status: to, updated_at: now };
+    const col = STAMP[to];
+    if (col) patch[col] = now;
+    // مشروطٌ بالحالة المقروءة: ضغطتان لا تنقلان مرتين، ولا يُداس انتقالٌ سبق
+    const { data: done, error } = await sb.from('contract_awards').update(patch)
+      .eq('id', id).eq('status', cur.status).select('id, status');
+    if (error) return NextResponse.json({ error: 'لم يُحفظ الانتقال — ' + error.message }, { status: 500 });
+    if (!done?.length) return NextResponse.json({ error: 'تغيّرت حالتها للتوّ — أعد التحميل' }, { status: 409 });
+    return NextResponse.json({ ok: true, status: to });
+  }
+
+  // تعديل حقول
+  const f = (b.fields && typeof b.fields === 'object') ? b.fields as Record<string, unknown> : {};
+  const patch: Record<string, unknown> = { updated_at: now };
+  const text: Array<[string, number]> = [['company_name', 200], ['cr_number', 20], ['tender_title', 400], ['buyer_entity', 200],
+    ['decision_maker_name', 120], ['decision_maker_role', 120], ['contact_email', 160], ['contact_phone', 40], ['notes', 4000]];
+  for (const [k, n] of text) if (f[k] !== undefined) patch[k] = cut(f[k], n) || null;
+  if (f.category !== undefined) {
+    if (!CATEGORIES.includes(String(f.category))) return NextResponse.json({ error: 'فئة غير معروفة' }, { status: 400 });
+    patch.category = String(f.category);
+  }
+  if (f.contact_channel !== undefined) patch.contact_channel = CHANNELS.includes(String(f.contact_channel)) ? String(f.contact_channel) : null;
+  if (f.contract_value !== undefined) {
+    const v = f.contract_value === '' || f.contract_value == null ? null : Number(String(f.contract_value).replace(/[,٬\s]/g, ''));
+    if (v !== null && !Number.isFinite(v)) return NextResponse.json({ error: 'قيمة العقد غير صحيحة' }, { status: 400 });
+    patch.contract_value = v;
+  }
+  if (f.awarded_at !== undefined) {
+    const d = cut(f.awarded_at, 10);
+    if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return NextResponse.json({ error: 'تاريخ الترسية بصيغة YYYY-MM-DD' }, { status: 400 });
+    patch.awarded_at = d || null;
+  }
+  if (patch.company_name === null) return NextResponse.json({ error: 'اسم الشركة لا يُفرَّغ' }, { status: 400 });
+  const { data: done, error } = await sb.from('contract_awards').update(patch).eq('id', id).select('id');
+  if (error) return NextResponse.json({ error: 'لم يُحفظ — ' + error.message }, { status: 500 });
+  if (!done?.length) return NextResponse.json({ error: 'لم يُحدَّث شيء' }, { status: 404 });
+  return NextResponse.json({ ok: true });
+}
