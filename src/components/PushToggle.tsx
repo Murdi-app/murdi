@@ -72,6 +72,16 @@ export default function PushToggle() {
       const reg = await navigator.serviceWorker.getRegistration()
       const sub = await reg?.pushManager.getSubscription()
       setState(sub ? 'on' : 'off')
+      // ★ «مفعّلة» كانت تُقرأ من المتصفح وحده: يقول الجهاز إنه مشترك، والخادم
+      //   يرسل إلى عنوانٍ آخر قديم — فتبدو الإشعارات مفعّلة ولا يصل شيء.
+      //   فعند كل فتحٍ يُرسل الجهاز عنوانه الحالي إلى الخادم بصمت.
+      if (sub) {
+        const j = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } }
+        await fetch('/api/push/subscribe', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, label: navigator.userAgent.slice(0, 70), silent: true }),
+        }).catch(() => {})
+      }
       fetch('/api/push/subscribe').then(r => r.ok ? r.json() : null)
         .then(d => { if (d?.devices) setDevices(d.devices) }).catch(() => {})
     } catch { setState('off') }
@@ -107,6 +117,38 @@ export default function PushToggle() {
     } catch (e) {
       setNote('تعذّر التفعيل: ' + String((e as Error)?.message || ''))
       setState('off')
+    }
+  }
+
+  // ★ التجديد: آيفون قد يُبقي الاشتراك «حيّاً» عند آبل بعد تحديث النظام أو
+  //   إعادة تثبيت التطبيق، فيُقبل الإرسال ولا يظهر شيء. العلاج اشتراكٌ جديد
+  //   يحلّ محلّ القديم — وهذا الزرّ يفعله في ضغطة.
+  async function renew() {
+    setState('working'); setNote(''); setVerdict('')
+    try {
+      const res = await fetch('/api/push/subscribe')
+      const { publicKey } = await res.json()
+      if (!publicKey) { setNote('مفاتيح الإشعار غير مهيأة على الخادم'); setState('on'); return }
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+      const old = await reg.pushManager.getSubscription()
+      const oldEndpoint = old?.endpoint || ''
+      if (old) await old.unsubscribe()
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToU8(publicKey) as unknown as BufferSource,
+      })
+      const j = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } }
+      const r = await fetch('/api/push/subscribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, label: navigator.userAgent.slice(0, 70), replaces: oldEndpoint }),
+      })
+      if (!r.ok) { setNote('تعذّر حفظ الاشتراك الجديد — أعد المحاولة'); setState('off'); return }
+      setState('on'); setNote('جُدّد الاشتراك — ووصلك إشعار تجربة الآن. إن لم يظهر فالإذن موقوف في إعدادات الجوال.')
+      fetch('/api/push/subscribe').then(x => x.ok ? x.json() : null).then(d => { if (d?.devices) setDevices(d.devices) }).catch(() => {})
+    } catch (e) {
+      setNote('تعذّر التجديد: ' + String((e as Error)?.message || ''))
+      setState('on')
     }
   }
 
@@ -164,6 +206,10 @@ export default function PushToggle() {
           <button onClick={test} disabled={testing}
             style={{ background: '#1A3D34', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
             {testing ? 'جارٍ…' : 'جرّبها الآن'}
+          </button>
+          <button onClick={renew}
+            style={{ background: '#fff', color: '#1A3D34', border: '1px solid #BFE0D3', padding: '8px 16px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 12.5, cursor: 'pointer' }}>
+            جدّد الاشتراك
           </button>
           <button onClick={disable}
             style={{ background: 'transparent', color: '#8A6D1F', border: '1px solid #E0D2A8', padding: '8px 16px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>

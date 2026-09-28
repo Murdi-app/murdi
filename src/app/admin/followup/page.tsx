@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
+import PushToggle from '@/components/PushToggle'
 
 // لوحة المتابعة — شاشة من يلاحق مخاطبات الجهات.
 //
@@ -155,9 +156,10 @@ export default function FollowupPage() {
     <div dir="rtl" style={{ fontFamily: 'Cairo, Tajawal, sans-serif', background: '#F4F7F6', minHeight: '100vh', padding: '22px 16px 60px' }}>
       <AdminNav />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
+        <PushToggle />
 
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>
-          {callsOnly ? 'مساعدة المتابعة — مكالمات' : 'المتابعة'}
+          {'المتابعة'}
         </h1>
         <p style={{ color: '#6B8A80', fontWeight: 700, fontSize: 13, margin: '0 0 18px' }}>
           {callsOnly

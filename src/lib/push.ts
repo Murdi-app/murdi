@@ -45,7 +45,7 @@ export async function sendPush(payload: PushPayload, to?: string | string[]): Pr
   let sendNotification: (
     sub: { endpoint: string; keys: { p256dh: string; auth: string } },
     payload?: string | null,
-    options?: { TTL?: number }
+    options?: { TTL?: number; urgency?: 'very-low' | 'low' | 'normal' | 'high' }
   ) => Promise<unknown>;
   try {
     const mod = await import('web-push');
@@ -74,7 +74,9 @@ export async function sendPush(payload: PushPayload, to?: string | string[]): Pr
       await sendNotification(
         { endpoint: String(s.endpoint), keys: { p256dh: String(s.p256dh), auth: String(s.auth) } },
         body,
-        { TTL: 60 * 60 * 12 }
+        // ★ `high`: بغيرها تعامل آبل الإشعار «عادياً» فتؤجّله أو تجمعه في وضع
+        //   توفير الطاقة والتركيز — والإشعار هنا عميلٌ حرارتُه بالدقائق.
+        { TTL: 60 * 60 * 12, urgency: 'high' }
       );
       sent++;
       await sb.from('push_subscriptions')

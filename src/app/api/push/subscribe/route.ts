@@ -91,6 +91,15 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // مزامنةٌ صامتة عند فتح التطبيق — تُحدِّث عنوان الجهاز ولا ترسل تجربة
+  if (b?.silent === true) return NextResponse.json({ ok: true, synced: true });
+
+  // التجديد: العنوان القديم لهذا الجهاز يُحذف فلا يُرسل إليه بعد اليوم
+  const replaced = String(b?.replaces || '');
+  if (replaced && replaced !== endpoint) {
+    await admin().from('push_subscriptions').delete().eq('endpoint', replaced).eq('email', who.email);
+  }
+
   const r = await sendPush({
     title: 'تم تفعيل الإشعارات',
     body: 'سيصلك هنا كل تسجيل جديد وكل تقييم يكتمل — في لحظته.',

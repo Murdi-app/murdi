@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import AdminNav from '@/components/AdminNav';
 import { OUTCOMES } from '@/lib/outcomes';
+import PushToggle from '@/components/PushToggle';
 
 // «الوارد» — من طرق بابنا، من أي باب، أحدثُ أولاً.
 //
@@ -90,6 +91,9 @@ export default function ArrivalsPage() {
     <div dir="rtl" style={{ minHeight: '100vh', background: '#F7FBF9', fontFamily: 'Tajawal, sans-serif' }}>
       <AdminNav />
       <div style={{ maxWidth: 820, margin: '0 auto', padding: '18px 14px 60px' }}>
+        {/* إشعار الجوال لكل عميلٍ يدخل — كان زرُّ تفعيله في لوحة المالك وحدها،
+            فلا جهاز مسجَّلاً لموظفة، ويُكتب «أُخطر المكتب» ولم يُخطر أحد منهما */}
+        <PushToggle />
 
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#1A3D34', margin: '0 0 2px' }}>الوارد</h1>
         <p style={{ margin: '0 0 14px', color: '#6B8A80', fontSize: 13 }}>
