@@ -246,7 +246,9 @@ export function whatsappText(a: WaFields, s: Settings): string | null {
  */
 export function statusAfterOutcome(current: string, outcome: string): string {
   if (outcome === 'مهتم' || outcome === 'تحوّل عميلاً') return 'replied';
-  if (outcome === 'غير مهتم' || outcome === 'رقم خاطئ') return 'dropped';
+  if (outcome === 'غير مهتم') return 'dropped';
+  // «رقم خاطئ» لا يُسقط الترسية: الرقم يُعلَّم «لا يصل» وتعود الترسية إلى «ينقصها رقم»
+  if (outcome === 'رقم خاطئ') return current;
   if (current === 'messaged') return 'reminder_call'; // مكالمة التذكير الوحيدة — ثم يُغلق الصف لها
   return 'messaged';
 }
@@ -254,6 +256,8 @@ export function statusAfterOutcome(current: string, outcome: string): string {
 export type StaffTask = {
   id: string; kind: 'first' | 'reminder'; company: string; person: string | null; role: string | null;
   phone: string | null; whatsapp: string | null; wa_url: string | null; since: string | null;
+  /** لم يُتحقق بعد أن الرقم يصل لصاحب القرار — السؤال أولاً */
+  check: boolean; source: string | null; source_url: string | null;
 };
 
 /**
@@ -266,8 +270,11 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
   const { settings } = await loadConfig(sb);
   const days = num(settings, 'reminder_after_days');
   const { data, error } = await sb.from('contract_awards')
-    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at')
-    .in('status', ['qualified', 'messaged']);
+    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at, phone_source, phone_source_url, phone_check')
+    .in('status', ['qualified', 'messaged'])
+    // رقمٌ بمصدرٍ منشور ورابطه وحده، وما قيل عنه «لا يصل» لا يعود إليها
+    .not('phone_source_url', 'is', null)
+    .or('phone_check.is.null,phone_check.eq.yes');
   if (error) throw new Error(error.message);
   const cutoff = days === null ? null : Date.now() - days * 86400_000;
   const out: StaffTask[] = [];
@@ -287,6 +294,9 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
       phone, whatsapp: wa || null,
       wa_url: wa && text ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent(text) : null,
       since: String(kind === 'reminder' ? a.messaged_at : a.updated_at || ''),
+      check: a.phone_check !== 'yes',
+      source: a.phone_source ? String(a.phone_source) : null,
+      source_url: a.phone_source_url ? String(a.phone_source_url) : null,
     });
   }
   return out.sort((x, y) => (x.kind === y.kind ? 0 : x.kind === 'reminder' ? -1 : 1));

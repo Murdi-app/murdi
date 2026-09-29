@@ -19,11 +19,22 @@ type Award = {
   gap_pdf_path: string | null; gap_generated_at: string | null; gap_inputs: Record<string, unknown> | null
   consult: { status: string; generated_at: string | null; released_at: string | null } | null
   org_awards: number
+  contact_whatsapp: string | null; phone_source: string | null; phone_source_url: string | null
+  email_source: string | null; email_source_url: string | null
+  phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
+// صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
+const DM_FIELDS = [
+  ['decision_maker_name', 'صاحب القرار'], ['decision_maker_role', 'منصبه'],
+  ['contact_phone', 'الهاتف'], ['contact_whatsapp', 'واتساب (إن اختلف)'], ['phone_source', 'مصدر الرقم'], ['phone_source_url', 'رابط مصدر الرقم'],
+  ['contact_email', 'البريد'], ['email_source', 'مصدر البريد'], ['email_source_url', 'رابط مصدر البريد'],
+] as const
+const needsPhone = (a: { status: string; contact_phone: string | null; contact_whatsapp: string | null; phone_check: string | null }) =>
+  a.status !== 'dropped' && (!(a.contact_phone || a.contact_whatsapp) || a.phone_check === 'no')
 type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean }
 
 const STATUS: Record<string, string> = {
-  new: 'جديدة', qualified: 'مؤهَّلة', messaged: 'أُرسلت', reminder_call: 'مكالمة التذكير', replied: 'ردّ',
+  new: 'جديدة', qualified: 'موثّقة', messaged: 'أُرسلت', reminder_call: 'مكالمة التذكير', replied: 'ردّ',
   gap_sent: 'جدول الفجوة أُرسل', meeting: 'اجتماع', priced: 'مسعَّرة', paid: 'مدفوعة', dropped: 'مُسقطة',
 }
 const CATEGORY: Record<string, string> = {
@@ -56,6 +67,8 @@ export default function AwardsPage() {
   const [fStatus, setFStatus] = useState('')
   const [showSkip, setShowSkip] = useState(false)
   const [showDropped, setShowDropped] = useState(false)
+  const [onlyNeedPhone, setOnlyNeedPhone] = useState(false)
+  const [dm, setDm] = useState<Record<string, Record<string, string>>>({})
   const [gap, setGap] = useState<Record<string, Record<string, string>>>({})
   const [gapOut, setGapOut] = useState<Record<string, { url: string | null; line: string }>>({})
   const [reply, setReply] = useState<Record<string, { channel: string; body: string }>>({})
@@ -164,6 +177,14 @@ export default function AwardsPage() {
     window.open(d.url, '_blank')
   }
 
+  const saveDm = async (a: Award) => {
+    const d = dm[a.id]
+    if (!d) return
+    setBusy('dm' + a.id)
+    if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: d }, 'حفظ صاحب القرار')) { flash('حُفظ صاحب القرار'); setDm((x) => { const y = { ...x }; delete y[a.id]; return y }); await load() }
+    setBusy('')
+  }
+
   const saveNotes = async (a: Award) => {
     setBusy(a.id)
     if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: { notes: notes[a.id] ?? a.notes ?? '' } }, 'حفظ الملاحظة')) { flash('حُفظت الملاحظة'); await load() }
@@ -223,10 +244,11 @@ export default function AwardsPage() {
   const shown = useMemo(() => awards.filter((a) =>
     (showSkip || fTrack === 'skip' || a.track !== 'skip')
     && (showDropped || fStatus === 'dropped' || a.status !== 'dropped')
+    && (!onlyNeedPhone || needsPhone(a))
     && (!fTrack || a.track === fTrack)
     && (!fCat || a.category === fCat)
     && (!fStatus || a.status === fStatus)
-  ), [awards, fTrack, fCat, fStatus, showSkip, showDropped])
+  ), [awards, fTrack, fCat, fStatus, showSkip, showDropped, onlyNeedPhone])
 
   const sel = (v: string, set: (s: string) => void, opts: Record<string, string>, all: string) => (
     <select value={v} onChange={(e) => set(e.target.value)} style={{ ...input, width: 'auto', minWidth: 130 }}>
@@ -322,6 +344,9 @@ export default function AwardsPage() {
           <label style={{ fontSize: 13, color: M, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} /> أظهر المُسقطة
           </label>
+          <label style={{ fontSize: 13, color: G, fontWeight: 800, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input type="checkbox" checked={onlyNeedPhone} onChange={(e) => setOnlyNeedPhone(e.target.checked)} /> ينقصها رقم ({awards.filter(needsPhone).length.toLocaleString('ar-SA')})
+          </label>
           <span style={{ color: M, fontSize: 12.5 }}>{shown.length.toLocaleString('ar-SA')} من {awards.length.toLocaleString('ar-SA')}</span>
         </div>
 
@@ -357,14 +382,41 @@ export default function AwardsPage() {
 
             {open === a.id && a.addressed && (
               <div style={{ marginTop: 10, borderTop: '1px dashed ' + LINE, paddingTop: 10 }}>
+                <div style={{ background: '#F7FBF9', border: '1px solid ' + LINE, borderRadius: 10, padding: 10, marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>صاحب القرار <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— كل رقمٍ وبريد بمصدره المنشور ورابطه</span>
+                    {a.phone_check === 'yes' && <span style={{ color: '#1A5C46', marginRight: 8 }}>✓ الرقم يصل ({a.phone_checked_by})</span>}
+                    {a.phone_check === 'no' && <span style={{ color: '#A5281B', marginRight: 8 }}>✗ الرقم لا يصل ({a.phone_checked_by}) — يحتاج رقماً آخر</span>}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8 }}>
+                    {DM_FIELDS.map(([k, l]) => (
+                      <label key={k} style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>{l}
+                        <input value={dm[a.id]?.[k] ?? String((a as unknown as Record<string, unknown>)[k] ?? '')}
+                          onChange={(e) => setDm({ ...dm, [a.id]: { ...(dm[a.id] || {}), [k]: e.target.value } })}
+                          style={{ ...input, direction: /url|phone|whatsapp|email/.test(k) && !/source$/.test(k) ? 'ltr' : 'rtl' }} />
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                    {dm[a.id] && <button onClick={() => saveDm(a)} disabled={busy === 'dm' + a.id} style={btn(G)}>احفظ صاحب القرار</button>}
+                    {a.phone_source_url && <a href={a.phone_source_url} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>مصدر الرقم ↗</a>}
+                    {a.email_source_url && <a href={a.email_source_url} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>مصدر البريد ↗</a>}
+                    {a.contact_email && !a.email_source_url && <span style={{ color: '#A5281B', fontSize: 12, fontWeight: 700 }}>البريد بلا رابط مصدر</span>}
+                  </div>
+                </div>
                 {a.message ? (<>
                   <div style={{ fontSize: 12, color: M, fontWeight: 800 }}>العنوان · {a.message.kind === 'general' ? 'القالب العام (بلا قيمة، أو مقاول باطن، أو من غير اعتماد)' : 'القالب المفصّل — ' + CATEGORY[a.category] + ' / ' + STAGE[a.message.stage]}</div>
                   <div style={{ fontWeight: 800, margin: '2px 0 8px' }}>{a.message.subject}</div>
                   <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.95, fontSize: 14, background: '#F7FBF9', borderRadius: 10, padding: 12 }}>{a.message.body}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-                    <button onClick={() => send(a)} disabled={!a.contact_email || busy === 'send' + a.id || !['qualified', 'messaged', 'reminder_call', 'replied'].includes(a.status)} style={{ ...btn(G), opacity: a.contact_email ? 1 : 0.5 }}>
-                      {busy === 'send' + a.id ? 'جارٍ الإرسال…' : 'أرسل البريد' + (a.contact_email ? ' إلى ' + a.contact_email : '')}
-                    </button>
+                    {(() => {
+                      // لا بريدٌ ثانٍ — يُقال من أرسل ومتى (أنا أو Claude التشغيل)
+                      const sent = [...a.touches].reverse().find((t) => t.channel === 'email' && t.direction === 'out')
+                      return sent
+                        ? <span style={{ background: '#EAF6F1', color: '#1A5C46', borderRadius: 99, padding: '6px 12px', fontSize: 12.5, fontWeight: 800 }}>✓ أُرسل البريد: {sent.actor} · {when(sent.created_at)}</span>
+                        : <button onClick={() => send(a)} disabled={!a.contact_email || busy === 'send' + a.id || !['qualified', 'messaged', 'reminder_call', 'replied'].includes(a.status)} style={{ ...btn(G), opacity: a.contact_email ? 1 : 0.5 }}>
+                            {busy === 'send' + a.id ? 'جارٍ الإرسال…' : 'أرسل البريد' + (a.contact_email ? ' إلى ' + a.contact_email : '')}
+                          </button>
+                    })()}
                     <button onClick={() => copy(a)} style={btn('#fff', G)}>{copied === a.id ? '✓ نُسخت' : 'انسخ الرسالة'}</button>
                     {!a.contact_email && <span style={{ color: M, fontSize: 12 }}>لا بريد — أضفه ليُرسل من هنا</span>}
                   </div>

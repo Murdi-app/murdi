@@ -168,6 +168,18 @@ export async function POST(req: Request) {
   if (!channel) return NextResponse.json({ error: 'القناة مطلوبة' }, { status: 400 });
   let group: Award[];
   try { group = await groupOf(sb, a as Award); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'المنشأة' }, { status: 500 }); }
+  // لا استشارةٌ ثانية: ما أُرسل للمنشأة — منّي أو من Claude التشغيل — يُرفض ويُقال من أرسل ومتى
+  const { data: sent } = await sb.from('consultations').select('released_at, released_by')
+    .in('award_id', group.map((x) => x.id)).eq('assessment_type', KIND).eq('status', 'released')
+    .order('released_at', { ascending: false }).limit(1).maybeSingle();
+  const { data: logged } = await sb.from('award_touches').select('actor, created_at')
+    .in('award_id', group.map((x) => x.id)).eq('direction', 'out').ilike('body', '%[الاستشارة%')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (sent || logged) {
+    const by = sent ? (sent.released_by === OWNER_EMAIL ? 'د. عبدالحكيم المرضي' : String(sent.released_by || '')) : String(logged?.actor || '');
+    const at = String(sent?.released_at || logged?.created_at || '').slice(0, 10);
+    return NextResponse.json({ error: 'أُرسلت الاستشارة لهذه المنشأة من قبل: ' + by + ' في ' + at + ' — لا تُرسل ثانية' }, { status: 409 });
+  }
   const { data: c, error: lErr } = await latest(sb, group.map((x) => x.id));
   if (lErr) return NextResponse.json({ error: 'تعذّرت قراءة الاستشارة — ' + lErr.message }, { status: 500 });
   if (!c || c.status !== 'ready' || !a.gap_pdf_path) return NextResponse.json({ error: 'لا استشارة جاهزة للاعتماد — ولّدها أولاً' }, { status: 409 });

@@ -24,6 +24,13 @@ export async function POST(req: Request) {
   if (!['qualified', 'messaged', 'reminder_call', 'replied'].includes(String(a.status))) {
     return NextResponse.json({ error: 'تُؤهَّل الترسية قبل مراسلتها — حالتها الآن: ' + a.status }, { status: 409 });
   }
+  // لا بريدٌ ثانٍ: من أُرسل له البريد — منّي أو من Claude التشغيل — يُرفض ويُقال من أرسل ومتى
+  const { data: prior } = await sb.from('award_touches').select('actor, created_at')
+    .eq('award_id', id).eq('channel', 'email').eq('direction', 'out')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (prior) {
+    return NextResponse.json({ error: 'أُرسل البريد لهذه الترسية من قبل: ' + prior.actor + ' في ' + String(prior.created_at).slice(0, 10) + ' — لا يُرسل ثانية', sent_by: prior.actor, sent_at: prior.created_at }, { status: 409 });
+  }
   const to = String(a.contact_email || '').trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return NextResponse.json({ error: 'لا بريد صالحاً لهذه الترسية — أضفه أولاً' }, { status: 400 });
 

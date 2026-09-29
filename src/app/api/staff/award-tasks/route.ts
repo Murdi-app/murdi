@@ -27,14 +27,14 @@ export async function GET() {
   }
 }
 
-// POST { id, action: 'call' | 'whatsapp' | 'outcome' | 'yes', outcome?, note? }
+// POST { id, action: 'check' | 'call' | 'whatsapp' | 'outcome' | 'yes', answer?, outcome?, note? }
 export async function POST(req: Request) {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
   const action = String(b.action || '');
-  if (!id || !['call', 'whatsapp', 'outcome', 'yes'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
+  if (!id || !['check', 'call', 'whatsapp', 'outcome', 'yes'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
   const outcome = action === 'outcome' ? String(b.outcome || '') : '';
   if (action === 'outcome' && !isOutcome(outcome)) {
     return NextResponse.json({ error: 'نتيجة غير معروفة — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
@@ -50,6 +50,28 @@ export async function POST(req: Request) {
 
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
   const actor = who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق');
+
+  // التحقق أولاً: هل يصل الرقم لصاحب القرار؟ «نعم» يختم الوصول؛ و«لا» يُعيد الترسية
+  // إلى «ينقصها رقم» ولا يُسقطها — فالمنشأة لم ترفض، الرقم هو الخطأ.
+  if (action === 'check' || (action === 'outcome' && outcome === 'رقم خاطئ')) {
+    const yes = action === 'check' && b.answer === 'yes';
+    if (action === 'check' && !['yes', 'no'].includes(String(b.answer))) return NextResponse.json({ error: 'الجواب نعم أو لا' }, { status: 400 });
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { phone_check: yes ? 'yes' : 'no', phone_checked_at: now, phone_checked_by: actor, updated_at: now };
+    if (yes) patch.reached_at = now;
+    const { error: cErr } = await sb.from('contract_awards').update(patch).eq('id', id);
+    if (cErr) return NextResponse.json({ error: 'لم يُسجَّل التحقق — ' + cErr.message }, { status: 500 });
+    await sb.from('award_touches').insert({
+      award_id: id, channel: 'call', direction: 'out', actor, to_address: String(a.contact_phone || a.contact_whatsapp || '') || null,
+      body: yes ? 'تحقّقت: الرقم يصل لصاحب القرار' : 'الرقم لا يصل لصاحب القرار' + (note ? ' — ' + note : ''),
+      outcome: yes ? 'وصل لصاحب القرار' : 'لا يصل لصاحب القرار',
+    });
+    const { error: hErr3 } = await sb.from('hot_touches').insert({
+      source: 'award', ref_id: id, outcome: yes ? null : 'رقم خاطئ',
+      note: yes ? 'الرقم يصل لصاحب القرار' : 'الرقم لا يصل لصاحب القرار', actor: who.userId, actor_name: actor,
+    });
+    return NextResponse.json({ ok: true, check: yes ? 'yes' : 'no', warn: hErr3 ? 'لم يُسجَّل في «الفرص الساخنة»' : null });
+  }
 
   // «ردّ بنعم»: ردٌّ وارد بضغطةٍ واحدة. القناة قناة آخر تواصلٍ صادر منها
   // (واتساب أو اتصال). والحالة تصير «ردّ» بمشغّل القاعدة على كل صفٍّ وارد —
