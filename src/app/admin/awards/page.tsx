@@ -422,7 +422,7 @@ export default function AwardsPage() {
                   </div>
                 </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>{a.kind === 'general' ? 'القالب العام ناقص — أكمل general_email_subject وgeneral_email_body من «القوالب والإعدادات».' : 'لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».'}</div>}
                 <div style={{ marginTop: 14, background: '#F7FBF9', border: '1px solid ' + LINE, borderRadius: 10, padding: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة{a.org_awards > 1 && <span style={{ color: G, fontSize: 12 }}> — للمنشأة {a.org_awards} عقود، تجمعها استشارةٌ واحدة</span>} <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة{a.org_awards > 1 && <span style={{ color: G, fontSize: 12 }}> — للمنشأة {a.org_awards === 2 ? 'عقدان' : a.org_awards.toLocaleString('ar-SA') + (a.org_awards <= 10 ? ' عقود' : ' عقداً')}، تجمعها استشارةٌ واحدة</span>} <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                     {([['contract_value', 'قيمة العقد', a.contract_value != null ? String(a.contract_value) : ''], ['months', 'المدة بالأشهر', ''], ['start_date', 'بدء التنفيذ YYYY-MM-DD', a.awarded_at || ''],
                       ['delay_days', 'مدة الصرف بالأيام', ''], ['monthly_spend', 'الصرف الشهري', '']] as const).map(([k, l, ph]) => (

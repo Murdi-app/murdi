@@ -4,7 +4,7 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { loadConfig, fill, type Award } from '@/lib/awards';
-import { computeGap, combineGaps, gapConsultPrompt, consultHtml, consultViolations, todayRiyadh, type GapInputs, type GroupGap } from '@/lib/gapSchedule';
+import { computeGap, combineGaps, contractsWord, gapConsultPrompt, consultHtml, consultViolations, todayRiyadh, type GapInputs, type GroupGap } from '@/lib/gapSchedule';
 import { generateWithFallback } from '@/lib/consultationGen';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
     }
     await sendPush({
       title: 'استشارة ترسية جاهزة للاعتماد',
-      body: String(a.company_name) + (gg.contracts.length > 1 ? ' (' + gg.contracts.length + ' عقود)' : '') + ' — أعمق نقطة ' + Math.abs(gg.deepest.amount).toLocaleString('en-US') + ' ريال · راجِعها ثم «اعتمد وأرسل»',
+      body: String(a.company_name) + (gg.contracts.length > 1 ? ' (' + contractsWord(gg.contracts.length) + ')' : '') + ' — أعمق نقطة ' + Math.abs(gg.deepest.amount).toLocaleString('en-US') + ' ريال · راجِعها ثم «اعتمد وأرسل»',
       url: '/admin/awards', important: true, tag: 'award-consult-' + id,
     }, OWNER_EMAIL).catch(() => null);
 

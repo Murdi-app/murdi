@@ -160,6 +160,9 @@ const FIELD_AR: Record<keyof GapInputs, string> = {
   method: 'طريقة الصرف', delay_days: 'مدة الصرف', monthly_spend: 'الصرف الشهري',
 };
 export const GAP_TABLE_MARK = '[[GAP_TABLE]]';
+const AR_DIGITS = (x: number) => String(x).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+/** عدد العقود بصيغته: «عقد» · «عقدين» · «٣ عقود» … «١٠ عقود» · «١١ عقداً» */
+export const contractsWord = (k: number) => (k === 1 ? 'عقد' : k === 2 ? 'عقدين' : k <= 10 ? AR_DIGITS(k) + ' عقود' : AR_DIGITS(k) + ' عقداً');
 const q = (t: string | null) => '«' + (String(t || '').trim() || 'العقد') + '»';
 
 /** عنوان الاستشارة المختصرة — بنصّ المالك، ولعقدين فأكثر: «عقدا …» / «عقود …» */
@@ -242,7 +245,7 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
     + '\nهيكل الاستشارة (Markdown) — بهذه العناوين حرفياً وبهذا الترتيب:\n'
     + '# ' + title + '\n'
     + '## أولاً: قراءتي ' + (multi ? 'لعقودكم' : 'لعقدكم') + ' — ' + (multi ? 'لكل عقدٍ ' : '') + 'القيمة والمدة وطريقة الصرف والصرف الشهري، وما تعنيه دورة الصرف. اكتب بجانب كل رقمٍ من معيار القطاع «(' + est + ')» حرفياً، ولا تكتبها بجانب ما هو من أرقامهم.\n'
-    + '## ثانياً: جدول الفجوة شهراً بشهر — جملتان فقط تقدّمان الجدول' + (multi ? ' (وتذكران أنه يجمع العقود)' : '') + '، ثم سطرٌ وحده فيه ' + GAP_TABLE_MARK + ' حرفياً (يُستبدل بالجدول)، ثم جملة عن أعمق نقطة وتاريخها. لا تكتب الجدول بنفسك.\n'
+    + '## ثانياً: جدول الفجوة شهراً بشهر — جملتان فقط تقدّمان الجدول' + (multi ? ' (وتذكران أنه يجمع العقود)' : '') + '، ثم سطرٌ وحده فيه ' + GAP_TABLE_MARK + ' حرفياً (يُستبدل بالجدول وتحته إطارٌ بأعمق نقطة وتاريخها). لا تكتب الجدول بنفسك، ولا جملةً بعده عن أعمق نقطة — الإطار يذكرها مرةً واحدة.\n'
     + '## ثالثاً: ما يعنيه هذا لكم — نقاط القوة، وأولها أن المدين جهة حكومية فمخاطر التعثر منخفضة والتأخير تأخير توقيت، ثم المخاطر بالأرقام أعلاه (حجم الفجوة، مدتها، أثر تأخر صرفٍ إضافي).\n'
     + '## رابعاً: خطة سدّ الفجوة — بعنوانين فرعيين: «أول ٣٠ يوماً» و«حتى ٩٠ يوماً»، بأدوات نقدية فقط: ' + tools.join(' · ') + '، ورأس مال عامل. كل بندٍ مرتبط بأرقام ' + (multi ? 'العقود' : 'هذا العقد') + '.\n'
     + '## خامساً: كلمة أخيرة — فقرة قصيرة واقعية ومحترمة. لا تختمها بعبارة عن سدّ الفجوة؛ سطر الختام يُضاف بعدها.\n\n'
@@ -265,7 +268,7 @@ function gapTableBlock(gg: GroupGap): string {
     const deep = r.cum === gg.deepest.amount && r.month === gg.deepest.month;
     return '<tr' + (deep ? ' class="gd"' : '') + '><td>' + r.month + '</td><td>' + (r.spend ? sar(r.spend) : '—') + '</td><td>' + (r.collect ? sar(r.collect) : '—') + '</td><td class="gc">' + signed(r.cum) + '</td></tr>';
   }).join('');
-  const head = gg.contracts.length > 1 ? '<div class="gn">يجمع الجدول ' + gg.contracts.length + ' عقود: ' + gg.contracts.map((c) => escHtml(q(c.award.tender_title))).join(' · ') + '</div>' : '';
+  const head = gg.contracts.length > 1 ? '<div class="gn">يجمع الجدول ' + contractsWord(gg.contracts.length) + ': ' + gg.contracts.map((c) => escHtml(q(c.award.tender_title))).join(' · ') + '</div>' : '';
   return [
     '<div class="gap">',
     head,
@@ -285,10 +288,17 @@ const inline = (t: string) => escHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').
 function mdToHtml(md: string, table: string): string {
   const out: string[] = [];
   let list = false;
+  // بعد الجدول: جملة «أعمق نقطة» تُحذف — الإطار تحت الجدول يذكرها مرةً واحدة
+  let afterTable = false;
   const close = () => { if (list) { out.push('</ul>'); list = false; } };
   for (const raw of md.split('\n')) {
     const t = raw.trim();
-    if (t === GAP_TABLE_MARK) { close(); out.push(table); continue; }
+    if (t === GAP_TABLE_MARK) { close(); out.push(table); afterTable = true; continue; }
+    if (afterTable && t) {
+      if (/^#/.test(t)) afterTable = false;
+      else if (/أعمق\s+نقط/.test(t)) continue;   // «نقطة» و«نقطةٍ» بتشكيلها
+      else afterTable = false;
+    }
     if (!t || /^(-{3,}|\*{3,}|_{3,})$/.test(t)) { close(); continue; }
     const h = /^(#{1,4})\s+(.*)$/.exec(t);
     if (h) { close(); const n = h[1].length; out.push(n === 1 ? '<h1 class="ct">' + inline(h[2]) + '</h1>' : n === 2 ? '<h2 class="cs">' + inline(h[2]) + '</h2>' : '<h3 class="cu">' + inline(h[2]) + '</h3>'); continue; }
