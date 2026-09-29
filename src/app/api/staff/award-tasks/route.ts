@@ -4,7 +4,7 @@ import { requirePage } from '@/lib/requireStaff';
 import { isOutcome, OUTCOMES } from '@/lib/outcomes';
 import { sendPush } from '@/lib/push';
 import { OWNER_EMAIL } from '@/lib/notifyLead';
-import { staffTasks, statusAfterOutcome, whatsappText, waDigits, loadConfig, type Award } from '@/lib/awards';
+import { FIT_SERVICES, isFitService, staffTasks, statusAfterOutcome, whatsappText, waDigits, loadConfig, type Award } from '@/lib/awards';
 
 // مهام الترسيات في «مكالمات اليوم» — صفّ ضي.
 //
@@ -21,25 +21,30 @@ export async function GET() {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   try {
-    return NextResponse.json({ ok: true, tasks: await staffTasks(admin()), outcomes: OUTCOMES });
+    return NextResponse.json({ ok: true, tasks: await staffTasks(admin()), outcomes: OUTCOMES, services: FIT_SERVICES });
   } catch (e) {
     return NextResponse.json({ error: 'تعذّرت قراءة مهام الترسيات — ' + (e instanceof Error ? e.message : '') }, { status: 500 });
   }
 }
 
-// POST { id, action: 'check' | 'call' | 'whatsapp' | 'outcome' | 'yes', answer?, outcome?, note? }
+// POST { id, action: 'check' | 'call' | 'whatsapp' | 'outcome' | 'yes' | 'service', answer?, outcome?, service?, note? }
 export async function POST(req: Request) {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
   const action = String(b.action || '');
-  if (!id || !['check', 'call', 'whatsapp', 'outcome', 'yes'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
+  if (!id || !['check', 'call', 'whatsapp', 'outcome', 'yes', 'service'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
   const outcome = action === 'outcome' ? String(b.outcome || '') : '';
   if (action === 'outcome' && !isOutcome(outcome)) {
     return NextResponse.json({ error: 'نتيجة غير معروفة — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
   }
   const note = String(b.note || '').trim().slice(0, 1000) || null;
+  // التأهيل: «ردّ بنعم» و«مهتم» و«تحوّل عميلاً» لا تُسجَّل بلا الخدمة المناسبة
+  const service = b.service ? String(b.service) : '';
+  if (service && !isFitService(service)) return NextResponse.json({ error: 'خدمة غير معروفة' }, { status: 400 });
+  const needsService = action === 'yes' || action === 'service' || (action === 'outcome' && ['مهتم', 'تحوّل عميلاً'].includes(outcome));
+  if (needsService && !service) return NextResponse.json({ error: 'اختاري الخدمة المناسبة أولاً' }, { status: 400 });
   const sb = admin();
 
   // المهمة قائمةٌ فعلاً: ترسية مؤهَّلة أو «أُرسلت» — لا يُكتب على ما سواها
@@ -50,6 +55,19 @@ export async function POST(req: Request) {
 
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
   const actor = who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق');
+
+  // الخدمة المناسبة تُختم مع التأهيل — و«لا يناسب» يُغلق الترسية (لا خدمة لها عندنا الآن)
+  if (service) {
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { fit_service: service, qualified_at: now, qualified_by: actor, updated_at: now };
+    const { error: sErr } = await sb.from('contract_awards').update(patch).eq('id', id);
+    if (sErr) return NextResponse.json({ error: 'لم تُسجَّل الخدمة — ' + sErr.message }, { status: 500 });
+    if (action === 'service') {
+      await sb.from('award_touches').insert({ award_id: id, channel: 'call', direction: 'out', actor, body: 'الخدمة المناسبة: ' + FIT_SERVICES[service] + (note ? ' — ' + note : ''), outcome: 'تأهيل' });
+      if (service === 'not_fit') await sb.from('contract_awards').update({ status: 'dropped', updated_at: now }).eq('id', id).eq('status', a.status);
+      return NextResponse.json({ ok: true, service });
+    }
+  }
 
   // التحقق أولاً: هل يصل الرقم لصاحب القرار؟ «نعم» يختم الوصول؛ و«لا» يُعيد الترسية
   // إلى «ينقصها رقم» ولا يُسقطها — فالمنشأة لم ترفض، الرقم هو الخطأ.

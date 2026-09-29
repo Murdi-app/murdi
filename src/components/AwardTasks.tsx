@@ -13,6 +13,8 @@ const pill = (bg: string, fg = '#fff'): React.CSSProperties => ({ background: bg
 export default function AwardTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [outcomes, setOutcomes] = useState<string[]>([])
+  const [services, setServices] = useState<Record<string, string>>({})
+  const [svc, setSvc] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState('')
   const [pick, setPick] = useState<Record<string, string>>({})
@@ -24,7 +26,7 @@ export default function AwardTasks() {
       const r = await fetch('/api/staff/award-tasks')
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(d.error || 'تعذّر تحميل مهام الترسيات'); return }
-      setTasks(d.tasks || []); setOutcomes(d.outcomes || [])
+      setTasks(d.tasks || []); setOutcomes(d.outcomes || []); setServices(d.services || {})
     } catch { setErr('تعذّر الاتصال — مهام الترسيات لم تُحمَّل') }
     setLoaded(true)
   }, [])
@@ -36,7 +38,7 @@ export default function AwardTasks() {
     try {
       const r = await fetch('/api/staff/award-tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: t.id, action, answer, outcome: pick[t.id], note: note[t.id] || null }),
+        body: JSON.stringify({ id: t.id, action, answer, outcome: pick[t.id], service: svc[t.id] || null, note: note[t.id] || null }),
       })
       const d = await r.json().catch(() => ({}))
       setBusy('')
@@ -92,6 +94,12 @@ export default function AwardTasks() {
               style={{ ...pill('#fff', G), border: '2px solid ' + G }}>{busy === t.id + 'yes' ? '…' : '✓ ردّ بنعم'}</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
+            {/* التأهيل: الخدمة المناسبة — لازمةٌ مع «ردّ بنعم» و«مهتم» و«تحوّل عميلاً» */}
+            <select value={svc[t.id] || ''} onChange={(e) => setSvc({ ...svc, [t.id]: e.target.value })}
+              style={{ border: '1.5px solid ' + (svc[t.id] ? '#D9E5DF' : '#EAD9A8'), borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 800 }}>
+              <option value="">الخدمة المناسبة…</option>
+              {Object.entries(services).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
             <select value={pick[t.id] || ''} onChange={(e) => setPick({ ...pick, [t.id]: e.target.value })}
               style={{ border: '1px solid #D9E5DF', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5 }}>
               <option value="">نتيجة المكالمة…</option>

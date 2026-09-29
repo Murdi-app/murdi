@@ -22,6 +22,7 @@ type Award = {
   contact_whatsapp: string | null; phone_source: string | null; phone_source_url: string | null
   email_source: string | null; email_source_url: string | null
   dnc_reason: string | null; dnc_by: string | null; dnc_at: string | null
+  fit_service: string | null; qualified_at: string | null; qualified_by: string | null
   phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
 // صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
@@ -45,6 +46,8 @@ const CATEGORY: Record<string, string> = {
 const TRACK: Record<string, string> = {
   contract_finance: 'تمويل عقد', working_capital: 'رأس مال عامل', skip: 'دون الحد', unknown: 'بلا قيمة',
 }
+// الخدمة المناسبة (التأهيل) — أسماءٌ لا أسعار
+const FIT: Record<string, string> = { contract_finance: 'تمويل عقد', working_capital: 'رأس مال عامل', feasibility_credit: 'جدوى ائتمانية', broader_funding: 'مسار تمويل أوسع', not_fit: 'لا يناسب' }
 const STAGE: Record<string, string> = { early: 'بداية', in_execution: 'في التنفيذ' }
 const SOURCE: Record<string, string> = { etimad: 'اعتماد', tadawul: 'تداول', nomu: 'نمو', linkedin: 'لينكدإن', news: 'الأخبار', manual: 'يدوي' }
 
@@ -370,6 +373,7 @@ export default function AwardsPage() {
               </div>
               <div style={{ textAlign: 'left' }}>
                 <span style={{ background: a.status === 'do_not_contact' ? '#FBEEEC' : '#EAF4F0', color: a.status === 'do_not_contact' ? '#A5281B' : undefined, borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800 }}>{STATUS[a.status] || a.status}</span>
+                {a.fit_service && <div style={{ fontSize: 11.5, fontWeight: 800, color: a.fit_service === 'not_fit' ? '#A5281B' : '#1A5C46', marginTop: 4 }}>الخدمة: {FIT[a.fit_service]}{a.qualified_by ? ' — ' + a.qualified_by : ''}</div>}
                 {a.status === 'do_not_contact' && <div style={{ color: '#A5281B', fontSize: 11.5, marginTop: 4, maxWidth: 260 }}>{a.dnc_reason}{a.dnc_by ? ' — ' + a.dnc_by : ''}{a.dnc_at ? ' · ' + a.dnc_at.slice(0, 10) : ''}</div>}
                 <span title="المراسلات" style={{ background: a.touches.length ? '#FFF6E0' : '#F2F5F4', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800, marginRight: 6 }}>✉︎ {a.touches.length.toLocaleString('ar-SA')}{a.touches.some((t) => t.direction === 'in') ? ' · ردّ' : ''}</span>
                 <div style={{ color: M, fontSize: 11, marginTop: 4, direction: 'ltr' }}>{a.src}</div>
@@ -404,6 +408,12 @@ export default function AwardsPage() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                    <label style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>الخدمة المناسبة{' '}
+                      <select value={dm[a.id]?.fit_service ?? (a.fit_service || '')} onChange={(e) => setDm({ ...dm, [a.id]: { ...(dm[a.id] || {}), fit_service: e.target.value } })} style={{ ...input, width: 'auto' }}>
+                        <option value="">— لم تُؤهَّل بعد</option>
+                        {Object.entries(FIT).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                      </select>
+                    </label>
                     {dm[a.id] && <button onClick={() => saveDm(a)} disabled={busy === 'dm' + a.id} style={btn(G)}>احفظ صاحب القرار</button>}
                     {a.phone_source_url && <a href={a.phone_source_url} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>مصدر الرقم ↗</a>}
                     {a.email_source_url && <a href={a.email_source_url} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>مصدر البريد ↗</a>}

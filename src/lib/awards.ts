@@ -44,6 +44,19 @@ export type Award = {
 export type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean };
 export type Settings = Record<string, string>;
 
+/**
+ * الخدمة المناسبة — تختارها ضي بعد المكالمة (التأهيل)، فلا يُفترض أن كل فائزٍ يحتاج تمويل عقد.
+ * أسماءٌ لا أسعار: الأسعار في القاعدة ولا تصل لضي.
+ */
+export const FIT_SERVICES: Record<string, string> = {
+  contract_finance: 'تمويل عقد',
+  working_capital: 'رأس مال عامل',
+  feasibility_credit: 'جدوى ائتمانية',
+  broader_funding: 'مسار تمويل أوسع',
+  not_fit: 'لا يناسب',
+};
+export const isFitService = (v: unknown) => Object.prototype.hasOwnProperty.call(FIT_SERVICES, String(v ?? ''));
+
 /** الفئات التي لها قوالب ويُخاطَب أصحابها — وما سواها «لا تُخاطَب» */
 export const ADDRESSED = new Set(['construction', 'om_services', 'supply_it']);
 export const isAddressed = (category: string) => ADDRESSED.has(category);

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { loadConfig, compose, TRANSITIONS, STAMP, isAddressed, awardSrc, type Award, type Touch } from '@/lib/awards';
+import { loadConfig, compose, TRANSITIONS, STAMP, isAddressed, isFitService, awardSrc, type Award, type Touch } from '@/lib/awards';
 
 // الترسيات — للمالك وحده. الجداول بلا منحٍ للمتصفح، فكل قراءةٍ وكتابةٍ من
 // هنا بمفتاح الخدمة بعد `requireAdmin`. والرسالة تُركَّب هنا من القوالب
@@ -165,6 +165,11 @@ export async function PATCH(req: Request) {
     patch.category = String(f.category);
   }
   if (f.is_subcontract !== undefined) patch.is_subcontract = f.is_subcontract === true || f.is_subcontract === 'true';
+  if (f.fit_service !== undefined) {
+    if (f.fit_service !== '' && f.fit_service !== null && !isFitService(f.fit_service)) return NextResponse.json({ error: 'خدمة غير معروفة' }, { status: 400 });
+    patch.fit_service = f.fit_service || null;
+    if (patch.fit_service) { patch.qualified_at = now; patch.qualified_by = 'د. عبدالحكيم المرضي'; }
+  }
   if (f.contact_channel !== undefined) patch.contact_channel = CHANNELS.includes(String(f.contact_channel)) ? String(f.contact_channel) : null;
   if (f.contract_value !== undefined) {
     const v = f.contract_value === '' || f.contract_value == null ? null : Number(String(f.contract_value).replace(/[,٬\s]/g, ''));
