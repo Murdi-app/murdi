@@ -25,6 +25,7 @@ type Award = {
   fit_service: string | null; qualified_at: string | null; qualified_by: string | null
   documented_at: string | null; reached_at: string | null; contacted_at: string | null; offered_at: string | null
   paid_at: string | null; executing_at: string | null; first_referral_at: string | null; referrals_count: number; referred_by: string | null
+  main_contractor: string | null; parent_award_id: string | null
   phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
 // صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
@@ -195,6 +196,19 @@ export default function AwardsPage() {
     if (!d) return
     setBusy('dm' + a.id)
     if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: d }, 'حفظ صاحب القرار')) { flash('حُفظ صاحب القرار'); setDm((x) => { const y = { ...x }; delete y[a.id]; return y }); await load() }
+    setBusy('')
+  }
+
+  // مقاول باطن أو مورّد لهذه الترسية — ترسيةٌ مستقلة مربوطة بها
+  const addSub = async (a: Award) => {
+    const name = prompt('اسم مقاول الباطن أو المورّد لـ«' + a.company_name + '»:')
+    if (!name || !name.trim()) return
+    setBusy('sub' + a.id)
+    if (await call('/api/admin/awards', 'POST', {
+      company_name: name.trim(), tender_title: a.tender_title, category: a.category,
+      parent_award_id: a.id, main_contractor: a.company_name, is_subcontract: true,
+      notes: 'مقاول باطن/مورّد لـ' + a.company_name,
+    }, 'إضافة مقاول الباطن')) { flash('أُضيف مقاول الباطن مربوطاً'); await load() }
     setBusy('')
   }
 
@@ -376,6 +390,8 @@ export default function AwardsPage() {
                 <div style={{ fontWeight: 900, fontSize: 15.5 }}>{a.company_name}</div>
                 <div style={{ color: M, fontSize: 13, lineHeight: 1.8 }}>
                   {a.tender_title || 'بلا اسم منافسة'}{a.buyer_entity ? ' — ' + a.buyer_entity : ''}
+                  {(a.main_contractor || a.parent_award_id) && <><br /><span style={{ color: '#8A6D1F', fontWeight: 800 }}>مقاول باطن/مورّد لـ{a.main_contractor || awards.find((x) => x.id === a.parent_award_id)?.company_name}</span></>}
+                  {awards.some((x) => x.parent_award_id === a.id) && <><br /><span style={{ color: '#8A6D1F', fontWeight: 800 }}>مقاولو الباطن والموردون: {awards.filter((x) => x.parent_award_id === a.id).map((x) => x.company_name).join('، ')}</span></>}
                   <br />{CATEGORY[a.category] || a.category} · {TRACK[a.track || ''] || a.track} · قيمة {sar(a.contract_value)}
                   {a.awarded_at ? ' · رُسّيت ' + a.awarded_at : ''}{a.stage ? ' · ' + STAGE[a.stage] : ''} · {SOURCE[a.source] || a.source}
                   {(a.decision_maker_name || a.contact_phone || a.contact_email) && <><br />{[a.decision_maker_name, a.decision_maker_role, a.contact_phone, a.contact_email].filter(Boolean).join(' · ')}</>}
@@ -398,6 +414,7 @@ export default function AwardsPage() {
               })}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+              <button onClick={() => addSub(a)} disabled={busy === 'sub' + a.id} style={btn('#fff', G)}>+ مقاول باطن/مورّد</button>
               {a.status === 'paid' && !a.executing_at && <button onClick={async () => { setBusy(a.id); if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: { executing: true } }, 'بدأ التنفيذ')) { flash('خُتم «تنفيذ»'); await load() } setBusy('') }} style={btn(G)}>✓ بدأ التنفيذ</button>}
               {a.next.map((to) => (
                 <button key={to} onClick={() => move(a, to)} disabled={busy === a.id || (to === 'messaged' && !a.addressed)}

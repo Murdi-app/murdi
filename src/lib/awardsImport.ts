@@ -16,7 +16,35 @@ const UA = 'Mozilla/5.0 (compatible; MurdiAwardsBot/1.0; +https://murdi.sa)';
 export type Parsed = {
   company_name: string; tender_title: string | null; headline: string; buyer_entity: string | null;
   contract_value: number | null; awarded_at: string; category: string; link: string; outlet: string;
+  /** مقاول باطن أو مورّد: الفائز يعمل لمقاولٍ رئيسي لا للجهة مباشرة */
+  is_subcontract: boolean; main_contractor: string | null;
+  /** مقاولو الباطن والموردون الذين يذكرهم الخبر لهذه الترسية — تُستورد كلٌّ ترسيةً مستقلة */
+  subs: string[];
 };
+
+// ═══ الموردون ومقاولو الباطن (البند د) ═══
+// الجهة الحكومية مرسِيةٌ أصلية؛ والشركة المقاوِلة مرسِيةً تعني أن الفائز مقاول باطن أو مورّدٌ لها.
+const GOV = /وزار|هيئ|أمان|امان|بلدي|جامع|مستشف|صندوق|مؤسسة (?:العامة|الموانئ)|الحرس|القوات|الشركة الوطنية للإسكان|المدينة|مجلس|إمارة|امارة|محافظ|رئاسة|مركز/;
+const CONTRACTOR = /مقاول|للمقاولات|المقاولات|إنشاء|انشاء|إعمار|اعمار|للتشييد|البنية التحتية/;
+/** هل المرسِي مقاولٌ رئيسي (لا جهةٌ حكومية)؟ — أو صرّح الخبر بالباطن */
+function mainContractorOf(t: string, buyer: string | null): string | null {
+  if (buyer && !GOV.test(buyer) && CONTRACTOR.test(buyer)) return buyer;
+  if (buyer && !GOV.test(buyer) && /باطن|لصالح المقاول|مقاول رئيسي/.test(t)) return buyer;
+  const m = /(?:لصالح|من)\s+(?:المقاول\s+(?:الرئيسي\s+)?)?(?:شركة\s+)?[«"“]?([^«»"”،.]{2,50}?)[»"”]?\s+(?:كمقاول رئيسي|المقاول الرئيسي)/.exec(t);
+  return m ? clean(m[1]) : null;
+}
+/** مقاولو الباطن والموردون المذكورون: «مع شركة X كمقاول باطن» · «وتتولى X … من الباطن» · «X مورّداً» */
+function subsOf(t: string): string[] {
+  const out: string[] = [];
+  const re = /(?:مع|وتعاقدت مع|تعاقد مع|وتتولى|وستتولى|بمشاركة)\s+(?:شركة\s+)?[«"“]?([^«»"”،.]{2,50}?)[»"”]?\s+(?:كمقاول(?:\s+من)?\s+(?:ال)?باطن|من الباطن|كمورد|مورداً|موردا|لتوريد)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t))) {
+    // «وتتولى X أعمال الكهرباء من الباطن» — الاسم ينتهي قبل وصف العمل
+    const n = clean(m[1].replace(/^شركة\s+/, '').replace(/\s+(?:أعمال|اعمال|تنفيذ|توريد|تركيب|تشغيل|صيانة)(?:\s.*)?$/, ''));
+    if (n.length >= 2 && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
 
 const clean = (s: string) => s.replace(/[‎‏‪-‮]/g, '').replace(/\s+/g, ' ').trim();
 const unesc = (s: string) => s
@@ -77,9 +105,11 @@ function categoryOf(t: string): string {
 }
 
 export { tenderOf };
-export function parseItem(rawTitle: string, link: string, pubDate: string, outlet: string): Parsed | null {
+export function parseItem(rawTitle: string, link: string, pubDate: string, outlet: string, rawDesc = ''): Parsed | null {
   // Google News تُلحق « - اسم المنفذ» بالعنوان
   const t = clean(unesc(rawTitle)).replace(/\s+-\s+[^-]{2,80}$/, '');
+  // المقتطف (إن جاء) يُقرأ للباطن وحده — نصٌّ بلا وسوم
+  const desc = clean(unesc(unesc(rawDesc)).replace(/<[^>]+>/g, ' '));
   if (!/ترسية|توقع عقد|توقّع عقد|تُوقع عقد|تُوقّع عقد|توقيع عقد|توقع عقدا/.test(t)) return null;
   if (/يرسي|ترسية\s+\d+\s+مشروع/.test(t)) return null; // الفاعل جهةٌ حكومية أو خبرٌ إجمالي
   const company = companyOf(t);
@@ -89,11 +119,15 @@ export function parseItem(rawTitle: string, link: string, pubDate: string, outle
   if (/جنيه|درهم|دينار|مصر|قناة السويس|الإسكندرية|عُمان|عمان|الكويت|قطر|البحرين|الأردن/.test(t)) return null;
   if (!/ريال/.test(t) && !/ارقام|أرقام|مباشر|مال|الاقتصادية|سبق|عكاظ|الرياض|اليوم|أخبار 24|argaam|mubasher|maaal|aleqt/i.test(outlet)) return null;
   const d = new Date(pubDate);
+  const buyer = buyerOf(t);
+  const main = mainContractorOf(t + ' ' + desc, buyer);
   return {
+    is_subcontract: !!main, main_contractor: main,
+    subs: subsOf(t + ' ' + desc).filter((n) => n !== company && n !== main),
     company_name: company,
     tender_title: tenderOf(t),
     headline: t.slice(0, 400),
-    buyer_entity: buyerOf(t),
+    buyer_entity: main ? null : buyer,
     contract_value: valueOf(t),
     awarded_at: Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
     category: categoryOf(t),
@@ -110,7 +144,7 @@ async function fetchQuery(q: string, days: number): Promise<Parsed[]> {
   const out: Parsed[] = [];
   for (const it of x.match(/<item>[\s\S]*?<\/item>/g) || []) {
     const g = (tag: string) => (new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)</' + tag + '>').exec(it) || [])[1] || '';
-    const p = parseItem(g('title'), clean(unesc(g('link'))), g('pubDate'), g('source'));
+    const p = parseItem(g('title'), clean(unesc(g('link'))), g('pubDate'), g('source'), g('description'));
     if (p) out.push(p);
   }
   return out;
@@ -145,15 +179,33 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
     const k = norm(p.company_name);
     if (sameAs(seen, k)) { skipped++; continue; }
     seen.add(k);
-    const { error: iErr } = await sb.from('contract_awards').insert({
+    // الترسية نفسها — ومقاول الباطن يحمل اسم مقاوله الرئيسي (مشغّل القاعدة يربطهما)
+    const rows: Record<string, unknown>[] = [{
       source: 'news', source_ref: p.link.slice(0, 500),
       company_name: p.company_name, tender_title: p.tender_title, buyer_entity: p.buyer_entity,
       category: p.category, contract_value: p.contract_value, awarded_at: p.awarded_at,
+      is_subcontract: p.is_subcontract, main_contractor: p.main_contractor,
       notes: 'من الأخبار — ' + (p.outlet || 'مصدر') + ': ' + p.headline + '\n' + p.link.slice(0, 500),
-    });
-    // منشأةٌ «لا تتواصل» يرفضها مشغّل القاعدة — تُعدّ ولا تُعدّ خطأً
-    if (iErr) { if (/duplicate|unique/i.test(iErr.message)) skipped++; else if (/do_not_contact/.test(iErr.message)) blocked++; else errors.push(p.company_name + ': ' + iErr.message); }
-    else inserted++;
+    }];
+    // ومن ذكرهم الخبر مقاولي باطن أو موردين: ترسيةٌ مستقلة لكلٍّ، مربوطةٌ بالفائز
+    for (const sub of p.subs) {
+      const sk = norm(sub);
+      if (sameAs(seen, sk)) { skipped++; continue; }
+      seen.add(sk);
+      rows.push({
+        source: 'news', source_ref: p.link.slice(0, 500),
+        company_name: sub, tender_title: p.tender_title, buyer_entity: null,
+        category: p.category, contract_value: null, awarded_at: p.awarded_at,
+        is_subcontract: true, main_contractor: p.company_name,
+        notes: 'مقاول باطن/مورّد لـ' + p.company_name + ' — من الأخبار: ' + p.headline + '\n' + p.link.slice(0, 500),
+      });
+    }
+    for (const row of rows) {
+      const { error: iErr } = await sb.from('contract_awards').insert(row);
+      // منشأةٌ «لا تتواصل» يرفضها مشغّل القاعدة — تُعدّ ولا تُعدّ خطأً
+      if (iErr) { if (/duplicate|unique/i.test(iErr.message)) skipped++; else if (/do_not_contact/.test(iErr.message)) blocked++; else errors.push(String(row.company_name) + ': ' + iErr.message); }
+      else inserted++;
+    }
   }
   return { found: all.length, inserted, skipped, blocked, errors };
 }

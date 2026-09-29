@@ -106,6 +106,9 @@ export async function POST(req: Request) {
     contact_channel: channel,
     notes: cut(b.notes, 2000) || null,
     referred_by: /^[0-9a-f-]{36}$/i.test(String(b.referred_by || '')) ? String(b.referred_by) : null,
+    // مقاول باطن أو مورّد: مربوطٌ بالمقاول الرئيسي (ترسيته أو اسمه — مشغّل القاعدة يربط)
+    parent_award_id: /^[0-9a-f-]{36}$/i.test(String(b.parent_award_id || '')) ? String(b.parent_award_id) : null,
+    main_contractor: cut(b.main_contractor, 200) || null,
   }).select('id').single();
   if (error) {
     if (/do_not_contact/.test(error.message)) return NextResponse.json({ error: 'هذه المنشأة «لا تتواصل» — لا تُضاف' }, { status: 409 });
