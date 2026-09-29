@@ -26,6 +26,7 @@ type Award = {
   documented_at: string | null; reached_at: string | null; contacted_at: string | null; offered_at: string | null
   paid_at: string | null; executing_at: string | null; first_referral_at: string | null; referrals_count: number; referred_by: string | null
   main_contractor: string | null; parent_award_id: string | null
+  listed_market: string | null; drop_suggested: string | null
   phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
 // صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
@@ -387,7 +388,17 @@ export default function AwardsPage() {
           <div key={a.id} style={{ background: '#fff', border: '1px solid ' + LINE, borderRadius: 14, padding: 14, marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 900, fontSize: 15.5 }}>{a.company_name}</div>
+                <div style={{ fontWeight: 900, fontSize: 15.5 }}>
+                  {a.company_name}
+                  {a.listed_market && <span style={{ fontSize: 11, fontWeight: 800, borderRadius: 99, padding: '2px 8px', marginRight: 6, background: a.listed_market === 'tasi' ? '#FBEEEC' : '#EAF6F1', color: a.listed_market === 'tasi' ? '#A5281B' : '#1A5C46' }}>مدرجة · {a.listed_market === 'tasi' ? 'تاسي' : 'نمو'}</span>}
+                </div>
+                {a.drop_suggested && a.status === 'new' && (
+                  <div style={{ background: '#FBEEEC', color: '#A5281B', borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 800, margin: '4px 0', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                    {a.drop_suggested}
+                    <button onClick={() => move(a, 'dropped')} disabled={busy === a.id} style={{ ...btn('#fff', '#B4453C'), padding: '3px 10px' }}>أسقِط</button>
+                  </div>
+                )}
+                {a.notes?.startsWith('ابحث عن المنفّذ') && <div style={{ background: '#FFF6E0', color: '#8A6D1F', borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 800, margin: '4px 0', display: 'inline-block' }}>ابحث عن المنفّذ — المالكة: {a.buyer_entity}</div>}
                 <div style={{ color: M, fontSize: 13, lineHeight: 1.8 }}>
                   {a.tender_title || 'بلا اسم منافسة'}{a.buyer_entity ? ' — ' + a.buyer_entity : ''}
                   {(a.main_contractor || a.parent_award_id) && <><br /><span style={{ color: '#8A6D1F', fontWeight: 800 }}>مقاول باطن/مورّد لـ{a.main_contractor || awards.find((x) => x.id === a.parent_award_id)?.company_name}</span></>}

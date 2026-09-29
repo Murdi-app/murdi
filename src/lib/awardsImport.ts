@@ -20,7 +20,42 @@ export type Parsed = {
   is_subcontract: boolean; main_contractor: string | null;
   /** مقاولو الباطن والموردون الذين يذكرهم الخبر لهذه الترسية — تُستورد كلٌّ ترسيةً مستقلة */
   subs: string[];
+  /** الشركة في الخبر هي المالكة التي أرست التنفيذ — والمنفّذ لم يُذكر: «ابحث عن المنفّذ» */
+  executor_unknown: boolean;
+  /** اسم الشركة كما ورد في الخبر (المالكة حين تكون الترسية باسم منفّذها) */
+  news_company: string;
 };
+
+// ═══ المالكة والمنفّذ (٢٩ سبتمبر) ═══
+// الأخبار كلها عن شركات مدرجة، وقيمتها في الطرف الآخر من العقد: حين تكون الشركة في الخبر
+// هي المالكة التي أرست تنفيذاً (تشييد · إنشاء · توريد لصالحها)، فالترسية باسم المنفّذ.
+const WORK = /تشييد|إنشاء|انشاء|بناء|تنفيذ أعمال|أعمال تشييد|أعمال إنشاء|تصميم وتنفيذ|أعمال مدنية|توريد/;
+const OWN_ASSET = /مستشفى|مستشفي|مقر|مبنى|مبني|مصنع|فرع|برج|مجمع|فندق|مشروعها|مدرسة|مركز/;
+/** إيجارٌ وتأجير واستئجار وبيع أرض ليست ترسيات */
+const NOT_AWARD = /إيجار|ايجار|تأجير|تاجير|استئجار|بيع أرض|بيع ارض|شراء أرض|شراء ارض|بيع قطعة|شراء قطعة/;
+
+/** الطرف الآخر: «مع X» أو «على X» (ترسيةٌ منها عليه) — شركةً لا جهة حكومية */
+function counterpartyOf(t: string): string | null {
+  const m = /(?:\sمع|\sعلى)\s+(?:شركة\s+)?[«"“]?([^«»"”،.\-]{2,50}?)[»"”]?(?=\s+(?:بقيمة|ب[\d٠-٩]|لـ|لتنفيذ|لتشييد|لإنشاء|لانشاء|لبناء|لتوريد|لتصميم|لأعمال|لاعمال|لمدة)|\s*$|،)/.exec(t);
+  const c = m ? clean(m[1]) : null;
+  return c && !GOV.test(c) && !/إيراد|٪|%|لعام|العام/.test(c) ? c : null;
+}
+
+/**
+ * هل الشركة في الخبر مالكةٌ أرست التنفيذ؟ فتُعاد بمنفّذها (أو null إن لم يُذكر).
+ * — «ترسي / أرست … على X»: مالكة، والمنفّذ X.
+ * — عقدٌ لعمل تنفيذي (تشييد · إنشاء · توريد) مع شركةٍ مقاوِلة والشركة نفسها ليست مقاولة: مالكة.
+ * — عقد تشييد مرفقٍ لها (مستشفى · مقر · مصنع …) بلا طرفٍ مذكور: مالكة، والمنفّذ مجهول.
+ */
+function ownerRole(t: string, company: string): { owner: true; executor: string | null } | null {
+  const cp = counterpartyOf(t);
+  if (/(?:^|\s)(?:ترسي|أرست|ارست)\s/.test(t) || /ترسية[^،]*\sعلى\s/.test(t)) return { owner: true, executor: cp };
+  if (CONTRACTOR.test(company) || !WORK.test(t)) return null;
+  if (cp && CONTRACTOR.test(cp)) return { owner: true, executor: cp };
+  if (/لصالحها/.test(t) && cp) return { owner: true, executor: cp };
+  if (!cp && /تشييد|إنشاء|انشاء|بناء/.test(t) && OWN_ASSET.test(t)) return { owner: true, executor: null };
+  return null;
+}
 
 // ═══ الموردون ومقاولو الباطن (البند د) ═══
 // الجهة الحكومية مرسِيةٌ أصلية؛ والشركة المقاوِلة مرسِيةً تعني أن الفائز مقاول باطن أو مورّدٌ لها.
@@ -28,7 +63,7 @@ const GOV = /وزار|هيئ|أمان|امان|بلدي|جامع|مستشف|صن
 const CONTRACTOR = /مقاول|للمقاولات|المقاولات|إنشاء|انشاء|إعمار|اعمار|للتشييد|البنية التحتية/;
 /** هل المرسِي مقاولٌ رئيسي (لا جهةٌ حكومية)؟ — أو صرّح الخبر بالباطن */
 function mainContractorOf(t: string, buyer: string | null): string | null {
-  if (buyer && !GOV.test(buyer) && CONTRACTOR.test(buyer)) return buyer;
+  if (buyer && !GOV.test(buyer) && CONTRACTOR.test(buyer) && /باطن|لصالح|مقاول/.test(t)) return buyer;
   if (buyer && !GOV.test(buyer) && /باطن|لصالح المقاول|مقاول رئيسي/.test(t)) return buyer;
   const m = /(?:لصالح|من)\s+(?:المقاول\s+(?:الرئيسي\s+)?)?(?:شركة\s+)?[«"“]?([^«»"”،.]{2,50}?)[»"”]?\s+(?:كمقاول رئيسي|المقاول الرئيسي)/.exec(t);
   return m ? clean(m[1]) : null;
@@ -58,7 +93,7 @@ function companyOf(t: string): string | null {
   if (a) return clean(a[1].replace(/\s*\([^)]*\)\s*/g, ' '));
   const q = /^[«"“]([^«»"”]{2,60})[»"”]/.exec(t);
   if (q) return clean(q[1]);
-  const v = /^(.{2,60}?)\s+(?:تعلن|تتسلم|تستلم|تُوقّع|توقّع|تُوقع|توقع|تفوز|توقيع)/.exec(t);
+  const v = /^(.{2,60}?)\s+(?:تعلن|تتسلم|تستلم|تُوقّع|توقّع|تُوقع|توقع|تفوز|توقيع|ترسي|أرست|ارست)/.exec(t);
   return v ? clean(v[1].replace(/^شركة\s+/, '')) : null;
 }
 
@@ -110,7 +145,8 @@ export function parseItem(rawTitle: string, link: string, pubDate: string, outle
   const t = clean(unesc(rawTitle)).replace(/\s+-\s+[^-]{2,80}$/, '');
   // المقتطف (إن جاء) يُقرأ للباطن وحده — نصٌّ بلا وسوم
   const desc = clean(unesc(unesc(rawDesc)).replace(/<[^>]+>/g, ' '));
-  if (!/ترسية|توقع عقد|توقّع عقد|تُوقع عقد|تُوقّع عقد|توقيع عقد|توقع عقدا/.test(t)) return null;
+  if (!/ترسية|توقع عقد|توقّع عقد|تُوقع عقد|تُوقّع عقد|توقيع عقد|توقع عقدا|ترسي\s|أرست\s|ارست\s/.test(t)) return null;
+  if (NOT_AWARD.test(t)) return null; // إيجار وتأجير واستئجار وبيع أرض — ليست ترسيات
   if (/يرسي|ترسية\s+\d+\s+مشروع/.test(t)) return null; // الفاعل جهةٌ حكومية أو خبرٌ إجمالي
   const company = companyOf(t);
   // فاعلٌ ليس شركةً منفِّذة: جهة حكومية، أو «تابعة لـ…»، أو خبرٌ عن مسؤول
@@ -119,11 +155,25 @@ export function parseItem(rawTitle: string, link: string, pubDate: string, outle
   if (/جنيه|درهم|دينار|مصر|قناة السويس|الإسكندرية|عُمان|عمان|الكويت|قطر|البحرين|الأردن/.test(t)) return null;
   if (!/ريال/.test(t) && !/ارقام|أرقام|مباشر|مال|الاقتصادية|سبق|عكاظ|الرياض|اليوم|أخبار 24|argaam|mubasher|maaal|aleqt/i.test(outlet)) return null;
   const d = new Date(pubDate);
+  const own = ownerRole(t, company);
+  if (own) {
+    // المالكة في buyer_entity، والترسية باسم المنفّذ — أو «ابحث عن المنفّذ» إن لم يُذكر
+    return {
+      is_subcontract: false, main_contractor: null, subs: subsOf(t + ' ' + desc).filter((n) => n !== company && n !== own.executor),
+      executor_unknown: !own.executor, news_company: company,
+      company_name: own.executor || 'منفّذ «' + (tenderOf(t) || company) + '»',
+      tender_title: tenderOf(t), headline: t.slice(0, 400), buyer_entity: company,
+      contract_value: valueOf(t),
+      awarded_at: Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      category: categoryOf(t), link, outlet: clean(unesc(outlet)),
+    };
+  }
   const buyer = buyerOf(t);
   const main = mainContractorOf(t + ' ' + desc, buyer);
   return {
     is_subcontract: !!main, main_contractor: main,
     subs: subsOf(t + ' ' + desc).filter((n) => n !== company && n !== main),
+    executor_unknown: false, news_company: company,
     company_name: company,
     tender_title: tenderOf(t),
     headline: t.slice(0, 400),
@@ -170,22 +220,32 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
     try { all.push(...await fetchQuery(q, days)); } catch (e) { errors.push(q + ': ' + (e instanceof Error ? e.message : String(e))); }
   }
   const since = new Date(Date.now() - 10 * 86400_000).toISOString().slice(0, 10);
-  const { data: recent, error } = await sb.from('contract_awards').select('company_name, awarded_at, created_at')
+  const { data: recent, error } = await sb.from('contract_awards').select('company_name, buyer_entity, contract_value, awarded_at, created_at')
     .or('awarded_at.gte.' + since + ',created_at.gte.' + since);
   if (error) throw new Error('قراءة الترسيات: ' + error.message);
   const seen = new Set((recent || []).map((r) => norm(String(r.company_name))));
+  // التكرار بين الاسم العربي واللاتيني («اس ام سي» / «SMC»): القيمة نفسها وتاريخ الخبر خلال ٧ أيام
+  const byValue: { v: number; d: string }[] = (recent || [])
+    .filter((r) => Number(r.contract_value) > 0)
+    .map((r) => ({ v: Number(r.contract_value), d: String(r.awarded_at || r.created_at).slice(0, 10) }));
+  const sameValue = (v: number | null, d: string) => !!v && byValue.some((x) => x.v === v && Math.abs(Date.parse(x.d) - Date.parse(d)) <= 7 * 86400_000);
   let inserted = 0, skipped = 0, blocked = 0;
   for (const p of all) {
-    const k = norm(p.company_name);
+    if (sameValue(p.contract_value, p.awarded_at)) { skipped++; continue; }
+    // المنفّذ المجهول لا يُقارن باسمه («منفّذ …» يتشابه) — بالمالكة والقيمة وحدهما
+    const k = p.executor_unknown ? 'owner:' + norm(p.news_company) : norm(p.company_name);
     if (sameAs(seen, k)) { skipped++; continue; }
     seen.add(k);
+    if (p.contract_value) byValue.push({ v: p.contract_value, d: p.awarded_at });
     // الترسية نفسها — ومقاول الباطن يحمل اسم مقاوله الرئيسي (مشغّل القاعدة يربطهما)
     const rows: Record<string, unknown>[] = [{
       source: 'news', source_ref: p.link.slice(0, 500),
       company_name: p.company_name, tender_title: p.tender_title, buyer_entity: p.buyer_entity,
       category: p.category, contract_value: p.contract_value, awarded_at: p.awarded_at,
       is_subcontract: p.is_subcontract, main_contractor: p.main_contractor,
-      notes: 'من الأخبار — ' + (p.outlet || 'مصدر') + ': ' + p.headline + '\n' + p.link.slice(0, 500),
+      notes: (p.executor_unknown ? 'ابحث عن المنفّذ — «' + p.news_company + '» هي المالكة التي أرست التنفيذ، والخبر لا يسمّي المقاول أو المورّد.\n'
+        : p.buyer_entity === p.news_company ? 'المالكة «' + p.news_company + '» أرست التنفيذ على هذه المنشأة.\n' : '')
+        + 'من الأخبار — ' + (p.outlet || 'مصدر') + ': ' + p.headline + '\n' + p.link.slice(0, 500),
     }];
     // ومن ذكرهم الخبر مقاولي باطن أو موردين: ترسيةٌ مستقلة لكلٍّ، مربوطةٌ بالفائز
     for (const sub of p.subs) {
