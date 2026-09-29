@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadConfig, compose, kindFor, stageFor, num, type Award } from '@/lib/awards';
 import { sendMail } from '@/lib/sendMail';
 import { generateConsultation } from '@/lib/awardConsult';
+import { sendPush } from '@/lib/push';
+import { OWNER_EMAIL } from '@/lib/notifyLead';
 
 // القناة تعمل في غياب الجميع — ما يوقظه `pg_cron` كل ربع ساعة (`/api/cron/awards-pipeline`).
 //
@@ -129,6 +131,21 @@ export async function closeNoReply(sb: SupabaseClient): Promise<number> {
     await sb.from('award_touches').insert({ award_id: r.id, channel: 'call', direction: 'out', actor: 'المنصة', body: 'أُغلقت: لا رد بعد المتابعة الواحدة (' + days + ' أيام)', outcome: 'أُغلقت بلا رد' });
   }
   return (data || []).length;
+}
+
+/** كل ردٍّ جديد (من زرّ ضي، أو ما سجّله Claude التشغيل من البريد) يصل المالك فوراً — مرةً لكل فرصة */
+export async function notifyReplies(sb: SupabaseClient): Promise<number> {
+  const { data, error } = await sb.from('contract_awards').select('id, company_name').not('replied_at', 'is', null).is('reply_notified_at', null).limit(20);
+  if (error) throw new Error(error.message);
+  let n = 0;
+  for (const a of data || []) {
+    // يُحجز أولاً (مشروطاً) فلا يُشعَر مرتين إن تزامنت دورتان
+    const { data: mine } = await sb.from('contract_awards').update({ reply_notified_at: new Date().toISOString() }).eq('id', a.id).is('reply_notified_at', null).select('id');
+    if (!mine?.length) continue;
+    await sendPush({ title: '🟢 ردٌّ على ترسية', body: String(a.company_name) + ' — افتح «قناة الفائزين»', url: '/admin/channel', important: true, tag: 'award-reply-' + a.id }, OWNER_EMAIL).catch(() => null);
+    n++;
+  }
+  return n;
 }
 
 /** ٤) ردٌّ مؤهَّل ← استشارةٌ «جاهزة» تنتظر المالك (واحدةٌ في كل دورة — التوليد يأخذ دقيقة) */

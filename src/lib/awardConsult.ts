@@ -11,7 +11,8 @@ import { OWNER_EMAIL } from '@/lib/notifyLead';
 // ومسار القناة الآلي (`/api/cron/awards-pipeline`). تولّد «جاهزة» وتُشعر المالك
 // ولا تُرسل شيئاً — الإرسال بزرّ «اعتمد وأرسل» وحده.
 
-const LOCAL_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+// ويُعطى مسارٌ آخر بـ`LOCAL_CHROME` حيث لا يوجد Chrome المثبَّت (تشغيلٌ محلي بسكربت)
+const LOCAL_CHROME = process.env.LOCAL_CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 export const CONSULT_BUCKET = 'contracts';
 export const CONSULT_KIND = 'award_gap';
 

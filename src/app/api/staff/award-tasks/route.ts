@@ -118,6 +118,8 @@ export async function POST(req: Request) {
       body: String(a.company_name) + ' — سجّلته ' + actor + '. جدول الفجوة ينتظرك.',
       url: '/admin/awards', important: true, tag: 'award-yes-' + id,
     }, OWNER_EMAIL);
+    // أُشعِر المالك هنا — فلا تُشعره دورة القناة ثانيةً
+    if (p.sent) await sb.from('contract_awards').update({ reply_notified_at: new Date().toISOString() }).eq('id', id);
     const warns = [hErr2 ? 'لم يُسجَّل في «الفرص الساخنة»' : '', p.sent ? '' : 'لم يصل إشعار الجوال (' + (p.reason || 'فشل') + ')'].filter(Boolean);
     return NextResponse.json({ ok: true, status: 'replied', warn: warns.length ? warns.join(' · ') : null });
   }
