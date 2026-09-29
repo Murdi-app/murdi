@@ -32,9 +32,16 @@ export async function GET() {
     if (error) return NextResponse.json({ error: 'تعذّرت قراءة الترسيات — ' + error.message }, { status: 500 });
     if (tq.error) return NextResponse.json({ error: 'تعذّرت قراءة المراسلات — ' + tq.error.message }, { status: 500 });
     if (cq.error) return NextResponse.json({ error: 'تعذّرت قراءة الاستشارات — ' + cq.error.message }, { status: 500 });
-    // آخر استشارة فجوة لكل ترسية (الأحدث أولاً في القراءة)
+    // آخر استشارة فجوة لكل منشأة (الأحدث أولاً في القراءة) — تُظهَر على كل عقدٍ من عقودها
+    const orgOf = new Map<string, string>();
+    for (const a of (data || []) as Award[]) orgOf.set(String(a.id), String(a.org_key || a.id));
     const consultBy = new Map<string, { status: string; generated_at: string | null; released_at: string | null }>();
-    for (const c of cq.data || []) if (!consultBy.has(String(c.award_id))) consultBy.set(String(c.award_id), { status: String(c.status), generated_at: c.generated_at, released_at: c.released_at });
+    for (const c of cq.data || []) {
+      const k = orgOf.get(String(c.award_id)) || String(c.award_id);
+      if (!consultBy.has(k)) consultBy.set(k, { status: String(c.status), generated_at: c.generated_at, released_at: c.released_at });
+    }
+    const orgCount = new Map<string, number>();
+    for (const a of (data || []) as Award[]) if (a.status !== 'dropped') { const k = String(a.org_key || a.id); orgCount.set(k, (orgCount.get(k) || 0) + 1); }
     // كل مراسلة بحرفها وتاريخها وقناتها ومرسِلها ونتيجتها، والردود الواردة معها
     const touchesBy = new Map<string, Touch[]>();
     for (const t of (tq.data || []) as Touch[]) {
@@ -54,7 +61,8 @@ export async function GET() {
         kind: c?.kind || null,
         stage: c?.stage || null,
         touches: touchesBy.get(String(a.id)) || [],
-        consult: consultBy.get(String(a.id)) || null,
+        consult: consultBy.get(String(a.org_key || a.id)) || null,
+        org_awards: orgCount.get(String(a.org_key || a.id)) || 1,
       };
     });
     return NextResponse.json({ ok: true, awards, templates: cfg.templates, settings: cfg.settings });

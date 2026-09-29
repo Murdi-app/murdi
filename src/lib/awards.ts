@@ -19,6 +19,10 @@ export type Award = {
   category: string;
   contract_value: number | null;
   is_subcontract?: boolean | null;
+  /** تاريخ فتح العروض — يُقدَّر منه بدء التنفيذ */
+  bids_opened_at?: string | null;
+  /** مفتاح المنشأة (يضعه مشغّل القاعدة) — يجمع ترسيات المنشأة الواحدة */
+  org_key?: string | null;
   awarded_at: string | null;
   track: string | null;
   decision_maker_name: string | null;

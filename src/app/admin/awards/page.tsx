@@ -18,6 +18,7 @@ type Award = {
   addressed: boolean; src: string; next: string[]; message: Msg | null; stage: string | null; touches: Touch[]
   gap_pdf_path: string | null; gap_generated_at: string | null; gap_inputs: Record<string, unknown> | null
   consult: { status: string; generated_at: string | null; released_at: string | null } | null
+  org_awards: number
 }
 type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean }
 
@@ -369,7 +370,7 @@ export default function AwardsPage() {
                   </div>
                 </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>{a.kind === 'general' ? 'القالب العام ناقص — أكمل general_email_subject وgeneral_email_body من «القوالب والإعدادات».' : 'لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».'}</div>}
                 <div style={{ marginTop: 14, background: '#F7FBF9', border: '1px solid ' + LINE, borderRadius: 10, padding: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة{a.org_awards > 1 && <span style={{ color: G, fontSize: 12 }}> — للمنشأة {a.org_awards} عقود، تجمعها استشارةٌ واحدة</span>} <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                     {([['contract_value', 'قيمة العقد', a.contract_value != null ? String(a.contract_value) : ''], ['months', 'المدة بالأشهر', ''], ['start_date', 'بدء التنفيذ YYYY-MM-DD', a.awarded_at || ''],
                       ['delay_days', 'مدة الصرف بالأيام', ''], ['monthly_spend', 'الصرف الشهري', '']] as const).map(([k, l, ph]) => (
@@ -387,7 +388,7 @@ export default function AwardsPage() {
                     <button onClick={() => makeGap(a)} disabled={busy === 'gap' + a.id} style={btn(a.consult?.status === 'ready' ? '#fff' : G, a.consult?.status === 'ready' ? G : '#fff')}>{busy === 'gap' + a.id ? 'جارٍ… (دقيقة تقريباً)' : a.consult ? 'ولّدها من جديد' : 'ولّد الاستشارة'}</button>
                     {a.gap_pdf_path && <button onClick={() => openGap(a)} style={btn('#fff', G)}>افتح الاستشارة</button>}
                     {a.consult && <span style={{ fontSize: 12, fontWeight: 800, color: a.consult.status === 'ready' ? '#8A6D1F' : a.consult.status === 'released' ? '#1A5C46' : '#A5281B' }}>
-                      {a.consult.status === 'ready' ? '● جاهزة — تنتظر اعتمادك' : a.consult.status === 'released' ? '✓ أُرسلت ' + (a.consult.released_at || '').slice(0, 10) : a.consult.status === 'failed' ? 'فشل التوليد' : 'جارٍ…'}
+                      {a.consult.status === 'ready' ? '● جاهزة — تنتظر اعتمادك' : a.consult.status === 'released' ? '✓ أُرسلت ' + (a.consult.released_at || '').slice(0, 10) : a.consult.status === 'failed' ? 'فشل التوليد' : a.consult.status === 'superseded' ? 'نسخة سابقة' : 'جارٍ…'}
                     </span>}
                     {gapOut[a.id] && <span style={{ fontSize: 12.5, fontWeight: 800 }}>{gapOut[a.id].line}</span>}
                   </div>
