@@ -307,13 +307,29 @@ export type StaffTask = {
   codex_reason: string | null;
   /** آخر موعدٍ حدّدته هي (موعد العميل) */
   appointment: string | null;
+  /**
+   * ★ ٣٠ سبتمبر (بأمر المالك): استشارة الفجوة التي اعتمدها المالك — تنزّلها ضي
+   * وترسلها بالواتساب. وفيها قيمة العقد وفجوته: أذن المالك بأن تراها.
+   * لا تظهر إلا لاستشارةٍ «مُرسلة» (اعتمدها المالك)، لا لـ«جاهزة» تنتظره.
+   */
+  consult: { pdf_url: string; wa_url: string | null } | null;
 };
+
+/**
+ * رسالة استشارة الفجوة — نصٌّ واحد للبريد (`/api/admin/awards/gap`) ولواتساب ضي،
+ * من `gap_email_body` المعتمد (`gap_email_approved`). والتوقيع يُلحقه كلٌّ بطريقته.
+ */
+export function gapMessage(a: Pick<Award, 'tender_title' | 'buyer_entity'>, s: Settings): string | null {
+  if (String(s.gap_email_approved || '').trim() !== 'true') return null;
+  const t = fill(String(s.gap_email_body || ''), a).trim();
+  return t || null;
+}
 
 export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
   const { settings } = await loadConfig(sb);
   const days = num(settings, 'reminder_after_days');
   const { data, error } = await sb.from('contract_awards')
-    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, category, awarded_at, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at, phone_source, phone_source_url, phone_check, fit_service, qualify_question, codex_flag, codex_reason, next_at_override')
+    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, category, awarded_at, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at, phone_source, phone_source_url, phone_check, fit_service, qualify_question, codex_flag, codex_reason, next_at_override, gap_pdf_path')
     .in('status', ['qualified', 'messaged', 'replied', 'gap_sent', 'meeting', 'priced'])
     // رقمٌ بمصدرٍ منشور ورابطه وحده، وما قيل عنه «لا يصل» لا يعود إليها
     .not('phone_source_url', 'is', null)
@@ -321,10 +337,13 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
   if (error) throw new Error(error.message);
   const ids = (data || []).map((a) => String(a.id));
   // الترتيب بالدرجة المفسَّرة (والدرجة نفسها وسببها لا تصل إليها — فيها القيمة)
-  const [pl, hy] = await Promise.all([
+  const [pl, hy, rel] = await Promise.all([
     ids.length ? sb.from('award_pipeline').select('id, score').in('id', ids) : Promise.resolve({ data: [], error: null }),
     sb.from('award_hypotheses').select('category, stage, question').eq('approved', true),
+    ids.length ? sb.from('consultations').select('award_id').in('award_id', ids).eq('assessment_type', 'award_gap').eq('status', 'released') : Promise.resolve({ data: [], error: null }),
   ]);
+  const released = new Set(((rel.data || []) as { award_id: string }[]).map((r) => String(r.award_id)));
+  const sig = String(settings.signature || '').trim();
   const score = new Map(((pl.data || []) as { id: string; score: number }[]).map((r) => [String(r.id), Number(r.score)]));
   const lib = new Map(((hy.data || []) as { category: string; stage: string; question: string }[]).map((h) => [h.category + '/' + h.stage, h.question]));
   const cutoff = days === null ? null : Date.now() - days * 86400_000;
@@ -341,6 +360,14 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
     else if (['gap_sent', 'meeting', 'priced'].includes(String(a.status)) && (!a.next_at_override || Date.parse(String(a.next_at_override)) <= Date.now() + 86400_000)) kind = 'followup';
     if (!kind) continue;
     const text = whatsappText(a as WaFields, settings);
+    // الاستشارة المعتمدة: رابطٌ موقَّع لساعة يُنزِّل الملف، وواتساب بنصّها المعتمد
+    let consult: StaffTask['consult'] = null;
+    if (kind === 'followup' && released.has(String(a.id)) && a.gap_pdf_path) {
+      // اسم الملف لاتيني: الاسم العربي يُشفَّر مرتين في رابط التخزين
+      const { data: sg } = await sb.storage.from('contracts').createSignedUrl(String(a.gap_pdf_path), 3600, { download: 'murdi-consultation.pdf' });
+      const msg = gapMessage({ tender_title: a.tender_title ?? null, buyer_entity: a.buyer_entity ?? null }, settings);
+      if (sg?.signedUrl) consult = { pdf_url: sg.signedUrl, wa_url: wa && msg ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent(msg + (sig ? '\n\n' + sig : '')) : null };
+    }
     out.push({
       id: String(a.id), kind, company: String(a.company_name),
       person: a.decision_maker_name ? String(a.decision_maker_name) : null,
@@ -354,6 +381,7 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
       question: (a.qualify_question ? String(a.qualify_question) : null) || lib.get(String(a.category) + '/' + stageFor(a.awarded_at ? String(a.awarded_at) : null, settings)) || null,
       codex_reason: kind === 'codex' && a.codex_reason ? String(a.codex_reason) : null,
       appointment: a.next_at_override ? String(a.next_at_override) : null,
+      consult,
       score: score.get(String(a.id)) ?? 0,
     });
   }

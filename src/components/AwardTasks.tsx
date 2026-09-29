@@ -5,11 +5,8 @@ import { useCallback, useEffect, useState } from 'react'
 // اتصالٌ وواتساب معاً بالتوازي، ثم نتيجةٌ من المفردة الواحدة. ولا يظهر هنا
 // من الترسية إلا الشركة وصاحب القرار والرقمان — لا قيمة ولا حدود ولا بريد.
 
-type Task = {
-  id: string; kind: 'first' | 'reminder' | 'qualify' | 'followup' | 'codex'; company: string; person: string | null; role: string | null
-  phone: string | null; whatsapp: string | null; wa_url: string | null; since: string | null; check: boolean; source: string | null; source_url: string | null
-  question: string | null; codex_reason: string | null; appointment: string | null
-}
+// النوع من مصدره لا نسخةً عنه — كانت نسخةٌ هنا ستفترق عن `staffTasks` عند أول حقلٍ جديد
+import type { StaffTask as Task } from '@/lib/awards'
 const KIND: Record<Task['kind'], [string, string, string]> = {
   first: ['أول تواصل', '#EAF4F0', '#1A3D34'], reminder: ['مكالمة التذكير الوحيدة', '#FBEEEC', '#A5281B'],
   qualify: ['ردّ — التأهيل', '#FFF6E0', '#8A6D1F'], followup: ['متابعة العرض', '#EAF4F0', '#1A3D34'], codex: ['مهمة من Codex', '#EEF0FB', '#3A4A9B'],
@@ -45,7 +42,7 @@ export default function AwardTasks() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load() }, [load])
 
-  const post = async (t: Task, action: 'check' | 'call' | 'whatsapp' | 'outcome' | 'yes', answer?: 'yes' | 'no'): Promise<boolean> => {
+  const post = async (t: Task, action: 'check' | 'call' | 'whatsapp' | 'consult' | 'outcome' | 'yes', answer?: 'yes' | 'no'): Promise<boolean> => {
     setBusy(t.id + action); setErr('')
     try {
       const r = await fetch('/api/staff/award-tasks', {
@@ -119,6 +116,19 @@ export default function AwardTasks() {
             <button disabled={busy === t.id + 'yes'} onClick={async () => { if (await post(t, 'yes')) await load() }}
               style={{ ...pill('#fff', G), border: '2px solid ' + G }}>{busy === t.id + 'yes' ? '…' : '✓ ردّ بنعم'}</button>
           </div>
+          {t.consult && (
+            // الاستشارة التي اعتمدها المالك: تُنزَّل ثم تُرفق في محادثة الواتساب (الواتساب لا يُرفق ملفاً من رابط)
+            <div style={{ background: '#F7FBF9', border: '1px solid #CFE3DA', borderRadius: 10, padding: 10, marginTop: 10 }}>
+              <div style={{ fontWeight: 900, color: G, fontSize: 14, marginBottom: 4 }}>📄 استشارة الفجوة — اعتمدها الدكتور</div>
+              <div style={{ color: M, fontSize: 12.5, marginBottom: 8 }}>١) نزّلي الملف · ٢) افتحي الواتساب — الرسالة مكتوبة — وأرفقي الملف ثم أرسلي.</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <a href={t.consult.pdf_url} style={pill(G)}>⬇️ نزّلي الاستشارة PDF</a>
+                {t.consult.wa_url
+                  ? <a href={t.consult.wa_url} target="_blank" rel="noopener noreferrer" onClick={() => { void post(t, 'consult') }} style={pill('#25D366')}>💬 افتحي واتساب وأرفقيها</a>
+                  : <span style={{ color: '#A5281B', fontSize: 12.5, fontWeight: 700 }}>لا رقم واتساب أو نص الرسالة غير معتمد</span>}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
             {/* التأهيل: الخدمة المناسبة — لازمةٌ مع «ردّ بنعم» و«مهتم» و«تحوّل عميلاً» */}
             <select value={svc[t.id] || ''} onChange={(e) => setSvc({ ...svc, [t.id]: e.target.value })}

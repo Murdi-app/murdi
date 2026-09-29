@@ -4,7 +4,7 @@ import { requirePage } from '@/lib/requireStaff';
 import { isOutcome, OUTCOMES } from '@/lib/outcomes';
 import { sendPush } from '@/lib/push';
 import { OWNER_EMAIL } from '@/lib/notifyLead';
-import { FIT_SERVICES, isFitService, staffTasks, statusAfterOutcome, whatsappText, waDigits, loadConfig, type Award } from '@/lib/awards';
+import { FIT_SERVICES, isFitService, staffTasks, statusAfterOutcome, whatsappText, gapMessage, waDigits, loadConfig, type Award } from '@/lib/awards';
 
 // مهام الترسيات في «مكالمات اليوم» — صفّ ضي.
 //
@@ -27,14 +27,14 @@ export async function GET() {
   }
 }
 
-// POST { id, action: 'check' | 'call' | 'whatsapp' | 'outcome' | 'yes' | 'service', answer?, outcome?, service?, note? }
+// POST { id, action: 'check' | 'call' | 'whatsapp' | 'consult' | 'outcome' | 'yes' | 'service', answer?, outcome?, service?, note? }
 export async function POST(req: Request) {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
   const action = String(b.action || '');
-  if (!id || !['check', 'call', 'whatsapp', 'outcome', 'yes', 'service'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
+  if (!id || !['check', 'call', 'whatsapp', 'consult', 'outcome', 'yes', 'service'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
   const outcome = action === 'outcome' ? String(b.outcome || '') : '';
   if (action === 'outcome' && !isOutcome(outcome)) {
     return NextResponse.json({ error: 'نتيجة غير معروفة — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
@@ -122,6 +122,24 @@ export async function POST(req: Request) {
     if (p.sent) await sb.from('contract_awards').update({ reply_notified_at: new Date().toISOString() }).eq('id', id);
     const warns = [hErr2 ? 'لم يُسجَّل في «الفرص الساخنة»' : '', p.sent ? '' : 'لم يصل إشعار الجوال (' + (p.reason || 'فشل') + ')'].filter(Boolean);
     return NextResponse.json({ ok: true, status: 'replied', warn: warns.length ? warns.join(' · ') : null });
+  }
+
+  // ★ ٣٠ سبتمبر: ضي ترسل استشارة الفجوة التي اعتمدها المالك — تُسجَّل باسمها وبحرف الرسالة
+  if (action === 'consult') {
+    const { data: rel } = await sb.from('consultations').select('id').eq('award_id', id)
+      .eq('assessment_type', 'award_gap').eq('status', 'released').limit(1).maybeSingle();
+    if (!rel) return NextResponse.json({ error: 'لا استشارة معتمدة لهذه الترسية — يعتمدها المالك أولاً' }, { status: 409 });
+    const { settings } = await loadConfig(sb);
+    const msg = gapMessage(a as Parameters<typeof gapMessage>[0], settings);
+    const { error: cErr } = await sb.from('award_touches').insert({
+      award_id: id, channel: 'whatsapp', direction: 'out', actor, to_address: waDigits(a.contact_whatsapp || a.contact_phone) || null,
+      subject: 'استشارة الفجوة', body: (msg ? msg + '\n\n' : '') + '(أرسلت ملف الاستشارة المعتمدة بالواتساب)',
+    });
+    if (cErr) return NextResponse.json({ error: 'لم يُسجَّل الإرسال — ' + cErr.message }, { status: 500 });
+    const { error: hErr4 } = await sb.from('hot_touches').insert({
+      source: 'award', ref_id: id, outcome: null, note: 'أرسلت الاستشارة المعتمدة بالواتساب', actor: who.userId, actor_name: actor,
+    });
+    return NextResponse.json({ ok: true, warn: hErr4 ? 'سُجّلت في الترسية ولم تُسجَّل في «الفرص الساخنة»' : null });
   }
 
   let body: string | null = null;

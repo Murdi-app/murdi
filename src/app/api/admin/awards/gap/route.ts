@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
-import { loadConfig, fill, type Award } from '@/lib/awards';
+import { loadConfig, fill, gapMessage, type Award } from '@/lib/awards';
 import type { GapInputs } from '@/lib/gapSchedule';
 import { generateConsultation, groupOf } from '@/lib/awardConsult';
 import { sendMail } from '@/lib/sendMail';
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
   const to = String(a.contact_email || '').trim();
   const subject = fill(String(cfg.settings.gap_email_subject || ''), a as Award).trim() || 'جدول فجوة السيولة';
-  const text = fill(String(cfg.settings.gap_email_body || ''), a as Award).trim();
+  const text = gapMessage(a as Award, cfg.settings) || '';
   let ref: string = String(a.gap_pdf_path);
   if (channel === 'email') {
     if (String(cfg.settings.gap_email_approved || '').trim() !== 'true') return NextResponse.json({ error: 'بريد الاستشارة غير معتمد (gap_email_approved)' }, { status: 409 });
