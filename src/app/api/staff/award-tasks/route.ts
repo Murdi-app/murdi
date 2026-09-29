@@ -51,7 +51,14 @@ export async function POST(req: Request) {
   const { data: a, error: rErr } = await sb.from('contract_awards')
     .select('id, status, company_name, source, contract_value, is_subcontract, tender_title, buyer_entity, contact_phone, contact_whatsapp').eq('id', id).maybeSingle();
   if (rErr) return NextResponse.json({ error: 'تعذّرت القراءة — ' + rErr.message }, { status: 500 });
-  if (!a || !['qualified', 'messaged'].includes(String(a.status))) return NextResponse.json({ error: 'هذه المهمة لم تعد قائمة' }, { status: 409 });
+  // مهامها: الأول والتذكير (موثّقة · أُرسلت) والتأهيل (ردّت) ومتابعة العرض — لا ما أُغلق أو دُفع
+  if (!a || !['qualified', 'messaged', 'reminder_call', 'replied', 'gap_sent', 'meeting', 'priced'].includes(String(a.status))) return NextResponse.json({ error: 'هذه المهمة لم تعد قائمة' }, { status: 409 });
+  // ما قاله العميل بحرفه، والاعتراض، والموعد، والخطوة التالية — من بطاقة ضي
+  const said = String(b.said || '').trim().slice(0, 4000) || null;
+  const objection = String(b.objection || '').trim().slice(0, 1000) || null;
+  const important = b.objection_important === true;
+  const appt = b.appointment_at && !Number.isNaN(Date.parse(String(b.appointment_at))) ? new Date(String(b.appointment_at)).toISOString() : null;
+  const nextStep = String(b.next_step || '').trim().slice(0, 300) || null;
 
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
   const actor = who.role === 'admin' ? 'د. عبدالحكيم المرضي' : String(me?.name || who.email || 'الفريق');
@@ -126,6 +133,7 @@ export async function POST(req: Request) {
   const { error: tErr } = await sb.from('award_touches').insert({
     award_id: id, channel: action === 'whatsapp' ? 'whatsapp' : 'call', direction: 'out', actor,
     to_address: to || null, body: action === 'whatsapp' ? body : note, outcome: outcome || null,
+    said, objection, objection_important: important && !!objection, appointment_at: appt, next_step: nextStep,
   });
   if (tErr) return NextResponse.json({ error: 'لم تُسجَّل — ' + tErr.message }, { status: 500 });
 
@@ -138,7 +146,13 @@ export async function POST(req: Request) {
   // الحالة: الواتساب تواصلٌ وقع؛ والنتيجة تقرّر (ردّ · إسقاط · أُرسلت · مكالمة التذكير)
   let next: string | null = null;
   if (action === 'whatsapp' && a.status === 'qualified') next = 'messaged';
-  if (action === 'outcome') next = statusAfterOutcome(String(a.status), outcome);
+  // النتيجة تحرّك الحالة في أول الطريق فقط؛ وبعد الرد لا يعود بها «مهتم» إلى الخلف —
+  // إلا «غير مهتم» و«طلب عدم التواصل» فيُغلقان في أي مرحلة
+  if (action === 'outcome') {
+    const early = ['qualified', 'messaged', 'reminder_call'].includes(String(a.status));
+    const n = statusAfterOutcome(String(a.status), outcome);
+    next = early || ['dropped', 'do_not_contact'].includes(n) ? n : null;
+  }
   if (next && next !== a.status) {
     const now = new Date().toISOString();
     const patch: Record<string, unknown> = { status: next, updated_at: now };
@@ -147,6 +161,10 @@ export async function POST(req: Request) {
     const { data: moved, error: mErr } = await sb.from('contract_awards').update(patch).eq('id', id).eq('status', a.status).select('id');
     if (mErr) return NextResponse.json({ error: 'سُجّلت، ولم تُحدَّث حالة الترسية — ' + mErr.message }, { status: 500 });
     if (!moved?.length) return NextResponse.json({ ok: true, warn: 'سُجّلت — وكانت حالة الترسية قد تغيّرت قبلها' });
+  }
+  // موعد العميل وخطوتها التالية يصيران «الخطوة التالية» للفرصة (بعد تحريك الحالة، فالمشغّل يمسح القديم عندها)
+  if (appt || nextStep) {
+    await sb.from('contract_awards').update({ next_at_override: appt, next_step_override: nextStep || (appt ? 'موعد العميل' : null) }).eq('id', id);
   }
   return NextResponse.json({ ok: true, status: next || a.status, warn: hErr ? 'سُجّلت في الترسية ولم تُسجَّل في «الفرص الساخنة»' : null });
 }

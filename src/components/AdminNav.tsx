@@ -33,6 +33,7 @@ const LINKS: Link[] = [
   { href: '/admin/apply', label: 'التقديم', icon: '📤' },
   { href: '/admin/outreach', label: 'المخاطبة', icon: '✉️' },
   { href: '/admin/awards', label: 'الترسيات', icon: '🏗️' },
+  { href: '/admin/channel', label: 'قناة الفائزين', icon: '🛰️' },
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
   { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },

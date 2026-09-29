@@ -91,6 +91,7 @@ export async function POST(req: Request) {
   const channel = CHANNELS.includes(String(b.contact_channel)) ? String(b.contact_channel) : null;
   const { data, error } = await admin().from('contract_awards').insert({
     source: 'manual',
+    dr_manual: true,   // مقياس الأتمتة: فرصةٌ أدخلها المالك بيده
     company_name: company,
     cr_number: cut(b.cr_number, 20) || null,
     tender_title: cut(b.tender_title, 400) || null,
@@ -142,6 +143,8 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'هذه الفئة لا تُخاطَب' }, { status: 409 });
     }
     const patch: Record<string, unknown> = { status: to, updated_at: now };
+    // مقياس الأتمتة: تحريكٌ يدوي إلى الأمام توجيهٌ من المالك (الإسقاط و«لا تتواصل» قراران لا توجيه)
+    if (!['dropped', 'do_not_contact'].includes(to)) patch.dr_manual = true;
     const col = STAMP[to];
     if (col) patch[col] = now;
     if (to === 'do_not_contact') {
@@ -159,7 +162,8 @@ export async function PATCH(req: Request) {
 
   // تعديل حقول
   const f = (b.fields && typeof b.fields === 'object') ? b.fields as Record<string, unknown> : {};
-  const patch: Record<string, unknown> = { updated_at: now };
+  // مقياس الأتمتة: إدخال بياناتٍ بيد المالك
+  const patch: Record<string, unknown> = { updated_at: now, dr_manual: true };
   const text: Array<[string, number]> = [['company_name', 200], ['cr_number', 20], ['tender_title', 400], ['buyer_entity', 200],
     ['decision_maker_name', 120], ['decision_maker_role', 120], ['contact_email', 160], ['contact_phone', 40], ['contact_whatsapp', 40], ['notes', 4000],
     ['phone_source', 160], ['phone_source_url', 600], ['email_source', 160], ['email_source_url', 600]];

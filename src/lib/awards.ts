@@ -41,7 +41,7 @@ export type Award = {
   updated_at: string;
 };
 
-export type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean };
+export type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean; approved?: boolean };
 export type Settings = Record<string, string>;
 
 /**
@@ -155,7 +155,8 @@ export function compose(a: Award, templates: Template[], s: Settings): Composed 
     if (!subject || !body) return { subject: '', body: '', stage, kind, template: null, ready: false, link };
     return { subject, body: body + '\n\n' + signature, stage, kind, template: null, ready: true, link };
   }
-  const template = templates.find((t) => t.active && t.category === a.category && t.stage === stage) || null;
+  // قالبٌ مفعَّل ومعتمد — المعدَّل جوهرياً ينتظر اعتماد المالك قبل أن يخرج
+  const template = templates.find((t) => t.active && t.approved !== false && t.category === a.category && t.stage === stage) || null;
   if (!template) return { subject: '', body: '', stage, kind, template: null, ready: false, link };
   const parts = [s.opening_line, template.context_paragraph, s.offer_paragraph, s.cta_paragraph]
     .map((p) => fill(String(p || ''), a).trim()).filter(Boolean);
@@ -164,7 +165,7 @@ export function compose(a: Award, templates: Template[], s: Settings): Composed 
 
 export async function loadConfig(sb: SupabaseClient): Promise<{ templates: Template[]; settings: Settings }> {
   const [t, s] = await Promise.all([
-    sb.from('award_message_templates').select('id, category, stage, subject, context_paragraph, active').order('category').order('stage'),
+    sb.from('award_message_templates').select('id, category, stage, subject, context_paragraph, active, approved').order('category').order('stage'),
     sb.from('award_settings').select('key, value'),
   ]);
   if (t.error) throw new Error('القوالب: ' + t.error.message);
@@ -296,37 +297,48 @@ export function statusAfterOutcome(current: string, outcome: string): string {
 }
 
 export type StaffTask = {
-  id: string; kind: 'first' | 'reminder'; company: string; person: string | null; role: string | null;
+  id: string; kind: 'first' | 'reminder' | 'qualify' | 'followup' | 'codex'; company: string; person: string | null; role: string | null;
   phone: string | null; whatsapp: string | null; wa_url: string | null; since: string | null;
   /** لم يُتحقق بعد أن الرقم يصل لصاحب القرار — السؤال أولاً */
   check: boolean; source: string | null; source_url: string | null;
+  /** سؤال التأهيل — من الفرصة أو من مكتبة الفرضيات المعتمدة. والفرضية لا تُقال للعميل حقيقةً */
+  question: string | null;
+  /** سبب «مهمة لضي» من Codex */
+  codex_reason: string | null;
+  /** آخر موعدٍ حدّدته هي (موعد العميل) */
+  appointment: string | null;
 };
 
-/**
- * مهام ضي: كل ترسية «مؤهَّلة» فيها هاتف أو واتساب (أول تواصل)، وكل ترسية
- * «أُرسلت» مضى عليها `reminder_after_days` بلا رد (مكالمة التذكير الوحيدة).
- * ★ لا يخرج لها شيءٌ من الحدود ولا القيمة ولا نص البريد — اسم الشركة وصاحب
- *   القرار والرقمان ونصّ الواتساب المعتمد فقط.
- */
 export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
   const { settings } = await loadConfig(sb);
   const days = num(settings, 'reminder_after_days');
   const { data, error } = await sb.from('contract_awards')
-    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at, phone_source, phone_source_url, phone_check')
-    .in('status', ['qualified', 'messaged'])
+    .select('id, status, source, contract_value, is_subcontract, company_name, tender_title, buyer_entity, category, awarded_at, decision_maker_name, decision_maker_role, contact_phone, contact_whatsapp, messaged_at, updated_at, phone_source, phone_source_url, phone_check, fit_service, qualify_question, codex_flag, codex_reason, next_at_override')
+    .in('status', ['qualified', 'messaged', 'replied', 'gap_sent', 'meeting', 'priced'])
     // رقمٌ بمصدرٍ منشور ورابطه وحده، وما قيل عنه «لا يصل» لا يعود إليها
     .not('phone_source_url', 'is', null)
     .or('phone_check.is.null,phone_check.eq.yes');
   if (error) throw new Error(error.message);
+  const ids = (data || []).map((a) => String(a.id));
+  // الترتيب بالدرجة المفسَّرة (والدرجة نفسها وسببها لا تصل إليها — فيها القيمة)
+  const [pl, hy] = await Promise.all([
+    ids.length ? sb.from('award_pipeline').select('id, score').in('id', ids) : Promise.resolve({ data: [], error: null }),
+    sb.from('award_hypotheses').select('category, stage, question').eq('approved', true),
+  ]);
+  const score = new Map(((pl.data || []) as { id: string; score: number }[]).map((r) => [String(r.id), Number(r.score)]));
+  const lib = new Map(((hy.data || []) as { category: string; stage: string; question: string }[]).map((h) => [h.category + '/' + h.stage, h.question]));
   const cutoff = days === null ? null : Date.now() - days * 86400_000;
-  const out: StaffTask[] = [];
+  const out: (StaffTask & { score: number })[] = [];
   for (const a of data || []) {
     const phone = a.contact_phone ? String(a.contact_phone) : null;
     const wa = waDigits(a.contact_whatsapp || a.contact_phone);
     if (!phone && !wa) continue;
-    let kind: 'first' | 'reminder' | null = null;
-    if (a.status === 'qualified') kind = 'first';
+    let kind: StaffTask['kind'] | null = null;
+    if (a.codex_flag === 'dhai_task') kind = 'codex';
+    else if (a.status === 'qualified') kind = 'first';
     else if (a.status === 'messaged' && cutoff !== null && a.messaged_at && Date.parse(String(a.messaged_at)) <= cutoff) kind = 'reminder';
+    else if (a.status === 'replied' && !a.fit_service) kind = 'qualify';
+    else if (['gap_sent', 'meeting', 'priced'].includes(String(a.status)) && (!a.next_at_override || Date.parse(String(a.next_at_override)) <= Date.now() + 86400_000)) kind = 'followup';
     if (!kind) continue;
     const text = whatsappText(a as WaFields, settings);
     out.push({
@@ -334,12 +346,18 @@ export async function staffTasks(sb: SupabaseClient): Promise<StaffTask[]> {
       person: a.decision_maker_name ? String(a.decision_maker_name) : null,
       role: a.decision_maker_role ? String(a.decision_maker_role) : null,
       phone, whatsapp: wa || null,
-      wa_url: wa && text ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent(text) : null,
+      wa_url: wa && text && ['first', 'reminder', 'codex'].includes(kind) ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent(text) : null,
       since: String(kind === 'reminder' ? a.messaged_at : a.updated_at || ''),
       check: a.phone_check !== 'yes',
       source: a.phone_source ? String(a.phone_source) : null,
       source_url: a.phone_source_url ? String(a.phone_source_url) : null,
+      question: (a.qualify_question ? String(a.qualify_question) : null) || lib.get(String(a.category) + '/' + stageFor(a.awarded_at ? String(a.awarded_at) : null, settings)) || null,
+      codex_reason: kind === 'codex' && a.codex_reason ? String(a.codex_reason) : null,
+      appointment: a.next_at_override ? String(a.next_at_override) : null,
+      score: score.get(String(a.id)) ?? 0,
     });
   }
-  return out.sort((x, y) => (x.kind === y.kind ? 0 : x.kind === 'reminder' ? -1 : 1));
+  // «مهمة لضي» من Codex أولاً، ثم الأعلى درجةً
+  return out.sort((x, y) => (x.kind === 'codex' ? 0 : 1) - (y.kind === 'codex' ? 0 : 1) || y.score - x.score)
+    .map(({ score: _s, ...t }) => { void _s; return t; });
 }

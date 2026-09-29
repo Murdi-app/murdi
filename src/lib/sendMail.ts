@@ -26,6 +26,8 @@ export type MailInput = {
   html: string;
   replyTo?: string;
   attachments?: { filename: string; content: string }[];
+  /** مفتاح عدم التكرار لدى مزوّد البريد — الإرسال نفسه بالمفتاح نفسه لا يخرج مرتين (صندوق الصادر) */
+  idempotencyKey?: string;
 };
 
 const client = () => new Resend(process.env.RESEND_API_KEY);
@@ -44,7 +46,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
       html: input.html,
       ...(input.replyTo ? { replyTo: input.replyTo } : {}),
       ...(input.attachments && input.attachments.length ? { attachments: input.attachments } : {}),
-    });
+    }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);
 
     // هنا بيت الداء الذي كان مهملاً
     const err = (res as { error?: { message?: string; name?: string } | null })?.error;

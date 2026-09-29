@@ -34,6 +34,8 @@ export async function PUT(req: Request) {
       patch.context_paragraph = v.slice(0, 4000);
     }
     if (t.active !== undefined) patch.active = t.active === true;
+    // تعديل المالك اعتمادٌ (ومشغّل القاعدة يعيد غيرَه إلى «ينتظر الاعتماد»)
+    if (patch.subject !== undefined || patch.context_paragraph !== undefined || t.approve === true) { patch.approved = true; patch.approved_at = now; }
     const { data, error } = await sb.from('award_message_templates').update(patch).eq('id', id).select('id');
     if (error) return NextResponse.json({ error: 'لم يُحفظ القالب — ' + error.message }, { status: 500 });
     if (!data?.length) return NextResponse.json({ error: 'القالب غير موجود' }, { status: 404 });
@@ -55,6 +57,13 @@ export async function PUT(req: Request) {
     const { data, error } = await sb.from('award_settings').update({ value: value.slice(0, 4000) }).eq('key', key).select('key');
     if (error) return NextResponse.json({ error: 'لم يُحفظ الإعداد — ' + error.message }, { status: 500 });
     if (!data?.length) return NextResponse.json({ error: 'لم يُحدَّث شيء' }, { status: 404 });
+    // نصٌّ يخرج للعميل عدّله المالك بنفسه ← معتمد (مشغّل القاعدة صفّر مفتاحه عند التعديل)
+    const APPROVAL: Record<string, string> = {
+      general_email_subject: 'general_email_approved', general_email_body: 'general_email_approved',
+      whatsapp_template: 'whatsapp_template_approved', whatsapp_template_general: 'whatsapp_template_approved',
+      gap_email_subject: 'gap_email_approved', gap_email_body: 'gap_email_approved',
+    };
+    if (APPROVAL[key]) await sb.from('award_settings').update({ value: 'true' }).eq('key', APPROVAL[key]);
     return NextResponse.json({ ok: true });
   }
 

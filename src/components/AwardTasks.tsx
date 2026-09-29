@@ -5,7 +5,17 @@ import { useCallback, useEffect, useState } from 'react'
 // اتصالٌ وواتساب معاً بالتوازي، ثم نتيجةٌ من المفردة الواحدة. ولا يظهر هنا
 // من الترسية إلا الشركة وصاحب القرار والرقمان — لا قيمة ولا حدود ولا بريد.
 
-type Task = { id: string; kind: 'first' | 'reminder'; company: string; person: string | null; role: string | null; phone: string | null; whatsapp: string | null; wa_url: string | null; since: string | null; check: boolean; source: string | null; source_url: string | null }
+type Task = {
+  id: string; kind: 'first' | 'reminder' | 'qualify' | 'followup' | 'codex'; company: string; person: string | null; role: string | null
+  phone: string | null; whatsapp: string | null; wa_url: string | null; since: string | null; check: boolean; source: string | null; source_url: string | null
+  question: string | null; codex_reason: string | null; appointment: string | null
+}
+const KIND: Record<Task['kind'], [string, string, string]> = {
+  first: ['أول تواصل', '#EAF4F0', '#1A3D34'], reminder: ['مكالمة التذكير الوحيدة', '#FBEEEC', '#A5281B'],
+  qualify: ['ردّ — التأهيل', '#FFF6E0', '#8A6D1F'], followup: ['متابعة العرض', '#EAF4F0', '#1A3D34'], codex: ['مهمة من Codex', '#EEF0FB', '#3A4A9B'],
+}
+// ما تكتبه بعد المكالمة: كلام العميل بحرفه، والاعتراض، والموعد، والخطوة التالية
+type Capture = { said?: string; objection?: string; important?: boolean; appointment?: string; next_step?: string }
 
 const G = '#1A3D34', M = '#6B8A80'
 const pill = (bg: string, fg = '#fff'): React.CSSProperties => ({ background: bg, color: fg, border: 'none', padding: '9px 18px', borderRadius: 999, fontFamily: 'inherit', fontWeight: 900, fontSize: 13.5, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' })
@@ -15,6 +25,8 @@ export default function AwardTasks() {
   const [outcomes, setOutcomes] = useState<string[]>([])
   const [services, setServices] = useState<Record<string, string>>({})
   const [svc, setSvc] = useState<Record<string, string>>({})
+  const [cap, setCap] = useState<Record<string, Capture>>({})
+  const setC = (id: string, k: keyof Capture, v: string | boolean) => setCap({ ...cap, [id]: { ...(cap[id] || {}), [k]: v } })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState('')
   const [pick, setPick] = useState<Record<string, string>>({})
@@ -38,7 +50,13 @@ export default function AwardTasks() {
     try {
       const r = await fetch('/api/staff/award-tasks', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: t.id, action, answer, outcome: pick[t.id], service: svc[t.id] || null, note: note[t.id] || null }),
+        body: JSON.stringify({
+          id: t.id, action, answer, outcome: pick[t.id], service: svc[t.id] || null, note: note[t.id] || null,
+          ...(action === 'outcome' || action === 'yes' ? {
+            said: cap[t.id]?.said || null, objection: cap[t.id]?.objection || null, objection_important: cap[t.id]?.important === true,
+            appointment_at: cap[t.id]?.appointment ? new Date(cap[t.id]?.appointment as string).toISOString() : null, next_step: cap[t.id]?.next_step || null,
+          } : {}),
+        }),
       })
       const d = await r.json().catch(() => ({}))
       setBusy('')
@@ -61,10 +79,18 @@ export default function AwardTasks() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <b style={{ color: G, fontSize: 15 }}>{t.company}</b>
             {t.person && <span style={{ color: M, fontSize: 13, fontWeight: 700 }}>— {t.person}{t.role ? ' (' + t.role + ')' : ''}</span>}
-            <span style={{ background: t.kind === 'reminder' ? '#FBEEEC' : '#EAF4F0', color: t.kind === 'reminder' ? '#A5281B' : G, borderRadius: 99, padding: '2px 10px', fontSize: 11.5, fontWeight: 900 }}>
-              {t.kind === 'reminder' ? 'مكالمة التذكير الوحيدة' : 'أول تواصل'}
+            <span style={{ background: KIND[t.kind][1], color: KIND[t.kind][2], borderRadius: 99, padding: '2px 10px', fontSize: 11.5, fontWeight: 900 }}>
+              {KIND[t.kind][0]}
             </span>
+            {t.appointment && <span style={{ color: M, fontSize: 12, fontWeight: 800 }}>موعد: {new Date(t.appointment).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })}</span>}
           </div>
+          {t.codex_reason && <div style={{ color: '#3A4A9B', fontSize: 12.5, fontWeight: 700, marginTop: 4 }}>لماذا: {t.codex_reason}</div>}
+          {t.question && (
+            // سؤال التأهيل — يُسأل ولا يُقال للعميل حكمٌ على وضعه
+            <div style={{ background: '#F7FBF9', border: '1px dashed #CFE3DA', borderRadius: 8, padding: '6px 10px', marginTop: 6, fontSize: 13, color: G }}>
+              <b>اسألي:</b> {t.question}
+            </div>
+          )}
           {t.source && (
             <div style={{ color: M, fontSize: 12, marginTop: 4 }}>
               مصدر الرقم: {t.source_url ? <a href={t.source_url} target="_blank" rel="noopener noreferrer" style={{ color: G, fontWeight: 800 }}>{t.source}</a> : t.source}
@@ -107,7 +133,24 @@ export default function AwardTasks() {
             </select>
             <input value={note[t.id] || ''} onChange={(e) => setNote({ ...note, [t.id]: e.target.value })} placeholder="ملاحظة قصيرة"
               style={{ flex: '1 1 160px', border: '1px solid #D9E5DF', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5 }} />
-            <button disabled={!pick[t.id] || busy === t.id + 'outcome'} onClick={async () => { if (await post(t, 'outcome')) await load() }}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 8 }}>
+            <textarea rows={2} value={cap[t.id]?.said || ''} onChange={(e) => setC(t.id, 'said', e.target.value)} placeholder="ما قاله العميل بحرفه"
+              style={{ gridColumn: '1 / -1', border: '1px solid #D9E5DF', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5 }} />
+            <input value={cap[t.id]?.objection || ''} onChange={(e) => setC(t.id, 'objection', e.target.value)} placeholder="الاعتراض (إن وُجد)"
+              style={{ border: '1px solid #D9E5DF', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5 }} />
+            <label style={{ fontSize: 12.5, color: M, fontWeight: 800, display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input type="checkbox" checked={cap[t.id]?.important === true} onChange={(e) => setC(t.id, 'important', e.target.checked)} /> اعتراضٌ مهم (يصل الدكتور)
+            </label>
+            <label style={{ fontSize: 12, color: M, fontWeight: 700 }}>موعد العميل
+              <input type="datetime-local" value={cap[t.id]?.appointment || ''} onChange={(e) => setC(t.id, 'appointment', e.target.value)}
+                style={{ width: '100%', border: '1px solid #D9E5DF', borderRadius: 8, padding: '6px 8px', fontFamily: 'inherit', fontSize: 13 }} />
+            </label>
+            <input value={cap[t.id]?.next_step || ''} onChange={(e) => setC(t.id, 'next_step', e.target.value)} placeholder="الخطوة التالية"
+              style={{ border: '1px solid #D9E5DF', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+            <button disabled={!pick[t.id] || busy === t.id + 'outcome'} onClick={async () => { if (await post(t, 'outcome')) { setCap((c) => { const y = { ...c }; delete y[t.id]; return y }); await load() } }}
               style={{ ...pill(G), opacity: pick[t.id] ? 1 : 0.5 }}>{busy === t.id + 'outcome' ? '…' : 'سجّلي النتيجة'}</button>
           </div>
           </>)}
