@@ -162,20 +162,46 @@ function gapTableBlock(g: GapResult): string {
   ].join('\n');
 }
 
+const escHtml = (t: string) => t.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
+const inline = (t: string) => escHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*(?!\s)([^*]+?)\*/g, '$1$2');
+
+/**
+ * نصّ المولّد (Markdown) إلى HTML — هنا لا في `buildPdfHtml`: ذاك يحذف علامات
+ * العناوين ويبتلع الأسطر حول «---» فتلتصق الأقسام فقرةً واحدة. فيُسلَّم إليه
+ * HTML جاهزاً في كتلةٍ واحدة آخرُ سطرها `</div>` فيمرّرها كما هي، بترويسته وهويته.
+ */
+function mdToHtml(md: string, table: string): string {
+  const out: string[] = [];
+  let list = false;
+  const close = () => { if (list) { out.push('</ul>'); list = false; } };
+  for (const raw of md.split('\n')) {
+    const t = raw.trim();
+    if (t === GAP_TABLE_MARK) { close(); out.push(table); continue; }
+    if (!t || /^(-{3,}|\*{3,}|_{3,})$/.test(t)) { close(); continue; }
+    const h = /^(#{1,4})\s+(.*)$/.exec(t);
+    if (h) { close(); const n = h[1].length; out.push(n === 1 ? '<h1 class="ct">' + inline(h[2]) + '</h1>' : n === 2 ? '<h2 class="cs">' + inline(h[2]) + '</h2>' : '<h3 class="cu">' + inline(h[2]) + '</h3>'); continue; }
+    const li = /^(?:[-•*]|\d+[.)])\s+(.*)$/.exec(t);
+    if (li) { if (!list) { out.push('<ul class="cl">'); list = true; } out.push('<li>' + inline(li[1]) + '</li>'); continue; }
+    close(); out.push('<p class="cp">' + inline(t) + '</p>');
+  }
+  close();
+  return out.join('\n');
+}
+
 /** الاستشارة كاملةً HTML بقالب `buildPdfHtml`: نصّ المولّد + الجدول مكان العلامة + سطر الختام */
 export function consultHtml(a: Pick<Award, 'company_name' | 'tender_title'>, g: GapResult, s: Settings, content: string): string {
   const closing = String(s.gap_closing_line || '').trim();
   let md = String(content || '').trim();
-  md = md.includes(GAP_TABLE_MARK) ? md.replace(GAP_TABLE_MARK, '\n' + gapTableBlock(g) + '\n') : md + '\n\n' + gapTableBlock(g);
-  if (closing && !md.trimEnd().endsWith(closing)) md += '\n\n**' + closing + '**';
-  const style = [
-    '<div class="gstyle"><style>',
-    '.gap table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.5;margin:8px 0}.gap th,.gap td{border:1px solid #EAF2EE;padding:3px 7px;text-align:right}',
-    '.gap th{background:#EAF2EE;color:#1A3D34}.gap td.gc{text-align:left}.gap tr.gd td{background:#EAF2EE;font-weight:900}',
-    '.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}h1{font-size:20px}h2{font-size:16px;margin-top:18px}',
-    '.gap tr{page-break-inside:avoid}',
-    '</style>',
-    '</div>',
-  ].join('\n');
-  return buildPdfHtml(consultTitle(a), style + '\n' + md).replace(/<script>[\s\S]*?<\/script>/, '');
+  if (!md.includes(GAP_TABLE_MARK)) md += '\n\n' + GAP_TABLE_MARK;
+  const body = mdToHtml(md, gapTableBlock(g)) + (closing && !md.trimEnd().endsWith(closing) ? '\n<p class="cz">' + escHtml(closing) + '</p>' : '');
+  const style = '<style>.consult{line-height:1.95;font-size:13.5px}.consult .ct{font-size:20px;color:#1A3D34;margin:0 0 14px;line-height:1.6}'
+    + '.consult .cs{font-size:16px;color:#1A3D34;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid #EAF2EE}'
+    + '.consult .cu{font-size:14px;color:#2E9E7B;margin:12px 0 4px}.consult .cp{margin:6px 0}.consult .cl{margin:4px 0;padding-right:20px}.consult li{margin:3px 0}'
+    + '.consult .cz{font-size:16px;font-weight:900;color:#2E9E7B;margin-top:16px}'
+    + '.gap table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.5;margin:8px 0}.gap th,.gap td{border:1px solid #EAF2EE;padding:3px 7px;text-align:right}'
+    + '.gap th{background:#EAF2EE;color:#1A3D34}.gap td.gc{text-align:left}.gap tr.gd td{background:#EAF2EE;font-weight:900}.gap tr{page-break-inside:avoid}'
+    + '.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}</style>';
+  // كتلةٌ واحدة: أولها وسم وآخرها سطر `</div>` — فيمرّرها القالب كما هي
+  const block = ['<div class="consult">', style, body.split('\n').map((l) => (l.startsWith('<') ? l : '<span>' + l + '</span>')).join('\n'), '</div>'].join('\n');
+  return buildPdfHtml(consultTitle(a), block).replace(/<script>[\s\S]*?<\/script>/, '');
 }
