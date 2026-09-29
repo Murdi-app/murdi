@@ -173,7 +173,7 @@ export default function AwardsPage() {
   }
   const makeGap = async (a: Award) => {
     const f = gap[a.id] || {}
-    const d = await gapCall(a, { action: 'generate', inputs: { contract_value: f.contract_value || null, months: f.months || null, start_date: f.start_date || null, method: f.method || null, delay_days: f.delay_days || null, monthly_spend: f.monthly_spend || null } }, 'توليد الاستشارة')
+    const d = await gapCall(a, { action: 'generate', inputs: { contract_value: f.contract_value || null, months: f.months || null, start_date: f.start_date || null, method: f.method || null, delay_days: f.delay_days || null, delay_days_min: f.delay_days_min || null, monthly_spend: f.monthly_spend || null, annual_revenue: f.annual_revenue || null } }, 'توليد الاستشارة')
     if (!d) return
     setGapOut({ ...gapOut, [a.id]: { url: d.url || null, line: 'جاهزة · أعمق نقطة ' + Math.abs(d.deepest?.amount || 0).toLocaleString('en-US') + ' ريال في ' + (d.deepest?.month || '') } })
     flash('الاستشارة جاهزة — راجِعها ثم «اعتمد وأرسل»'); await load()
@@ -487,7 +487,7 @@ export default function AwardsPage() {
                   <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة{a.org_awards > 1 && <span style={{ color: G, fontSize: 12 }}> — للمنشأة {a.org_awards === 2 ? 'عقدان' : a.org_awards.toLocaleString('ar-SA') + (a.org_awards <= 10 ? ' عقود' : ' عقداً')}، تجمعها استشارةٌ واحدة</span>} <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                     {([['contract_value', 'قيمة العقد', a.contract_value != null ? String(a.contract_value) : ''], ['months', 'المدة بالأشهر', ''], ['start_date', 'بدء التنفيذ YYYY-MM-DD', a.awarded_at || ''],
-                      ['delay_days', 'مدة الصرف بالأيام', ''], ['monthly_spend', 'الصرف الشهري', '']] as const).map(([k, l, ph]) => (
+                      ['delay_days', 'مدة الصرف بالأيام (الأطول)', ''], ['delay_days_min', 'أقصر مدة صرف ذكرها (اختياري)', ''], ['monthly_spend', 'الصرف الشهري', ''], ['annual_revenue', 'إيراد المنشأة السنوي (اختياري)', '']] as const).map(([k, l, ph]) => (
                       <label key={k} style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>{l}
                         <input value={gap[a.id]?.[k] || ''} placeholder={ph} onChange={(e) => setGap({ ...gap, [a.id]: { ...(gap[a.id] || {}), [k]: e.target.value } })} style={input} />
                       </label>

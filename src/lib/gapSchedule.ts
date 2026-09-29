@@ -1,5 +1,7 @@
 import { buildPdfHtml } from '@/lib/pdfTemplate';
 import { type Award, type Settings } from '@/lib/awards';
+import { studySeal } from '@/lib/contractStamp';
+import { GAP_DISCLAIMER_AR } from '@/lib/legalStance';
 
 // جدول فجوة السيولة لترسية — آلية الحساب والعرض وحدها.
 //
@@ -14,7 +16,8 @@ import { type Award, type Settings } from '@/lib/awards';
 // وأعمق نقطةٍ فيها أدنى رصيد وتاريخه.
 
 export type Method = 'monthly' | 'claims';
-export type GapInputs = {
+/** مدخلات الحساب — ما لم يُعطَ منها يُملأ بمعيار القطاع ويُعلَّم «تقديري» */
+type CoreInputs = {
   contract_value?: number | null;
   months?: number | null;
   start_date?: string | null;
@@ -22,12 +25,24 @@ export type GapInputs = {
   delay_days?: number | null;
   monthly_spend?: number | null;
 };
+/**
+ * ★ ٢٩ سبتمبر (بأمر المالك) — سياقٌ لا يُقدَّر ولا يدخل الجدول:
+ *   `annual_revenue` إيراد المنشأة السنوي، فيُقرأ العقد بحجمه منها.
+ *   `delay_days_min` أقصر مدة صرفٍ ذكرها العميل («من ٦٠ إلى ٩٠») — الجدول
+ *   يبقى على الأطول تحفّظاً، ويُحسب الأقصر حالةً أخفّ تُذكر في النص.
+ */
+type GapExtras = { annual_revenue?: number | null; delay_days_min?: number | null };
+export type GapInputs = CoreInputs & GapExtras;
 type Bench = { margin: number; months: number; method: Method; delay_days: number };
 export type GapRow = { ym: string; month: string; spend: number; collect: number; cum: number };
 export type StartBasis = 'given' | 'bids_opened' | 'today_minus_45';
 export type GapResult = {
-  inputs: Required<{ [K in keyof GapInputs]: NonNullable<GapInputs[K]> }>;
-  estimated: (keyof GapInputs)[];
+  inputs: Required<{ [K in keyof CoreInputs]: NonNullable<CoreInputs[K]> }>;
+  estimated: (keyof CoreInputs)[];
+  /** إيراد المنشأة السنوي إن أُعطي */
+  annual_revenue: number | null;
+  /** الحالة الأخفّ بأقصر مدة صرف ذكرها العميل — إن أُعطيت وكانت أقصر */
+  alt: GapResult | null;
   rows: GapRow[];
   deepest: { amount: number; month: string };
   shift: number;
@@ -71,8 +86,8 @@ function startFor(raw: string, bidsOpenedAt: string | null, today: string): { st
 
 export function computeGap(a: Pick<Award, 'category' | 'contract_value' | 'bids_opened_at'>, raw: GapInputs, s: Settings, today = todayRiyadh()): GapResult {
   const b = bench(s, a.category);
-  const estimated: (keyof GapInputs)[] = [];
-  const pick = <T,>(k: keyof GapInputs, given: T | null, fallback: T): T => { if (given === null || given === undefined) { estimated.push(k); return fallback; } return given; };
+  const estimated: (keyof CoreInputs)[] = [];
+  const pick = <T,>(k: keyof CoreInputs, given: T | null, fallback: T): T => { if (given === null || given === undefined) { estimated.push(k); return fallback; } return given; };
 
   const value = n(raw.contract_value) ?? n(a.contract_value);
   if (!value) throw new Error('قيمة العقد مطلوبة — لا تُقدَّر');
@@ -96,9 +111,14 @@ export function computeGap(a: Pick<Award, 'category' | 'contract_value' | 'bids_
     const ym = ymOf(new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + i, 1)));
     rows.push({ ym, month: ymLabel(ym), spend: Math.round(out), collect: Math.round(inn), cum: Math.round(cum) });
   }
+  const minDelay = raw.delay_days_min === 0 ? 0 : n(raw.delay_days_min);
+  const alt = minDelay !== null && minDelay < delay
+    ? computeGap(a, { contract_value: value, months, start_date: st.start, method, delay_days: minDelay, monthly_spend: spend }, s, today)
+    : null;
   return {
     inputs: { contract_value: value, months, start_date: st.start, method, delay_days: delay, monthly_spend: spend },
     estimated, rows, deepest: deepestOf(rows), shift, start_basis: st.basis,
+    annual_revenue: n(raw.annual_revenue), alt,
   };
 }
 
@@ -120,6 +140,10 @@ export type GroupGap = {
   ahead: { amount: number; month: string } | null;
   today: string;
   executing: boolean;
+  /** إيراد المنشأة السنوي — من أول عقدٍ أُعطي فيه */
+  annual_revenue: number | null;
+  /** الجدول نفسه بأقصر مدد الصرف — إن أُعطيت لعقدٍ واحدٍ على الأقل */
+  alt: GroupGap | null;
 };
 
 /** يجمع جداول عقود المنشأة شهراً بشهر بالتقويم، ويعيد حساب الرصيد وأعمق نقطة */
@@ -138,10 +162,13 @@ export function combineGaps(parts: { award: ContractInfo; g: GapResult }[], toda
   const nowYm = today.slice(0, 7);
   const future = rows.filter((r) => r.ym >= nowYm);
   const ahead = future.length && future.some((r) => r.cum < 0) ? deepestOf(future) : null;
+  const withAlt = parts.some(({ g }) => g.alt);
   return {
     company: String(parts[0]?.award.company_name || ''),
     contracts: parts, rows, deepest: deepestOf(rows), ahead, today,
     executing: parts.some(({ g }) => g.inputs.start_date <= today),
+    annual_revenue: parts.find(({ g }) => g.annual_revenue)?.g.annual_revenue ?? null,
+    alt: withAlt ? combineGaps(parts.map(({ award, g }) => ({ award, g: { ...(g.alt || g), alt: null } })), today) : null,
   };
 }
 
@@ -155,7 +182,7 @@ const CATEGORY_AR: Record<string, string> = {
   construction: 'الإنشاءات والمقاولات', om_services: 'التشغيل والصيانة', supply_it: 'التوريد والتقنية',
   consulting: 'الاستشارات', transport: 'النقل', other: 'قطاعٍ عام',
 };
-const FIELD_AR: Record<keyof GapInputs, string> = {
+const FIELD_AR: Record<keyof CoreInputs, string> = {
   contract_value: 'قيمة العقد', months: 'المدة', start_date: 'بدء التنفيذ',
   method: 'طريقة الصرف', delay_days: 'مدة الصرف', monthly_spend: 'الصرف الشهري',
 };
@@ -206,7 +233,7 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
   const est = String(s.gap_estimate_note || 'تقديري').trim();
   const multi = gg.contracts.length > 1;
   const contractLines = gg.contracts.map(({ award: a, g }, i) => {
-    const mark = (k: keyof GapInputs) => (g.estimated.includes(k) ? ' — «' + est + '» (من معيار القطاع)' : ' — من أرقامهم');
+    const mark = (k: keyof CoreInputs) => (g.estimated.includes(k) ? ' — «' + est + '» (من معيار القطاع)' : ' — من أرقامهم');
     const startNote = g.start_basis === 'bids_opened' ? ' (فتح العروض + ٤٥ يوماً)' : g.start_basis === 'today_minus_45' ? ' (تقدير: بدأ التنفيذ قبل نحو ٤٥ يوماً)' : '';
     return (multi ? '\nالعقد ' + (i + 1) + ':\n' : '')
       + '- العقد: ' + (String(a.tender_title || '').trim() || 'غير مسمّى') + '\n'
@@ -224,7 +251,25 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
   }).join('');
   const totalSpend = gg.rows.reduce((x, r) => x + r.spend, 0);
   const totalIn = gg.rows.reduce((x, r) => x + r.collect, 0);
-  const firstPositive = gg.rows.find((r, i) => i > 0 && r.cum >= 0 && gg.rows[i - 1].cum < 0)?.month || 'بعد نهاية العقود';
+  const recoverOf = (x: GroupGap) => x.rows.find((r, i) => i > 0 && r.cum >= 0 && x.rows[i - 1].cum < 0)?.month || 'بعد نهاية العقود';
+  const firstPositive = recoverOf(gg);
+  // حجم العقود من المنشأة: إيرادها السنوي المكافئ مقابل إيراد المنشأة، والفجوة الجارية منه
+  const rev = gg.annual_revenue;
+  const yearly = gg.contracts.reduce((x, { g }) => x + (g.inputs.contract_value / g.inputs.months) * 12, 0);
+  const nowGap = Math.abs((gg.ahead || gg.deepest).amount);
+  const revLines = rev
+    ? '- إيراد المنشأة السنوي (من أرقامهم): ' + sar(rev) + ' ريال\n'
+      + '- الإيراد السنوي المكافئ ' + (multi ? 'للعقود' : 'للعقد') + ': ' + sar(yearly) + ' ريال — أي ' + Math.round((yearly / rev) * 100) + '٪ من إيراد المنشأة السنوي\n'
+      + '- الفجوة ' + (gg.ahead ? 'الجارية' : 'في أعمق نقطتها') + ' تعادل ' + Math.round((nowGap / rev) * 100) + '٪ من إيراد المنشأة السنوي\n'
+    : '';
+  const alt = gg.alt;
+  const altDelays = [...new Set(gg.contracts.map((c) => (c.g.alt || c.g).inputs.delay_days))].join(' و');
+  const altLines = alt
+    ? '- الحالة الأخفّ — إن صُرف ' + (multi ? 'كلُّ عقدٍ' : 'المستخلص') + ' بأقصر مدةٍ ذكروها (' + altDelays + ' يوماً): أعمق نقطة '
+      + sar(Math.abs(alt.deepest.amount)) + ' ريال في ' + alt.deepest.month
+      + (alt.ahead ? ' · ومن الشهر الجاري ' + sar(Math.abs(alt.ahead.amount)) + ' ريال في ' + alt.ahead.month : '')
+      + ' · ويعود الرصيد موجباً في ' + recoverOf(alt) + '\n'
+    : '';
   const negMonths = gg.rows.filter((r) => r.cum < 0).length;
   const estFields = [...new Set(gg.contracts.flatMap((c) => c.g.estimated.map((k) => FIELD_AR[k])))];
   const tools = [...new Set(gg.contracts.map((c) => toolFor(c.g.inputs.method)))];
@@ -240,14 +285,20 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
     + '- عدد الأشهر والرصيد سالب: ' + negMonths + ' · يعود الرصيد موجباً في: ' + firstPositive + '\n'
     + '- مجموع الصرف: ' + sar(totalSpend) + ' ريال · مجموع التحصيل: ' + sar(totalIn) + ' ريال\n'
     + (estFields.length ? '- الحقول التقديرية: ' + estFields.join('، ') + '\n' : '')
+    + revLines + altLines
     + (gg.executing
       ? '- المنشأة بدأت التنفيذ (تقديراً): خاطبها كمن ينفّذ الآن. لا تكتب «قبل بدء التنفيذ»، والخطة تبدأ من الآن.\n'
       : '- التنفيذ لم يبدأ بعد، وموعده في المستقبل.\n')
     + '\nهيكل الاستشارة (Markdown) — بهذه العناوين حرفياً وبهذا الترتيب:\n'
     + '# ' + title + '\n'
-    + '## أولاً: قراءتي ' + (multi ? 'لعقودكم' : 'لعقدكم') + ' — ' + (multi ? 'لكل عقدٍ ' : '') + 'القيمة والمدة وطريقة الصرف والصرف الشهري، وما تعنيه دورة الصرف. اكتب بجانب كل رقمٍ من معيار القطاع «(' + est + ')» حرفياً، ولا تكتبها بجانب ما هو من أرقامهم.\n'
+    + '## أولاً: قراءتي ' + (multi ? 'لعقودكم' : 'لعقدكم') + ' — ' + (multi ? 'لكل عقدٍ ' : '') + 'القيمة والمدة وطريقة الصرف والصرف الشهري، وما تعنيه دورة الصرف. اكتب بجانب كل رقمٍ من معيار القطاع «(' + est + ')» حرفياً، ولا تكتبها بجانب ما هو من أرقامهم.'
+      + (rev ? ' واختم هذا القسم بحجم ' + (multi ? 'العقود' : 'العقد') + ' من المنشأة: إيراده السنوي المكافئ مقابل إيرادها السنوي بالرقمين والنسبة أعلاه، وما يعنيه ذلك لسيولتها.' : '')
+      + '\n'
     + '## ثانياً: جدول الفجوة شهراً بشهر — جملتان فقط تقدّمان الجدول' + (multi ? ' (وتذكران أنه يجمع العقود)' : '') + '، ثم سطرٌ وحده فيه ' + GAP_TABLE_MARK + ' حرفياً (يُستبدل بالجدول وتحته إطارٌ بأعمق نقطة وتاريخها). لا تكتب الجدول بنفسك، ولا جملةً بعده عن أعمق نقطة — الإطار يذكرها مرةً واحدة.\n'
-    + '## ثالثاً: ما يعنيه هذا لكم — نقاط القوة، وأولها أن المدين جهة حكومية فمخاطر التعثر منخفضة والتأخير تأخير توقيت، ثم المخاطر بالأرقام أعلاه (حجم الفجوة، مدتها، أثر تأخر صرفٍ إضافي).\n'
+    + '## ثالثاً: ما يعنيه هذا لكم — نقاط القوة، وأولها أن المدين جهة حكومية فمخاطر التعثر منخفضة والتأخير تأخير توقيت، ثم المخاطر بالأرقام أعلاه (حجم الفجوة، مدتها، أثر تأخر صرفٍ إضافي)'
+      + (rev ? '، والفجوة نسبةً إلى إيراد المنشأة السنوي' : '')
+      + (alt ? '. ثم فقرةٌ عن الحالة الأخفّ بأرقامها أعلاه، مع بيان أن الجدول مبنيّ على المدة الأطول تحفّظاً' : '')
+      + '.\n'
     + '## رابعاً: خطة سدّ الفجوة — بعنوانين فرعيين: «أول ٣٠ يوماً» و«حتى ٩٠ يوماً»، بأدوات نقدية فقط: ' + tools.join(' · ') + '، ورأس مال عامل. كل بندٍ مرتبط بأرقام ' + (multi ? 'العقود' : 'هذا العقد') + '.\n'
     + '## خامساً: كلمة أخيرة — فقرة قصيرة واقعية ومحترمة. لا تختمها بعبارة عن سدّ الفجوة؛ سطر الختام يُضاف بعدها.\n\n'
     + 'قواعد صارمة:\n'
@@ -317,11 +368,16 @@ export function consultHtml(gg: GroupGap, s: Settings, content: string): string 
   // سطرٌ يشير إلى «سطر الختام» أو موضعٍ يُضاف لا يبقى في النصّ أبداً
   let md = String(content || '').split('\n').filter((l) => !/سطر الختام|يُضاف هنا/.test(l)).join('\n').trim();
   if (!md.includes(GAP_TABLE_MARK)) md += '\n\n' + GAP_TABLE_MARK;
-  const body = mdToHtml(md, gapTableBlock(gg)) + (closing && !md.trimEnd().endsWith(closing) ? '\n<p class="cz">' + escHtml(closing) + '</p>' : '');
+  // ★ ٢٩ سبتمبر (بأمر المالك): إخلاء المسؤولية ثم توقيع المستشار وختم المكتب في آخر كل استشارة.
+  //   كلٌّ في سطرٍ واحد: القالب يلفّ ما لا يبدأ بوسمٍ في <span>، وكتلة الختم متعدّدة الأسطر.
+  const tail = '\n<div class="cd"><b>إخلاء المسؤولية.</b> ' + escHtml(GAP_DISCLAIMER_AR) + '</div>'
+    + '\n' + studySeal().replace(/\n\s*/g, '');
+  const body = mdToHtml(md, gapTableBlock(gg)) + (closing && !md.trimEnd().endsWith(closing) ? '\n<p class="cz">' + escHtml(closing) + '</p>' : '') + tail;
   const style = '<style>.consult{line-height:1.95;font-size:13.5px}.consult .ct{font-size:20px;color:#1A3D34;margin:0 0 14px;line-height:1.6}'
     + '.consult .cs{font-size:16px;color:#1A3D34;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid #EAF2EE}'
     + '.consult .cu{font-size:14px;color:#2E9E7B;margin:12px 0 4px}.consult .cp{margin:6px 0}.consult .cl{margin:4px 0;padding-right:20px}.consult li{margin:3px 0}'
     + '.consult .cz{font-size:16px;font-weight:900;color:#2E9E7B;margin-top:16px}'
+    + '.consult .cd{margin-top:18px;padding:10px 14px;background:#F4F7F6;border-right:4px solid #2E9E7B;font-size:11px;line-height:1.9;color:#33473F;page-break-inside:avoid}.consult .cd b{color:#1A3D34}'
     + '.gap table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.5;margin:8px 0}.gap th,.gap td{border:1px solid #EAF2EE;padding:3px 7px;text-align:right}'
     + '.gap th{background:#EAF2EE;color:#1A3D34}.gap td.gc{text-align:left}.gap tr.gd td{background:#EAF2EE;font-weight:900}.gap tr{page-break-inside:avoid}'
     + '.gn{font-size:12px;color:#6B8A80;margin:4px 0}.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}</style>';
