@@ -107,6 +107,7 @@ export async function POST(req: Request) {
     notes: cut(b.notes, 2000) || null,
   }).select('id').single();
   if (error) {
+    if (/do_not_contact/.test(error.message)) return NextResponse.json({ error: 'هذه المنشأة «لا تتواصل» — لا تُضاف' }, { status: 409 });
     const dup = /duplicate|unique/i.test(error.message);
     return NextResponse.json({ error: dup ? 'هذه الترسية مسجّلة من قبل (الشركة والمنافسة نفسهما)' : 'تعذّر الحفظ — ' + error.message }, { status: dup ? 409 : 500 });
   }
@@ -139,6 +140,11 @@ export async function PATCH(req: Request) {
     const patch: Record<string, unknown> = { status: to, updated_at: now };
     const col = STAMP[to];
     if (col) patch[col] = now;
+    if (to === 'do_not_contact') {
+      const reason = cut(b.reason, 500);
+      if (!reason) return NextResponse.json({ error: 'سبب «لا تتواصل» مطلوب' }, { status: 400 });
+      patch.dnc_reason = reason; patch.dnc_by = 'د. عبدالحكيم المرضي'; patch.dnc_at = now;
+    }
     // مشروطٌ بالحالة المقروءة: ضغطتان لا تنقلان مرتين، ولا يُداس انتقالٌ سبق
     const { data: done, error } = await sb.from('contract_awards').update(patch)
       .eq('id', id).eq('status', cur.status).select('id, status');

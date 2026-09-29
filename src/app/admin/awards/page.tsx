@@ -21,6 +21,7 @@ type Award = {
   org_awards: number
   contact_whatsapp: string | null; phone_source: string | null; phone_source_url: string | null
   email_source: string | null; email_source_url: string | null
+  dnc_reason: string | null; dnc_by: string | null; dnc_at: string | null
   phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
 // صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
@@ -35,7 +36,7 @@ type Template = { id: string; category: string; stage: string; subject: string; 
 
 const STATUS: Record<string, string> = {
   new: 'جديدة', qualified: 'موثّقة', messaged: 'أُرسلت', reminder_call: 'مكالمة التذكير', replied: 'ردّ',
-  gap_sent: 'جدول الفجوة أُرسل', meeting: 'اجتماع', priced: 'مسعَّرة', paid: 'مدفوعة', dropped: 'مُسقطة',
+  gap_sent: 'جدول الفجوة أُرسل', meeting: 'اجتماع', priced: 'مسعَّرة', paid: 'مدفوعة', dropped: 'مُسقطة', do_not_contact: 'لا تتواصل',
 }
 const CATEGORY: Record<string, string> = {
   construction: 'إنشاءات', om_services: 'تشغيل وصيانة', supply_it: 'توريد وتقنية',
@@ -109,8 +110,13 @@ export default function AwardsPage() {
 
   const move = async (a: Award, to: string) => {
     if (to === 'dropped' && !confirm('إسقاط «' + a.company_name + '»؟')) return
+    let reason: string | null = null
+    if (to === 'do_not_contact') {
+      reason = prompt('«لا تتواصل» مع ' + a.company_name + ' — تسري على كل ترسياتها وتمنع إعادة استيرادها. السبب:')
+      if (!reason || !reason.trim()) return
+    }
     setBusy(a.id)
-    if (await call('/api/admin/awards', 'PATCH', { id: a.id, to }, 'الانتقال إلى «' + STATUS[to] + '»')) { flash('صارت «' + STATUS[to] + '»'); await load() }
+    if (await call('/api/admin/awards', 'PATCH', { id: a.id, to, reason }, 'الانتقال إلى «' + STATUS[to] + '»')) { flash('صارت «' + STATUS[to] + '»'); await load() }
     setBusy('')
   }
 
@@ -216,7 +222,7 @@ export default function AwardsPage() {
       const d = await r.json().catch(() => ({}))
       if (!r.ok) setErr('لم يقع الاستيراد: ' + (d.error || 'خطأ ' + r.status))
       else {
-        flash('وُجد ' + (d.found ?? 0) + ' خبراً · دخل ' + (d.inserted ?? 0) + ' جديداً · تُرك ' + (d.skipped ?? 0) + ' مكرّراً')
+        flash('وُجد ' + (d.found ?? 0) + ' خبراً · دخل ' + (d.inserted ?? 0) + ' جديداً · تُرك ' + (d.skipped ?? 0) + ' مكرّراً' + (d.blocked ? ' · ' + d.blocked + ' «لا تتواصل»' : ''))
         if (d.errors?.length) setErr('بعض الاستعلامات تعثّرت: ' + d.errors.join(' · '))
         await load()
       }
@@ -243,7 +249,7 @@ export default function AwardsPage() {
 
   const shown = useMemo(() => awards.filter((a) =>
     (showSkip || fTrack === 'skip' || a.track !== 'skip')
-    && (showDropped || fStatus === 'dropped' || a.status !== 'dropped')
+    && (showDropped || fStatus === a.status || (a.status !== 'dropped' && a.status !== 'do_not_contact'))
     && (!onlyNeedPhone || needsPhone(a))
     && (!fTrack || a.track === fTrack)
     && (!fCat || a.category === fCat)
@@ -342,7 +348,7 @@ export default function AwardsPage() {
             <input type="checkbox" checked={showSkip} onChange={(e) => setShowSkip(e.target.checked)} /> أظهر ما دون الحد
           </label>
           <label style={{ fontSize: 13, color: M, fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} /> أظهر المُسقطة
+            <input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} /> أظهر المُسقطة و«لا تتواصل»
           </label>
           <label style={{ fontSize: 13, color: G, fontWeight: 800, display: 'flex', gap: 6, alignItems: 'center' }}>
             <input type="checkbox" checked={onlyNeedPhone} onChange={(e) => setOnlyNeedPhone(e.target.checked)} /> ينقصها رقم ({awards.filter(needsPhone).length.toLocaleString('ar-SA')})
@@ -363,7 +369,8 @@ export default function AwardsPage() {
                 </div>
               </div>
               <div style={{ textAlign: 'left' }}>
-                <span style={{ background: '#EAF4F0', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800 }}>{STATUS[a.status] || a.status}</span>
+                <span style={{ background: a.status === 'do_not_contact' ? '#FBEEEC' : '#EAF4F0', color: a.status === 'do_not_contact' ? '#A5281B' : undefined, borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800 }}>{STATUS[a.status] || a.status}</span>
+                {a.status === 'do_not_contact' && <div style={{ color: '#A5281B', fontSize: 11.5, marginTop: 4, maxWidth: 260 }}>{a.dnc_reason}{a.dnc_by ? ' — ' + a.dnc_by : ''}{a.dnc_at ? ' · ' + a.dnc_at.slice(0, 10) : ''}</div>}
                 <span title="المراسلات" style={{ background: a.touches.length ? '#FFF6E0' : '#F2F5F4', borderRadius: 99, padding: '3px 10px', fontSize: 12, fontWeight: 800, marginRight: 6 }}>✉︎ {a.touches.length.toLocaleString('ar-SA')}{a.touches.some((t) => t.direction === 'in') ? ' · ردّ' : ''}</span>
                 <div style={{ color: M, fontSize: 11, marginTop: 4, direction: 'ltr' }}>{a.src}</div>
                 {a.source_ref && /^https?:/.test(a.source_ref) && <a href={a.source_ref} target="_blank" rel="noopener noreferrer" style={{ color: G, fontSize: 12, fontWeight: 800 }}>الخبر ↗</a>}
@@ -373,7 +380,7 @@ export default function AwardsPage() {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
               {a.next.map((to) => (
                 <button key={to} onClick={() => move(a, to)} disabled={busy === a.id || (to === 'messaged' && !a.addressed)}
-                  style={to === 'dropped' ? btn('#fff', '#B4453C') : btn(G)}>{to === 'dropped' ? 'أسقِط' : '← ' + STATUS[to]}</button>
+                  style={to === 'dropped' || to === 'do_not_contact' ? btn('#fff', '#B4453C') : btn(G)}>{to === 'dropped' ? 'أسقِط' : to === 'do_not_contact' ? '⛔ لا تتواصل' : '← ' + STATUS[to]}</button>
               ))}
               {a.addressed
                 ? <button onClick={() => setOpen(open === a.id ? '' : a.id)} style={btn('#fff', G)}>{open === a.id ? 'أغلِق' : 'الرسالة والمراسلات'}</button>

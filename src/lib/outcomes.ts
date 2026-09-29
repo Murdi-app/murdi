@@ -24,6 +24,8 @@ export const OUTCOMES = [
   'غير مؤهل الآن',
   'رقم خاطئ',
   'تحوّل عميلاً',
+  // ★ ٢٩ سبتمبر: من طلب ألا نتواصل معه لا يُتصل به ثانيةً — في الترسيات تصير المنشأة «لا تتواصل»
+  'طلب عدم التواصل',
 ] as const;
 
 export type Outcome = (typeof OUTCOMES)[number];
@@ -37,7 +39,7 @@ export const isOutcome = (v: unknown): v is Outcome =>
  * و«غير مؤهل الآن» ليست منها عمداً: معناها أنه لا يُخدَم **اليوم**، فيعود
  * حين ترتفع جاهزيته. وإغلاقُه نهائياً يحرق عميلاً ينضج بعد شهرين.
  */
-export const CLOSING_OUTCOMES: readonly string[] = ['غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً'];
+export const CLOSING_OUTCOMES: readonly string[] = ['غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً', 'طلب عدم التواصل'];
 export const closesOpportunity = (v: string | null | undefined): boolean =>
   !!v && CLOSING_OUTCOMES.includes(v);
 

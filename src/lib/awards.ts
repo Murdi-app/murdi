@@ -58,16 +58,19 @@ export const awardLink = (id: string) => 'https://murdi.sa/uqud?src=' + awardSrc
  * يضعها المالك — تضعها مكالمة ضي وحدها، ومنها يمضي الصفّ إلى الرد أو الإسقاط.
  */
 export const TRANSITIONS: Record<string, string[]> = {
-  new: ['qualified', 'dropped'],
-  qualified: ['messaged', 'dropped'],
-  messaged: ['replied', 'dropped'],
-  reminder_call: ['replied', 'dropped'],
-  replied: ['gap_sent', 'dropped'],
-  gap_sent: ['meeting', 'dropped'],
-  meeting: ['priced', 'dropped'],
-  priced: ['paid', 'dropped'],
+  new: ['qualified', 'dropped', 'do_not_contact'],
+  qualified: ['messaged', 'dropped', 'do_not_contact'],
+  messaged: ['replied', 'dropped', 'do_not_contact'],
+  reminder_call: ['replied', 'dropped', 'do_not_contact'],
+  replied: ['gap_sent', 'dropped', 'do_not_contact'],
+  gap_sent: ['meeting', 'dropped', 'do_not_contact'],
+  meeting: ['priced', 'dropped', 'do_not_contact'],
+  priced: ['paid', 'dropped', 'do_not_contact'],
   paid: [],
   dropped: [],
+  // «لا تتواصل» نهائية: توقف البريد والاتصال والواتساب للمنشأة كلها (مشغّل القاعدة يسريها
+  // على ترسياتها)، ويمنع مشغّلٌ آخر إعادة استيرادها بالسجل التجاري أو بالاسم.
+  do_not_contact: [],
 };
 
 /** عمود التاريخ الذي يُكتب عند الوصول إلى الحالة — إن كان لها عمود */
@@ -247,6 +250,7 @@ export function whatsappText(a: WaFields, s: Settings): string | null {
 export function statusAfterOutcome(current: string, outcome: string): string {
   if (outcome === 'مهتم' || outcome === 'تحوّل عميلاً') return 'replied';
   if (outcome === 'غير مهتم') return 'dropped';
+  if (outcome === 'طلب عدم التواصل') return 'do_not_contact';
   // «رقم خاطئ» لا يُسقط الترسية: الرقم يُعلَّم «لا يصل» وتعود الترسية إلى «ينقصها رقم»
   if (outcome === 'رقم خاطئ') return current;
   if (current === 'messaged') return 'reminder_call'; // مكالمة التذكير الوحيدة — ثم يُغلق الصف لها

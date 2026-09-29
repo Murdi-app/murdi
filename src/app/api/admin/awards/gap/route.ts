@@ -53,7 +53,7 @@ async function toPdf(html: string): Promise<Buffer> {
 // ترسيات المنشأة نفسها (بمفتاح المنشأة) — تُجمع في استشارةٍ واحدة. والمُسقطة لا تدخل.
 async function groupOf(sb: ReturnType<typeof admin>, a: Award): Promise<Award[]> {
   if (!a.org_key) return [a];
-  const { data, error } = await sb.from('contract_awards').select('*').eq('org_key', a.org_key).neq('status', 'dropped').order('created_at');
+  const { data, error } = await sb.from('contract_awards').select('*').eq('org_key', a.org_key).not('status', 'in', '(dropped,do_not_contact)').order('created_at');
   if (error) throw new Error('تعذّرت قراءة ترسيات المنشأة — ' + error.message);
   const rows = (data || []) as Award[];
   return rows.some((r) => r.id === a.id) ? rows : [a, ...rows];
@@ -94,6 +94,7 @@ export async function POST(req: Request) {
   const { data: a, error } = await sb.from('contract_awards').select('*').eq('id', id).maybeSingle();
   if (error) return NextResponse.json({ error: 'تعذّرت القراءة — ' + error.message }, { status: 500 });
   if (!a) return NextResponse.json({ error: 'غير موجودة' }, { status: 404 });
+  if (a.status === 'do_not_contact') return NextResponse.json({ error: 'هذه المنشأة «لا تتواصل» — ' + (a.dnc_reason || '') }, { status: 409 });
   let cfg;
   try { cfg = await loadConfig(sb); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'الإعدادات' }, { status: 500 }); }
 

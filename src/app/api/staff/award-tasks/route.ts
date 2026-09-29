@@ -125,6 +125,7 @@ export async function POST(req: Request) {
     const now = new Date().toISOString();
     const patch: Record<string, unknown> = { status: next, updated_at: now };
     if (STAMP[next]) patch[STAMP[next]] = now;
+    if (next === 'do_not_contact') { patch.dnc_reason = note || 'طلب عدم التواصل في المكالمة'; patch.dnc_by = actor; patch.dnc_at = now; }
     const { data: moved, error: mErr } = await sb.from('contract_awards').update(patch).eq('id', id).eq('status', a.status).select('id');
     if (mErr) return NextResponse.json({ error: 'سُجّلت، ولم تُحدَّث حالة الترسية — ' + mErr.message }, { status: 500 });
     if (!moved?.length) return NextResponse.json({ ok: true, warn: 'سُجّلت — وكانت حالة الترسية قد تغيّرت قبلها' });

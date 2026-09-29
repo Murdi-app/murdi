@@ -129,7 +129,7 @@ const norm = (s: string) => clean(s).replace(/[«»"“”']/g, '')
 const sameAs = (seen: Set<string>, k: string) => k.length > 0 && seen.has(k);
 
 /** يستورد ويُدخل الجديد — ويمنع التكرار: الشركة نفسها خلال عشرة أيام خبرٌ واحد */
-export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; errors: string[] }> {
+export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; blocked: number; errors: string[] }> {
   const errors: string[] = [];
   const all: Parsed[] = [];
   for (const q of QUERIES) {
@@ -140,7 +140,7 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
     .or('awarded_at.gte.' + since + ',created_at.gte.' + since);
   if (error) throw new Error('قراءة الترسيات: ' + error.message);
   const seen = new Set((recent || []).map((r) => norm(String(r.company_name))));
-  let inserted = 0, skipped = 0;
+  let inserted = 0, skipped = 0, blocked = 0;
   for (const p of all) {
     const k = norm(p.company_name);
     if (sameAs(seen, k)) { skipped++; continue; }
@@ -151,8 +151,9 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
       category: p.category, contract_value: p.contract_value, awarded_at: p.awarded_at,
       notes: 'من الأخبار — ' + (p.outlet || 'مصدر') + ': ' + p.headline + '\n' + p.link.slice(0, 500),
     });
-    if (iErr) { if (/duplicate|unique/i.test(iErr.message)) skipped++; else errors.push(p.company_name + ': ' + iErr.message); }
+    // منشأةٌ «لا تتواصل» يرفضها مشغّل القاعدة — تُعدّ ولا تُعدّ خطأً
+    if (iErr) { if (/duplicate|unique/i.test(iErr.message)) skipped++; else if (/do_not_contact/.test(iErr.message)) blocked++; else errors.push(p.company_name + ': ' + iErr.message); }
     else inserted++;
   }
-  return { found: all.length, inserted, skipped, errors };
+  return { found: all.length, inserted, skipped, blocked, errors };
 }
