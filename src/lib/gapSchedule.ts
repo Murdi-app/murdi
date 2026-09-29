@@ -92,41 +92,90 @@ const sar = (x: number) => Math.round(x).toLocaleString('en-US');
 const signed = (x: number) => (x < 0 ? '(' + sar(-x) + ')' : sar(x));
 const dayLabel = (iso: string) => { const d = new Date(iso + 'T00:00:00Z'); return d.getUTCDate() + ' ' + MONTHS_AR[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); };
 
-/** صفحةٌ واحدة بهوية مُرضي (`buildPdfHtml`) — بلا ألوانٍ غير ألوانه */
-export function gapHtml(a: Pick<Award, 'company_name' | 'tender_title' | 'buyer_entity'>, g: GapResult, s: Settings): string {
-  const est = String(s.gap_estimate_note || '').trim();
-  const mark = (k: keyof GapInputs) => (g.estimated.includes(k) && est ? ' <span class="e">(' + est + ')</span>' : '');
-  const title = fill(String(s.gap_title || ''), a).trim() || 'جدول فجوة السيولة';
-  const dense = g.rows.length > 24;
+const CATEGORY_AR: Record<string, string> = {
+  construction: 'الإنشاءات والمقاولات', om_services: 'التشغيل والصيانة', supply_it: 'التوريد والتقنية',
+  consulting: 'الاستشارات', transport: 'النقل', other: 'قطاعٍ عام',
+};
+const FIELD_AR: Record<keyof GapInputs, string> = {
+  contract_value: 'قيمة العقد', months: 'المدة', start_date: 'بدء التنفيذ',
+  method: 'طريقة الصرف', delay_days: 'مدة الصرف', monthly_spend: 'الصرف الشهري',
+};
+export const GAP_TABLE_MARK = '[[GAP_TABLE]]';
+
+/** عنوان الاستشارة المختصرة — بنصّ المالك */
+export const consultTitle = (a: Pick<Award, 'company_name' | 'tender_title'>) =>
+  'استشارة د. عبدالحكيم المرضي الخاصة لـ' + a.company_name + ' — عقد «' + (String(a.tender_title || '').trim() || 'العقد') + '»';
+
+/**
+ * نصّ الطلب إلى مولّد الاستشارات (`@/lib/consultationGen`) — بأسلوب استشارة
+ * التقييم نفسه وهيكلها. الأرقام كلها من `computeGap` لا من المولّد: هو يقرؤها
+ * ويشرحها، والجدول يُحقن مكان `[[GAP_TABLE]]`، وسطر الختام من الإعدادات يُلحق بعده.
+ */
+export function gapConsultPrompt(a: Pick<Award, 'company_name' | 'tender_title' | 'buyer_entity' | 'category'>, g: GapResult, s: Settings): string {
+  const est = String(s.gap_estimate_note || 'تقديري').trim();
+  const mark = (k: keyof GapInputs) => (g.estimated.includes(k) ? ' — «' + est + '» (من معيار القطاع)' : ' — من أرقامهم');
+  const totalSpend = g.rows.reduce((x, r) => x + r.spend, 0);
+  const totalIn = g.rows.reduce((x, r) => x + r.collect, 0);
+  const firstPositive = g.rows.find((r, i) => i > 0 && r.cum >= 0 && g.rows[i - 1].cum < 0)?.month || 'بعد نهاية العقد';
+  const negMonths = g.rows.filter((r) => r.cum < 0).length;
+  const title = consultTitle(a);
+  return 'أنت تكتب نيابة عن د. عبدالحكيم المرضي — مستشار مالي سعودي، دكتوراه إدارة أعمال، عضوية البورد الأمريكي، 15 سنة خبرة في القطاع المالي وعلاقات مباشرة مع جهات التمويل السعودية. أسلوبه: مباشر، عملي، صريح بلا مجاملات فارغة، يحلل بعمق ويعطي خطوات قابلة للتنفيذ فوراً.\n\n'
+    + 'هذه "استشارة مختصرة" (700-1000 كلمة) لمنشأةٍ رُسّي عليها عقد، موضوعها فجوة السيولة في تنفيذ العقد:\n'
+    + '- المنشأة: ' + a.company_name + '\n'
+    + '- العقد: ' + (String(a.tender_title || '').trim() || 'غير مسمّى') + '\n'
+    + '- الجهة المالكة للعقد (المدين): ' + (String(a.buyer_entity || '').trim() || 'جهة حكومية') + ' — جهة حكومية\n'
+    + '- القطاع: ' + (CATEGORY_AR[a.category] || 'غير محدد') + '\n'
+    + '- قيمة العقد: ' + sar(g.inputs.contract_value) + ' ريال' + mark('contract_value') + '\n'
+    + '- المدة: ' + g.inputs.months + ' شهراً' + mark('months') + '\n'
+    + '- بدء التنفيذ: ' + dayLabel(g.inputs.start_date) + mark('start_date') + '\n'
+    + '- طريقة الصرف: ' + (g.inputs.method === 'claims' ? 'مستخلصات' : 'شهري') + mark('method') + '\n'
+    + '- مدة الصرف بعد الاستحقاق: ' + g.inputs.delay_days + ' يوماً' + mark('delay_days') + '\n'
+    + '- الصرف الشهري على التنفيذ: ' + sar(g.inputs.monthly_spend) + ' ريال' + mark('monthly_spend') + '\n'
+    + '- الإيراد الشهري المستحق: ' + sar(g.inputs.contract_value / g.inputs.months) + ' ريال\n'
+    + '- أول تحصيل بعد: ' + g.shift + ' أشهر من بدء التنفيذ\n'
+    + '- أعمق نقطة في الفجوة: ' + sar(Math.abs(g.deepest.amount)) + ' ريال في ' + g.deepest.month + '\n'
+    + '- عدد الأشهر والرصيد سالب: ' + negMonths + ' · يعود الرصيد موجباً في: ' + firstPositive + '\n'
+    + '- مجموع الصرف: ' + sar(totalSpend) + ' ريال · مجموع التحصيل: ' + sar(totalIn) + ' ريال\n'
+    + (g.estimated.length ? '- الحقول التقديرية: ' + g.estimated.map((k) => FIELD_AR[k]).join('، ') + '\n' : '')
+    + '\nهيكل الاستشارة (Markdown) — بهذه العناوين حرفياً وبهذا الترتيب:\n'
+    + '# ' + title + '\n'
+    + '## أولاً: قراءتي لعقدكم — القيمة والمدة وطريقة الصرف والصرف الشهري، وما تعنيه دورة الصرف. اكتب بجانب كل رقمٍ من معيار القطاع «(' + est + ')» حرفياً، ولا تكتبها بجانب ما هو من أرقامهم.\n'
+    + '## ثانياً: جدول الفجوة شهراً بشهر — جملتان فقط تقدّمان الجدول، ثم سطرٌ وحده فيه ' + GAP_TABLE_MARK + ' حرفياً (يُستبدل بالجدول)، ثم جملة عن أعمق نقطة وتاريخها. لا تكتب الجدول بنفسك.\n'
+    + '## ثالثاً: ما يعنيه هذا لكم — نقاط القوة (وأولها أن المدين جهة حكومية لا تتعثر في السداد وإن تأخرت) والمخاطر بالأرقام أعلاه (حجم الفجوة، مدتها، أثر تأخر صرفٍ إضافي).\n'
+    + '## رابعاً: خطة سدّ الفجوة — مرتبة زمنياً بعنوانين فرعيين: «أول ٣٠ يوماً» و«حتى ٩٠ يوماً»، بأدوات نقدية فقط: تمويل المستخلصات أو الفواتير، ورأس مال عامل. كل بند مرتبط بأرقام هذا العقد.\n'
+    + '## خامساً: كلمة أخيرة — فقرة قصيرة شخصية واقعية. لا تختمها بعبارة عن سدّ الفجوة؛ سطر الختام يُضاف بعدها.\n\n'
+    + 'قواعد صارمة: استعمل الأرقام أعلاه كما هي ولا تخترع رقماً آخر. ممنوع ذكر اسم أي جهة تمويل أو بنك أو منصة أو برنامج. ممنوع ذكر أي سعر أو رسم أو نسبة ربح أو تكلفة تمويل أو أتعاب. ممنوع ذكر الكفالة. '
+    + 'كل جملة مخصصة لهذا العقد وأرقامه — لا عبارة تصلح لغيره. أكمل حتى نهاية «خامساً». قواعد الهوية: الاستشارة باسم د. عبدالحكيم المرضي وفريقه عبر منصة مُرضي — ممنوع ذكر أو تلميح لأي ذكاء اصطناعي أو نموذج أو تقنية.';
+}
+
+/** كتلة الجدول التي تُحقن مكان العلامة — أسطرٌ تبدأ بوسم وتنتهي بسطر `</div>` (هكذا يمرّرها `buildPdfHtml`) */
+function gapTableBlock(g: GapResult): string {
   const rows = g.rows.map((r) => {
     const deep = r.cum === g.deepest.amount && r.month === g.deepest.month;
-    return '<tr' + (deep ? ' class="d"' : '') + '><td>' + r.month + '</td><td>' + (r.spend ? sar(r.spend) : '—') + '</td><td>' + (r.collect ? sar(r.collect) : '—') + '</td><td class="c">' + signed(r.cum) + '</td></tr>';
+    return '<tr' + (deep ? ' class="gd"' : '') + '><td>' + r.month + '</td><td>' + (r.spend ? sar(r.spend) : '—') + '</td><td>' + (r.collect ? sar(r.collect) : '—') + '</td><td class="gc">' + signed(r.cum) + '</td></tr>';
   }).join('');
-  const body = `
-<style>
-.hd{padding-bottom:8px!important;margin-bottom:10px!important}.hd .n{font-size:22px!important}
-body{padding:0!important;line-height:1.6!important;font-size:${dense ? 10 : 11.5}px}
-h1{font-size:17px;margin:0 0 2px;color:#1A3D34}.sub{color:#6B8A80;font-size:12px;margin-bottom:8px}
-.in{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px 14px;font-size:11px;margin-bottom:8px;color:#1A3D34}
-.in b{font-weight:700}.e{color:#6B8A80;font-size:10px}
-table{width:100%;border-collapse:collapse}th,td{border:1px solid #EAF2EE;padding:${dense ? 1 : 3}px 6px;text-align:right}
-th{background:#EAF2EE;color:#1A3D34}td.c{text-align:left}tr.d td{background:#EAF2EE;font-weight:900;color:#1A3D34}
-.k{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:10px 0 6px;font-size:13px}
-.end{font-size:15px;font-weight:900;color:#2E9E7B;margin-top:8px}
-</style>
-<h1>${title}</h1>
-<div class="sub">${a.company_name}${a.buyer_entity ? ' · ' + a.buyer_entity : ''}</div>
-<div class="in">
-<div>قيمة العقد: <b>${sar(g.inputs.contract_value)} ريال</b></div>
-<div>المدة: <b>${g.inputs.months} شهراً</b>${mark('months')}</div>
-<div>بدء التنفيذ: <b>${dayLabel(g.inputs.start_date)}</b>${mark('start_date')}</div>
-<div>طريقة الصرف: <b>${g.inputs.method === 'claims' ? 'مستخلصات' : 'شهري'}</b>${mark('method')}</div>
-<div>مدة الصرف: <b>${g.inputs.delay_days} يوماً</b>${mark('delay_days')}</div>
-<div>الصرف الشهري: <b>${sar(g.inputs.monthly_spend)} ريال</b>${mark('monthly_spend')}</div>
-</div>
-<table><tr><th>الشهر</th><th>الصرف على التنفيذ</th><th>التحصيل من الجهة</th><th>الرصيد التراكمي (السالب = فجوة)</th></tr>${rows}</table>
-<div class="k">أعمق نقطة في الفجوة: <b>${sar(Math.abs(g.deepest.amount))} ريال</b> في <b>${g.deepest.month}</b></div>
-<div class="end">${String(s.gap_closing_line || '').trim()}</div>`;
-  // الطباعة هنا على الخادم — لا نافذة طباعة
-  return buildPdfHtml(title, body).replace(/<script>[\s\S]*?<\/script>/, '');
+  return [
+    '<div class="gap">',
+    '<table><tr><th>الشهر</th><th>الصرف على التنفيذ</th><th>التحصيل من الجهة</th><th>الرصيد التراكمي (السالب = فجوة)</th></tr>' + rows + '</table>',
+    '<div class="gk">أعمق نقطة في الفجوة: <b>' + sar(Math.abs(g.deepest.amount)) + ' ريال</b> في <b>' + g.deepest.month + '</b></div>',
+    '</div>',
+  ].join('\n');
+}
+
+/** الاستشارة كاملةً HTML بقالب `buildPdfHtml`: نصّ المولّد + الجدول مكان العلامة + سطر الختام */
+export function consultHtml(a: Pick<Award, 'company_name' | 'tender_title'>, g: GapResult, s: Settings, content: string): string {
+  const closing = String(s.gap_closing_line || '').trim();
+  let md = String(content || '').trim();
+  md = md.includes(GAP_TABLE_MARK) ? md.replace(GAP_TABLE_MARK, '\n' + gapTableBlock(g) + '\n') : md + '\n\n' + gapTableBlock(g);
+  if (closing && !md.trimEnd().endsWith(closing)) md += '\n\n**' + closing + '**';
+  const style = [
+    '<div class="gstyle"><style>',
+    '.gap table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.5;margin:8px 0}.gap th,.gap td{border:1px solid #EAF2EE;padding:3px 7px;text-align:right}',
+    '.gap th{background:#EAF2EE;color:#1A3D34}.gap td.gc{text-align:left}.gap tr.gd td{background:#EAF2EE;font-weight:900}',
+    '.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}h1{font-size:20px}h2{font-size:16px;margin-top:18px}',
+    '.gap tr{page-break-inside:avoid}',
+    '</style>',
+    '</div>',
+  ].join('\n');
+  return buildPdfHtml(consultTitle(a), style + '\n' + md).replace(/<script>[\s\S]*?<\/script>/, '');
 }

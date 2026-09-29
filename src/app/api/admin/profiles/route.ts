@@ -103,6 +103,7 @@ export async function GET() {
     .from('consultations')
     .select('id, company_id, assessment_type, status, content, created_at, released_at')
     .in('status', ['ready', 'released'])
+    .is('award_id', null)
     .order('created_at', { ascending: false });
 
   const consultations = (consultRows || []).map((r) => ({

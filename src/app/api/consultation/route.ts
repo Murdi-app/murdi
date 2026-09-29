@@ -4,35 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { sendPush } from '@/lib/push';
 
-const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
-
-async function generateWithFallback(prompt: string): Promise<{ text: string; model: string } | null> {
-  for (const model of MODELS) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY as string,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 8000,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      const text = (data.content || [])
-        .filter((b: { type: string }) => b.type === 'text')
-        .map((b: { text: string }) => b.text)
-        .join('');
-      if (text && text.length > 100) return { text, model };
-    } catch { continue; }
-  }
-  return null;
-}
+import { generateWithFallback } from '@/lib/consultationGen';
 
 // توليد الاستشارة (يستدعى تلقائياً بعد التقييم)
 export async function POST(req: Request) {
@@ -180,6 +152,7 @@ export async function GET() {
     const { data } = await adminClient
       .from('consultations')
       .select('id, company_id, status, content, created_at, generated_at, released_at, assessment_type, companies(company_name)')
+      .is('award_id', null)   // استشارات الترسيات تُعتمد وتُرسل من شاشة الترسيات
       .order('created_at', { ascending: false });
     return NextResponse.json({ consultations: data || [] });
   }

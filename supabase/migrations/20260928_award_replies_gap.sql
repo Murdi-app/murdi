@@ -38,3 +38,8 @@ on conflict (key) do nothing;
 -- بوابة بريد الجدول: نصٌّ يخرج للعميل لا يُرسل قبل أن يعتمده المالك
 insert into public.award_settings (key, value) values ('gap_email_approved', 'false')
 on conflict (key) do nothing;
+
+-- ٢٩ سبتمبر: جدول الفجوة صار «استشارة مختصرة» في جدول الاستشارات نفسه، مربوطةً بالترسية
+alter table public.consultations add column if not exists award_id uuid references public.contract_awards(id) on delete cascade;
+create index if not exists consultations_award_id_idx on public.consultations(award_id) where award_id is not null;
+update public.award_settings set value = 'true' where key = 'gap_email_approved';  -- اعتمده المالك ٢٩/٩

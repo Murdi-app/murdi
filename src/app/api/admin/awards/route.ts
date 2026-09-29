@@ -22,13 +22,19 @@ export async function GET() {
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const sb = admin();
   try {
-    const [{ data, error }, cfg, tq] = await Promise.all([
+    const [{ data, error }, cfg, tq, cq] = await Promise.all([
       sb.from('contract_awards').select('*').order('created_at', { ascending: false }).limit(1000),
       loadConfig(sb),
       sb.from('award_touches').select('*').order('created_at', { ascending: true }).limit(10000),
+      sb.from('consultations').select('award_id, status, generated_at, released_at').not('award_id', 'is', null)
+        .order('created_at', { ascending: false }).limit(2000),
     ]);
     if (error) return NextResponse.json({ error: 'تعذّرت قراءة الترسيات — ' + error.message }, { status: 500 });
     if (tq.error) return NextResponse.json({ error: 'تعذّرت قراءة المراسلات — ' + tq.error.message }, { status: 500 });
+    if (cq.error) return NextResponse.json({ error: 'تعذّرت قراءة الاستشارات — ' + cq.error.message }, { status: 500 });
+    // آخر استشارة فجوة لكل ترسية (الأحدث أولاً في القراءة)
+    const consultBy = new Map<string, { status: string; generated_at: string | null; released_at: string | null }>();
+    for (const c of cq.data || []) if (!consultBy.has(String(c.award_id))) consultBy.set(String(c.award_id), { status: String(c.status), generated_at: c.generated_at, released_at: c.released_at });
     // كل مراسلة بحرفها وتاريخها وقناتها ومرسِلها ونتيجتها، والردود الواردة معها
     const touchesBy = new Map<string, Touch[]>();
     for (const t of (tq.data || []) as Touch[]) {
@@ -48,6 +54,7 @@ export async function GET() {
         kind: c?.kind || null,
         stage: c?.stage || null,
         touches: touchesBy.get(String(a.id)) || [],
+        consult: consultBy.get(String(a.id)) || null,
       };
     });
     return NextResponse.json({ ok: true, awards, templates: cfg.templates, settings: cfg.settings });

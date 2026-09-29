@@ -17,6 +17,7 @@ type Award = {
   gap_sent_at: string | null; notes: string | null; created_at: string; updated_at: string
   addressed: boolean; src: string; next: string[]; message: Msg | null; stage: string | null; touches: Touch[]
   gap_pdf_path: string | null; gap_generated_at: string | null; gap_inputs: Record<string, unknown> | null
+  consult: { status: string; generated_at: string | null; released_at: string | null } | null
 }
 type Template = { id: string; category: string; stage: string; subject: string; context_paragraph: string; active: boolean }
 
@@ -129,28 +130,31 @@ export default function AwardsPage() {
     setBusy('')
   }
 
-  // جدول الفجوة: الفارغ يُملأ بمعيار القطاع ويُعلَّم «تقديري» في الملف
-  const makeGap = async (a: Award) => {
-    const f = gap[a.id] || {}
-    const emailOk = settings.gap_email_approved === 'true' && !!a.contact_email
-    const channel = f.channel === 'email' && !emailOk ? 'preview' : (f.channel || 'preview')
-    if (channel === 'email' && !confirm('يُولَّد الجدول ويُرسل مرفقاً إلى ' + a.contact_email + '؟')) return
+  // استشارة الفجوة: تُولَّد «جاهزة» ولا يخرج شيء؛ الإرسال بزرّ «اعتمد وأرسل» وحده
+  const gapCall = async (a: Award, body: Record<string, unknown>, what: string): Promise<{ url?: string; deepest?: { amount: number; month: string }; warn?: string } | null> => {
     setBusy('gap' + a.id); setErr('')
     try {
-      const r = await fetch('/api/admin/awards/gap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-        id: a.id, channel,
-        inputs: { contract_value: f.contract_value || null, months: f.months || null, start_date: f.start_date || null, method: f.method || null, delay_days: f.delay_days || null, monthly_spend: f.monthly_spend || null },
-      }) })
+      const r = await fetch('/api/admin/awards/gap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, ...body }) })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) setErr('جدول الفجوة لم يكتمل — ' + (d.error || 'خطأ ' + r.status))
-      else {
-        if (d.warn) setErr(d.warn)
-        setGapOut({ ...gapOut, [a.id]: { url: d.url, line: 'أعمق نقطة ' + Math.abs(d.deepest?.amount || 0).toLocaleString('en-US') + ' ريال في ' + (d.deepest?.month || '') } })
-        flash(channel === 'email' ? 'خرج الجدول بالبريد وسُجّل' : channel === 'preview' ? 'المعاينة جاهزة — لم يُسجَّل شيء' : 'حُفظ الجدول وسُجّل — نزّله وأرسله بالواتساب')
-        if (channel !== 'preview') await load()
-      }
-    } catch { setErr('انقطع الاتصال — لم يُولَّد الجدول') }
-    setBusy('')
+      setBusy('')
+      if (!r.ok) { setErr(what + ' لم يكتمل — ' + (d.error || 'خطأ ' + r.status)); return null }
+      if (d.warn) setErr(d.warn)
+      return d
+    } catch { setBusy(''); setErr('انقطع الاتصال — ' + what + ' لم يكتمل'); return null }
+  }
+  const makeGap = async (a: Award) => {
+    const f = gap[a.id] || {}
+    const d = await gapCall(a, { action: 'generate', inputs: { contract_value: f.contract_value || null, months: f.months || null, start_date: f.start_date || null, method: f.method || null, delay_days: f.delay_days || null, monthly_spend: f.monthly_spend || null } }, 'توليد الاستشارة')
+    if (!d) return
+    setGapOut({ ...gapOut, [a.id]: { url: d.url || null, line: 'جاهزة · أعمق نقطة ' + Math.abs(d.deepest?.amount || 0).toLocaleString('en-US') + ' ريال في ' + (d.deepest?.month || '') } })
+    flash('الاستشارة جاهزة — راجِعها ثم «اعتمد وأرسل»'); await load()
+  }
+  const releaseGap = async (a: Award, channel: 'email' | 'whatsapp') => {
+    if (!confirm(channel === 'email' ? 'اعتماد الاستشارة وإرسالها مرفقةً إلى ' + a.contact_email + '؟' : 'اعتماد الاستشارة وتسجيلها مرسَلةً بالواتساب؟ (تنزّلها وترسلها أنت)')) return
+    const d = await gapCall(a, { action: 'release', channel }, 'الاعتماد')
+    if (!d) return
+    if (channel === 'whatsapp' && d.url) window.open(d.url, '_blank')
+    flash(channel === 'email' ? 'اعتُمدت وخرجت بالبريد' : 'اعتُمدت — أرسل الملف بالواتساب'); await load()
   }
   const openGap = async (a: Award) => {
     const r = await fetch('/api/admin/awards/gap?id=' + a.id)
@@ -365,7 +369,7 @@ export default function AwardsPage() {
                   </div>
                 </>) : <div style={{ color: '#B4453C', fontSize: 13, fontWeight: 700 }}>{a.kind === 'general' ? 'القالب العام ناقص — أكمل general_email_subject وgeneral_email_body من «القوالب والإعدادات».' : 'لا قالب مفعَّل لهذه الفئة والمرحلة — فعّله من «القوالب والإعدادات».'}</div>}
                 <div style={{ marginTop: 14, background: '#F7FBF9', border: '1px solid ' + LINE, borderRadius: 10, padding: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>جدول الفجوة <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
+                  <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>استشارة الفجوة المختصرة <span style={{ color: M, fontWeight: 700, fontSize: 12 }}>— الفارغ يُملأ بمعيار القطاع ويُكتب «تقديري»</span></div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                     {([['contract_value', 'قيمة العقد', a.contract_value != null ? String(a.contract_value) : ''], ['months', 'المدة بالأشهر', ''], ['start_date', 'بدء التنفيذ YYYY-MM-DD', a.awarded_at || ''],
                       ['delay_days', 'مدة الصرف بالأيام', ''], ['monthly_spend', 'الصرف الشهري', '']] as const).map(([k, l, ph]) => (
@@ -378,20 +382,21 @@ export default function AwardsPage() {
                         <option value="">معيار القطاع</option><option value="monthly">شهري</option><option value="claims">مستخلصات</option>
                       </select>
                     </label>
-                    <label style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>يُرسل
-                      <select value={gap[a.id]?.channel || 'preview'} onChange={(e) => setGap({ ...gap, [a.id]: { ...(gap[a.id] || {}), channel: e.target.value } })} style={input}>
-                        <option value="preview">معاينة فقط (لا يُسجَّل)</option>
-                        <option value="whatsapp">أرسله أنا بالواتساب</option>
-                        {settings.gap_email_approved === 'true' && a.contact_email && <option value="email">بالبريد من المنصة</option>}
-                      </select>
-                    </label>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
-                    <button onClick={() => makeGap(a)} disabled={busy === 'gap' + a.id} style={btn(G)}>{busy === 'gap' + a.id ? 'جارٍ التوليد…' : (gap[a.id]?.channel || 'preview') === 'preview' ? 'عاين جدول الفجوة' : 'جدول الفجوة'}</button>
-                    {settings.gap_email_approved !== 'true' && <span style={{ color: M, fontSize: 11.5 }}>بريد الجدول غير معتمد — يُفتح بـgap_email_approved = true</span>}
-                    {a.gap_pdf_path && <button onClick={() => openGap(a)} style={btn('#fff', G)}>افتح آخر جدول{a.gap_generated_at ? ' (' + a.gap_generated_at.slice(0, 10) + ')' : ''}</button>}
-                    {gapOut[a.id] && <span style={{ fontSize: 12.5, fontWeight: 800 }}>{gapOut[a.id].line}{gapOut[a.id].url && <> · <a href={gapOut[a.id].url as string} target="_blank" rel="noopener noreferrer" style={{ color: G }}>نزّل الملف</a></>}</span>}
+                    <button onClick={() => makeGap(a)} disabled={busy === 'gap' + a.id} style={btn(a.consult?.status === 'ready' ? '#fff' : G, a.consult?.status === 'ready' ? G : '#fff')}>{busy === 'gap' + a.id ? 'جارٍ… (دقيقة تقريباً)' : a.consult ? 'ولّدها من جديد' : 'ولّد الاستشارة'}</button>
+                    {a.gap_pdf_path && <button onClick={() => openGap(a)} style={btn('#fff', G)}>افتح الاستشارة</button>}
+                    {a.consult && <span style={{ fontSize: 12, fontWeight: 800, color: a.consult.status === 'ready' ? '#8A6D1F' : a.consult.status === 'released' ? '#1A5C46' : '#A5281B' }}>
+                      {a.consult.status === 'ready' ? '● جاهزة — تنتظر اعتمادك' : a.consult.status === 'released' ? '✓ أُرسلت ' + (a.consult.released_at || '').slice(0, 10) : a.consult.status === 'failed' ? 'فشل التوليد' : 'جارٍ…'}
+                    </span>}
+                    {gapOut[a.id] && <span style={{ fontSize: 12.5, fontWeight: 800 }}>{gapOut[a.id].line}</span>}
                   </div>
+                  {a.consult?.status === 'ready' && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {settings.gap_email_approved === 'true' && a.contact_email && <button onClick={() => releaseGap(a, 'email')} disabled={busy === 'gap' + a.id} style={btn(G)}>اعتمد وأرسل بالبريد إلى {a.contact_email}</button>}
+                      <button onClick={() => releaseGap(a, 'whatsapp')} disabled={busy === 'gap' + a.id} style={btn('#fff', G)}>اعتمد — أرسلها أنا بالواتساب</button>
+                    </div>
+                  )}
                 </div>
                 <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, fontWeight: 700, color: M, marginTop: 10 }}>
                   <input type="checkbox" checked={!!a.is_subcontract} disabled={busy === a.id} onChange={(e) => setSub(a, e.target.checked)} /> الفائز مقاول باطن (يُخاطَب بالقالب العام)
