@@ -192,14 +192,26 @@ const AR_DIGITS = (x: number) => String(x).replace(/\d/g, (d) => '٠١٢٣٤٥٦
 export const contractsWord = (k: number) => (k === 1 ? 'عقد' : k === 2 ? 'عقدين' : k <= 10 ? AR_DIGITS(k) + ' عقود' : AR_DIGITS(k) + ' عقداً');
 const q = (t: string | null) => '«' + (String(t || '').trim() || 'العقد') + '»';
 
+/**
+ * اسم العقد في العنوان والجدول. ★ ٣٠ سبتمبر (بأمر المالك): إن غاب اسم المنافسة
+ * الحقيقي لا يُكتب اسمٌ عامٌّ بين علامتي تنصيص — فالتنصيص يوحي أنه اسمها — بل
+ * «عقدكم الحكومي في {النشاط}» بلا تنصيص.
+ */
+type Named = { title: string | null; category: string };
+const hasName = (c: Named) => String(c.title || '').trim() !== '';
+const activityOf = (c: Named) => CATEGORY_AR[c.category] || CATEGORY_AR.other;
+const nameOf = (c: Named) => (hasName(c) ? q(c.title) : 'العقد الحكومي في ' + activityOf(c));
+
 /** عنوان الاستشارة المختصرة — بنصّ المالك، ولعقدين فأكثر: «عقدا …» / «عقود …» */
-export function consultTitle(company: string, titles: (string | null)[]): string {
-  const t = titles.length === 1 ? 'عقد ' + q(titles[0])
-    : titles.length === 2 ? 'عقدا ' + q(titles[0]) + ' و' + q(titles[1])
-    : 'عقود ' + titles.map(q).join(' و');
+export function consultTitle(company: string, contracts: Named[]): string {
+  const t = contracts.length === 1
+    ? (hasName(contracts[0]) ? 'عقد ' + q(contracts[0].title) : 'عقدكم الحكومي في ' + activityOf(contracts[0]))
+    : contracts.length === 2 ? 'عقدا ' + nameOf(contracts[0]) + ' و' + nameOf(contracts[1])
+    : 'عقود ' + contracts.map(nameOf).join(' و');
   return 'استشارة د. عبدالحكيم المرضي الخاصة لـ' + company + ' — ' + t;
 }
-export const groupTitle = (gg: GroupGap) => consultTitle(gg.company, gg.contracts.map((c) => c.award.tender_title));
+const namedOf = (gg: GroupGap): Named[] => gg.contracts.map((c) => ({ title: c.award.tender_title, category: c.award.category }));
+export const groupTitle = (gg: GroupGap) => consultTitle(gg.company, namedOf(gg));
 
 /** أداة السيولة باسمها الصحيح: عقود الصرف الشهري «فواتير أو مستحقات» لا «مستخلصات» */
 const toolFor = (m: Method) => (m === 'claims' ? 'تمويل المستخلصات' : 'تمويل الفواتير أو المستحقات');
@@ -219,6 +231,8 @@ export function consultViolations(text: string, gg: GroupGap): string[] {
     [/ثقتكم|تعاملكم معنا|شكراً لاختياركم/, 'شكرٌ على ثقةٍ أو تعامل — المنشأة لا تعرفنا بعد'],
     [/سطر الختام|يُضاف هنا/, 'إشارة إلى موضعٍ أو سطرٍ يُضاف'],
   ];
+  // ★ ٣٠ سبتمبر: ربحٌ أو فائض «محقَّق» والصرف تقديري — يُكتب «متوقَّع»
+  if (gg.contracts.some((c) => c.g.estimated.includes('monthly_spend'))) bad.push([/محق[\u064B-\u0652]*ق/, '«محقَّق» والصرف تقديري — يُكتب «متوقَّع»']);
   if (gg.contracts.every((c) => c.g.inputs.method === 'monthly')) bad.push([/مستخلص/, '«المستخلصات» في عقود صرفها شهري']);
   if (gg.executing) bad.push([/قبل بدء التنفيذ|قبل أن تبدأوا التنفيذ|قبل التنفيذ/, '«قبل بدء التنفيذ» والتنفيذ قد بدأ']);
   return bad.filter(([re]) => re.test(text)).map(([, why]) => why);
@@ -236,7 +250,7 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
     const mark = (k: keyof CoreInputs) => (g.estimated.includes(k) ? ' — «' + est + '» (من معيار القطاع)' : ' — من أرقامهم');
     const startNote = g.start_basis === 'bids_opened' ? ' (فتح العروض + ٤٥ يوماً)' : g.start_basis === 'today_minus_45' ? ' (تقدير: بدأ التنفيذ قبل نحو ٤٥ يوماً)' : '';
     return (multi ? '\nالعقد ' + (i + 1) + ':\n' : '')
-      + '- العقد: ' + (String(a.tender_title || '').trim() || 'غير مسمّى') + '\n'
+      + '- العقد: ' + (String(a.tender_title || '').trim() || 'اسم المنافسة غير معروف — سمِّه «عقدكم» ولا تخترع له اسماً') + '\n'
       + '- الجهة المالكة للعقد (المدين): ' + (String(a.buyer_entity || '').trim() || 'جهة حكومية') + ' — جهة حكومية\n'
       + '- القطاع: ' + (CATEGORY_AR[a.category] || 'غير محدد') + '\n'
       + '- قيمة العقد: ' + sar(g.inputs.contract_value) + ' ريال' + mark('contract_value') + '\n'
@@ -289,7 +303,7 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
     + (gg.executing
       ? '- المنشأة بدأت التنفيذ (تقديراً): خاطبها كمن ينفّذ الآن. لا تكتب «قبل بدء التنفيذ»، والخطة تبدأ من الآن.\n'
       : '- التنفيذ لم يبدأ بعد، وموعده في المستقبل.\n')
-    + '\nهيكل الاستشارة (Markdown) — بهذه العناوين حرفياً وبهذا الترتيب:\n'
+    + '\nهيكل الاستشارة (Markdown) — بهذه العناوين حرفياً وبهذا الترتيب. العنوان هو ما قبل «—» وحده، وما بعدها وصفٌ لما يُكتب تحته لا يُنسخ:\n'
     + '# ' + title + '\n'
     + '## أولاً: قراءتي ' + (multi ? 'لعقودكم' : 'لعقدكم') + ' — ' + (multi ? 'لكل عقدٍ ' : '') + 'القيمة والمدة وطريقة الصرف والصرف الشهري، وما تعنيه دورة الصرف. اكتب بجانب كل رقمٍ من معيار القطاع «(' + est + ')» حرفياً، ولا تكتبها بجانب ما هو من أرقامهم.'
       + (rev ? ' واختم هذا القسم بحجم ' + (multi ? 'العقود' : 'العقد') + ' من المنشأة: إيراده السنوي المكافئ مقابل إيرادها السنوي بالرقمين والنسبة أعلاه، وما يعنيه ذلك لسيولتها.' : '')
@@ -303,6 +317,7 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
     + '## خامساً: كلمة أخيرة — فقرة قصيرة واقعية ومحترمة. لا تختمها بعبارة عن سدّ الفجوة؛ سطر الختام يُضاف بعدها.\n\n'
     + 'قواعد صارمة:\n'
     + '- استعمل الأرقام أعلاه كما هي ولا تخترع رقماً آخر.\n'
+    + (gg.contracts.some((c) => c.g.estimated.includes('monthly_spend')) ? '- الصرف الشهري تقديري: لا تصف ربحاً أو فائضاً أو هامشاً بأنه «محقَّق»؛ اكتب «متوقَّع».\n' : '')
     + '- المنشأة لم تتعامل معنا بعد: لا تشكرها على ثقةٍ أو تعامل، وابدأ بما يفيدها.\n'
     + '- لا تكتب أي إشارة إلى سطر الختام أو إلى ما يُضاف لاحقاً؛ انتهِ بآخر جملةٍ من «خامساً».\n'
     + '- أي موعدٍ تذكره في الخطة يقع بعد ' + dayLabel(gg.today) + ' — لا اليوم ولا قبله.\n'
@@ -317,15 +332,20 @@ export function gapConsultPrompt(gg: GroupGap, s: Settings): string {
 /** كتلة الجدول التي تُحقن مكان العلامة — أسطرٌ تبدأ بوسم وتنتهي بسطر `</div>` (هكذا يمرّرها `buildPdfHtml`) */
 function gapTableBlock(gg: GroupGap): string {
   const rows = gg.rows.map((r) => {
-    const deep = r.cum === gg.deepest.amount && r.month === gg.deepest.month;
+    const mark = gg.executing && gg.ahead ? gg.ahead : gg.deepest;
+    const deep = r.cum === mark.amount && r.month === mark.month;
     return '<tr' + (deep ? ' class="gd"' : '') + '><td>' + r.month + '</td><td>' + (r.spend ? sar(r.spend) : '—') + '</td><td>' + (r.collect ? sar(r.collect) : '—') + '</td><td class="gc">' + signed(r.cum) + '</td></tr>';
   }).join('');
-  const head = gg.contracts.length > 1 ? '<div class="gn">يجمع الجدول ' + contractsWord(gg.contracts.length) + ': ' + gg.contracts.map((c) => escHtml(q(c.award.tender_title))).join(' · ') + '</div>' : '';
+  const head = gg.contracts.length > 1 ? '<div class="gn">يجمع الجدول ' + contractsWord(gg.contracts.length) + ': ' + namedOf(gg).map((c) => escHtml(nameOf(c))).join(' · ') + '</div>' : '';
   return [
     '<div class="gap">',
     head,
     '<table><tr><th>الشهر</th><th>الصرف على التنفيذ</th><th>التحصيل من الجهة</th><th>الرصيد التراكمي (السالب = فجوة)</th></tr>' + rows + '</table>',
-    '<div class="gk">أعمق نقطة في الفجوة: <b>' + sar(Math.abs(gg.deepest.amount)) + ' ريال</b> في <b>' + gg.deepest.month + '</b></div>',
+    // ★ ٣٠ سبتمبر: إن بدأ التنفيذ فالأبرز ما يُخطَّط له — أعمق نقطة من اليوم — والتاريخية سطرٌ ثانوي تحته
+    gg.executing && gg.ahead
+      ? '<div class="gk">أعمق نقطة من اليوم: <b>' + sar(Math.abs(gg.ahead.amount)) + ' ريال</b> في <b>' + gg.ahead.month + '</b>'
+        + '<div class="gh">وأعمق نقطة منذ بدء التنفيذ: ' + sar(Math.abs(gg.deepest.amount)) + ' ريال في ' + gg.deepest.month + '</div></div>'
+      : '<div class="gk">أعمق نقطة في الفجوة: <b>' + sar(Math.abs(gg.deepest.amount)) + ' ريال</b> في <b>' + gg.deepest.month + '</b></div>',
     '</div>',
   ].filter(Boolean).join('\n');
 }
@@ -353,6 +373,9 @@ function mdToHtml(md: string, table: string): string {
     }
     if (!t || /^(-{3,}|\*{3,}|_{3,})$/.test(t)) { close(); continue; }
     const h = /^(#{1,4})\s+(.*)$/.exec(t);
+    // ★ ٣٠ سبتمبر: عنوان القسم المرقّم يُقصّ عند «—». في الطلب يتبع كلَّ عنوانٍ وصفُ ما يُكتب
+    //   تحته، والمولّد ينسخه أحياناً في العنوان («أولاً: قراءتي لعقدكم — القيمة والمدة…»).
+    if (h && h[1].length === 2 && /^(?:أولاً|ثانياً|ثالثاً|رابعاً|خامساً)\s*:/.test(h[2])) h[2] = h[2].split(/\s+—\s+/)[0];
     if (h) { close(); const n = h[1].length; out.push(n === 1 ? '<h1 class="ct">' + inline(h[2]) + '</h1>' : n === 2 ? '<h2 class="cs">' + inline(h[2]) + '</h2>' : '<h3 class="cu">' + inline(h[2]) + '</h3>'); continue; }
     const li = /^(?:[-•*]|\d+[.)])\s+(.*)$/.exec(t);
     if (li) { if (!list) { out.push('<ul class="cl">'); list = true; } out.push('<li>' + inline(li[1]) + '</li>'); continue; }
@@ -365,6 +388,8 @@ function mdToHtml(md: string, table: string): string {
 /** الاستشارة كاملةً HTML بقالب `buildPdfHtml`: نصّ المولّد + الجدول مكان العلامة + سطر الختام */
 export function consultHtml(gg: GroupGap, s: Settings, content: string): string {
   const closing = String(s.gap_closing_line || '').trim();
+  // ★ ٣٠ سبتمبر: سطرٌ ثابت من الإعدادات يختم «كلمة أخيرة» قبل سطر الختام
+  const next = String(s.gap_next_step || '').trim();
   // سطرٌ يشير إلى «سطر الختام» أو موضعٍ يُضاف لا يبقى في النصّ أبداً
   let md = String(content || '').split('\n').filter((l) => !/سطر الختام|يُضاف هنا/.test(l)).join('\n').trim();
   if (!md.includes(GAP_TABLE_MARK)) md += '\n\n' + GAP_TABLE_MARK;
@@ -372,7 +397,9 @@ export function consultHtml(gg: GroupGap, s: Settings, content: string): string 
   //   كلٌّ في سطرٍ واحد: القالب يلفّ ما لا يبدأ بوسمٍ في <span>، وكتلة الختم متعدّدة الأسطر.
   const tail = '\n<div class="cd"><b>إخلاء المسؤولية.</b> ' + escHtml(GAP_DISCLAIMER_AR) + '</div>'
     + '\n' + studySeal().replace(/\n\s*/g, '');
-  const body = mdToHtml(md, gapTableBlock(gg)) + (closing && !md.trimEnd().endsWith(closing) ? '\n<p class="cz">' + escHtml(closing) + '</p>' : '') + tail;
+  const body = mdToHtml(md, gapTableBlock(gg))
+    + (next && !md.includes(next) ? '\n<p class="cp">' + escHtml(next) + '</p>' : '')
+    + (closing && !md.trimEnd().endsWith(closing) ? '\n<p class="cz">' + escHtml(closing) + '</p>' : '') + tail;
   const style = '<style>.consult{line-height:1.95;font-size:13.5px}.consult .ct{font-size:20px;color:#1A3D34;margin:0 0 14px;line-height:1.6}'
     + '.consult .cs{font-size:16px;color:#1A3D34;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid #EAF2EE}'
     + '.consult .cu{font-size:14px;color:#2E9E7B;margin:12px 0 4px}.consult .cp{margin:6px 0}.consult .cl{margin:4px 0;padding-right:20px}.consult li{margin:3px 0}'
@@ -380,7 +407,7 @@ export function consultHtml(gg: GroupGap, s: Settings, content: string): string 
     + '.consult .cd{margin-top:18px;padding:10px 14px;background:#F4F7F6;border-right:4px solid #2E9E7B;font-size:11px;line-height:1.9;color:#33473F;page-break-inside:avoid}.consult .cd b{color:#1A3D34}'
     + '.gap table{width:100%;border-collapse:collapse;font-size:11.5px;line-height:1.5;margin:8px 0}.gap th,.gap td{border:1px solid #EAF2EE;padding:3px 7px;text-align:right}'
     + '.gap th{background:#EAF2EE;color:#1A3D34}.gap td.gc{text-align:left}.gap tr.gd td{background:#EAF2EE;font-weight:900}.gap tr{page-break-inside:avoid}'
-    + '.gn{font-size:12px;color:#6B8A80;margin:4px 0}.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}</style>';
+    + '.gh{font-size:12px;color:#6B8A80;font-weight:400;margin-top:3px}.gn{font-size:12px;color:#6B8A80;margin:4px 0}.gk{border:2px solid #2E9E7B;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}</style>';
   // كتلةٌ واحدة: أولها وسم وآخرها سطر `</div>` — فيمرّرها القالب كما هي
   const block = ['<div class="consult">', style, body.split('\n').map((l) => (l.startsWith('<') ? l : '<span>' + l + '</span>')).join('\n'), '</div>'].join('\n');
   return buildPdfHtml(groupTitle(gg), block).replace(/<script>[\s\S]*?<\/script>/, '');
