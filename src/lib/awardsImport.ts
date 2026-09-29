@@ -36,7 +36,7 @@ const NOT_AWARD = /إيجار|ايجار|تأجير|تاجير|استئجار|ب
 
 /** الطرف الآخر: «مع X» أو «على X» (ترسيةٌ منها عليه) — شركةً لا جهة حكومية */
 function counterpartyOf(t: string): string | null {
-  const m = /(?:\sمع|\sعلى)\s+(?:شركة\s+)?[«"“]?([^«»"”،.\-]{2,50}?)[»"”]?(?=\s+(?:بقيمة|ب[\d٠-٩]|لـ|لتنفيذ|لتشييد|لإنشاء|لانشاء|لبناء|لتوريد|لتصميم|لأعمال|لاعمال|لمدة)|\s*$|،)/.exec(t);
+  const m = /(?:\sمع|\sعلى)\s+(?:شركة\s+)?[«"“]?([^«»"”،.\-]{2,50}?)[»"”]?(?=\s+(?:بقيمة|ب[\d٠-٩]|لـ|لغرض|لتقديم|لتنفيذ|لتشييد|لإنشاء|لانشاء|لبناء|لتوريد|لتصميم|لأعمال|لاعمال|لمدة)|\s*$|،)/.exec(t);
   const c = m ? clean(m[1]) : null;
   return c && !GOV.test(c) && !/إيراد|٪|%|لعام|العام/.test(c) ? c : null;
 }
@@ -50,10 +50,14 @@ function counterpartyOf(t: string): string | null {
 function ownerRole(t: string, company: string): { owner: true; executor: string | null } | null {
   const cp = counterpartyOf(t);
   if (/(?:^|\s)(?:ترسي|أرست|ارست)\s/.test(t) || /ترسية[^،]*\sعلى\s/.test(t)) return { owner: true, executor: cp };
+  // مرفقٌ لها (مستشفى · مقر · مصنع …) يُنفَّذ أو يُشيَّد، بلا جهةٍ حكومية ولا منفّذٍ مذكور:
+  // «تنفيذ أعمال مستشفى الموسى» · «تنفيذ الأعمال الإنشائية لمستشفى» — مالكة، والمنفّذ مجهول
+  if (!cp && !CONTRACTOR.test(company) && !buyerOf(t) && /تنفيذ|تشييد|إنشاء|انشاء|بناء|الإنشائية|الانشائية/.test(t) && OWN_ASSET.test(t)) return { owner: true, executor: null };
+  // «مع شركة X لتقديم خدمات …»: الشركة في الخبر عميلةٌ، والمنفّذ X
+  if (cp && !CONTRACTOR.test(company) && /(?:لغرض\s+)?(?:تقديم|لتقديم)\s+خدمات/.test(t)) return { owner: true, executor: cp };
   if (CONTRACTOR.test(company) || !WORK.test(t)) return null;
   if (cp && CONTRACTOR.test(cp)) return { owner: true, executor: cp };
   if (/لصالحها/.test(t) && cp) return { owner: true, executor: cp };
-  if (!cp && /تشييد|إنشاء|انشاء|بناء/.test(t) && OWN_ASSET.test(t)) return { owner: true, executor: null };
   return null;
 }
 
@@ -93,7 +97,7 @@ function companyOf(t: string): string | null {
   if (a) return clean(a[1].replace(/\s*\([^)]*\)\s*/g, ' '));
   const q = /^[«"“]([^«»"”]{2,60})[»"”]/.exec(t);
   if (q) return clean(q[1]);
-  const v = /^(.{2,60}?)\s+(?:تعلن|تتسلم|تستلم|تُوقّع|توقّع|تُوقع|توقع|تفوز|توقيع|ترسي|أرست|ارست)/.exec(t);
+  const v = /^(.{2,60}?)\s+(?:تعلن|تُعلن|تتسلم|تستلم|تُوقّع|توقّع|تُوقع|توقع|تفوز|توقيع|ترسي|أرست|ارست)/.exec(t);
   return v ? clean(v[1].replace(/^شركة\s+/, '')) : null;
 }
 
@@ -150,7 +154,7 @@ export function parseItem(rawTitle: string, link: string, pubDate: string, outle
   if (/يرسي|ترسية\s+\d+\s+مشروع/.test(t)) return null; // الفاعل جهةٌ حكومية أو خبرٌ إجمالي
   const company = companyOf(t);
   // فاعلٌ ليس شركةً منفِّذة: جهة حكومية، أو «تابعة لـ…»، أو خبرٌ عن مسؤول
-  if (!company || /^(?:تابعة|إحدى|احدى|رئيس|وزير|أمير|مجلس|محافظة|باست|السعودية|الحكومة)|وزارة|هيئة|بنك التنمية|^أرامكو|^ارامكو/.test(company)) return null;
+  if (!company || /^(?:تابعة|إحدى|احدى|رئيس|وزير|أمير|مجلس|محافظة|باست|السعودية|الحكومة)|وزارة|هيئة|أمانة|امانة|بلدية|جامعة|بنك التنمية|^أرامكو|^ارامكو/.test(company)) return null;
   // سعوديٌّ لا غير: بالريال، أو من منفذٍ سعودي. وخبر الجنيه والدرهم والدينار ليس لنا
   if (/جنيه|درهم|دينار|مصر|قناة السويس|الإسكندرية|عُمان|عمان|الكويت|قطر|البحرين|الأردن/.test(t)) return null;
   if (!/ريال/.test(t) && !/ارقام|أرقام|مباشر|مال|الاقتصادية|سبق|عكاظ|الرياض|اليوم|أخبار 24|argaam|mubasher|maaal|aleqt/i.test(outlet)) return null;
@@ -228,7 +232,8 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
   const byValue: { v: number; d: string }[] = (recent || [])
     .filter((r) => Number(r.contract_value) > 0)
     .map((r) => ({ v: Number(r.contract_value), d: String(r.awarded_at || r.created_at).slice(0, 10) }));
-  const sameValue = (v: number | null, d: string) => !!v && byValue.some((x) => x.v === v && Math.abs(Date.parse(x.d) - Date.parse(d)) <= 7 * 86400_000);
+  // «148.5» و«148.45» مليوناً خبرٌ واحد: فرقٌ دون نصف بالمئة تقريبٌ لا عقدٌ آخر
+  const sameValue = (v: number | null, d: string) => !!v && byValue.some((x) => Math.abs(x.v - v) <= v * 0.005 && Math.abs(Date.parse(x.d) - Date.parse(d)) <= 7 * 86400_000);
   let inserted = 0, skipped = 0, blocked = 0;
   for (const p of all) {
     if (sameValue(p.contract_value, p.awarded_at)) { skipped++; continue; }
