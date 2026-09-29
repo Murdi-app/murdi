@@ -28,10 +28,10 @@ export async function POST(req: Request) {
     try { const j = JSON.parse(content); recs = Array.isArray(j) ? j : [j]; }
     catch { recs = []; }
     const out: unknown[] = [];
-    if (!recs.length) out.push({ status: 400, error: 'الملف ليس JSON صالحاً' });
+    if (!recs.length) out.push({ code: 400, error: 'الملف ليس JSON صالحاً' });
     for (const r of recs.slice(0, 50)) {
       const x = await submitRecommendation(sb, (r && typeof r === 'object' ? r : null) as Record<string, unknown> | null);
-      out.push({ status: x.status, ...x.json });
+      out.push({ code: x.status, ...x.json });   // code: نتيجة الطلب · status: حال التوصية في الصندوق
     }
     await sb.from('bridge_files').insert({ file_key: key, path, result: out });
     results.push({ path, results: out });
