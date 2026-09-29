@@ -226,6 +226,31 @@ export async function awardsDailyLine(sb: SupabaseClient): Promise<string> {
     + ' · ردّ ' + n(replied) + ' · جدول فجوة أُرسل ' + n(gap) + ' · مدفوع ' + n(paid);
 }
 
+/**
+ * مراحل المسار — كل مرحلةٍ عمود تاريخٍ في صف الترسية تختمه القاعدة من الأحداث نفسها
+ * (`supabase/migrations/20260929_awards_funnel.sql`).
+ */
+export const FUNNEL: [string, string][] = [
+  ['documented_at', 'موثّقة'], ['reached_at', 'وصول'], ['contacted_at', 'تواصل'], ['replied_at', 'رد'],
+  ['qualified_at', 'تأهيل'], ['offered_at', 'عرض'], ['paid_at', 'دفع'], ['executing_at', 'تنفيذ'], ['first_referral_at', 'إحالات'],
+];
+
+/** سطر المسار في الجرد الصباحي: عدد الترسيات في كل مرحلة، وما دخلها في ٢٤ ساعة */
+export async function awardsFunnelLine(sb: SupabaseClient): Promise<string> {
+  const since = Date.now() - 24 * 3600_000;
+  const { data, error } = await sb.from('contract_awards').select(FUNNEL.map(([c]) => c).join(', ') + ', referrals_count, status');
+  if (error) throw new Error(error.message);
+  const rows = (data || []) as unknown as Record<string, unknown>[];
+  if (!rows.length) return '';
+  const n = (x: number) => x.toLocaleString('ar-SA');
+  return 'مسار الترسيات: ' + FUNNEL.map(([c, l]) => {
+    const has = rows.filter((r) => r[c]);
+    const total = c === 'first_referral_at' ? rows.reduce((x, r) => x + Number(r.referrals_count || 0), 0) : has.length;
+    const fresh = has.filter((r) => Date.parse(String(r[c])) >= since).length;
+    return l + ' ' + n(total) + (fresh ? ' (+' + n(fresh) + ')' : '');
+  }).join(' ← ') + ' · «لا تتواصل» ' + n(rows.filter((r) => r.status === 'do_not_contact').length);
+}
+
 // ═══ المراسلات (`award_touches`) ومهام ضي ═══
 
 export type Touch = {

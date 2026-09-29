@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
-import { awardsDailyLine } from '@/lib/awards';
+import { awardsDailyLine, awardsFunnelLine } from '@/lib/awards';
 
 // جرد المنصة — يُحسب في القاعدة ويصل بريدك، بلا جلسة ولا شاشة إذن ولا حاسب مفتوح.
 // مهام Claude المجدولة كانت تقف عند طلب الإذن فتموت معلّقة، ولا «سماح دائم» في التطبيق.
@@ -81,6 +81,7 @@ function decisions(d: Digest): string[] {
   if (num(d, 'outreach_due')) out.push(`<b>${num(d, 'outreach_due')}</b> مخاطبة تجاوزت موعد المعاودة بلا رد`);
   if (num(d, 'leads_due')) out.push(`<b>${num(d, 'leads_due')}</b> متابعة حان موعد معاودتها اليوم`);
   if (typeof d.awards_line === 'string' && d.awards_line) out.push('🏗️ ' + esc(d.awards_line));
+  if (typeof d.awards_funnel === 'string' && d.awards_funnel) out.push('📊 ' + esc(d.awards_funnel));
   if (num(d, 'errors_today')) out.push(`<b>${num(d, 'errors_today')}</b> خطأ تشغيلي جديد خلال ٢٤ ساعة`);
 
   return out;
@@ -154,6 +155,8 @@ export async function POST(req: Request) {
   // سطر الترسيات اليومي — فشلُه لا يُسقط الجرد، ويُقال فيه
   try { d.awards_line = await awardsDailyLine(admin()); }
   catch (e) { d.awards_line = 'الترسيات: تعذّرت القراءة — ' + (e instanceof Error ? e.message : ''); }
+  try { d.awards_funnel = await awardsFunnelLine(admin()); }
+  catch (e) { d.awards_funnel = 'مسار الترسيات: تعذّرت القراءة — ' + (e instanceof Error ? e.message : ''); }
 
   // جولة المساء تصمت إن لم يكن ثمّة قرار — التنبيه الذي يتكرر بلا سبب يُهمَل
   const dec = decisions(d);

@@ -23,6 +23,8 @@ type Award = {
   email_source: string | null; email_source_url: string | null
   dnc_reason: string | null; dnc_by: string | null; dnc_at: string | null
   fit_service: string | null; qualified_at: string | null; qualified_by: string | null
+  documented_at: string | null; reached_at: string | null; contacted_at: string | null; offered_at: string | null
+  paid_at: string | null; executing_at: string | null; first_referral_at: string | null; referrals_count: number; referred_by: string | null
   phone_check: string | null; phone_checked_at: string | null; phone_checked_by: string | null
 }
 // صاحب القرار: كل رقمٍ وبريد بمصدره المنشور ورابطه (ما نشرته المنشأة أو سجلٌّ رسمي)
@@ -48,6 +50,8 @@ const TRACK: Record<string, string> = {
 }
 // الخدمة المناسبة (التأهيل) — أسماءٌ لا أسعار
 const FIT: Record<string, string> = { contract_finance: 'تمويل عقد', working_capital: 'رأس مال عامل', feasibility_credit: 'جدوى ائتمانية', broader_funding: 'مسار تمويل أوسع', not_fit: 'لا يناسب' }
+// مراحل المسار بتواريخها — تختمها القاعدة (البند هـ)
+const FUNNEL: [string, string][] = [['documented_at', 'موثّقة'], ['reached_at', 'وصول'], ['contacted_at', 'تواصل'], ['replied_at', 'رد'], ['qualified_at', 'تأهيل'], ['offered_at', 'عرض'], ['paid_at', 'دفع'], ['executing_at', 'تنفيذ'], ['first_referral_at', 'إحالات']]
 const STAGE: Record<string, string> = { early: 'بداية', in_execution: 'في التنفيذ' }
 const SOURCE: Record<string, string> = { etimad: 'اعتماد', tadawul: 'تداول', nomu: 'نمو', linkedin: 'لينكدإن', news: 'الأخبار', manual: 'يدوي' }
 
@@ -298,6 +302,12 @@ export default function AwardsPage() {
                   {Object.entries(CATEGORY).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
               </label>
+              <label style={{ fontSize: 12, color: M, fontWeight: 700 }}>محالة من (إن أحالها عميل)
+                <select value={form.referred_by || ''} onChange={(e) => setForm({ ...form, referred_by: e.target.value })} style={input}>
+                  <option value="">—</option>
+                  {awards.filter((x) => ['paid', 'priced', 'meeting', 'gap_sent', 'replied'].includes(x.status)).map((x) => <option key={x.id} value={x.id}>{x.company_name}</option>)}
+                </select>
+              </label>
               <label style={{ fontSize: 12, color: M, fontWeight: 700 }}>قناة التواصل
                 <select value={form.contact_channel || ''} onChange={(e) => setForm({ ...form, contact_channel: e.target.value })} style={input}>
                   <option value="">—</option><option value="email">بريد</option><option value="whatsapp">واتساب</option><option value="linkedin">لينكدإن</option><option value="call">مكالمة</option>
@@ -381,7 +391,14 @@ export default function AwardsPage() {
               </div>
             </div>
 
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+              {FUNNEL.map(([c, l]) => {
+                const v = (a as unknown as Record<string, unknown>)[c] as string | null
+                return <span key={c} title={v ? when(v) : 'لم تبلغها'} style={{ fontSize: 11, fontWeight: 800, borderRadius: 99, padding: '2px 8px', background: v ? '#EAF6F1' : '#F2F5F4', color: v ? '#1A5C46' : '#AFC2BB' }}>{l}{v ? ' ' + v.slice(5, 10).replace('-', '/') : ''}{c === 'first_referral_at' && a.referrals_count ? ' ×' + a.referrals_count : ''}</span>
+              })}
+            </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+              {a.status === 'paid' && !a.executing_at && <button onClick={async () => { setBusy(a.id); if (await call('/api/admin/awards', 'PATCH', { id: a.id, fields: { executing: true } }, 'بدأ التنفيذ')) { flash('خُتم «تنفيذ»'); await load() } setBusy('') }} style={btn(G)}>✓ بدأ التنفيذ</button>}
               {a.next.map((to) => (
                 <button key={to} onClick={() => move(a, to)} disabled={busy === a.id || (to === 'messaged' && !a.addressed)}
                   style={to === 'dropped' || to === 'do_not_contact' ? btn('#fff', '#B4453C') : btn(G)}>{to === 'dropped' ? 'أسقِط' : to === 'do_not_contact' ? '⛔ لا تتواصل' : '← ' + STATUS[to]}</button>

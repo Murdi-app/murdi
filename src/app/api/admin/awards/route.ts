@@ -105,6 +105,7 @@ export async function POST(req: Request) {
     contact_phone: cut(b.contact_phone, 40) || null,
     contact_channel: channel,
     notes: cut(b.notes, 2000) || null,
+    referred_by: /^[0-9a-f-]{36}$/i.test(String(b.referred_by || '')) ? String(b.referred_by) : null,
   }).select('id').single();
   if (error) {
     if (/do_not_contact/.test(error.message)) return NextResponse.json({ error: 'هذه المنشأة «لا تتواصل» — لا تُضاف' }, { status: 409 });
@@ -169,6 +170,13 @@ export async function PATCH(req: Request) {
     if (f.fit_service !== '' && f.fit_service !== null && !isFitService(f.fit_service)) return NextResponse.json({ error: 'خدمة غير معروفة' }, { status: 400 });
     patch.fit_service = f.fit_service || null;
     if (patch.fit_service) { patch.qualified_at = now; patch.qualified_by = 'د. عبدالحكيم المرضي'; }
+  }
+  // «بدأ التنفيذ» (مرحلة المسار) — ختمٌ لا يُكتب يدوياً بتاريخ
+  if (f.executing !== undefined) patch.executing_at = f.executing ? now : null;
+  if (f.referred_by !== undefined) {
+    const r = cut(f.referred_by, 40);
+    if (r && (r === id || !/^[0-9a-f-]{36}$/i.test(r))) return NextResponse.json({ error: 'الترسية المُحيلة غير صحيحة' }, { status: 400 });
+    patch.referred_by = r || null;
   }
   if (f.contact_channel !== undefined) patch.contact_channel = CHANNELS.includes(String(f.contact_channel)) ? String(f.contact_channel) : null;
   if (f.contract_value !== undefined) {
