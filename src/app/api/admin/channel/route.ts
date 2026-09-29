@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
 const DR = 'د. عبدالحكيم المرضي';
+const now = () => new Date().toISOString();
 
 export async function GET() {
   const denied = await requireAdmin();
@@ -24,7 +25,7 @@ export async function GET() {
     sb.from('award_recommendations').select('*').eq('status', 'pending').order('created_at').limit(200),
     sb.from('award_outbox').select('id, award_id, to_address, subject, status, attempts, last_error, sent_at, created_at').order('created_at', { ascending: false }).limit(50),
     sb.from('award_settings').select('key, value').in('key', ['outbox_enabled', 'outbox_daily_cap', 'outbox_hours', 'high_value_min', 'general_email_approved', 'whatsapp_template_approved', 'gap_email_approved']),
-    sb.from('api_keys').select('id, name, key_prefix, created_at, revoked_at, last_used_at').order('created_at', { ascending: false }),
+    sb.from('api_keys').select('id, name, key_prefix, created_at, revoked_at, last_used_at, client_id, expires_at').is('client_id', null).order('created_at', { ascending: false }).limit(10),
     sb.from('api_calls').select('at, method, path, status, note').order('at', { ascending: false }).limit(20),
     sb.from('award_message_templates').select('id, category, stage, subject, context_paragraph, approved').eq('approved', false),
     sb.from('award_hypotheses').select('*').eq('approved', false),
@@ -72,6 +73,13 @@ export async function GET() {
     recommendations: (recs.data || []).map((r) => ({ ...r, award: awards.get(String(r.award_id)) || null })),
     outbox: { items: ob.data || [], enabled: settings.outbox_enabled === 'true', cap: Number(settings.outbox_daily_cap || 0), hours: settings.outbox_hours, sent_today: sentToday || 0, window: inWindow(settings) },
     keys: keys.data || [], calls: calls.data || [], cursor: cur.data || null,
+    mcp: await (async () => {
+      const [{ count: live }, { data: lastTok }] = await Promise.all([
+        sb.from('oauth_refresh').select('token_hash', { count: 'exact', head: true }).is('revoked_at', null).gt('expires_at', now()),
+        sb.from('api_keys').select('last_used_at, created_at').not('client_id', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ])
+      return { linked: (live || 0) > 0, last_used_at: lastTok?.last_used_at || null, linked_at: lastTok?.created_at || null }
+    })(),
     pipeline: pipe.map(withAward),
   });
 }
@@ -113,6 +121,13 @@ export async function POST(req: Request) {
     const { error } = await sb.from('api_keys').insert({ name: KEY_NAME, key_hash: k.hash, key_prefix: k.prefix, created_by: DR });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, key: k.key, prefix: k.prefix });
+  }
+  if (action === 'mcp_revoke') {
+    // إلغاء ربط ChatGPT كله: رموز الوصول ورموز التجديد — يلزمه ربطٌ جديد بموافقتك
+    const { error: e1 } = await sb.from('api_keys').update({ revoked_at: now }).not('client_id', 'is', null).is('revoked_at', null);
+    const { error: e2 } = await sb.from('oauth_refresh').update({ revoked_at: now }).is('revoked_at', null);
+    if (e1 || e2) return NextResponse.json({ error: (e1 || e2)?.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
   }
   if (action === 'key_revoke') {
     const { error } = await sb.from('api_keys').update({ revoked_at: now }).eq('id', String(b.id || '')).is('revoked_at', null);

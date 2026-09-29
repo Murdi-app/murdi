@@ -29,7 +29,11 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setMessage(translateError(error.message)); setLoading(false); return }
     const { data: { user: u } } = await supabase.auth.getUser()
-    if (u?.email === 'hololalmurdi.fs@gmail.com') { router.push('/admin'); return }
+    if (u?.email === 'hololalmurdi.fs@gmail.com') {
+      // الرجوع إلى موافقة ربط Codex بعد الدخول — مسارٌ داخلي تحت /oauth/ وحده
+      const next = new URLSearchParams(window.location.search).get('next') || ''
+      router.push(next.startsWith('/oauth/') ? next : '/admin'); return
+    }
     const { data: stf } = await supabase.from('staff').select('active, job').eq('user_id', u?.id).maybeSingle()
     // ═══ الموظفة تنزل على شاشتها هي ═══
     // كان الدخول يُنزلها على «/admin/apply»، وتلك ليست في قائمة صفحاتها

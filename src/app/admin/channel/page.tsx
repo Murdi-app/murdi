@@ -16,6 +16,7 @@ type Data = {
   recommendations: Row[]
   outbox: { items: Row[]; enabled: boolean; cap: number; hours: string; sent_today: number; window: { ok: boolean; why: string } }
   keys: Row[]; calls: Row[]; cursor: Row | null; pipeline: Row[]
+  mcp: { linked: boolean; last_used_at: string | null; linked_at: string | null }
 }
 
 const G = '#1A3D34', M = '#6B8A80', LINE = '#E1EDE8', RED = '#A5281B'
@@ -170,7 +171,12 @@ export default function ChannelPage() {
 
         {/* ═══ مفتاح Codex ═══ */}
         <div style={card}>
-          <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 6 }}>مفتاح Codex</div>
+          <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 6 }}>ربط Codex</div>
+          <div style={{ background: d.mcp.linked ? '#EAF6F1' : '#F2F5F4', borderRadius: 10, padding: '8px 12px', fontSize: 13, marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <b>إضافة ChatGPT:</b> {d.mcp.linked ? 'مربوطة (بموافقتك) · آخر استعمال ' + when(d.mcp.last_used_at) : 'غير مربوطة — تُضاف في ChatGPT بعنوان https://murdi.sa/api/mcp'}
+            {d.mcp.linked && <button disabled={!!busy} onClick={() => confirm('إلغاء ربط ChatGPT كله؟') && act({ action: 'mcp_revoke' }, 'إلغاء الربط')} style={btn('#fff', RED)}>ألغِ الربط</button>}
+          </div>
+          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>مفتاح يدوي (بديل للإضافة)</div>
           <div style={{ color: M, fontSize: 12.5, marginBottom: 8 }}>يُعرض المفتاح مرةً واحدة هنا عند إنشائه — ضعه سرّاً في بيئة Codex (Authorization: Bearer …). الإنشاء يُلغي السابق (تدوير).</div>
           {newKey && (
             <div style={{ background: '#FFF6E0', border: '1px solid #EAD9A8', borderRadius: 10, padding: 10, marginBottom: 8 }}>

@@ -31,8 +31,9 @@ export async function withCodex(req: Request, path: string, handler: (ctx: Codex
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   let keyId: string | null = null;
   if (token) {
-    const { data } = await sb.from('api_keys').select('id, revoked_at').eq('key_hash', hashKey(token)).maybeSingle();
-    if (data && !data.revoked_at) keyId = String(data.id);
+    const { data } = await sb.from('api_keys').select('id, revoked_at, expires_at').eq('key_hash', hashKey(token)).maybeSingle();
+    // رمز الإضافة (OAuth) له أجل؛ والمفتاح اليدوي بلا أجل حتى يُلغى
+    if (data && !data.revoked_at && (!data.expires_at || Date.parse(String(data.expires_at)) > Date.now())) keyId = String(data.id);
   }
   let res: NextResponse;
   if (!keyId) res = NextResponse.json({ error: 'مفتاح غير صالح أو ملغى' }, { status: 401 });
