@@ -17,6 +17,7 @@ type Data = {
   outbox: { items: Row[]; enabled: boolean; cap: number; hours: string; sent_today: number; window: { ok: boolean; why: string } }
   keys: Row[]; calls: Row[]; cursor: Row | null; pipeline: Row[]
   mcp: { linked: boolean; last_used_at: string | null; linked_at: string | null }
+  whatsapp: { active: boolean; switch_on: boolean; has_token: boolean; phone_number_id: string; template: string; lang: string; backup_hours: string }
 }
 
 const G = '#1A3D34', M = '#6B8A80', LINE = '#E1EDE8', RED = '#A5281B'
@@ -34,6 +35,7 @@ export default function ChannelPage() {
   const [busy, setBusy] = useState('')
   const [newKey, setNewKey] = useState('')
   const [reason, setReason] = useState<Record<string, string>>({})
+  const [wa, setWa] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     try {
@@ -167,6 +169,30 @@ export default function ChannelPage() {
               {' '}{String(o.to_address)} — {String(o.subject)} · محاولات {String(o.attempts)}{o.last_error ? ' · ' + String(o.last_error) : ''}{o.sent_at ? ' · ' + when(o.sent_at) : ''}
             </div>
           ))}
+        </div>
+
+        {/* ═══ واتساب المنصة (بدل ضي عند غيابها) ═══ */}
+        <div style={card}>
+          <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 4 }}>واتساب المنصة — بدل ضي عند غيابها</div>
+          <div style={{ color: M, fontSize: 12.5, marginBottom: 8 }}>
+            {d.whatsapp.active ? '✅ يعمل: فرصةٌ برقمٍ موثّق لم تتواصل معها ضي خلال ' + d.whatsapp.backup_hours + ' ساعة تُرسل لها المنصة الواتساب باسم المكتب، وتُسجَّل «بدل ضي».'
+              : 'غير مفعَّل بعد. يحتاج حساب WhatsApp Business (Meta): رقم الهاتف (Phone number ID)، والرمز الدائم، واسم قالبٍ معتمد من Meta بمتغيّرين: {{1}} اسم العقد و{{2}} الجهة.'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
+            {([['phone_number_id', 'Phone number ID', d.whatsapp.phone_number_id], ['template', 'اسم القالب المعتمد', d.whatsapp.template], ['lang', 'لغة القالب', d.whatsapp.lang], ['backup_hours', 'بدل ضي بعد (ساعات)', d.whatsapp.backup_hours]] as const).map(([k, l, v]) => (
+              <label key={k} style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>{l}
+                <input value={wa[k] ?? v} onChange={(e) => setWa({ ...wa, [k]: e.target.value })} style={{ width: '100%', border: '1px solid ' + LINE, borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5, direction: 'ltr', boxSizing: 'border-box' }} />
+              </label>
+            ))}
+            <label style={{ fontSize: 11.5, color: M, fontWeight: 700 }}>الرمز الدائم {d.whatsapp.has_token ? '(محفوظ — اتركه فارغاً)' : ''}
+              <input type="password" autoComplete="off" value={wa.token || ''} onChange={(e) => setWa({ ...wa, token: e.target.value })} placeholder={d.whatsapp.has_token ? '••••••••' : 'يُلصق هنا ولا يظهر بعدها'} style={{ width: '100%', border: '1px solid ' + LINE, borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13.5, direction: 'ltr', boxSizing: 'border-box' }} />
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+            <button disabled={!!busy} onClick={async () => { await act({ action: 'wa_config', ...wa }, 'حفظ إعداد الواتساب'); setWa({}) }} style={btn(G)}>احفظ</button>
+            <button disabled={!!busy} onClick={() => act({ action: 'wa_config', enabled: !d.whatsapp.switch_on }, d.whatsapp.switch_on ? 'إيقاف واتساب المنصة' : 'تشغيل واتساب المنصة')} style={btn(d.whatsapp.switch_on ? RED : G)}>{d.whatsapp.switch_on ? '⏹ أوقفه' : '▶ شغّله'}</button>
+            <button disabled={!!busy} onClick={() => { const to = prompt('رقم تصله رسالة الاختبار (05…):'); if (to) void act({ action: 'wa_test', to }, 'رسالة واتساب تجريبية') }} style={btn('#fff', G)}>أرسل تجربة</button>
+          </div>
         </div>
 
         {/* ═══ مفتاح Codex ═══ */}

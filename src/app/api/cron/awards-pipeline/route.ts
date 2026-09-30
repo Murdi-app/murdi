@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '@/lib/cronAuth';
-import { enqueueReady, sendDue, closeNoReply, autoConsult, notifyReplies, notifyDecisions } from '@/lib/awardsPipeline';
+import { enqueueReady, sendDue, closeNoReply, autoConsult, notifyReplies, notifyDecisions, enqueueDhaiBackup } from '@/lib/awardsPipeline';
+import { autoReview } from '@/lib/autoReview';
 import { logError } from '@/lib/logError';
 
 // قناة الفائزين تعمل وحدها — يوقظها `pg_cron` (المهمة `awards-pipeline`) كل ربع ساعة:
@@ -16,7 +17,9 @@ export async function POST(req: Request) {
   const step = async (name: string, fn: () => Promise<unknown>) => {
     try { out[name] = await fn(); } catch (e) { out[name] = { error: e instanceof Error ? e.message : String(e) }; await logError('cron.awardsPipeline.' + name, e, {}); }
   };
+  await step('review', () => autoReview(sb));
   await step('enqueue', () => enqueueReady(sb));
+  await step('dhai_backup', () => enqueueDhaiBackup(sb));
   await step('send', () => sendDue(sb));
   await step('close', () => closeNoReply(sb));
   await step('replies', () => notifyReplies(sb));

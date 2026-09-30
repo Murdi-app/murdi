@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { loadConfig, compose, kindFor, stageFor, num, type Award } from '@/lib/awards';
+import { loadConfig, compose, kindFor, stageFor, num, waDigits, type Award } from '@/lib/awards';
+import { waConfig, sendWaTemplate } from '@/lib/whatsappApi';
 import { sendMail } from '@/lib/sendMail';
 import { generateConsultation } from '@/lib/awardConsult';
 import { sendPush } from '@/lib/push';
@@ -93,17 +94,28 @@ export async function sendDue(sb: SupabaseClient, opts: { force?: boolean } = {}
     const id = String(o.id), awardId = String(o.award_id);
     // تحقّقٌ أخير قبل الخروج: «لا تتواصل» أو بريدٌ سابق أو تغيّر الحالة ← تُلغى ولا تخرج
     const { data: a } = await sb.from('contract_awards').select('status').eq('id', awardId).maybeSingle();
-    const { data: prior } = await sb.from('award_touches').select('id').eq('award_id', awardId).eq('channel', 'email').eq('direction', 'out').limit(1);
+    const { data: prior } = await sb.from('award_touches').select('id').eq('award_id', awardId).eq('channel', String(o.channel)).eq('direction', 'out').limit(1);
     if (!a || a.status !== 'qualified' || prior?.length) {
       await sb.from('award_outbox').update({ status: 'cancelled', last_error: !a ? 'الفرصة حُذفت' : prior?.length ? 'أُرسل البريد من غير الصادر' : 'الحالة صارت «' + a.status + '»' }).eq('id', id);
       cancelled++; continue;
     }
-    const html = '<div dir="rtl" style="font-family:Arial,Tahoma;line-height:1.95;color:#1A3D34;font-size:15px;white-space:pre-wrap">' + esc(String(o.body)) + '</div>';
-    const r = await sendMail({ from: FROM, to: String(o.to_address), subject: String(o.subject), html, replyTo: 'partners@murdi.sa', idempotencyKey: 'outbox-' + String(o.fingerprint) });
+    let r: { ok: true; id: string | null } | { ok: false; reason: string };
+    if (o.channel === 'whatsapp') {
+      // بدل ضي: قالب Meta المعتمد، ومتغيّراته اسم العقد والجهة (مخزّنةً في الصفّ)
+      const wc = await waConfig(sb);
+      if (!wc.enabled) { await sb.from('award_outbox').update({ status: 'pending', last_error: 'واتساب المنصة غير مفعَّل' }).eq('id', id); continue; }
+      let params: string[] = []; try { params = JSON.parse(String(o.subject)).params || []; } catch { /* قديم */ }
+      r = await sendWaTemplate(wc, String(o.to_address), params);
+    } else {
+      const html = '<div dir="rtl" style="font-family:Arial,Tahoma;line-height:1.95;color:#1A3D34;font-size:15px;white-space:pre-wrap">' + esc(String(o.body)) + '</div>';
+      r = await sendMail({ from: FROM, to: String(o.to_address), subject: String(o.subject), html, replyTo: 'partners@murdi.sa', idempotencyKey: 'outbox-' + String(o.fingerprint) });
+    }
     if (r.ok) {
       const now = new Date().toISOString();
       await sb.from('award_outbox').update({ status: 'sent', sent_at: now, external_ref: r.id, last_error: null }).eq('id', id);
-      await sb.from('award_touches').insert({ award_id: awardId, channel: 'email', direction: 'out', actor: ACTOR, to_address: o.to_address, subject: o.subject, body: o.body, external_ref: r.id });
+      await sb.from('award_touches').insert(o.channel === 'whatsapp'
+        ? { award_id: awardId, channel: 'whatsapp', direction: 'out', actor: 'المكتب (بدل ضي)', to_address: o.to_address, subject: 'أُرسلت من المكتب بدل ضي', body: o.body, external_ref: r.id }
+        : { award_id: awardId, channel: 'email', direction: 'out', actor: ACTOR, to_address: o.to_address, subject: o.subject, body: o.body, external_ref: r.id });
       await sb.from('contract_awards').update({ status: 'messaged', messaged_at: now, updated_at: now }).eq('id', awardId).eq('status', 'qualified');
       sent++;
     } else {
@@ -117,6 +129,36 @@ export async function sendDue(sb: SupabaseClient, opts: { force?: boolean } = {}
     }
   }
   return { sent, failed, cancelled, held: null };
+}
+
+/**
+ * بدل ضي: فرصةٌ «موثّقة» برقمٍ منشور بمصدره لم تتواصل معها ضي خلال `dhai_backup_after_hours`
+ * ← تُصفّ رسالة واتساب من المنصة بقالب Meta المعتمد، وتُسجَّل «أُرسلت من المكتب بدل ضي».
+ * لا يعمل إلا إن فُعِّل واتساب المنصة (الرمز والرقم والقالب). والإرسال في نافذة الدوام والسقف نفسهما.
+ */
+export async function enqueueDhaiBackup(sb: SupabaseClient): Promise<{ queued: number; held: string | null }> {
+  const wc = await waConfig(sb);
+  if (!wc.enabled) return { queued: 0, held: 'واتساب المنصة غير مفعَّل' };
+  const cfg = await loadConfig(sb);
+  const hours = num(cfg.settings, 'dhai_backup_after_hours') ?? 24;
+  const before = new Date(Date.now() - hours * 3600_000).toISOString();
+  const { data, error } = await sb.from('contract_awards').select('id, company_name, tender_title, buyer_entity, contact_phone, contact_whatsapp, phone_check, phone_source_url, documented_at, created_at')
+    .eq('status', 'qualified').not('phone_source_url', 'is', null).or('phone_check.is.null,phone_check.eq.yes').lt('documented_at', before);
+  if (error) throw new Error(error.message);
+  let queued = 0;
+  for (const a of data || []) {
+    const to = waDigits(a.contact_whatsapp || a.contact_phone);
+    if (!to) continue;
+    const { data: touched } = await sb.from('award_touches').select('id').eq('award_id', a.id).in('channel', ['whatsapp', 'call']).eq('direction', 'out').limit(1);
+    if (touched?.length) continue; // ضي تواصلت — لا بديل
+    const params = [String(a.tender_title || 'العقد'), String(a.buyer_entity || 'الجهة')];
+    const { data: ins } = await sb.from('award_outbox').upsert({
+      award_id: a.id, template_key: 'wa:' + wc.template, channel: 'whatsapp', fingerprint: outboxFingerprint(String(a.id), 'wa:' + wc.template, 'whatsapp'),
+      to_address: to, subject: JSON.stringify({ template: wc.template, params }), body: 'قالب واتساب «' + wc.template + '» — ' + params.join(' · '),
+    }, { onConflict: 'fingerprint', ignoreDuplicates: true }).select('id');
+    if (ins?.length) queued++;
+  }
+  return { queued, held: null };
 }
 
 /** ٣) من لا يرد بعد مكالمة التذكير الوحيدة: يُغلق */

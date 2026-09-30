@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { newKey, KEY_NAME } from '@/lib/codexAuth';
 import { enqueueReady, sendDue, inWindow, riyadhDayStart } from '@/lib/awardsPipeline';
+import { waConfig, sendWaTemplate } from '@/lib/whatsappApi';
+import { waDigits } from '@/lib/awards';
 
 // قناة الفائزين — لوحة المالك: «ما يحتاج قراري» وحده، وصندوق التوصيات، والصادر وزرّ إيقافه،
 // ومفتاح Codex، ومقياس الأتمتة. للمالك وحده (requireAdmin)، وكل قراءةٍ وكتابةٍ بمفتاح الخدمة.
@@ -73,6 +75,13 @@ export async function GET() {
     recommendations: (recs.data || []).map((r) => ({ ...r, award: awards.get(String(r.award_id)) || null })),
     outbox: { items: ob.data || [], enabled: settings.outbox_enabled === 'true', cap: Number(settings.outbox_daily_cap || 0), hours: settings.outbox_hours, sent_today: sentToday || 0, window: inWindow(settings) },
     keys: keys.data || [], calls: calls.data || [], cursor: cur.data || null,
+    whatsapp: await (async () => {
+      const w = await waConfig(sb)
+      const { data: s } = await sb.from('award_settings').select('key, value').in('key', ['whatsapp_api_enabled', 'dhai_backup_after_hours'])
+      const m = Object.fromEntries((s || []).map((r) => [String(r.key), String(r.value)]))
+      // الرمز لا يُعاد أبداً — يكفي أنه موجود
+      return { active: w.enabled, switch_on: m.whatsapp_api_enabled === 'true', has_token: !!w.token, phone_number_id: w.phoneNumberId, template: w.template, lang: w.lang, backup_hours: m.dhai_backup_after_hours || '24' }
+    })(),
     mcp: await (async () => {
       const [{ count: live }, { data: lastTok }] = await Promise.all([
         sb.from('oauth_refresh').select('token_hash', { count: 'exact', head: true }).is('revoked_at', null).gt('expires_at', now()),
@@ -121,6 +130,30 @@ export async function POST(req: Request) {
     const { error } = await sb.from('api_keys').insert({ name: KEY_NAME, key_hash: k.hash, key_prefix: k.prefix, created_by: DR });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, key: k.key, prefix: k.prefix });
+  }
+  if (action === 'wa_config') {
+    // واتساب المنصة: الرقم والقالب واللغة والتشغيل — والرمز يُكتب ولا يُقرأ بعدها
+    const set = async (key: string, value: string) => sb.from('award_settings').upsert({ key, value })
+    if (b.phone_number_id !== undefined) await set('whatsapp_phone_number_id', String(b.phone_number_id).replace(/\D/g, '').slice(0, 30))
+    if (b.template !== undefined) await set('whatsapp_api_template', String(b.template).trim().slice(0, 100))
+    if (b.lang !== undefined) await set('whatsapp_api_lang', String(b.lang).trim().slice(0, 10) || 'ar')
+    if (b.backup_hours !== undefined && /^\d{1,3}$/.test(String(b.backup_hours))) await set('dhai_backup_after_hours', String(b.backup_hours))
+    if (b.enabled !== undefined) await set('whatsapp_api_enabled', b.enabled === true ? 'true' : 'false')
+    if (b.token) {
+      const { error } = await sb.from('app_config').upsert({ key: 'whatsapp_token', value: String(b.token).trim() })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+  if (action === 'wa_test') {
+    // رسالة تجريبية بالقالب نفسه إلى رقمٍ يكتبه المالك — للتأكد من الربط
+    const w = await waConfig(sb)
+    if (!w.token || !w.phoneNumberId || !w.template) return NextResponse.json({ error: 'أكمل الرقم والقالب والرمز أولاً' }, { status: 400 })
+    const to = waDigits(b.to)
+    if (!to) return NextResponse.json({ error: 'رقم غير صالح' }, { status: 400 })
+    const r = await sendWaTemplate(w, to, ['اختبار الربط', 'مُرضي'])
+    if (!r.ok) return NextResponse.json({ error: r.reason }, { status: 502 })
+    return NextResponse.json({ ok: true, id: r.id })
   }
   if (action === 'mcp_revoke') {
     // إلغاء ربط ChatGPT كله: رموز الوصول ورموز التجديد — يلزمه ربطٌ جديد بموافقتك
