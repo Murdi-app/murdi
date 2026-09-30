@@ -185,7 +185,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 19, marginBottom: 8 }}>فُتح ملف {out.company}</div>
             <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 16px' }}>
               أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{out.label || quick?.label || 'الفحص الائتماني للمشروع'}</b> بـ{out.amount.toLocaleString('ar-SA')} ريال بانتظار دفعه.
-              أرسلي له الرسالة أدناه — يفتح الرابط، يضع كلمة مروره، ويجد بياناته وزرّ الدفع أمامه.
+              أرسلي له الرسالة أدناه — فيها رابط دفعٍ يفتحه بلا تسجيل: يرى المبلغ والآيبان ويرفع إيصاله.
             </p>
             <textarea readOnly value={out.message} rows={7}
               style={{ ...IN, lineHeight: 1.95, fontSize: 13, resize: 'vertical' }} />

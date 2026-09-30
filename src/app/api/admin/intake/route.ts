@@ -233,14 +233,17 @@ export async function POST(req: Request) {
     if (gErr) linkErr = gErr.message;
   } catch (e) { linkErr = String(e).slice(0, 120); }
 
-  // ولا يُبتلع الفشل: رابطٌ ساقط يعني أن الرسالة تُرسل إلى صفحة دخول
-  // لا يملك العميل كلمةَ مرورٍ لها. فيُقال للموظفة بدل أن تكتشفه منه.
-  if (!link) {
-    return NextResponse.json({
-      error: 'فُتح ملفه لكن تعذّر توليد الرابط' + (linkErr ? ' (' + linkErr + ')' : '')
-        + '. راجعي الدكتور قبل أن ترسلي له شيئاً.',
-    }, { status: 502 });
+  // ★ رابط الدفع أولاً، ورابط الحساب بعده. كان الدفع لا يكون إلا بعد أن
+  //   يفتح العميل الرابط ويضع كلمة مرور ويدخل — ثلاث خطوات بين «نعم» والتحويل،
+  //   ويسقط أكثرهم عندها. فالرابط الأول يُريه المبلغ ويقبل إيصاله بلا تسجيل
+  //   (/api/payments/link)، والثاني لمن أراد أن يرى ملفه بعد ذلك.
+  const { data: tok } = await sb.from('service_requests').select('pay_token').eq('id', requestId).maybeSingle();
+  const payLink = tok?.pay_token ? origin + '/pay/transfer?t=' + tok.pay_token : '';
+  if (!payLink) {
+    return NextResponse.json({ error: 'فُتح ملفه لكن تعذّر توليد رابط الدفع. راجعي الدكتور قبل أن ترسلي له شيئاً.' }, { status: 502 });
   }
+  const accountLine = link ? 'ولمتابعة ملفك لاحقاً في المنصة (تضع كلمة مرورك من هذا الرابط):\n' + link + '\n\n' : '';
+  if (!link && linkErr) console.warn('intake: recovery link failed', linkErr);
 
   const sign = (who.role === 'admin' ? 'د. عبدالحكيم المرضي' : 'فريق الدكتور عبدالحكيم المرضي')
     + '\nمُرضي للاستشارات المالية';
@@ -250,23 +253,25 @@ export async function POST(req: Request) {
 
   const message = kind === 'funding' ?
     'أهلاً ' + fullName + '،\n\n'
-    + 'هذا رابط ملف منشأتك في منصة مُرضي:\n'
-    + link + '\n\n'
-    + 'افتحه، وضع كلمة المرور، وستجد «' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال جاهزاً للدفع'
-    + (creditedFrom ? ' (بعد خصم ما دفعته في الحكم الائتماني)' : '') + '.\n\n'
+    + '«' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال'
+    + (creditedFrom ? ' (بعد خصم ما دفعته في الحكم الائتماني)' : '') + '.\n'
+    + 'رابط الدفع — فيه المبلغ وحساب التحويل وخانة الإيصال، بلا تسجيل:\n'
+    + payLink + '\n\n'
     + (optionKey === 'quick'
       ? 'ويصلك خلال ساعات من تأكيد التحويل: حكمٌ صريح هل ملفك قابل للتمويل الآن، والجهات التي تنطبق شروطها عليك بأسمائها، وما ينقصك عند كل واحدة.\n\n'
         + (typeof fullFunding === 'number' ? 'وقيمته تُخصم بالكامل من تجهيز الملف والمخاطبة (' + fullFunding.toLocaleString('ar-SA') + ' ريال) إن أكملته خلال ثلاثين يوماً.\n\n' : '')
       : 'ونبدأ فور تأكيد التحويل: بناء ملفك التمويلي، ثم مخاطبة الجهات المناسبة ومتابعتها حتى القرار.\n\n')
+    + accountLine
     + 'وإن احتجت أي شيء فأنا معك.\n' + sign
     :
     'أهلاً ' + fullName + '،\n\n'
-    + 'هذا رابط ملفك في منصة مُرضي — بياناتك وأرقام مشروعك مسجّلة بالفعل:\n'
-    + link + '\n\n'
-    + 'افتحه، وضع كلمة المرور، وستجد ' + (opt?.label || 'الفحص الائتماني للمشروع') + ' بـ' + amount.toLocaleString('ar-SA') + ' ريال جاهزاً للدفع.\n'
+    + (opt?.label || 'الفحص الائتماني للمشروع') + ' بـ' + amount.toLocaleString('ar-SA') + ' ريال — وأرقام مشروعك مسجّلة بالفعل.\n'
+    + 'رابط الدفع — فيه المبلغ وحساب التحويل وخانة الإيصال، بلا تسجيل:\n'
+    + payLink + '\n\n'
     + 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
     + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
     + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'
+    + accountLine
     + 'وإن احتجت أي شيء فأنا معك.\n' + sign;
 
   await sb.from('deal_events').insert({
@@ -277,7 +282,7 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({
-    ok: true, link, message, company_name: companyName, request_id: requestId, existing: !isNew,
+    ok: true, link, pay_link: payLink, message, company_name: companyName, request_id: requestId, existing: !isNew,
     service_label: opt?.label || title, amount,
   });
 }

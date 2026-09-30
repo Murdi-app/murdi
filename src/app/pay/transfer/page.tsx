@@ -20,6 +20,9 @@ function TransferInner() {
   const companyId = params.get('company_id') || '';
   // رقم طلب الخدمة — كان يُمرَّر في الرابط ويُهمَل هنا، فتضيع صلة الإيصال بالطلب
   const serviceRequestId = params.get('sr') || '';
+  // رمز رابط الدفع بلا تسجيل — انظر /api/payments/link
+  const payToken = params.get('t') || '';
+  const [title, setTitle] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,7 +30,20 @@ function TransferInner() {
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState(false);
   const [due, setDue] = useState<number | null>(null);
-  const [dueState, setDueState] = useState<'loading' | 'ok' | 'none' | 'error'>(serviceRequestId ? 'loading' : 'none');
+  const [dueState, setDueState] = useState<'loading' | 'ok' | 'none' | 'error'>(serviceRequestId || payToken ? 'loading' : 'none');
+  useEffect(() => {
+    if (!payToken) return;
+    fetch('/api/payments/link?t=' + encodeURIComponent(payToken))
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { setErr(d.error || 'تعذّر التحقق من الرابط'); setDueState('error'); return; }
+        setTitle(String(d.title || ''));
+        if (d.received) { setErr('استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تحوّل مرة أخرى.'); }
+        if (d.amount === null) { setErr('هذا الطلب لا ينتظر دفعاً الآن — لا تحوّل، وراسلنا واتساب 0570749196.'); setDueState('none'); return; }
+        setDue(Number(d.amount)); setDueState('ok');
+      })
+      .catch(() => { setErr('تعذّر الاتصال — أعد فتح الصفحة'); setDueState('error'); });
+  }, [payToken]);
   useEffect(() => {
     if (!serviceRequestId) return;
     fetch('/api/payments/transfer?sr=' + encodeURIComponent(serviceRequestId))
@@ -39,8 +55,9 @@ function TransferInner() {
       })
       .catch(() => { setErr('تعذّر الاتصال — أعد فتح الصفحة'); setDueState('error'); });
   }, [serviceRequestId]);
-  const amountSar = serviceRequestId ? (due ?? 0) : linkAmount;
-  const canPay = serviceRequestId ? dueState === 'ok' : linkAmount > 0;
+  const fromServer = !!(serviceRequestId || payToken);
+  const amountSar = fromServer ? (due ?? 0) : linkAmount;
+  const canPay = fromServer ? dueState === 'ok' : linkAmount > 0;
 
   const copyIban = () => { navigator.clipboard.writeText(BANK.iban); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
@@ -49,6 +66,19 @@ function TransferInner() {
     setBusy(true);
     setErr('');
     let receiptUrl = '';
+    if (payToken) {
+      try {
+        const fd = new FormData();
+        fd.append('t', payToken); fd.append('note', note);
+        if (file) fd.append('file', file);
+        const r = await fetch('/api/payments/link', { method: 'POST', body: fd });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) setDone(true);
+        else setErr(d?.error || 'تعذّر تسجيل التحويل — أرسل الإيصال واتساب على 0570749196');
+      } catch { setErr('تعذّر الاتصال — تحقق من الشبكة ثم أعد المحاولة'); }
+      setBusy(false);
+      return;
+    }
     try {
       if (file) {
         const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
@@ -83,8 +113,8 @@ function TransferInner() {
       <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 520, margin: '0 auto', padding: '60px 20px', minHeight: '100vh', background: '#FBFCFB', textAlign: 'center' }}>
         <div style={{ fontSize: 56 }}>✅</div>
         <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900 }}>تم استلام تحويلك</h1>
-        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. يراجع فريق مُرضي التحويل، وتبدأ خدمتك فور التأكد. <b>لا حاجة للتحويل مرة أخرى</b> — وستجد حالة التحويل في لوحتك.</p>
-        <button onClick={() => router.push('/goal')} style={{ marginTop: 20, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px 30px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>العودة للوحة</button>
+        <p style={{ color: '#3A4D47', fontSize: 15, lineHeight: 1.9 }}>شكراً لك. يراجع فريق مُرضي التحويل، وتبدأ خدمتك فور التأكد. <b>لا حاجة للتحويل مرة أخرى</b>{payToken ? ' — ونتواصل معك فور التأكد.' : ' — وستجد حالة التحويل في لوحتك.'}</p>
+        {!payToken && <button onClick={() => router.push('/goal')} style={{ marginTop: 20, background: '#1A3D34', color: '#fff', border: 'none', padding: '12px 30px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 14, cursor: 'pointer' }}>العودة للوحة</button>}
       </div>
     );
   }
@@ -92,11 +122,12 @@ function TransferInner() {
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 560, margin: '0 auto', padding: '40px 20px', minHeight: '100vh', background: '#FBFCFB' }}>
       <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, textAlign: 'center', margin: 0 }}>الدفع عبر تحويل بنكي</h1>
+      {title && <div style={{ color: '#6B8A80', fontSize: 14, fontWeight: 800, textAlign: 'center', marginTop: 8 }}>{title}</div>}
       <div style={{ color: '#1A3D34', fontSize: 30, fontWeight: 900, textAlign: 'center', margin: '12px 0' }}>{dueState === 'loading' ? '…' : canPay ? amountSar.toLocaleString('ar-SA') + ' ريال' : '—'}</div>
       {/* ★ رابطٌ بلا طلبٍ ولا مبلغ كان يعرض «—» وحدها، فيظن العميل أن الصفحة
           معطوبة («ما يطلع مبلغ الخدمة» — فاست بارسل، ٣٠ سبتمبر). والمبلغ لا
           يُعرض إلا من طلبٍ مسعَّر في حسابه، فيُقال له ذلك صريحاً. */}
-      {!serviceRequestId && !canPay && (
+      {!fromServer && !canPay && (
         <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '13px 16px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 800, lineHeight: 1.9, textAlign: 'center' }}>
           لا يظهر المبلغ في هذا الرابط — المبلغ يظهر من طلبك المسعَّر في حسابك.
           ادخل <a href="/goal?tab=services" style={{ color: '#1A3D34', fontWeight: 900 }}>حسابك ← خدماتي</a> واضغط «إتمام الدفع»،
