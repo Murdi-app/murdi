@@ -29,13 +29,14 @@ export default function AwardTasks() {
   const [pick, setPick] = useState<Record<string, string>>({})
   const [note, setNote] = useState<Record<string, string>>({})
   const [loaded, setLoaded] = useState(false)
+  const [waiting, setWaiting] = useState(0)
 
   const load = useCallback(async () => {
     try {
       const r = await fetch('/api/staff/award-tasks')
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setErr(d.error || 'تعذّر تحميل مهام الترسيات'); return }
-      setTasks(d.tasks || []); setOutcomes(d.outcomes || []); setServices(d.services || {})
+      setTasks(d.tasks || []); setOutcomes(d.outcomes || []); setServices(d.services || {}); setWaiting(Number(d.waiting) || 0)
     } catch { setErr('تعذّر الاتصال — مهام الترسيات لم تُحمَّل') }
     setLoaded(true)
   }, [])
@@ -64,7 +65,11 @@ export default function AwardTasks() {
   }
 
   if (!loaded && !err) return null
-  if (loaded && tasks.length === 0 && !err) return null
+  if (loaded && tasks.length === 0 && !err) return (
+    <div style={{ background: '#FFFDF6', border: '1.5px solid #EAD9A8', borderRadius: 16, padding: '12px 16px', marginBottom: 16, color: '#6B5A2E', fontSize: 13.5, lineHeight: 1.9 }}>
+      🏗️ ترسيات — لا اتصال مطلوبٌ منك الآن.{waiting ? ' ' + waiting.toLocaleString('ar-SA') + ' فرصة تنتظر رقماً موثّقاً بمصدره، وتظهر هنا وحدها حين يُعتمد.' : ''}
+    </div>
+  )
 
   return (
     <div style={{ background: '#FFFDF6', border: '1.5px solid #EAD9A8', borderRadius: 16, padding: 16, marginBottom: 16 }}>

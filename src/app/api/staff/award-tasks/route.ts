@@ -21,7 +21,11 @@ export async function GET() {
   const { who, error, status } = await requirePage('/admin/leads');
   if (!who) return NextResponse.json({ error }, { status });
   try {
-    return NextResponse.json({ ok: true, tasks: await staffTasks(admin()), outcomes: OUTCOMES, services: FIT_SERVICES });
+    const sb = admin();
+    // ما ينتظر رقماً موثّقاً — يُقال لها صراحةً بدل شاشةٍ فارغة تُقرأ «لا عمل»
+    const { count: waiting } = await sb.from('contract_awards').select('id', { count: 'exact', head: true })
+      .in('status', ['qualified', 'messaged', 'replied', 'gap_sent', 'meeting', 'priced']).is('phone_source_url', null);
+    return NextResponse.json({ ok: true, tasks: await staffTasks(sb), waiting: waiting || 0, outcomes: OUTCOMES, services: FIT_SERVICES });
   } catch (e) {
     return NextResponse.json({ error: 'تعذّرت قراءة مهام الترسيات — ' + (e instanceof Error ? e.message : '') }, { status: 500 });
   }
