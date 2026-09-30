@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { priceFor } from '@/lib/servicePricing';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
+import { tiktokEvent } from '@/lib/tiktokPixel';
 import { contractWeight } from '@/lib/leadWeight';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
 
@@ -159,7 +160,7 @@ export default function UqudEntryPage() {
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
-      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: contractWeight(valIdx ?? 0) }); }
+      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: contractWeight(valIdx ?? 0) }); tiktokEvent('Contact'); }
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');

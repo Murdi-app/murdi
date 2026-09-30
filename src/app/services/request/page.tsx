@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { DIRECT_ORDER, displayName, commercialFor } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
+import { tiktokEvent } from '@/lib/tiktokPixel';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
 
@@ -96,6 +97,7 @@ function RequestForm() {
       if (!converted.current && !d?.already) {
         converted.current = true;
         fireConversion(LEAD_SUBMITTED, { phone, email });
+        tiktokEvent('Contact');
       }
       setDone(true);
     } catch {

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import WhatsAppFab from "@/components/WhatsAppFab";
 import TrafficSourceCapture from "@/components/TrafficSourceCapture";
+import TikTokPixel from "@/components/TikTokPixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,6 +78,7 @@ gtag('config', 'AW-17947401948');`,
           وصفحة الخدمات والتسجيل وكل ما سواها، ويُخفي نفسه في شاشات الإدارة. */}
       <body className="min-h-full flex flex-col">
         <TrafficSourceCapture />
+        <TikTokPixel />
         {children}
         <WhatsAppFab />
       </body>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
 import { captureFirstTouch, currentSource } from '@/lib/attribution'
+import { tiktokEvent } from '@/lib/tiktokPixel'
 
 // لا عميل Supabase هنا بعد الآن: الحفظ كلّه عبر `/api/mini-save`.
 
@@ -164,6 +165,7 @@ export default function MiniAssessment() {
       if (!converted.current) {
         converted.current = true
         fireConversion(LEAD_SUBMITTED, { phone }, { value: weight })
+        tiktokEvent('SubmitForm')
       }
       setDone(true)
     } catch {

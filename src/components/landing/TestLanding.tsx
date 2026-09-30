@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion'
 import { REVENUE_Q, YEARS_Q, leadWeight } from '@/lib/leadWeight'
 import { captureFirstTouch, currentSource } from '@/lib/attribution'
+import { tiktokEvent } from '@/lib/tiktokPixel'
 
 // لا عميل Supabase هنا: كل الحفظ يمرّ بـ`/api/mini-save` — فهو وحده الذي
 // يُطبّع الجوال ويُخطر المكتب. وكان عميلٌ مباشرٌ مُعرَّفاً بلا استعمال.
@@ -161,7 +162,8 @@ export default function TestLanding({ tiktok = false }: { tiktok?: boolean }) {
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok || !j.id) { setErr(j.error || 'تعذّر الحفظ — أعد المحاولة'); return }
-      if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: weight }) }
+      // بعد نجاح الحفظ في mini_assessments وحده — تحويل جوجل وحدث تيك توك (بلا بيانات شخصية)
+      if (!converted.current) { converted.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: weight }); tiktokEvent('SubmitForm') }
       setStage('analyzing')
       setTimeout(() => setStage('result'), 2200)
     } catch {
