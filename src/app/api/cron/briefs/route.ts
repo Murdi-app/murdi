@@ -4,6 +4,7 @@ import { cronAuthorized, signLink } from '@/lib/cronAuth';
 import { buildBriefs, riyadhDate } from '@/lib/staffBrief';
 import { sendMail } from '@/lib/sendMail';
 import { logError } from '@/lib/logError';
+import { sendPush } from '@/lib/push';
 
 // توجيه الصباح — يُكتب هنا ويُعرض على المالك، ولا يخرج إلى الموظفتين إلا بضغطته.
 // يوقظه `pg_cron` (المهمة `staff-briefs`) الساعة ٤:٤٥ بتوقيت الرياض.
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
         + '<div style="white-space:pre-wrap;font-size:14px">' + esc(b.body) + '</div></div>').join('')
       + '<p style="color:#9DB3AB;font-size:12px">إن لم تعتمده فلا يُرسل شيء. وللتعديل: ردّ على هذه الرسالة بما تريد تغييره.</p></div>';
     const mail = await sendMail({ from: FROM, to: OWNER, subject: '🗂️ توجيه الموظفتين — بانتظار اعتمادك', html });
+    // إشعار الجوال يفتح صفحة الاعتماد نفسها — ضغطةٌ واحدة، لا بحث
+    await sendPush({ title: '🗂️ توجيه الموظفتين جاهز', body: 'اضغط لتراجعه وتعتمده — لا يخرج قبل ضغطتك', url: link, important: true, tag: 'briefs-' + today }, OWNER).catch(() => null);
     if (!mail.ok) await logError('cron.briefs.mail', new Error(mail.reason), {});
     return NextResponse.json({ ok: true, written: briefs.map((b) => ({ to: b.recipient, items: b.items })), mailed: mail.ok });
   } catch (e) {

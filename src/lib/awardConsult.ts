@@ -106,7 +106,7 @@ export async function generateConsultation(sb: SupabaseClient, a: Award, inputs:
   await sendPush({
     title: 'استشارة ترسية جاهزة للاعتماد' + (by === 'المنصة' ? ' (وُلّدت آلياً)' : ''),
     body: String(a.company_name) + (gg.contracts.length > 1 ? ' (' + contractsWord(gg.contracts.length) + ')' : '') + ' — أعمق نقطة ' + Math.abs(gg.deepest.amount).toLocaleString('en-US') + ' ريال · راجِعها ثم «اعتمد وأرسل»',
-    url: '/admin/awards', important: true, tag: 'award-consult-' + id,
+    url: '/admin/channel', important: true, tag: 'award-consult-' + id,
   }, OWNER_EMAIL).catch(() => null);
 
   const { data: sg } = await sb.storage.from(CONSULT_BUCKET).createSignedUrl(path, 600);

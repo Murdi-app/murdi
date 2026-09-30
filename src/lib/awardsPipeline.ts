@@ -142,7 +142,41 @@ export async function notifyReplies(sb: SupabaseClient): Promise<number> {
     // يُحجز أولاً (مشروطاً) فلا يُشعَر مرتين إن تزامنت دورتان
     const { data: mine } = await sb.from('contract_awards').update({ reply_notified_at: new Date().toISOString() }).eq('id', a.id).is('reply_notified_at', null).select('id');
     if (!mine?.length) continue;
-    await sendPush({ title: '🟢 ردٌّ على ترسية', body: String(a.company_name) + ' — افتح «قناة الفائزين»', url: '/admin/channel', important: true, tag: 'award-reply-' + a.id }, OWNER_EMAIL).catch(() => null);
+    await sendPush({ title: '🟢 ردٌّ على ترسية', body: String(a.company_name) + ' — اضغط لتفتح «قناة الفائزين»', url: '/admin/channel', important: true, tag: 'award-reply-' + a.id }, OWNER_EMAIL).catch(() => null);
+    n++;
+  }
+  return n;
+}
+
+/**
+ * كل ما يحتاج قرار المالك يسبقه إشعارٌ على جواله يفتح «قناة الفائزين» مباشرة — مرةً لكل بند:
+ * ما علّمه Codex «تحتاج قرار الدكتور»، والاعتراض المهم، والنص الجديد أو المعدَّل (قالب · فرضية · إعداد).
+ * (والاستشارة الجاهزة و«نعم» لهما إشعارهما عند حدوثهما.)
+ */
+export async function notifyDecisions(sb: SupabaseClient): Promise<number> {
+  const items: { key: string; title: string; body: string }[] = [];
+  const [fl, ob, tp, hy, st] = await Promise.all([
+    sb.from('contract_awards').select('id, company_name, codex_reason, codex_flag_at').eq('codex_flag', 'needs_dr'),
+    sb.from('award_touches').select('id, award_id, objection').eq('objection_important', true).gte('created_at', new Date(Date.now() - 14 * 86400_000).toISOString()),
+    sb.from('award_message_templates').select('id, category, stage, updated_at').eq('approved', false),
+    sb.from('award_hypotheses').select('id, category, stage, updated_at').eq('approved', false),
+    sb.from('award_settings').select('key, value').in('key', ['general_email_approved', 'whatsapp_template_approved', 'gap_email_approved']),
+  ]);
+  for (const a of fl.data || []) items.push({ key: 'flag:' + a.id + ':' + a.codex_flag_at, title: '🔷 Codex يحتاج قرارك', body: String(a.company_name) + ' — ' + String(a.codex_reason || '') });
+  for (const t of ob.data || []) items.push({ key: 'obj:' + t.id, title: '⚠️ اعتراضٌ مهم من عميل', body: String(t.objection || '') });
+  for (const t of tp.data || []) items.push({ key: 'tpl:' + t.id + ':' + t.updated_at, title: '✍️ قالبٌ معدَّل ينتظر اعتمادك', body: String(t.category) + ' / ' + String(t.stage) });
+  for (const h of hy.data || []) items.push({ key: 'hyp:' + h.id + ':' + h.updated_at, title: '✍️ فرضيةٌ تنتظر اعتمادك', body: String(h.category) + ' / ' + String(h.stage) });
+  for (const s of st.data || []) if (s.value !== 'true') items.push({ key: 'txt:' + s.key + ':' + new Date().toISOString().slice(0, 10), title: '✍️ نصٌّ معدَّل ينتظر اعتمادك', body: String(s.key) });
+  if (!items.length) return 0;
+  const { data: seen } = await sb.from('dr_notified').select('key').in('key', items.map((i) => i.key));
+  const done = new Set((seen || []).map((r) => String(r.key)));
+  let n = 0;
+  for (const i of items) {
+    if (done.has(i.key)) continue;
+    // يُحجز المفتاح أولاً — لا يتكرر الإشعار إن تزامنت دورتان
+    const { error } = await sb.from('dr_notified').insert({ key: i.key });
+    if (error) continue;
+    await sendPush({ title: i.title, body: i.body + ' — اضغط لتفتح «قناة الفائزين»', url: '/admin/channel', important: true, tag: i.key.slice(0, 60) }, OWNER_EMAIL).catch(() => null);
     n++;
   }
   return n;
