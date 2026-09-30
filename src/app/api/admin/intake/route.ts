@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { waNumber } from '@/lib/phone';
-import { priceFor, COMMERCIAL, FUNDING_TITLE } from '@/lib/servicePricing';
+import { priceFor, COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing';
 import { asOwnership, asRoute } from '@/lib/ownership';
 import { canonicalTitle, CATALOG } from '@/lib/serviceCatalog';
 import { isPaidStatus } from '@/lib/serviceStatus';
@@ -57,8 +57,16 @@ export async function POST(req: Request) {
   const ownershipType = asOwnership(b?.ownership_type) || null;
   const crRoute = asRoute(b?.cr_route) || null;
   const ownerNationality = cut(b?.owner_nationality, 80) || null;
-  const kind: Kind = b?.service === 'funding' ? 'funding' : 'feasibility';
-  const optionKey = kind === 'funding' && b?.option === 'full' ? 'full' : 'quick';
+  // الخدمة: أيُّ عنوانٍ في الفهرس (service_title)، ويبقى «funding» القديم مفهوماً
+  const title = canonicalTitle(cut(b?.service_title, 120) || (b?.service === 'funding' ? FUNDING_TITLE : SERVICE));
+  if (!CATALOG.some((cat) => cat.items.includes(title))) {
+    return NextResponse.json({ error: 'خدمة غير معروفة' }, { status: 400 });
+  }
+  const kind: Kind = title === SERVICE ? 'feasibility' : 'funding';
+  const hasOptions = !!COMMERCIAL[title]?.options?.length;
+  const optionKey: string | null = hasOptions ? (cut(b?.option, 20) || 'quick') : null;
+  const units = numOf(b?.units);
+  const value = numOf(b?.value);
 
   if (!fullName) return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبيه 05xxxxxxxx' }, { status: 400 });
@@ -74,7 +82,7 @@ export async function POST(req: Request) {
     ownFunds: numOf(raw.ownFunds), financingAmount: numOf(raw.financingAmount),
     financingYears: numOf(raw.financingYears) || 4, financingRate: numOf(raw.financingRate) || 8,
   };
-  if (kind === 'feasibility' && (inputs.unitPrice <= 0 || inputs.unitsYear1 <= 0 || (inputs.capex + inputs.workingCapital) <= 0)) {
+  if (kind === 'feasibility' && optionKey === 'quick' && (inputs.unitPrice <= 0 || inputs.unitsYear1 <= 0 || (inputs.capex + inputs.workingCapital) <= 0)) {
     return NextResponse.json({ error: 'أرقام المشروع ناقصة — لا يُفتح ملف بلا سعر ووحدات وتكلفة' }, { status: 400 });
   }
 
@@ -134,12 +142,14 @@ export async function POST(req: Request) {
   }
 
   // ═══ الطلب — مسعَّراً من الخادم لا من الواجهة ═══
-  const title = canonicalTitle(kind === 'funding' ? FUNDING_TITLE : SERVICE);
-  const opt = COMMERCIAL[title]?.options?.find((o) => o.key === optionKey);
-  if (typeof opt?.price !== 'number' || opt.price <= 0) {
-    return NextResponse.json({ error: 'لا سعر معلن لهذا الخيار — حوّليه للدكتور' }, { status: 400 });
+  // السعر من الخادم وحده. والجدوى يُسعَّر مدرَّجها بحجم الاستثمار من أرقام المشروع إن كُتبت.
+  const quote = intakeQuote(title, optionKey, kind === 'feasibility' && inputs.capex + inputs.workingCapital > 0
+    ? inputs.capex + inputs.workingCapital : value, units);
+  if (quote.amount === null || quote.amount <= 0) {
+    return NextResponse.json({ error: quote.error || 'لا سعر معلن — حوّليه للدكتور' }, { status: 400 });
   }
-  let amount: number = opt.price;
+  const opt = { label: quote.label };
+  let amount: number = quote.amount;
 
   // ★ كان يُلتقط أيُّ طلبٍ «غير مغلق» — ومنه المدفوع والمرفوض — فتُكتب أرقام
   //   المكالمة فوق مدخلات طلبٍ مدفوع، ويُبلَّغ العميل «جاهز للدفع» عمّا دفعه.
@@ -153,11 +163,11 @@ export async function POST(req: Request) {
   // خلال ثلاثين يوماً كما في طلب العميل بنفسه (/api/services/order).
   let creditedFrom: string | null = null;
   const paid = (existing || []).filter((r) => isPaidStatus(r.status));
-  if (kind === 'funding' && optionKey === 'full' && paid.length > 0) {
+  if (hasOptions && optionKey !== 'quick' && paid.length > 0) {
     const { data: all } = await sb.from('service_requests')
       .select('id, option_key, price, paid_at')
       .eq('company_id', companyId).eq('service_title', title);
-    const nonQuickPaid = (all || []).some((r) => r.paid_at && r.option_key !== 'quick');
+    const nonQuickPaid = (all || []).some((r) => r.paid_at && r.option_key && r.option_key !== 'quick');
     if (nonQuickPaid) {
       return NextResponse.json({ error: 'لهذا العميل ملف تمويل مدفوع — ملفّه بعد الدفع عند رغد، لا يُفتح له طلبٌ جديد من هنا' }, { status: 409 });
     }
@@ -176,29 +186,29 @@ export async function POST(req: Request) {
     .select('id, option_key').eq('company_id', companyId).eq('service_title', title).eq('status', 'priced')
     .order('created_at', { ascending: false });
   // المسعَّر يُعاد استعماله إن كان للخيار نفسه؛ وإلا أُلغي ليبقى أمامه زرّ دفعٍ واحد
-  const open = (pricedRows || []).find((r) => (r.option_key || 'quick') === optionKey) || null;
+  const open = (pricedRows || []).find((r) => (r.option_key || null) === optionKey) || null;
   const stale = (pricedRows || []).filter((r) => r.id !== open?.id).map((r) => r.id);
   if (stale.length > 0) await sb.from('service_requests').update({ status: 'cancelled' }).in('id', stale);
+  // المسعَّر للخيار نفسه يُعاد بسعره الجديد (سنواتٌ أكثر أو قيمة عقدٍ أخرى)
+  if (open) await sb.from('service_requests').update({ price: amount, quoted_price: amount, priced_at: new Date().toISOString() }).eq('id', open.id);
 
   let requestId = open?.id as string | undefined;
   if (!requestId) {
-    const { data: sr, error: srErr } = await sb.from('service_requests').insert(kind === 'funding' ? {
+    const { data: sr, error: srErr } = await sb.from('service_requests').insert({
       company_id: companyId, service_title: title,
-      service_category: CATALOG.find((cat) => cat.items.includes(title))?.label || 'مسار التمويل',
+      service_category: CATALOG.find((cat) => cat.items.includes(title))?.label || null,
       status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
-      option_key: optionKey, client_inputs: { option: optionKey }, credited_from: creditedFrom,
-    } : {
-      company_id: companyId, service_title: title, service_category: 'قبل أن تضع رأس مالك',
-      status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
-      option_key: 'quick',
-      client_inputs: { option: 'quick', totalInvestment: inputs.capex + inputs.workingCapital, projectKind: 'new' },
+      option_key: optionKey, credited_from: creditedFrom,
+      client_inputs: kind === 'feasibility'
+        ? { option: optionKey, totalInvestment: inputs.capex + inputs.workingCapital, projectKind: 'new' }
+        : { option: optionKey, ...(value > 0 ? { totalInvestment: value } : {}), ...(units > 0 ? { years: units } : {}) },
     }).select('id').single();
     if (srErr || !sr) return NextResponse.json({ error: 'تعذّر إنشاء الطلب: ' + (srErr?.message || '') }, { status: 500 });
     requestId = sr.id;
   }
 
   // ═══ أرقام مشروعه — يقرؤها مولّد الفحص كما لو أدخلها المكتب ═══
-  if (kind === 'feasibility') await sb.from('service_inputs').upsert({
+  if (kind === 'feasibility' && inputs.unitPrice > 0) await sb.from('service_inputs').upsert({
     service_request_id: requestId, company_id: companyId,
     activity_kind: 'feasibility', inputs,
     updated_by: who.email, updated_at: new Date().toISOString(),
@@ -251,26 +261,27 @@ export async function POST(req: Request) {
   const full = tier.amount != null ? tier.amount.toLocaleString('en-US') + ' ريال' : 'بعرض خاص';
   const fullFunding = COMMERCIAL[title]?.options?.find((o) => o.key === 'full')?.price;
 
-  const message = kind === 'funding' ?
-    'أهلاً ' + fullName + '،\n\n'
-    + '«' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال'
-    + (creditedFrom ? ' (بعد خصم ما دفعته في الحكم الائتماني)' : '') + '.\n'
-    + 'رابط الدفع — فيه المبلغ وحساب التحويل وخانة الإيصال، بلا تسجيل:\n'
-    + payLink + '\n\n'
-    + (optionKey === 'quick'
+  // ما يصله بعد التأكيد — بنصّ كل خدمة؛ وما لا نصّ خاصاً له يُقال عامّاً
+  const deliverLine =
+    title === FUNDING_TITLE && optionKey === 'quick'
       ? 'ويصلك خلال ساعات من تأكيد التحويل: حكمٌ صريح هل ملفك قابل للتمويل الآن، والجهات التي تنطبق شروطها عليك بأسمائها، وما ينقصك عند كل واحدة.\n\n'
         + (typeof fullFunding === 'number' ? 'وقيمته تُخصم بالكامل من تجهيز الملف والمخاطبة (' + fullFunding.toLocaleString('ar-SA') + ' ريال) إن أكملته خلال ثلاثين يوماً.\n\n' : '')
-      : 'ونبدأ فور تأكيد التحويل: بناء ملفك التمويلي، ثم مخاطبة الجهات المناسبة ومتابعتها حتى القرار.\n\n')
-    + accountLine
-    + 'وإن احتجت أي شيء فأنا معك.\n' + sign
-    :
+    : title === FUNDING_TITLE
+      ? 'ونبدأ فور تأكيد التحويل: بناء ملفك التمويلي، ثم مخاطبة الجهات المناسبة ومتابعتها حتى القرار.\n\n'
+    : kind === 'feasibility' && optionKey === 'quick'
+      ? 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
+        + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
+        + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'
+      : 'ونبدأ العمل فور تأكيد التحويل، ونتواصل معك بما نحتاجه منك وموعد التسليم'
+        + (COMMERCIAL[title]?.days ? ' (المدة المعتادة: ' + COMMERCIAL[title]?.days + ')' : '') + '.\n\n';
+
+  const message =
     'أهلاً ' + fullName + '،\n\n'
-    + (opt?.label || 'الفحص الائتماني للمشروع') + ' بـ' + amount.toLocaleString('ar-SA') + ' ريال — وأرقام مشروعك مسجّلة بالفعل.\n'
+    + '«' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال'
+    + (creditedFrom ? ' (بعد خصم ما دفعته في الخطوة الأولى)' : '') + '.\n'
     + 'رابط الدفع — فيه المبلغ وحساب التحويل وخانة الإيصال، بلا تسجيل:\n'
     + payLink + '\n\n'
-    + 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
-    + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
-    + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'
+    + deliverLine
     + accountLine
     + 'وإن احتجت أي شيء فأنا معك.\n' + sign;
 

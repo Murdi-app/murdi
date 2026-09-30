@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { computeFeasibility, computeCredit, computeBreakPoints, type FeasibilityInputs } from '@/lib/feasibilityCompute'
-import { priceFor, COMMERCIAL, FUNDING_TITLE } from '@/lib/servicePricing'
+import { priceFor, COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing'
+import { CATALOG, displayName, canonicalTitle } from '@/lib/serviceCatalog'
 
 // عميل من مكالمة — من البيع إلى الملف بلا أن يُغلق الخط.
 //
@@ -56,14 +57,23 @@ const DEFAULTS: NumField[] = [
   { k: 'inflationRate', t: 'نمو المصاريف % سنوياً', def: '3' },
 ]
 
-// ★ مساران: مشروعٌ جديد يُفحص بأرقامه (الجدوى)، ومنشأةٌ قائمة تطلب ملف
-//   تمويل — لا أرقام مشروع لها، ويُختار لها الحكم الائتماني أو الملف الكامل.
-export type IntakeService = 'feasibility' | 'funding'
+// ★ كل خدمات الفهرس تُفتح من المكالمة بمبلغها المعلن (intakeQuote).
+//   والجدوى وحدها تُسأل فيها أرقام المشروع — يُحسب منها الفحص والشريحة.
+const FEAS = 'دراسة الجدوى الاقتصادية'
+const resolveTitle = (v?: string) => {
+  if (!v || v === 'feasibility') return v ? FEAS : FUNDING_TITLE
+  if (v === 'funding') return FUNDING_TITLE
+  const t = canonicalTitle(v)
+  return CATALOG.some((c) => c.items.includes(t)) ? t : FUNDING_TITLE
+}
 
-export default function CallIntake({ seed, service: seedService, onDone }: { seed?: Partial<Who>; service?: IntakeService; onDone?: () => void }) {
-  const [service, setService] = useState<IntakeService>(seedService || 'feasibility')
-  const [option, setOption] = useState<'quick' | 'full'>('quick')
-  const fundingOpts = COMMERCIAL[FUNDING_TITLE]?.options || []
+export default function CallIntake({ seed, service: seedService, onDone }: { seed?: Partial<Who>; service?: string; onDone?: () => void }) {
+  const [title, setTitle] = useState<string>(resolveTitle(seedService || 'feasibility'))
+  const [option, setOption] = useState<string>('quick')
+  const [value, setValue] = useState('')
+  const [units, setUnits] = useState('1')
+  const service = title === FEAS ? 'feasibility' : 'other'
+  const opts = COMMERCIAL[title]?.options || []
   const [who, setWho] = useState<Who>({
     full_name: seed?.full_name || '', phone: seed?.phone || '', email: seed?.email || '',
     company_name: seed?.company_name || '', city: '', sector: '',
@@ -136,14 +146,19 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
     return 'على أرقامك أنت: ' + parts.join('، ') + '.'
   }, [calc, payback, breakEven, dscr1, inputs.financingAmount])
 
-  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== '' && who.email.trim() !== '' && (service === 'funding' || enough)
+  const optKey = opts.length ? option : null
+  const quote = intakeQuote(title, optKey,
+    service === 'feasibility' && totalInvestment > 0 ? totalInvestment : num(value), num(units))
+  const needNumbers = service === 'feasibility' && optKey === 'quick'
+  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== '' && who.email.trim() !== ''
+    && (!needNumbers || enough) && typeof quote.amount === 'number' && quote.amount > 0
 
   const openFile = async () => {
     setErr(''); setBusy(true)
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, service, option, inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
+        body: JSON.stringify({ ...who, service_title: title, option: optKey, value: num(value), units: num(units), inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
@@ -212,28 +227,45 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
           <>
             {card('ماذا يطلب', (
               <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {([['funding', 'ملف تمويل — منشأة قائمة'], ['feasibility', 'دراسة جدوى — مشروع جديد']] as [IntakeService, string][]).map(([k, t]) => (
-                    <button key={k} type="button" onClick={() => setService(k)}
-                      style={{ padding: '9px 16px', borderRadius: 999, border: '1.5px solid ' + (service === k ? GREEN : '#D9E5DF'), background: service === k ? GREEN : '#fff', color: service === k ? '#fff' : GREEN, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
-                      {t}
-                    </button>
+                <select value={title} onChange={(e) => { setTitle(e.target.value); setOption('quick'); setValue('') }} style={IN}>
+                  {CATALOG.map((cat) => (
+                    <optgroup key={cat.label} label={cat.label}>
+                      {cat.items.map((t) => <option key={t} value={t}>{displayName(t)}</option>)}
+                    </optgroup>
                   ))}
-                </div>
-                {service === 'funding' && (
-                  <div style={{ ...grid('200px'), marginTop: 14 }}>
-                    {fundingOpts.map((o) => (
-                      <button key={o.key} type="button" onClick={() => setOption(o.key === 'full' ? 'full' : 'quick')}
+                </select>
+                {opts.length > 0 && (
+                  <div style={{ ...grid('200px'), marginTop: 12 }}>
+                    {opts.map((o) => (
+                      <button key={o.key} type="button" onClick={() => setOption(o.key)}
                         style={{ textAlign: 'right', padding: '12px 14px', borderRadius: 12, border: '1.5px solid ' + (option === o.key ? GOLD : '#E4EFEA'), background: option === o.key ? '#FFFDF5' : '#fff', fontFamily: 'Cairo', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                           <b style={{ color: GREEN, fontSize: 13.5 }}>{o.label}</b>
-                          <b style={{ color: '#1A7A5A', fontSize: 13.5 }}>{typeof o.price === 'number' ? o.price.toLocaleString('ar-SA') + ' ر.س' : '—'}</b>
+                          <b style={{ color: '#1A7A5A', fontSize: 13.5 }}>{typeof o.price === 'number' ? o.price.toLocaleString('ar-SA') + ' ر.س' : 'بالشريحة'}</b>
                         </div>
                         <div style={{ color: MUTED, fontSize: 11.5, fontWeight: 700, marginTop: 4 }}>{o.days}</div>
                       </button>
                     ))}
                   </div>
                 )}
+                {quote.needs === 'value' && service !== 'feasibility' && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>{quote.ask} (ر.س)</label>
+                    <input inputMode="numeric" value={value} onChange={(e) => setValue(e.target.value)} style={IN} />
+                  </div>
+                )}
+                {quote.needs === 'units' && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>{quote.ask}</label>
+                    <input inputMode="numeric" value={units} onChange={(e) => setUnits(e.target.value)} style={IN} />
+                  </div>
+                )}
+                <div style={{ marginTop: 12, padding: '11px 14px', borderRadius: 10, fontWeight: 900, fontSize: 14,
+                  background: quote.amount ? '#EAF7F0' : '#FBF3EC', color: quote.amount ? '#1A5C46' : '#8A5A2E' }}>
+                  {quote.amount
+                    ? quote.label + ': ' + quote.amount.toLocaleString('ar-SA') + ' ر.س'
+                    : (quote.error || 'لا سعر معلن — حوّليه للدكتور')}
+                </div>
               </>
             ))}
 
@@ -294,7 +326,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
               </>
             ))}
 
-            {service === 'feasibility' && card('أرقام مشروعه — يعرفها كلها', (
+            {service === 'feasibility' && card(needNumbers ? 'أرقام مشروعه — يعرفها كلها' : 'حجم استثماره — يكفي التجهيز ورأس المال العامل', (
               <>
                 <div style={grid()}>
                   {ASK.map((x) => (
@@ -370,7 +402,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
             </button>
             {!canOpen && (
               <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.85 }}>
-                يلزم الاسم والجوال والبريد{service === 'feasibility' ? ' وأرقام المشروع' : ''}. والبريد ضروري — بلا بريدٍ لا حساب، وبلا حسابٍ لا رابط.
+                يلزم الاسم والجوال والبريد{needNumbers ? ' وأرقام المشروع' : ''}{!quote.amount ? ' ومبلغٌ معلن للخدمة' : ''}. والبريد ضروري — بلا بريدٍ لا حساب، وبلا حسابٍ لا رابط.
               </p>
             )}
             <p style={{ color: MUTED, fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '14px 0 0', lineHeight: 1.9 }}>

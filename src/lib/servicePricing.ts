@@ -535,3 +535,37 @@ export const FUNDING_TITLE = 'تجهيز ملف التمويل والتفاوض'
 export const FUNDING_QUICK = () => listedPrice(FUNDING_TITLE, 'quick');
 export const FUNDING_FULL = () => listedPrice(FUNDING_TITLE);
 export const FEASIBILITY_QUICK = () => listedPrice('دراسة الجدوى الاقتصادية', 'quick');
+
+// ═══ تسعير «افتح ملفه» — كل خدمة بسعرها المعلن ═══
+//
+// ★ كانت أداة الموظفة تفتح خدمةً أو اثنتين، وما سواهما يُقال للعميل «سجّل
+//   ثم اطلب». فصارت كل خدمات الفهرس تُفتح من المكالمة، والمبلغ من هنا وحده:
+//   الخيار بسعره · المدرَّج بالقيمة التي يذكرها (قيمة العقد أو الاستثمار) ·
+//   ما سعره لوحدةٍ بعدد الوحدات (السنوات) · وما لا سعر معلن له يُردّ للدكتور.
+export interface IntakeQuote { amount: number | null; label: string; needs?: 'value' | 'units'; ask?: string; error?: string }
+
+export function intakeQuote(title: string, optionKey?: string | null, value?: number, units?: number): IntakeQuote {
+  const c = COMMERCIAL[title];
+  if (!c) return { amount: null, label: '', error: 'خدمة غير معروفة' };
+  const opt = optionKey ? c.options?.find((o) => o.key === optionKey) : undefined;
+  if (optionKey && c.options?.length && !opt) return { amount: null, label: '', error: 'خيار غير معروف لهذه الخدمة' };
+  if (c.options?.length && !opt) return { amount: null, label: '', error: 'اختاري أحد خيارات الخدمة' };
+  const label = opt?.label || title;
+  if (typeof opt?.price === 'number' && opt.price > 0) return { amount: opt.price, label };
+  if (c.tiersBy === 'investment' && c.tiers) {
+    const ask = c.tierAsk || 'حجم الاستثمار';
+    if (!value || value <= 0) return { amount: null, label, needs: 'value', ask, error: 'اكتبي ' + ask + ' ليظهر السعر' };
+    const t = c.tiers.find((x) => x.upTo === null || value <= x.upTo);
+    if (!t || t.price <= 0) return { amount: null, label, needs: 'value', ask, error: 'بعرض خاص على هذا الحجم — حوّليه للدكتور' };
+    return { amount: t.price, label, needs: 'value', ask };
+  }
+  if (typeof c.price === 'number' && c.price > 0) {
+    if (c.priceUnit) {
+      const n = Math.floor(units || 0);
+      if (n < 1) return { amount: null, label, needs: 'units', ask: 'عدد السنوات المالية', error: 'اكتبي عدد السنوات المالية' };
+      return { amount: c.price * n, label: label + ' — ' + n + (n === 1 ? ' سنة' : ' سنوات'), needs: 'units', ask: 'عدد السنوات المالية' };
+    }
+    return { amount: c.price, label };
+  }
+  return { amount: null, label, error: 'بعرض خاص — لا سعر معلن. حوّليه للدكتور' };
+}
