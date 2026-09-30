@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { computeFeasibility, computeCredit, computeBreakPoints, type FeasibilityInputs } from '@/lib/feasibilityCompute'
-import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
+import { priceFor, COMMERCIAL, FUNDING_TITLE } from '@/lib/servicePricing'
 
 // عميل من مكالمة — من البيع إلى الملف بلا أن يُغلق الخط.
 //
@@ -56,7 +56,14 @@ const DEFAULTS: NumField[] = [
   { k: 'inflationRate', t: 'نمو المصاريف % سنوياً', def: '3' },
 ]
 
-export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDone?: () => void }) {
+// ★ مساران: مشروعٌ جديد يُفحص بأرقامه (الجدوى)، ومنشأةٌ قائمة تطلب ملف
+//   تمويل — لا أرقام مشروع لها، ويُختار لها الحكم الائتماني أو الملف الكامل.
+export type IntakeService = 'feasibility' | 'funding'
+
+export default function CallIntake({ seed, service: seedService, onDone }: { seed?: Partial<Who>; service?: IntakeService; onDone?: () => void }) {
+  const [service, setService] = useState<IntakeService>(seedService || 'feasibility')
+  const [option, setOption] = useState<'quick' | 'full'>('quick')
+  const fundingOpts = COMMERCIAL[FUNDING_TITLE]?.options || []
   const [who, setWho] = useState<Who>({
     full_name: seed?.full_name || '', phone: seed?.phone || '', email: seed?.email || '',
     company_name: seed?.company_name || '', city: '', sector: '',
@@ -69,7 +76,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
   })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [out, setOut] = useState<{ link: string; message: string; company: string } | null>(null)
+  const [out, setOut] = useState<{ link: string; message: string; company: string; label: string; amount: number } | null>(null)
 
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }))
 
@@ -129,18 +136,18 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
     return 'على أرقامك أنت: ' + parts.join('، ') + '.'
   }, [calc, payback, breakEven, dscr1, inputs.financingAmount])
 
-  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== '' && who.email.trim() !== '' && enough
+  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== '' && who.email.trim() !== '' && (service === 'funding' || enough)
 
   const openFile = async () => {
     setErr(''); setBusy(true)
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, inputs: { ...inputs }, spoken }),
+        body: JSON.stringify({ ...who, service, option, inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
-      setOut({ link: d.link, message: d.message, company: d.company_name })
+      setOut({ link: d.link, message: d.message, company: d.company_name, label: d.service_label || '', amount: Number(d.amount) || 0 })
     } catch (e) { setErr('تعذّر الاتصال: ' + String(e).slice(0, 120)) }
     setBusy(false)
   }
@@ -177,7 +184,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
           <div style={{ background: '#fff', border: '2px solid #BFE0D3', borderRadius: 16, padding: '24px 22px' }}>
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 19, marginBottom: 8 }}>فُتح ملف {out.company}</div>
             <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 16px' }}>
-              أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{quick?.label || 'الفحص الائتماني للمشروع'}</b> بـ٩٩٠ ريال بانتظار دفعه.
+              أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{out.label || quick?.label || 'الفحص الائتماني للمشروع'}</b> بـ{out.amount.toLocaleString('ar-SA')} ريال بانتظار دفعه.
               أرسلي له الرسالة أدناه — يفتح الرابط، يضع كلمة مروره، ويجد بياناته وزرّ الدفع أمامه.
             </p>
             <textarea readOnly value={out.message} rows={7}
@@ -203,6 +210,33 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
           </div>
         ) : (
           <>
+            {card('ماذا يطلب', (
+              <>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {([['funding', 'ملف تمويل — منشأة قائمة'], ['feasibility', 'دراسة جدوى — مشروع جديد']] as [IntakeService, string][]).map(([k, t]) => (
+                    <button key={k} type="button" onClick={() => setService(k)}
+                      style={{ padding: '9px 16px', borderRadius: 999, border: '1.5px solid ' + (service === k ? GREEN : '#D9E5DF'), background: service === k ? GREEN : '#fff', color: service === k ? '#fff' : GREEN, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                {service === 'funding' && (
+                  <div style={{ ...grid('200px'), marginTop: 14 }}>
+                    {fundingOpts.map((o) => (
+                      <button key={o.key} type="button" onClick={() => setOption(o.key === 'full' ? 'full' : 'quick')}
+                        style={{ textAlign: 'right', padding: '12px 14px', borderRadius: 12, border: '1.5px solid ' + (option === o.key ? GOLD : '#E4EFEA'), background: option === o.key ? '#FFFDF5' : '#fff', fontFamily: 'Cairo', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <b style={{ color: GREEN, fontSize: 13.5 }}>{o.label}</b>
+                          <b style={{ color: '#1A7A5A', fontSize: 13.5 }}>{typeof o.price === 'number' ? o.price.toLocaleString('ar-SA') + ' ر.س' : '—'}</b>
+                        </div>
+                        <div style={{ color: MUTED, fontSize: 11.5, fontWeight: 700, marginTop: 4 }}>{o.days}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ))}
+
             {card('من هو', (
               <div style={grid()}>
                 {([
@@ -260,7 +294,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
               </>
             ))}
 
-            {card('أرقام مشروعه — يعرفها كلها', (
+            {service === 'feasibility' && card('أرقام مشروعه — يعرفها كلها', (
               <>
                 <div style={grid()}>
                   {ASK.map((x) => (
@@ -288,7 +322,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
             ))}
 
             {/* الحساب — يظهر لها وحدها، ويتحدّث مع كل رقم تكتبه */}
-            <div style={{ background: calc ? '#fff' : '#F2F6F5', border: '1.5px solid ' + (calc ? '#BFE0D3' : '#E4EFEA'), borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+            {service === 'feasibility' && <div style={{ background: calc ? '#fff' : '#F2F6F5', border: '1.5px solid ' + (calc ? '#BFE0D3' : '#E4EFEA'), borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
               <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5, marginBottom: 4 }}>الحساب — لكِ أنتِ</div>
               <div style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, marginBottom: 14 }}>
                 لا تُرسلي هذه الأرقام مكتوبةً. تُقال في المكالمة فقط.
@@ -322,7 +356,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
                   )}
                 </>
               )}
-            </div>
+            </div>}
 
             {err && <div style={{ color: '#B4453C', fontWeight: 800, fontSize: 13, marginBottom: 12 }}>{err}</div>}
 
@@ -336,7 +370,7 @@ export default function CallIntake({ seed, onDone }: { seed?: Partial<Who>; onDo
             </button>
             {!canOpen && (
               <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.85 }}>
-                يلزم الاسم والجوال والبريد وأرقام المشروع. والبريد ضروري — بلا بريدٍ لا حساب، وبلا حسابٍ لا رابط.
+                يلزم الاسم والجوال والبريد{service === 'feasibility' ? ' وأرقام المشروع' : ''}. والبريد ضروري — بلا بريدٍ لا حساب، وبلا حسابٍ لا رابط.
               </p>
             )}
             <p style={{ color: MUTED, fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '14px 0 0', lineHeight: 1.9 }}>

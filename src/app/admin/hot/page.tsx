@@ -249,6 +249,7 @@ export default function HotPage() {
                     </button>
                   </div>
                   <CallIntake
+                    service={/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding'}
                     seed={{
                       full_name: r.person || r.name || '',
                       phone: r.phone || '',

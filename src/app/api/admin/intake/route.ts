@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { waNumber } from '@/lib/phone';
-import { priceFor, COMMERCIAL } from '@/lib/servicePricing';
+import { priceFor, COMMERCIAL, FUNDING_TITLE } from '@/lib/servicePricing';
 import { asOwnership, asRoute } from '@/lib/ownership';
-import { canonicalTitle } from '@/lib/serviceCatalog';
+import { canonicalTitle, CATALOG } from '@/lib/serviceCatalog';
 import { isPaidStatus } from '@/lib/serviceStatus';
 
 // فتح ملف عميلٍ باعته الموظفة بالهاتف.
@@ -20,6 +20,15 @@ import { isPaidStatus } from '@/lib/serviceStatus';
 //   • لا يمنح كلمة مرور — الرابط يضعها العميل بنفسه.
 
 const SERVICE = 'دراسة الجدوى الاقتصادية';
+
+// ★ ومسارٌ ثانٍ: منشأة قائمة تطلب «تجهيز ملف التمويل».
+//   كانت الأداة لا تفتح إلا الفحص الائتماني لمشروعٍ جديد، وتشترط أرقام
+//   مشروع (سعر وحدة ووحدات وتكلفة تجهيز) لا معنى لها لشركةٍ قائمة. فوقف
+//   «فاست بارسل» (٣٠ سبتمبر): طلب ملف التمويل ولا طريق يُريه مبلغاً يدفعه —
+//   لا حساب له، ولا تملك ضي أداةً تفتح له طلباً مسعَّراً.
+//   فالخيار هنا من خيارات الخدمة نفسها (quick ٩٩٠ · full ٧٬٩٠٠)، والسعر من
+//   الخادم كما في طلب العميل بنفسه.
+type Kind = 'feasibility' | 'funding';
 
 const admin = () =>
   createClient(
@@ -48,6 +57,8 @@ export async function POST(req: Request) {
   const ownershipType = asOwnership(b?.ownership_type) || null;
   const crRoute = asRoute(b?.cr_route) || null;
   const ownerNationality = cut(b?.owner_nationality, 80) || null;
+  const kind: Kind = b?.service === 'funding' ? 'funding' : 'feasibility';
+  const optionKey = kind === 'funding' && b?.option === 'full' ? 'full' : 'quick';
 
   if (!fullName) return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبيه 05xxxxxxxx' }, { status: 400 });
@@ -63,7 +74,7 @@ export async function POST(req: Request) {
     ownFunds: numOf(raw.ownFunds), financingAmount: numOf(raw.financingAmount),
     financingYears: numOf(raw.financingYears) || 4, financingRate: numOf(raw.financingRate) || 8,
   };
-  if (inputs.unitPrice <= 0 || inputs.unitsYear1 <= 0 || (inputs.capex + inputs.workingCapital) <= 0) {
+  if (kind === 'feasibility' && (inputs.unitPrice <= 0 || inputs.unitsYear1 <= 0 || (inputs.capex + inputs.workingCapital) <= 0)) {
     return NextResponse.json({ error: 'أرقام المشروع ناقصة — لا يُفتح ملف بلا سعر ووحدات وتكلفة' }, { status: 400 });
   }
 
@@ -123,9 +134,12 @@ export async function POST(req: Request) {
   }
 
   // ═══ الطلب — مسعَّراً من الخادم لا من الواجهة ═══
-  const title = canonicalTitle(SERVICE);
-  const opt = COMMERCIAL[title]?.options?.find((o) => o.key === 'quick');
-  const amount = typeof opt?.price === 'number' ? opt.price : 990;
+  const title = canonicalTitle(kind === 'funding' ? FUNDING_TITLE : SERVICE);
+  const opt = COMMERCIAL[title]?.options?.find((o) => o.key === optionKey);
+  if (typeof opt?.price !== 'number' || opt.price <= 0) {
+    return NextResponse.json({ error: 'لا سعر معلن لهذا الخيار — حوّليه للدكتور' }, { status: 400 });
+  }
+  let amount: number = opt.price;
 
   // ★ كان يُلتقط أيُّ طلبٍ «غير مغلق» — ومنه المدفوع والمرفوض — فتُكتب أرقام
   //   المكالمة فوق مدخلات طلبٍ مدفوع، ويُبلَّغ العميل «جاهز للدفع» عمّا دفعه.
@@ -135,14 +149,45 @@ export async function POST(req: Request) {
     .eq('company_id', companyId).eq('service_title', title)
     .order('created_at', { ascending: false });
   if (exErr) return NextResponse.json({ error: 'تعذّرت قراءة طلبات العميل — ' + exErr.message }, { status: 500 });
-  if ((existing || []).some((r) => isPaidStatus(r.status))) {
+  // الترقية من الحكم الائتماني المدفوع إلى الملف الكامل تمضي — ويُخصم ما دُفع
+  // خلال ثلاثين يوماً كما في طلب العميل بنفسه (/api/services/order).
+  let creditedFrom: string | null = null;
+  const paid = (existing || []).filter((r) => isPaidStatus(r.status));
+  if (kind === 'funding' && optionKey === 'full' && paid.length > 0) {
+    const { data: all } = await sb.from('service_requests')
+      .select('id, option_key, price, paid_at')
+      .eq('company_id', companyId).eq('service_title', title);
+    const nonQuickPaid = (all || []).some((r) => r.paid_at && r.option_key !== 'quick');
+    if (nonQuickPaid) {
+      return NextResponse.json({ error: 'لهذا العميل ملف تمويل مدفوع — ملفّه بعد الدفع عند رغد، لا يُفتح له طلبٌ جديد من هنا' }, { status: 409 });
+    }
+    const since = Date.now() - 30 * 86400_000;
+    const q = (all || []).filter((r) => r.option_key === 'quick' && r.paid_at && new Date(String(r.paid_at)).getTime() >= since)
+      .sort((a, b2) => String(b2.paid_at).localeCompare(String(a.paid_at)))[0];
+    const { data: used } = q
+      ? await sb.from('service_requests').select('id').eq('credited_from', q.id).limit(1).maybeSingle()
+      : { data: null };
+    const qp = Number(q?.price || 0);
+    if (q && !used && qp > 0 && qp < amount) { amount = amount - qp; creditedFrom = String(q.id); }
+  } else if (paid.length > 0) {
     return NextResponse.json({ error: 'لهذا العميل طلبٌ مدفوع لهذه الخدمة — ملفّه بعد الدفع عند رغد، لا يُفتح له طلبٌ جديد من هنا' }, { status: 409 });
   }
-  const open = (existing || []).find((r) => r.status === 'priced') || null;
+  const { data: pricedRows } = await sb.from('service_requests')
+    .select('id, option_key').eq('company_id', companyId).eq('service_title', title).eq('status', 'priced')
+    .order('created_at', { ascending: false });
+  // المسعَّر يُعاد استعماله إن كان للخيار نفسه؛ وإلا أُلغي ليبقى أمامه زرّ دفعٍ واحد
+  const open = (pricedRows || []).find((r) => (r.option_key || 'quick') === optionKey) || null;
+  const stale = (pricedRows || []).filter((r) => r.id !== open?.id).map((r) => r.id);
+  if (stale.length > 0) await sb.from('service_requests').update({ status: 'cancelled' }).in('id', stale);
 
   let requestId = open?.id as string | undefined;
   if (!requestId) {
-    const { data: sr, error: srErr } = await sb.from('service_requests').insert({
+    const { data: sr, error: srErr } = await sb.from('service_requests').insert(kind === 'funding' ? {
+      company_id: companyId, service_title: title,
+      service_category: CATALOG.find((cat) => cat.items.includes(title))?.label || 'مسار التمويل',
+      status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
+      option_key: optionKey, client_inputs: { option: optionKey }, credited_from: creditedFrom,
+    } : {
       company_id: companyId, service_title: title, service_category: 'قبل أن تضع رأس مالك',
       status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
       option_key: 'quick',
@@ -153,7 +198,7 @@ export async function POST(req: Request) {
   }
 
   // ═══ أرقام مشروعه — يقرؤها مولّد الفحص كما لو أدخلها المكتب ═══
-  await sb.from('service_inputs').upsert({
+  if (kind === 'feasibility') await sb.from('service_inputs').upsert({
     service_request_id: requestId, company_id: companyId,
     activity_kind: 'feasibility', inputs,
     updated_by: who.email, updated_at: new Date().toISOString(),
@@ -197,10 +242,24 @@ export async function POST(req: Request) {
     }, { status: 502 });
   }
 
+  const sign = (who.role === 'admin' ? 'د. عبدالحكيم المرضي' : 'فريق الدكتور عبدالحكيم المرضي')
+    + '\nمُرضي للاستشارات المالية';
   const tier = priceFor(title, inputs.capex + inputs.workingCapital);
   const full = tier.amount != null ? tier.amount.toLocaleString('en-US') + ' ريال' : 'بعرض خاص';
+  const fullFunding = COMMERCIAL[title]?.options?.find((o) => o.key === 'full')?.price;
 
-  const message =
+  const message = kind === 'funding' ?
+    'أهلاً ' + fullName + '،\n\n'
+    + 'هذا رابط ملف منشأتك في منصة مُرضي:\n'
+    + link + '\n\n'
+    + 'افتحه، وضع كلمة المرور، وستجد «' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال جاهزاً للدفع'
+    + (creditedFrom ? ' (بعد خصم ما دفعته في الحكم الائتماني)' : '') + '.\n\n'
+    + (optionKey === 'quick'
+      ? 'ويصلك خلال ساعات من تأكيد التحويل: حكمٌ صريح هل ملفك قابل للتمويل الآن، والجهات التي تنطبق شروطها عليك بأسمائها، وما ينقصك عند كل واحدة.\n\n'
+        + (typeof fullFunding === 'number' ? 'وقيمته تُخصم بالكامل من تجهيز الملف والمخاطبة (' + fullFunding.toLocaleString('ar-SA') + ' ريال) إن أكملته خلال ثلاثين يوماً.\n\n' : '')
+      : 'ونبدأ فور تأكيد التحويل: بناء ملفك التمويلي، ثم مخاطبة الجهات المناسبة ومتابعتها حتى القرار.\n\n')
+    + 'وإن احتجت أي شيء فأنا معك.\n' + sign
+    :
     'أهلاً ' + fullName + '،\n\n'
     + 'هذا رابط ملفك في منصة مُرضي — بياناتك وأرقام مشروعك مسجّلة بالفعل:\n'
     + link + '\n\n'
@@ -208,9 +267,7 @@ export async function POST(req: Request) {
     + 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
     + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
     + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'
-    + 'وإن احتجت أي شيء فأنا معك.\n'
-    + (who.role === 'admin' ? 'د. عبدالحكيم المرضي' : 'فريق الدكتور عبدالحكيم المرضي')
-    + '\nمُرضي للاستشارات المالية';
+    + 'وإن احتجت أي شيء فأنا معك.\n' + sign;
 
   await sb.from('deal_events').insert({
     company_id: companyId, kind: 'service',
@@ -219,5 +276,8 @@ export async function POST(req: Request) {
     actor: who.role === 'admin' ? 'owner' : 'staff', needs_owner: false,
   });
 
-  return NextResponse.json({ ok: true, link, message, company_name: companyName, request_id: requestId, existing: !isNew });
+  return NextResponse.json({
+    ok: true, link, message, company_name: companyName, request_id: requestId, existing: !isNew,
+    service_label: opt?.label || title, amount,
+  });
 }

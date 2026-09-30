@@ -93,6 +93,18 @@ function TransferInner() {
     <div dir="rtl" style={{ fontFamily: 'Cairo', maxWidth: 560, margin: '0 auto', padding: '40px 20px', minHeight: '100vh', background: '#FBFCFB' }}>
       <h1 style={{ color: '#1A3D34', fontSize: 24, fontWeight: 900, textAlign: 'center', margin: 0 }}>الدفع عبر تحويل بنكي</h1>
       <div style={{ color: '#1A3D34', fontSize: 30, fontWeight: 900, textAlign: 'center', margin: '12px 0' }}>{dueState === 'loading' ? '…' : canPay ? amountSar.toLocaleString('ar-SA') + ' ريال' : '—'}</div>
+      {/* ★ رابطٌ بلا طلبٍ ولا مبلغ كان يعرض «—» وحدها، فيظن العميل أن الصفحة
+          معطوبة («ما يطلع مبلغ الخدمة» — فاست بارسل، ٣٠ سبتمبر). والمبلغ لا
+          يُعرض إلا من طلبٍ مسعَّر في حسابه، فيُقال له ذلك صريحاً. */}
+      {!serviceRequestId && !canPay && (
+        <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '13px 16px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 800, lineHeight: 1.9, textAlign: 'center' }}>
+          لا يظهر المبلغ في هذا الرابط — المبلغ يظهر من طلبك المسعَّر في حسابك.
+          ادخل <a href="/goal?tab=services" style={{ color: '#1A3D34', fontWeight: 900 }}>حسابك ← خدماتي</a> واضغط «إتمام الدفع»،
+          أو راسلنا واتساب على{' '}
+          <a href="https://wa.me/966570749196" target="_blank" rel="noopener noreferrer" style={{ color: '#1A7A5A', fontWeight: 900, textDecoration: 'none' }}>0570749196</a>{' '}
+          ونرسل لك رابط ملفك جاهزاً للدفع. <b>لا تحوّل قبل أن ترى المبلغ.</b>
+        </div>
+      )}
 
       <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: 20, marginTop: 16 }}>
         <div style={{ color: '#6B8A80', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>حوّل المبلغ إلى الحساب التالي:</div>
