@@ -5,6 +5,7 @@ import { OUTCOMES } from '@/lib/outcomes';
 import { BAND_LABEL, type Band, type Temp } from '@/lib/leadDesk';
 import AwardTasks from '@/components/AwardTasks';
 import StaffBrief from '@/components/StaffBrief';
+import AwardResearch from '@/components/AwardResearch';
 
 // كانت هذه الصفحة قائمة قراءة فقط: أسماء ودرجات مرتّبة بالأحدث، بلا زر واحد.
 // ولهذا كان عمود contacted صفراً في كل الصفوف منذ يونيو — لم يكن في المنصة مكان يضبطه.
@@ -141,6 +142,7 @@ export default function LeadsPage() {
       </p>
       <StaffBrief />
       <AwardTasks />
+      <AwardResearch />
 
       {stats && (
         <div style={{ background: '#fff', border: '1.5px solid #EAF2EE', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 22, flexWrap: 'wrap' }}>

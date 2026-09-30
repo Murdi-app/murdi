@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { isOutcome, OUTCOMES } from '@/lib/outcomes';
 import { sendPush } from '@/lib/push';
+import { submitRecommendation } from '@/lib/codexActions';
 import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { FIT_SERVICES, isFitService, staffTasks, statusAfterOutcome, whatsappText, gapMessage, waDigits, loadConfig, type Award } from '@/lib/awards';
 
@@ -25,7 +26,20 @@ export async function GET() {
     // ما ينتظر رقماً موثّقاً — يُقال لها صراحةً بدل شاشةٍ فارغة تُقرأ «لا عمل»
     const { count: waiting } = await sb.from('contract_awards').select('id', { count: 'exact', head: true })
       .in('status', ['qualified', 'messaged', 'replied', 'gap_sent', 'meeting', 'priced']).is('phone_source_url', null);
-    return NextResponse.json({ ok: true, tasks: await staffTasks(sb), waiting: waiting || 0, outcomes: OUTCOMES, services: FIT_SERVICES });
+    // «ابحثي عن رقم»: أعلى المؤهَّلة درجةً بلا رقمٍ موثّق ولا توصية تواصلٍ معلّقة — خمسٌ في اليوم
+    const { data: bare } = await sb.from('contract_awards').select('id, company_name, buyer_entity, tender_title')
+      .eq('status', 'qualified').is('phone_source_url', null);
+    const bareIds = (bare || []).map((r) => String(r.id));
+    const [{ data: pend }, { data: sc }] = await Promise.all([
+      bareIds.length ? sb.from('award_recommendations').select('award_id').in('award_id', bareIds).eq('kind', 'contact').eq('status', 'pending') : Promise.resolve({ data: [] }),
+      bareIds.length ? sb.from('award_pipeline').select('id, score').in('id', bareIds) : Promise.resolve({ data: [] }),
+    ]);
+    const pending = new Set((pend || []).map((r: { award_id: string }) => String(r.award_id)));
+    const scoreOf = new Map((sc || []).map((r: { id: string; score: number }) => [String(r.id), Number(r.score)]));
+    const research = (bare || []).filter((r) => !pending.has(String(r.id)))
+      .sort((x, y) => (scoreOf.get(String(y.id)) || 0) - (scoreOf.get(String(x.id)) || 0)).slice(0, 5)
+      .map((r) => ({ id: String(r.id), company: r.company_name, buyer: r.buyer_entity, title: r.tender_title }));
+    return NextResponse.json({ ok: true, tasks: await staffTasks(sb), waiting: waiting || 0, research, outcomes: OUTCOMES, services: FIT_SERVICES });
   } catch (e) {
     return NextResponse.json({ error: 'تعذّرت قراءة مهام الترسيات — ' + (e instanceof Error ? e.message : '') }, { status: 500 });
   }
@@ -38,6 +52,18 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const id = String(b.id || '');
   const action = String(b.action || '');
+  // رقمٌ وجدته ضي بمصدره — يذهب توصيةً للمراجعة (القواعد أو Claude أو المالك)، ولا يُكتب في الفرصة مباشرة
+  if (action === 'found') {
+    const phone = String(b.phone || '').replace(/[^\d+]/g, '');
+    const url = String(b.source_url || '').trim();
+    if (phone.length < 9) return NextResponse.json({ error: 'الرقم ناقص' }, { status: 400 });
+    if (!/^https?:\/\//i.test(url)) return NextResponse.json({ error: 'ضعي رابط الصفحة التي وجدتِ فيها الرقم' }, { status: 400 });
+    const r = await submitRecommendation(admin(), {
+      award_id: id, kind: 'contact', confidence: 0.7, evidence: [url],
+      value: { phone, source: String(b.source || 'بحث ضي').slice(0, 80), source_url: url, found_by: 'ضي' },
+    });
+    return NextResponse.json(r.json, { status: r.status });
+  }
   if (!id || !['check', 'call', 'whatsapp', 'consult', 'outcome', 'yes', 'service'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
   const outcome = action === 'outcome' ? String(b.outcome || '') : '';
   if (action === 'outcome' && !isOutcome(outcome)) {
