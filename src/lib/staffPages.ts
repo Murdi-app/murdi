@@ -84,7 +84,7 @@ export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon:
     // ومكتب الطلبات **قراءةً لا قراراً**: منه ترى الملفّات المدفوعة وأرقام
     // أصحابها لتجمع مستنداتها. والقرارُ فيه لضي وحدها — مفروضٌ في الخادم
     // (`/api/staff/desk`) لا في إخفاء زرّ.
-    { href: '/admin/desk', label: 'ملفّات العملاء', icon: '📑' },
+    { href: '/admin/desk', label: 'ملفّات العملاء والطلبات', icon: '📑' },
   ],
 };
 
@@ -95,7 +95,9 @@ export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon:
  *   ورغد ترى المكتب لتعرف ملفّاتها المدفوعة، ولا تضغط فيه زرّاً.
  *   ويُقرأ هذا في الشاشة وفي الخادم معاً — فلا يُخفى زرٌّ ويبقى مساره مفتوحاً.
  */
-export const decidesAtDesk = (job: StaffJob): boolean => job === 'followup';
+// ★ وفُتح لرغد (٣٠ سبتمبر، بأمر المالك): الخدمات بمبالغها، والقبول والرفض،
+//   وطلبات المطابقة وتشغيلها — فصار القرار للموظفتين كلتيهما.
+export const decidesAtDesk = (job: StaffJob): boolean => job === 'followup' || job === 'assistant';
 
 /** أول صفحة يُردّ إليها صاحب الدور */
 export const homeFor = (job: StaffJob): string =>

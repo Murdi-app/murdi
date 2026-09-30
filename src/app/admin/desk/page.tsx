@@ -59,6 +59,10 @@ const BTN = (bg: string, fg = '#fff'): React.CSSProperties => ({
   fontSize: 12.5, cursor: 'pointer',
 })
 
+type FileInfo = { events: { title: string; detail: string | null; actor: string | null; created_at: string }[]; has_financials: boolean; matches: number }
+// الخدمات التي مخرَجها جدول جهات — نسخة مطابقة لما في run-match
+const MATCH_BEARING = ['تجهيز ملف التمويل والتفاوض', 'دراسة الجدوى الاقتصادية', 'تمويل العقد', 'ملف الممر الأجنبي', 'تجهيز ملف عرض المستثمر والتفاوض']
+
 export default function DeskPage() {
   const [loading, setLoading] = useState(true)
   const [denied, setDenied] = useState('')
@@ -73,6 +77,10 @@ export default function DeskPage() {
   //   بعد، وذاك صفُّ ضي بقسمة المالك. ورغد تفتح المكتب لترى ملفّاتها
   //   المدفوعة وأرقام أصحابها، فلا تُعرض لها أزرارٌ سيردّها الخادم.
   const [mayDecide, setMayDecide] = useState(false)
+  const [job, setJob] = useState('')
+  const [files, setFiles] = useState<Record<string, FileInfo>>({})
+  const [logF, setLogF] = useState<Record<string, { done?: string; missing?: string; next?: string; status?: string }>>({})
+  const [mRun, setMRun] = useState<Record<string, string>>({})
 
   const load = async () => {
     // انقطاع الشبكة كان يُبقي «جارٍ التحميل» إلى الأبد
@@ -86,6 +94,7 @@ export default function DeskPage() {
     const d = await r.json()
     setReqs(d.requests || []); setMatches(d.matches || [])
     setMayDecide(d.may_decide === true)
+    setJob(String(d.job || '')); setFiles(d.files || {})
     setLoading(false)
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -155,6 +164,34 @@ export default function DeskPage() {
     .filter(r => ACTIVE.includes(r.status))
     .sort((a, b) => idleDays(b) - idleDays(a))
 
+  // «سجّلي ما تم» — يحرّك تاريخ الملف ويكتب أثره في خطّ الصفقة
+  const saveLog = async (r: Req) => {
+    const f = logF[r.id] || {}
+    if (!f.done?.trim()) { setErr('اكتبي ما تمّ على ملف ' + (r.company?.company_name || '')); return }
+    setBusy(r.id); setErr('')
+    const res = await fetch('/api/staff/desk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'log', id: r.id, done: f.done, missing: f.missing, next: f.next, status: f.status }) }).catch(() => null)
+    setBusy('')
+    const d = res ? await res.json().catch(() => ({})) : {}
+    if (!res || !res.ok) { setErr(d.error || 'لم يُسجَّل'); return }
+    setLogF({ ...logF, [r.id]: {} }); await load()
+  }
+  // تشغيل المطابقة لمن دفع خدمةً فيها جدول جهات — دفعةً بعد دفعة حتى تنتهي
+  const runMatch = async (companyId: string) => {
+    setMRun({ ...mRun, [companyId]: 'جارٍ التشغيل…' })
+    let batch = 0, spend = true
+    for (let i = 0; i < 40; i++) {
+      const res = await fetch('/api/admin/run-match', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId, track: 'funding', batch, spend }) }).catch(() => null)
+      const d = res ? await res.json().catch(() => ({})) : {}
+      if (!res || !res.ok) { setMRun(m => ({ ...m, [companyId]: d.error || 'تعذّر التشغيل' })); return }
+      if (d.done) { setMRun(m => ({ ...m, [companyId]: 'انتهت — ' + (d.count || 0) + ' جهة مناسبة' })); await load(); return }
+      batch = Number(d.next || batch + 1); spend = false
+      setMRun(m => ({ ...m, [companyId]: 'جارٍ… ' + batch + (d.total ? ' من ' + d.total : '') }))
+    }
+  }
+  const showFiles = job === 'assistant' || job === 'admin' || !mayDecide
+
   if (loading) return (
     <div dir="rtl" style={{ padding: 40, fontFamily: 'Tajawal,sans-serif', color: '#6B8A80' }}>جارٍ التحميل…</div>
   )
@@ -183,7 +220,7 @@ export default function DeskPage() {
       )}
 
       {/* ===== ملفّات العملاء الذين أتمّوا اتفاقهم — رأسُ شاشة مَن تتابع ===== */}
-      {!mayDecide && (
+      {showFiles && (
         <>
           <h2 style={{ fontSize: 16, fontWeight: 900, color: '#1A3D34', margin: '0 0 2px' }}>
             ملفّات تنتظرك · {active.length}
@@ -216,6 +253,42 @@ export default function DeskPage() {
                   </span>
                 </div>
                 <Contact c={r.company} />
+                {(() => {
+                  const fi = files[String(r.company_id)] || { events: [], has_financials: false, matches: 0 }
+                  const f = logF[r.id] || {}
+                  const inp = { border: '1px solid #DDE7E2', borderRadius: 8, padding: '7px 10px', fontFamily: 'inherit', fontSize: 13, width: '100%', boxSizing: 'border-box' as const }
+                  return (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #E4EFEA' }}>
+                      <div style={{ fontSize: 12.5, color: '#5E7C73', lineHeight: 1.9 }}>
+                        <b style={{ color: '#1A3D34' }}>آخر ما سُجّل على الملف:</b>
+                        {fi.events.length === 0 && <div style={{ color: '#B4622A' }}>لم يُسجَّل عليه شيء بعد — سجّلي أول ما تم أدناه.</div>}
+                        {fi.events.map((e, i) => (
+                          <div key={i}>· {fmt(e.created_at)} — {e.title}{e.detail ? ' (' + e.detail + ')' : ''}</div>
+                        ))}
+                        <div style={{ marginTop: 4 }}>
+                          البيانات المالية: {fi.has_financials ? '✓ موجودة' : '✗ غير مدخلة — اطلبيها من العميل أولاً'}
+                          {MATCH_BEARING.includes(String(r.service_title || '')) && <> · جهات مطابقة: {fi.matches ? fi.matches + ' جهة' : 'لم تُشغَّل بعد'}</>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                        <textarea placeholder="ما الذي تمّ؟ (مثال: كلمت منافع — طلبوا قوائم سنتين، وأرسلت للعميل قائمة المطلوب)" value={f.done || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, done: e.target.value } })} rows={2} style={inp} />
+                        <input placeholder="ما الذي ينقص الملف؟ (اختياري)" value={f.missing || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, missing: e.target.value } })} style={inp} />
+                        <input placeholder="الخطوة التالية وموعدها (اختياري)" value={f.next || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, next: e.target.value } })} style={inp} />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <select value={f.status || r.status} onChange={e => setLogF({ ...logF, [r.id]: { ...f, status: e.target.value } })} style={{ ...inp, width: 'auto' }}>
+                            <option value="in_progress">قيد التجهيز (نجمع المستندات ونُعدّ الملف)</option>
+                            <option value="in_follow_up">قيد المتابعة (الملف عند الجهات)</option>
+                          </select>
+                          <button disabled={busy === r.id} onClick={() => saveLog(r)} style={BTN('#1A3D34')}>سجّلي ما تم</button>
+                          {MATCH_BEARING.includes(String(r.service_title || '')) && fi.has_financials && (
+                            <button onClick={() => runMatch(String(r.company_id))} style={BTN('#fff', '#1A3D34')}>🎯 شغّلي المطابقة</button>
+                          )}
+                          {mRun[String(r.company_id)] && <span style={{ fontSize: 12.5, color: '#5E7C73' }}>{mRun[String(r.company_id)]}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             )
           })}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { runAutoMatch } from '@/lib/matchEngine';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { requireStaff } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
 import { sendPush } from '@/lib/push';
 
@@ -30,8 +31,12 @@ const MATCH_BEARING = new Set<string>([
 ]);
 
 export async function POST(req: Request) {
+  // المالك، ورغد (ما بعد الدفع) بأمره ٣٠ سبتمبر — تشغّل مطابقة من دفع
   const denied = await requireAdmin();
-  if (denied) return NextResponse.json({ error: denied }, { status: 401 });
+  if (denied) {
+    const { who } = await requireStaff();
+    if (!who || (who.role !== 'admin' && who.job !== 'assistant')) return NextResponse.json({ error: denied }, { status: 401 });
+  }
 
   const b = await req.json().catch(() => ({}));
   const companyId = String(b?.companyId || '');

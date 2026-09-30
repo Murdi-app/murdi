@@ -139,9 +139,29 @@ export async function GET() {
   const mail = new Map((contacts || []).map((c) => [String(c.company_id), c.contact_email]));
   const byId = new Map((cos || []).map((c) => [String(c.id), { ...c, contact_email: mail.get(String(c.id)) || null }]));
 
+  // ملفّات ما بعد الدفع: آخر ما سُجّل عليها، وهل فيها أرقامٌ مالية، وهل خدمتها
+  // تستوجب مطابقة وكم نتيجةً خرجت — فتعرف رغد أين وقف كل ملفٍّ وما خطوته
+  const paidCos = Array.from(new Set((reqs || []).filter((r) => (OPEN_PAID_STATUSES as readonly string[]).includes(String(r.status))).map((r) => String(r.company_id)).filter(Boolean)));
+  const [{ data: evs }, { data: fins }, { data: mres }] = paidCos.length ? await Promise.all([
+    sb.from('deal_events').select('company_id, title, detail, actor, created_at').in('company_id', paidCos).order('created_at', { ascending: false }).limit(300),
+    sb.from('financial_data').select('company_id').in('company_id', paidCos),
+    sb.from('match_results').select('company_id').in('company_id', paidCos).gt('fit_score', 0),
+  ]) : [{ data: [] }, { data: [] }, { data: [] }];
+  const evBy = new Map<string, { title: string; detail: string | null; actor: string | null; created_at: string }[]>();
+  for (const e of (evs || []) as { company_id: string; title: string; detail: string | null; actor: string | null; created_at: string }[]) {
+    const k = String(e.company_id); const l = evBy.get(k) || [];
+    if (l.length < 4) l.push({ title: e.title, detail: e.detail, actor: e.actor, created_at: e.created_at });
+    evBy.set(k, l);
+  }
+  const finSet = new Set((fins || []).map((f: { company_id: string }) => String(f.company_id)));
+  const mCount = new Map<string, number>();
+  for (const m of (mres || []) as { company_id: string }[]) mCount.set(String(m.company_id), (mCount.get(String(m.company_id)) || 0) + 1);
+
   return NextResponse.json({
     role: who.role,
+    job: who.role === 'admin' ? 'admin' : who.job,
     may_decide: mayDecide,
+    files: Object.fromEntries(paidCos.map((c) => [c, { events: evBy.get(c) || [], has_financials: finSet.has(c), matches: mCount.get(c) || 0 }])),
     requests: (reqs || []).map((r) => {
       const { price, quoted_price, ...rest } = r as Record<string, unknown>;
       // السعر ومبلغ التحويل لمن يقرّر وحده — بهما يطابق التحويل. ورغد لا
@@ -166,6 +186,37 @@ export async function PATCH(req: Request) {
   //   أو رفضُه، أو تأكيدُ تحويله. وذاك صفُّ ضي وحدها بقسمة المالك
   //   (٢٧ سبتمبر). ورغد ترى المكتب لتعرف ملفّاتها المدفوعة وأرقام أصحابها،
   //   ولا تقرّر فيه. ويُمنع هنا لا بإخفاء الزرّ: ما وصل الجهازَ وُصل إليه.
+  // ★ «سجّلي ما تم» على ملفٍّ مدفوع (٣٠ سبتمبر): كان «واقف منذ ٤٣ يوماً» يُحسب من
+  //   آخر تغيّرٍ في الطلب، وعملُ رغد مع الجهات لا يُكتب فيه — فبدا الملف ساكناً
+  //   وهي تعمل. فصار كلُّ ما تسجّله أثراً في خطّ الصفقة يحرّك تاريخ الملف،
+  //   ومعه نقلُه بين «قيد التجهيز» و«قيد المتابعة».
+  {
+    const b0 = await req.clone().json().catch(() => ({} as Record<string, unknown>));
+    if (String(b0?.kind || '') === 'log') {
+      const id = String(b0.id || '');
+      const done = String(b0.done || '').trim().slice(0, 600);
+      const missing = String(b0.missing || '').trim().slice(0, 400);
+      const next = String(b0.next || '').trim().slice(0, 300);
+      const to = String(b0.status || '');
+      if (!id || !done) return NextResponse.json({ error: 'اكتبي ما تمّ على الملف' }, { status: 400 });
+      const sb = admin();
+      const { data: r } = await sb.from('service_requests').select('id, company_id, service_title, status').eq('id', id).maybeSingle();
+      if (!r) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
+      if (!(OPEN_PAID_STATUSES as readonly string[]).includes(String(r.status))) return NextResponse.json({ error: 'هذا الملف ليس ملفاً مدفوعاً مفتوحاً' }, { status: 409 });
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (['in_progress', 'in_follow_up'].includes(to) && to !== r.status) patch.status = to;
+      const { error: uErr } = await sb.from('service_requests').update(patch).eq('id', id);
+      if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
+      const name = who.role === 'admin' ? 'المالك' : (who.email === 'raghad@murdi.sa' ? 'رغد' : who.email === 'dhai@murdi.sa' ? 'ضي' : who.email);
+      await sb.from('deal_events').insert({
+        company_id: r.company_id, kind: 'file_update', title: done.slice(0, 200),
+        detail: [missing ? 'ينقصه: ' + missing : '', next ? 'الخطوة التالية: ' + next : '', 'سجّلته: ' + name].filter(Boolean).join(' · '),
+        actor: who.role === 'admin' ? 'admin' : 'staff', needs_owner: false,
+      });
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   if (who.role !== 'admin' && !decidesAtDesk(who.job)) {
     return NextResponse.json(
       { error: 'هذه الشاشة للاطلاع عندك — اعتمادُ الطلبات وتأكيد التحويلات ليس من عملك' },
