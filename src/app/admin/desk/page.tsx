@@ -159,7 +159,12 @@ export default function DeskPage() {
   //   الذيل أو خارج الشاشة أصلاً. فوقفت خمسةُ ملفّات بين ستة أيام وأربعين
   //   ولم يرها أحد. فصارت تُرفع إلى الرأس، **والأقدمُ سكوناً أولاً**.
   const ACTIVE: readonly string[] = OPEN_PAID_STATUSES
-  const idleDays = (r: Req) => daysAgo(r.updated_at || r.created_at)
+  // السكون من آخر حركةٍ حقيقية: تغيّرُ الطلب أو آخرُ أثرٍ في خطّ الصفقة — أيّهما أحدث
+  const idleDays = (r: Req) => {
+    const ev = files[String(r.company_id)]?.events?.[0]?.created_at
+    const a = r.updated_at || r.created_at
+    return daysAgo(ev && Date.parse(ev) > Date.parse(a) ? ev : a)
+  }
   const active = reqs
     .filter(r => ACTIVE.includes(r.status))
     .sort((a, b) => idleDays(b) - idleDays(a))
