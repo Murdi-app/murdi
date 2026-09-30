@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import AdminNav from '@/components/AdminNav'
 import PushToggle from '@/components/PushToggle'
+import StaffBrief from '@/components/StaffBrief'
 
 // لوحة المتابعة — شاشة من يلاحق مخاطبات الجهات.
 //
@@ -157,6 +158,7 @@ export default function FollowupPage() {
       <AdminNav />
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <PushToggle />
+        <StaffBrief />
 
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#1A3D34', margin: '0 0 4px' }}>
           {'المتابعة'}
