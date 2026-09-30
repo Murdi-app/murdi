@@ -2,6 +2,7 @@
 import AdminNav from '@/components/AdminNav'
 import { OUTCOMES } from '@/lib/outcomes'
 import CallIntake from '@/components/CallIntake'
+import StaffBrief from '@/components/StaffBrief'
 import { useEffect, useMemo, useState } from 'react'
 import { waNumber } from '@/lib/phone'
 
@@ -102,6 +103,7 @@ export default function HotPage() {
         من هو داخل المنصة أصلاً، مرتَّباً بقربه من الدفع. لا اتصال بارد —
         كل اسم هنا عرف مُرضي بنفسه ووقف عند خطوة واحدة.
       </p>
+      <StaffBrief />
 
       {err && (
         <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>

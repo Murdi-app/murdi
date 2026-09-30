@@ -50,7 +50,11 @@ export async function POST(req: Request) {
       + '<p style="color:#9DB3AB;font-size:12px">إن لم تعتمده فلا يُرسل شيء. وللتعديل: ردّ على هذه الرسالة بما تريد تغييره.</p></div>';
     const mail = await sendMail({ from: FROM, to: OWNER, subject: '🗂️ توجيه الموظفتين — بانتظار اعتمادك', html });
     // إشعار الجوال يفتح صفحة الاعتماد نفسها — ضغطةٌ واحدة، لا بحث
-    await sendPush({ title: '🗂️ توجيه الموظفتين جاهز', body: 'اضغط لتراجعه وتعتمده — لا يخرج قبل ضغطتك', url: link, important: true, tag: 'briefs-' + today }, OWNER).catch(() => null);
+    // إشعارٌ من المنصة لكل مسار باسمه — يفتح صفحة الاعتماد، ويخرج وحده ٧:٣٠ إن لم يُعدَّل
+    for (const b of briefs) {
+      const first = b.body.split('\n').map((l) => l.trim()).filter((l) => l && !/،$/.test(l)).slice(0, 2).join(' · ').slice(0, 160);
+      await sendPush({ title: '🗂️ مسار ' + (b.recipient === 'dhai' ? 'ضي' : 'رغد') + ' — توجيه اليوم', body: first + ' — يخرج لها ٧:٣٠', url: link, important: true, tag: 'briefs-' + b.recipient + '-' + today }, OWNER).catch(() => null);
+    }
     if (!mail.ok) await logError('cron.briefs.mail', new Error(mail.reason), {});
     return NextResponse.json({ ok: true, written: briefs.map((b) => ({ to: b.recipient, items: b.items })), mailed: mail.ok });
   } catch (e) {
