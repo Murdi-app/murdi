@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { renderContract, ContractFields, type FeeType } from '@/lib/contracts';
-import { ensureDocument, issuedMessage } from '@/lib/contractFirst';
+import { ensureDocument } from '@/lib/contractFirst';
+import { issueAndSend } from '@/lib/contractIssue';
 
 // آلية الأتعاب تُقرأ من صفوف العقد ذاتها، فنص العقد يتبع الحقول ولا يُكتب يدوياً
 const FEE_COLS = ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr',
@@ -261,10 +262,11 @@ export async function PATCH(req: Request) {
         await admin.from('service_requests').update({ status: 'in_follow_up', updated_at: new Date().toISOString() }).eq('id', row.service_request_id);
       }
       try {
-        const m = await issuedMessage(admin, String(row.service_request_id), 'المالك');
-        return NextResponse.json({ ok: true, message: m.text, link: m.link });
+        // ★ ١ أكتوبر (بإذن المالك): الإصدار يُرسل رسالة العقد للعميل على بريده آلياً
+        const r = await issueAndSend(admin, String(body.id), 'المالك');
+        return NextResponse.json({ ok: true, message: r.message, link: r.link, sent: r.sent, sent_to: r.to || null, send_note: r.sent ? null : r.reason });
       } catch (e) {
-        return NextResponse.json({ ok: true, warn: 'صدر العقد وتعذّر بناء الرسالة — ' + (e instanceof Error ? e.message : '') });
+        return NextResponse.json({ ok: true, warn: 'صدر العقد وتعذّر إرسال رسالته — ' + (e instanceof Error ? e.message : '') });
       }
     }
   }

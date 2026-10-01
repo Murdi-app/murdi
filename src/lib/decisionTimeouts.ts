@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { issueAndSend } from '@/lib/contractIssue';
 
 // ★ ١ أكتوبر (بأمر المالك): لا مهمة تنتظر ردّ المالك. لكل ما ينتظر قراره مهلةٌ وخيارٌ
-//   افتراضيٌّ آمن — **التأجيل** — ويصله إشعارٌ بما حدث مرةً واحدة (`decision_marks`):
-//   · مسودّة عقدٍ لم تُصدر خلال auto_issue_hours (٢٤) ← تبقى مسودّة، ويُذكَّر المالك.
-//     (الإصدار الآلي وإرسال رسالة العقد للعميل لا يقع بلا إذنٍ صريحٍ منه.)
+//   افتراضيٌّ آمن، ويصله إشعارٌ بما حدث مرةً واحدة (`decision_marks`):
+//   · مسودّة عقدٍ لم تُصدر خلال auto_issue_hours (٢٤) ← تُصدر بالقالب المعتمد ونسبتها،
+//     وتخرج رسالة العقد للعميل على بريده (بإذنه الصريح).
 //   · رسالةُ موظفةٍ حرّة «بانتظار الاعتماد» ٢٤ ساعة ← «مؤجّلة» (لا تخرج).
 //   · طلب تشغيل مطابقة ٤٨ ساعة ← لا يُشغَّل.
 //   · بندٌ في «ينتظر كلمتك» (approvals) ٤٨ ساعة ← مؤجَّل بلا تنفيذ.
@@ -11,7 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 //   ويُستثنى بأمره: الاستشارة المجانية (الفجوة) والقوالب الجديدة — تبقى تنتظر اعتماده.
 
 const H = 3600_000;
-export type TimeoutResult = { waiting_contracts: string[]; postponed: string[] };
+export type TimeoutResult = { issued: string[]; postponed: string[] };
 
 async function mark(sb: SupabaseClient, t: string, id: string, action: string, note = ''): Promise<boolean> {
   const { error } = await sb.from('decision_marks').insert({ ref_table: t, ref_id: id, action, note });
@@ -19,15 +20,18 @@ async function mark(sb: SupabaseClient, t: string, id: string, action: string, n
 }
 
 export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
-  const r: TimeoutResult = { waiting_contracts: [], postponed: [] };
+  const r: TimeoutResult = { issued: [], postponed: [] };
   const { data: setting } = await sb.from('fee_settings').select('value').eq('key', 'auto_issue_hours').maybeSingle();
   const autoH = Number(setting?.value ?? 24) || 24;
 
   const { data: drafts } = await sb.from('contracts').select('id, company_id').eq('status', 'draft').lt('updated_at', new Date(Date.now() - autoH * H).toISOString());
   for (const d of drafts || []) {
-    if (!(await mark(sb, 'contracts', String(d.id), 'remind_issue'))) continue;
     const { data: co } = await sb.from('companies').select('company_name').eq('id', d.company_id).maybeSingle();
-    r.waiting_contracts.push(String(co?.company_name || d.id));
+    const name = String(co?.company_name || d.id);
+    try {
+      const x = await issueAndSend(sb, String(d.id), 'مهلة الإصدار ' + autoH + ' ساعة');
+      r.issued.push(name + (x.sent ? ' — صدر وخرجت رسالته إلى ' + x.to : ' — صدر، ولم تخرج الرسالة: ' + (x.reason || '')));
+    } catch (e) { r.issued.push(name + ' — تعذّر: ' + (e instanceof Error ? e.message : e)); }
   }
 
   const { data: msgs } = await sb.from('client_messages').select('id, subject, created_by_name').eq('status', 'بانتظار الاعتماد').lt('created_at', new Date(Date.now() - 24 * H).toISOString());

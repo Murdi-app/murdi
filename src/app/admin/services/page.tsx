@@ -585,7 +585,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       const d = await r.json().catch(() => ({}))
       if (!r.ok) { setCErr(p => ({ ...p, [c.service_request_id]: d.error || 'لم يُحفظ العقد' })); setBusy(''); return }
       if (d.warn) setCErr(p => ({ ...p, [c.service_request_id]: d.warn }))
-      if (status === 'issued' && d.message) setDocMsg(p => ({ ...p, [c.service_request_id]: { issued: d.message, signed: null, blocked: null } }))
+      if (status === 'issued' && d.message) setDocMsg(p => ({ ...p, [c.service_request_id]: { issued: (d.sent ? '✓ أُرسلت للعميل بالبريد إلى ' + d.sent_to + '\n\n' : d.send_note ? '⚠️ لم تُرسل آلياً: ' + d.send_note + ' — أرسلها أنت\n\n' : '') + d.message, signed: null, blocked: null } }))
       if (status === 'completed') {
         await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'completed' }) })
       }

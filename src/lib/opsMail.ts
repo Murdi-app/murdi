@@ -22,9 +22,13 @@ async function seen(sb: SupabaseClient, m: Mail, kind: string, ref: string | nul
 }
 
 export async function watchMail(sb: SupabaseClient): Promise<MailResult> {
-  const r: MailResult = { configured: gmailConfigured(), read: 0, award: 0, entity: 0, inquiry: 0, bounce: 0, etimad: 0, notes: [] };
-  if (!r.configured) return r;
-  const mails = await listInbox(3, 60);
+  if (!gmailConfigured()) return { configured: false, read: 0, award: 0, entity: 0, inquiry: 0, bounce: 0, etimad: 0, notes: [] };
+  return processMails(sb, await listInbox(3, 60));
+}
+
+/** يعالج رسائل واردة — من Gmail API أو من سكربت الصندوق نفسه (`/api/inbound/gmail`) */
+export async function processMails(sb: SupabaseClient, mails: Mail[]): Promise<MailResult> {
+  const r: MailResult = { configured: true, read: 0, award: 0, entity: 0, inquiry: 0, bounce: 0, etimad: 0, notes: [] };
   const { data: done } = await sb.from('mail_seen').select('message_id').in('message_id', mails.map((m) => m.id));
   const doneSet = new Set((done || []).map((d) => d.message_id));
   for (const m of mails.reverse()) {
