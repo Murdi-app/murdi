@@ -63,7 +63,7 @@ export default function IntakePage() {
   })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [out, setOut] = useState<{ link: string; message: string; company: string } | null>(null)
+  const [out, setOut] = useState<{ link: string; message: string; company: string; hold: boolean } | null>(null)
 
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }))
 
@@ -134,7 +134,7 @@ export default function IntakePage() {
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
-      setOut({ link: d.link, message: d.message, company: d.company_name })
+      setOut({ link: d.link, message: d.message, company: d.company_name, hold: !!d.hold })
     } catch (e) { setErr('تعذّر الاتصال: ' + String(e).slice(0, 120)) }
     setBusy(false)
   }
@@ -174,11 +174,12 @@ export default function IntakePage() {
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 19, marginBottom: 8 }}>فُتح ملف {out.company}</div>
             <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 16px' }}>
               أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{quick?.label || 'الفحص الائتماني للمشروع'}</b> بـ٩٩٠ ريال بانتظار دفعه.
-              أرسلي له الرسالة أدناه — يفتح الرابط، يضع كلمة مروره، ويجد بياناته وزرّ الدفع أمامه.
+              {out.hold ? 'وعقد هذه الخدمة يراجعه الدكتور ويُصدره أولاً — لا تُرسلي للعميل شيئاً الآن.' : 'أرسلي له الرسالة أدناه — فيها رابط سند الخدمة، ومنه يرى ما تشمله ويدفع.'}
             </p>
             <textarea readOnly value={out.message} rows={7}
               style={{ ...IN, lineHeight: 1.95, fontSize: 13, resize: 'vertical' }} />
             <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+              {!out.hold && (<>
               <button onClick={() => navigator.clipboard?.writeText(out.message)}
                 style={{ background: GREEN, color: '#fff', border: 'none', padding: '11px 22px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 900, fontSize: 13, cursor: 'pointer' }}>
                 انسخي الرسالة
@@ -188,6 +189,7 @@ export default function IntakePage() {
                 style={{ background: '#25D366', color: '#fff', padding: '11px 22px', borderRadius: 999, fontWeight: 900, fontSize: 13, textDecoration: 'none' }}>
                 أرسليها واتساب
               </a>
+              </>)}
               <button onClick={() => { setOut(null); setWho({ full_name: '', phone: '', email: '', company_name: '', city: '', sector: '' }) }}
                 style={{ background: 'transparent', color: MUTED, border: '1.5px solid #D9E5DF', padding: '11px 22px', borderRadius: 999, fontFamily: 'Cairo', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
                 عميل آخر

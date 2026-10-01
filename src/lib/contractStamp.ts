@@ -11,6 +11,7 @@
 // `STAMP_IMAGE_URL` وحده.
 
 import { LICENCE_NO, CR_NO, ADVISOR_LINE, ADVISOR_LINE_EN } from './legalStance';
+import { MURDI_FONT_IMPORT, MURDI_HEAD_CSS, murdiHeader } from './pdfTemplate';
 
 /** ختمٌ مصوَّر إن وُجد — وإلا رُسم الختم أدناه */
 export const STAMP_IMAGE_URL = '';
@@ -77,8 +78,16 @@ export function studySeal(lang: 'ar' | 'en' = 'ar'): string {
  * يلفّ نصّ العقد بترويسةٍ وختم. والختم يُوضع عند توقيع الطرف الأول —
  * حيث يبحث عنه القارئ — لا في أعلى الصفحة ولا في هامشها.
  */
-export function contractHtml(body: string, title = 'عقد الخدمة'): string {
+/** توقيع الموقّع الإلكتروني — يُطبع تحت العقد إن وُقّع من المنصة */
+export type ContractSignature = { name: string; idNumber: string; at: string };
+
+export function contractHtml(body: string, title = 'عقد الخدمة', signer?: ContractSignature | null): string {
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const signedNote = signer
+    ? '<div class="doc" style="margin-top:14px;padding:10px 14px;border:1.5px solid #2E9E7B;border-radius:10px;font-size:13px">'
+      + 'وقّعه الطرف الثاني إلكترونياً عبر منصة مُرضي: ' + esc(signer.name) + ' · هوية رقم ' + esc(signer.idNumber)
+      + ' · ' + esc(new Date(signer.at).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })) + '</div>'
+    : '';
   const MARK = '\u0000STAMP\u0000';
 
   // موضع الختم: سطر توقيع الطرف الأول. وإن لم يوجد، ذُيّل به العقد.
@@ -88,34 +97,27 @@ export function contractHtml(body: string, title = 'عقد الخدمة'): strin
 
   const [before, after] = text.split(MARK);
 
+  // ★ ١ أكتوبر: بهوية مُرضي من مصدرها (`pdfTemplate`) — كانت للعقد ترويسةٌ خاصة به
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} — مُرضي</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
+${MURDI_FONT_IMPORT}
 @page{size:A4;margin:16mm 15mm}
 *{box-sizing:border-box}
-body{margin:0;font-family:Cairo,system-ui,sans-serif;color:#12302A;background:#F4F7F6;padding:26px 14px 60px}
+body{margin:0;font-family:Cairo,system-ui,sans-serif;color:#1A3D34;background:#F4F7F6;padding:26px 14px 60px}
 .sheet{max-width:860px;margin:0 auto;background:#fff;border:1px solid #E1EDE8;border-radius:14px;padding:30px 30px 34px}
-.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2.5px solid #1A3D34;padding-bottom:12px;margin-bottom:18px}
-.nm{font-size:17px;font-weight:900;color:#1A3D34;line-height:1.5}
-.sub{font-size:11.5px;color:#93A9A1;line-height:1.85;margin-top:3px}
+${MURDI_HEAD_CSS}
 .doc{white-space:pre-wrap;line-height:2;font-size:14px}
 .stamp{margin:14px 0 4px}
 .ft{margin-top:22px;padding-top:10px;border-top:1px solid #EFF5F2;font-size:10.5px;color:#A3B7B0;text-align:center;line-height:1.9}
 @media print{body{background:#fff;padding:0}.sheet{border:0;border-radius:0;padding:0;max-width:none}}
 </style></head><body><div class="sheet">
-<div class="hd">
-  <div>
-    <div class="nm">شركة حلول المرضي للاستشارات المالية</div>
-    <div class="sub">سجل تجاري ${CR_NO} · ترخيص المستشار ${LICENCE_NO}<br>الرياض — المملكة العربية السعودية</div>
-  </div>
-  <div class="sub" style="text-align:left">partners@murdi.sa<br>murdi.sa</div>
-</div>
+${murdiHeader('سجل تجاري ' + CR_NO + ' · ترخيص المستشار رقم ' + LICENCE_NO + ' · partners@murdi.sa')}
 <div class="doc">${before}</div>
 <div class="stamp">${stampBlock()}</div>
 <div class="doc">${after || ''}</div>
+${signedNote || ''}
 <div class="ft">وثيقة صادرة عن شركة حلول المرضي للاستشارات المالية · سرية بين طرفيها</div>
 </div></body></html>`;
 }

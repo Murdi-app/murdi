@@ -8,6 +8,8 @@ import { notifyTeam } from '@/lib/notifyLead';
 import { prettyPhone } from '@/lib/phone';
 import { isPaidStatus } from '@/lib/serviceStatus';
 import { isFrozen } from '@/lib/frozen';
+import { loadFeeSettings, contractFinanceUpfront, CONTRACT_FINANCE } from '@/lib/feeSettings';
+import { ensureDocument } from '@/lib/contractFirst';
 
 // طلب خدمة — يُسعَّر في الخادم لا في المتصفح.
 //
@@ -98,6 +100,14 @@ export async function POST(req: Request) {
   //   فيقف عند المكتب ليُثبَّت نطاقه أولاً.
   if (c?.priceUnit) amount = null;
 
+  // ★ «تمويل العقد»: المقدَّم من إعدادات المالك وبقيمة العقد التي كتبها العميل
+  //   («قيمة عقدك») — تُحفظ على الطلب قيمةَ عقدٍ لا «حجم استثمار».
+  const contractValue = title === CONTRACT_FINANCE ? Number((inputs as Record<string, unknown>)?.totalInvestment || 0) || null : null;
+  if (contractValue) {
+    const fees = await loadFeeSettings(sa).catch(() => null);
+    amount = fees ? contractFinanceUpfront(fees, contractValue) : null;
+  }
+
   // ★ خصم الفحص من الكامل: ما دُفع في الفحص خلال ثلاثين يوماً يُخصم من
   //   سعر الكامل آلياً — كان الخصم زرّاً يدوياً في لوحة المالك، والوعد
   //   مكتوبٌ للعميل «دفعتَ الفرق لا أكثر».
@@ -134,11 +144,23 @@ export async function POST(req: Request) {
       option_key: optionKey,
       client_inputs: inputs,
       credited_from: creditedFrom,
+      contract_value: contractValue,
     })
     .select('id, status, price')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ★ العقد أولاً: المسعَّر تصدر وثيقته الآن — سندٌ للرسم الثابت (فيظهر زرّ الدفع)،
+  //   ومسودّة عقدٍ لما فيه نسبة (يُصدرها المالك، ثم يوقّع العميل، ثم الدفع).
+  //   والتعذّر يُقال للفريق في الإشعار ولا يُخفى: الطلب قائم والوثيقة تُصدر من الشاشة.
+  let docNote = '';
+  if (priced) {
+    try {
+      const d = await ensureDocument(sa, String(row.id));
+      docNote = d.kind === 'contract' ? 'مسودّة عقدٍ بانتظار إصدار المالك' : 'صدر سند الخدمة';
+    } catch (e) { docNote = 'تعذّر إصدار وثيقة الخدمة: ' + (e instanceof Error ? e.message : ''); }
+  }
 
   // ★ الملف الموقوف بأمر المالك يبقى له أن يطلب — وهذا ما يُنتظر منه (الدراسة
   //   الكاملة مثلاً). فيمضي الطلب، ويُعلَّم للمالك أنه من ملفٍ موقوف ليقرّر.
@@ -176,6 +198,7 @@ export async function POST(req: Request) {
       ['الجوال', co.phone ? prettyPhone(co.phone) : ''],
       // الإشعار يصل الفريق كلّه — والسعر لا يُكتب للموظفة (قاعدة المالك)
       ['الحالة', priced ? 'مسعَّر — بانتظار الدفع' : 'بانتظار التسعير'],
+      ['الوثيقة', docNote],
     ],
     url: '/admin/arrivals',
     pushTitle: priced ? '💳 طلب خدمة — مسعَّر آلياً' : '🧾 طلب خدمة يحتاج تسعيرك',

@@ -140,7 +140,10 @@ export default function UqudEntryPage() {
   const hasContract = stage !== null && stage !== 'none';
   const val = valIdx === null ? null : VALUES[valIdx];
   const ready = hasContract && val !== null && party !== null && term !== null;
-  const price = val ? priceFor(SERVICE, val.value) : null;
+  // المقدَّم من إعدادات المالك (`/api/pricing`) — والمكتوب في سجلّ الأسعار افتراضيٌّ إن تعذّرت
+  const [tiers, setTiers] = useState<{ upTo: number | null; price: number }[] | null>(null);
+  useEffect(() => { fetch('/api/pricing').then((r) => r.json()).then((d) => { if (Array.isArray(d?.contract_finance_tiers)) setTiers(d.contract_finance_tiers); }).catch(() => {}); }, []);
+  const price = val ? priceFor(SERVICE, val.value, tiers) : null;
 
   const submit = async () => {
     setErr(''); setBusy(true);

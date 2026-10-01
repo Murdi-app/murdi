@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { renderContract, ContractFields, type FeeType } from '@/lib/contracts';
+import { ensureDocument, issuedMessage } from '@/lib/contractFirst';
 
 // آلية الأتعاب تُقرأ من صفوف العقد ذاتها، فنص العقد يتبع الحقول ولا يُكتب يدوياً
 const FEE_COLS = ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr',
@@ -20,6 +21,7 @@ function toFields(r: Record<string, unknown>): ContractFields {
     feeType: (r.fee_type as FeeType) || 'deferred',
     fixedAmount: r.fixed_amount as number,
     successMin: r.success_min as number,
+    contractValue: r.deal_value as number,
   };
 }
 
@@ -67,14 +69,27 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { serviceRequestId, companyId, contractType } = body;
 
+  // ★ ١ أكتوبر: لطلب خدمةٍ — المسودّة من مصدرها الواحد (`ensureDocument`): النسبة
+  //   الافتراضية من إعدادات المالك، والمقدَّم من سعر الطلب، وقيمة العقد منه.
+  if (serviceRequestId) {
+    try {
+      const d = await ensureDocument(admin, String(serviceRequestId));
+      const { data: row } = await admin.from('contracts').select('*').eq('id', d.id).single();
+      return NextResponse.json({ ok: true, contract: row, existed: !d.created });
+    } catch (e) {
+      return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّر إنشاء المسودّة' }, { status: 500 });
+    }
+  }
+
   // ثلاثة من حقول العقد الأربعة موجودة في جدول المنشآت منذ التسجيل،
   // وكانت المسودّة تخرج بخانات نقاط تُملأ يدوياً في كل عقد. الآن تُقرأ.
   const { data: co } = await admin.from('companies')
     .select('company_name, company_name_en, cr_number, owner_name, owner_name_en, owner_id_number')
     .eq('id', companyId).maybeSingle();
   const party: Record<string, unknown> = {
-    client_name: co?.owner_name || null,
-    client_id_number: co?.owner_id_number || null,
+    // اسم الموقّع وهويته نقاطٌ يكتبها هو — من سجّل قد يكون موظفاً لا المالك
+    client_name: null,
+    client_id_number: null,
     establishment_name: co?.company_name || null,
     establishment_cr: co?.cr_number || null,
   };
@@ -158,7 +173,8 @@ export async function PATCH(req: Request) {
       const ft = String(merged.fee_type || 'percent');
       if (ft === 'percent') merged.fixed_amount = null;
       if (ft === 'fixed')   merged.fee_percent  = null;
-    } else {
+    } else if (!['deferred', 'staged'].includes(String(merged.fee_type))) {
+      // المؤجَّل والمرحلي لهما مقدَّمٌ ونسبة/دفعتان بطبيعتهما — لا يُقلبان «both» بتعديل رقم
       const hasFixed = n(merged.fixed_amount) > 0;
       const hasPct   = n(merged.fee_percent)  > 0;
       merged.fee_type = hasFixed && hasPct ? 'both' : hasFixed ? 'fixed' : 'percent';
@@ -180,9 +196,10 @@ export async function PATCH(req: Request) {
     //   ويُطبعان، و**من يمثّلها في التوقيع وهويته يُكتبان بخطّ يده عند
     //   التوقيع**. وكان اشتراطُهما يوقف إصدار عقدٍ جاهزٍ لعميلٍ دفع، لمجرّد
     //   أننا لم نجمع رقم هويته بعد — وهو رقمٌ يُكتب في ثانيةٍ على الورقة.
+    // ★ ١ أكتوبر: السجل التجاري يُطبع إن كان مسجّلاً وإلا يبقى نقاطاً يكتبها الموقّع —
+    //   فلم يعد شرطاً للإصدار؛ ومثله اسم الموقّع وهويته.
     const LABEL: Record<string, string> = {
       establishment_name: 'اسم المنشأة',
-      establishment_cr: 'رقم السجل التجاري',
     };
     const missing = Object.keys(LABEL).filter(k => !String(merged[k] ?? '').trim());
 
@@ -232,6 +249,25 @@ export async function PATCH(req: Request) {
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
   const { error } = await admin.from('contracts').update(updates).eq('id', body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ★ الإصدار يُخرج الرسالة الأولى برابط العقد القصير — يرسلها المالك أو الفريق.
+  //   والطلب لا يُنقل إلى «المتابعة» إلا إن كان مدفوعاً (المسار القديم: دفعٌ ثم عقد)؛
+  //   أما المسعَّر فيبقى «مسعَّراً» حتى يوقّع العميل ثم يدفع — وإلا أُقفل دفعه.
+  if (body.status === 'issued') {
+    const { data: row } = await admin.from('contracts').select('service_request_id').eq('id', body.id).maybeSingle();
+    if (row?.service_request_id) {
+      const { data: sr } = await admin.from('service_requests').select('status, paid_at').eq('id', row.service_request_id).maybeSingle();
+      if (sr?.paid_at && !['in_follow_up', 'delivered', 'completed'].includes(String(sr.status))) {
+        await admin.from('service_requests').update({ status: 'in_follow_up', updated_at: new Date().toISOString() }).eq('id', row.service_request_id);
+      }
+      try {
+        const m = await issuedMessage(admin, String(row.service_request_id), 'المالك');
+        return NextResponse.json({ ok: true, message: m.text, link: m.link });
+      } catch (e) {
+        return NextResponse.json({ ok: true, warn: 'صدر العقد وتعذّر بناء الرسالة — ' + (e instanceof Error ? e.message : '') });
+      }
+    }
+  }
 
   // رقم الهوية يُكتب مرة ويُحفظ على المنشأة، فلا يُطلب مرة أخرى في العقد القادم
   if (body.client_id_number && String(body.client_id_number).trim()) {

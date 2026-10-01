@@ -494,9 +494,14 @@ export const COMMERCIAL: Record<string, ServiceCommercial> = {
   },
 };
 
-export function priceFor(title: string, investment?: number): { amount: number | null; label: string } {
-  const c = COMMERCIAL[title];
-  if (!c) return { amount: null, label: 'بعرض خاص' };
+/**
+ * `tiersOverride`: شرائحُ من إعدادات المالك (`fee_settings`) تتقدّم على المكتوبة هنا.
+ * المكتوبة هنا هي الافتراضي وحده — والخادم يسعّر بالإعدادات دائماً (`@/lib/feeSettings`).
+ */
+export function priceFor(title: string, investment?: number, tiersOverride?: PriceTier[] | null): { amount: number | null; label: string } {
+  const base = COMMERCIAL[title];
+  if (!base) return { amount: null, label: 'بعرض خاص' };
+  const c = tiersOverride && tiersOverride.length ? { ...base, tiers: tiersOverride } : base;
   if (c.tiersBy === 'investment' && c.tiers) {
     if (!investment || investment <= 0) {
       return { amount: null, label: 'من ' + c.tiers[0].price.toLocaleString('en-US') + ' ريال — أدخل ' + (c.tierAsk || 'حجم استثمارك') + ' ليظهر سعرك' };
@@ -548,8 +553,9 @@ export const FEASIBILITY_QUICK = () => listedPrice('دراسة الجدوى ال
 //   ما سعره لوحدةٍ بعدد الوحدات (السنوات) · وما لا سعر معلن له يُردّ للدكتور.
 export interface IntakeQuote { amount: number | null; label: string; needs?: 'value' | 'units'; ask?: string; error?: string }
 
-export function intakeQuote(title: string, optionKey?: string | null, value?: number, units?: number): IntakeQuote {
-  const c = COMMERCIAL[title];
+export function intakeQuote(title: string, optionKey?: string | null, value?: number, units?: number, tiersOverride?: PriceTier[] | null): IntakeQuote {
+  const base = COMMERCIAL[title];
+  const c = base && tiersOverride?.length ? { ...base, tiers: tiersOverride } : base;
   if (!c) return { amount: null, label: '', error: 'خدمة غير معروفة' };
   const opt = optionKey ? c.options?.find((o) => o.key === optionKey) : undefined;
   if (optionKey && c.options?.length && !opt) return { amount: null, label: '', error: 'خيار غير معروف لهذه الخدمة' };

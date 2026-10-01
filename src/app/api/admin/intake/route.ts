@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { waNumber } from '@/lib/phone';
-import { priceFor, COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing';
+import { COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing';
+import { loadFeeSettings, CONTRACT_FINANCE } from '@/lib/feeSettings';
+import { ensureDocument, issuedMessage } from '@/lib/contractFirst';
+import { sendPush } from '@/lib/push';
+import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { asOwnership, asRoute } from '@/lib/ownership';
 import { canonicalTitle, CATALOG } from '@/lib/serviceCatalog';
 import { isPaidStatus } from '@/lib/serviceStatus';
@@ -87,7 +91,6 @@ export async function POST(req: Request) {
   }
 
   const sb = admin();
-  const origin = new URL(req.url).origin;
 
   // ═══ الحساب ═══
   // من سبق أن سجّل ببريده لا يُفتح له ثانٍ — يُستعمل حسابه القائم، ويُرسل
@@ -143,8 +146,11 @@ export async function POST(req: Request) {
 
   // ═══ الطلب — مسعَّراً من الخادم لا من الواجهة ═══
   // السعر من الخادم وحده. والجدوى يُسعَّر مدرَّجها بحجم الاستثمار من أرقام المشروع إن كُتبت.
+  // ★ «تمويل العقد» يُسعَّر مقدَّمه من إعدادات المالك وبقيمة العقد الفعلية (`value`)
+  const fees = await loadFeeSettings(sb).catch(() => null);
+  const isCF = title === CONTRACT_FINANCE;
   const quote = intakeQuote(title, optionKey, kind === 'feasibility' && inputs.capex + inputs.workingCapital > 0
-    ? inputs.capex + inputs.workingCapital : value, units);
+    ? inputs.capex + inputs.workingCapital : value, units, isCF ? fees?.cfUpfront : null);
   if (quote.amount === null || quote.amount <= 0) {
     return NextResponse.json({ error: quote.error || 'لا سعر معلن — حوّليه للدكتور' }, { status: 400 });
   }
@@ -190,7 +196,7 @@ export async function POST(req: Request) {
   const stale = (pricedRows || []).filter((r) => r.id !== open?.id).map((r) => r.id);
   if (stale.length > 0) await sb.from('service_requests').update({ status: 'cancelled' }).in('id', stale);
   // المسعَّر للخيار نفسه يُعاد بسعره الجديد (سنواتٌ أكثر أو قيمة عقدٍ أخرى)
-  if (open) await sb.from('service_requests').update({ price: amount, quoted_price: amount, priced_at: new Date().toISOString() }).eq('id', open.id);
+  if (open) await sb.from('service_requests').update({ price: amount, quoted_price: amount, priced_at: new Date().toISOString(), ...(isCF && value > 0 ? { contract_value: value } : {}) }).eq('id', open.id);
 
   let requestId = open?.id as string | undefined;
   if (!requestId) {
@@ -199,6 +205,7 @@ export async function POST(req: Request) {
       service_category: CATALOG.find((cat) => cat.items.includes(title))?.label || null,
       status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
       option_key: optionKey, credited_from: creditedFrom,
+      ...(isCF && value > 0 ? { contract_value: value } : {}),
       client_inputs: kind === 'feasibility'
         ? { option: optionKey, totalInvestment: inputs.capex + inputs.workingCapital, projectKind: 'new' }
         : { option: optionKey, ...(value > 0 ? { totalInvestment: value } : {}), ...(units > 0 ? { years: units } : {}) },
@@ -214,76 +221,31 @@ export async function POST(req: Request) {
     updated_by: who.email, updated_at: new Date().toISOString(),
   }, { onConflict: 'service_request_id' });
 
-  // ═══ الرابط ═══
+  // ═══ الوثيقة قبل الدفع (١ أكتوبر) ═══
   //
-  // عيبان كانا هنا، وكلاهما يجعل الرابط لا يعمل إطلاقاً:
-  //
-  // ١) كان النوع «دعوة» لمن أُنشئ حسابه الآن. و«الدعوة» تُصدَر لمن لا حساب
-  //    له، ونحن أنشأناه قبل سطور — فتُرَدّ «مسجَّل مسبقاً»، ويسقط الرابط
-  //    إلى صفحة الدخول العامة. والصواب «استرجاع» في الحالين: هي التي تُنهي
-  //    بتعيين كلمة مرور، وهي ما يحتاجه من لا كلمة له ومن نسيها سواء.
-  //
-  // ٢) وكان يُوجَّه إلى /goal مباشرة. والرابط يحمل رمزاً لا بد أن يُبادَل
-  //    بجلسة في /auth/callback؛ فمن ينزل على /goal دونه يصل بلا جلسة
-  //    فيُطرد إلى الدخول — ولا يضع كلمة مرور أصلاً، فلا يعود يدخل أبداً.
-  //
-  // فالمسار الآن كمسار استعادة كلمة المرور في المنصة حرفاً بحرف:
-  // callback يُبادل الرمز ← update-password يضع كلمته ← خدماته وفيها طلبه.
-  const after = '/auth/update-password?next=' + encodeURIComponent('/goal?tab=services');
-  const redirectTo = origin + '/auth/callback?next=' + encodeURIComponent(after);
+  // كانت الرسالة تحمل رابط الدفع ورابط supabase طويلاً لكلمة المرور — والعميل
+  // يدفع قبل أن يرى عقداً. فصار: ما فيه نسبة ← مسودّة عقدٍ يراجعها الدكتور
+  // ويُصدرها ثم تخرج الرسالة؛ وما برسمٍ ثابت ← سند خدمةٍ يصدر الآن، والرسالة
+  // تحمل رابطه القصير (وفيه رابط السداد ورابط المنصة). ولا رابط طويل للعميل.
+  let doc: Awaited<ReturnType<typeof ensureDocument>>;
+  try { doc = await ensureDocument(sb, String(requestId)); }
+  catch (e) { return NextResponse.json({ error: 'فُتح ملفه وتعذّر إصدار وثيقة الخدمة — ' + (e instanceof Error ? e.message : '') + '. راجعي الدكتور قبل أن ترسلي له شيئاً.' }, { status: 502 }); }
+
+  let message = '';
   let link = '';
-  let linkErr = '';
-  try {
-    const { data: gen, error: gErr } = await sb.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: { redirectTo },
-    });
-    link = String(gen?.properties?.action_link || '');
-    if (gErr) linkErr = gErr.message;
-  } catch (e) { linkErr = String(e).slice(0, 120); }
-
-  // ★ رابط الدفع أولاً، ورابط الحساب بعده. كان الدفع لا يكون إلا بعد أن
-  //   يفتح العميل الرابط ويضع كلمة مرور ويدخل — ثلاث خطوات بين «نعم» والتحويل،
-  //   ويسقط أكثرهم عندها. فالرابط الأول يُريه المبلغ ويقبل إيصاله بلا تسجيل
-  //   (/api/payments/link)، والثاني لمن أراد أن يرى ملفه بعد ذلك.
-  const { data: tok } = await sb.from('service_requests').select('pay_token').eq('id', requestId).maybeSingle();
-  const payLink = tok?.pay_token ? origin + '/pay/transfer?t=' + tok.pay_token : '';
-  if (!payLink) {
-    return NextResponse.json({ error: 'فُتح ملفه لكن تعذّر توليد رابط الدفع. راجعي الدكتور قبل أن ترسلي له شيئاً.' }, { status: 502 });
+  let hold = false;
+  if (doc.kind === 'contract') {
+    hold = true;
+    message = 'عقد «' + title + '» مسودّةٌ بانتظار مراجعة الدكتور وإصداره — لا يُرسل للعميل شيءٌ الآن. '
+      + 'يصل الدكتورَ إشعارٌ بالمسودّة، وحين يُصدرها تخرج رسالة العميل ومعها رابط العقد.';
+    await sendPush({
+      title: '📄 عقدٌ ينتظر إصدارك', body: companyName + ' — ' + title + ' · راجع النسبة والمقدَّم ثم أصدره',
+      url: '/admin/services', important: true, tag: 'contract-draft-' + requestId,
+    }, OWNER_EMAIL).catch(() => null);
+  } else {
+    try { const m = await issuedMessage(sb, String(requestId), who.email); message = m.text; link = m.link; }
+    catch (e) { return NextResponse.json({ error: 'صدر السند وتعذّر بناء الرسالة — ' + (e instanceof Error ? e.message : '') }, { status: 502 }); }
   }
-  const accountLine = link ? 'ولمتابعة ملفك لاحقاً في المنصة (تضع كلمة مرورك من هذا الرابط):\n' + link + '\n\n' : '';
-  if (!link && linkErr) console.warn('intake: recovery link failed', linkErr);
-
-  const sign = (who.role === 'admin' ? 'د. عبدالحكيم المرضي' : 'فريق الدكتور عبدالحكيم المرضي')
-    + '\nمُرضي للاستشارات المالية';
-  const tier = priceFor(title, inputs.capex + inputs.workingCapital);
-  const full = tier.amount != null ? tier.amount.toLocaleString('en-US') + ' ريال' : 'بعرض خاص';
-  const fullFunding = COMMERCIAL[title]?.options?.find((o) => o.key === 'full')?.price;
-
-  // ما يصله بعد التأكيد — بنصّ كل خدمة؛ وما لا نصّ خاصاً له يُقال عامّاً
-  const deliverLine =
-    title === FUNDING_TITLE && optionKey === 'quick'
-      ? 'ويصلك خلال ساعات من تأكيد التحويل: حكمٌ صريح هل ملفك قابل للتمويل الآن، والجهات التي تنطبق شروطها عليك بأسمائها، وما ينقصك عند كل واحدة.\n\n'
-        + (typeof fullFunding === 'number' ? 'وقيمته تُخصم بالكامل من تجهيز الملف والمخاطبة (' + fullFunding.toLocaleString('ar-SA') + ' ريال) إن أكملته خلال ثلاثين يوماً.\n\n' : '')
-    : title === FUNDING_TITLE
-      ? 'ونبدأ فور تأكيد التحويل: بناء ملفك التمويلي، ثم مخاطبة الجهات المناسبة ومتابعتها حتى القرار.\n\n'
-    : kind === 'feasibility' && optionKey === 'quick'
-      ? 'ويصلك خلال ساعات من تأكيد التحويل: صفحة القرار والمؤشرات المالية، وتغطية خدمة الدين وسيناريوهات الضغط، '
-        + 'وحدود الأمان ونقطة التعادل وأعمق نقطة سيولة يمرّ بها مشروعك.\n\n'
-        + 'وقيمته تُخصم بالكامل من الدراسة الاقتصادية والائتمانية الكاملة (' + full + ') إن أكملتها خلال ثلاثين يوماً.\n\n'
-      : 'ونبدأ العمل فور تأكيد التحويل، ونتواصل معك بما نحتاجه منك وموعد التسليم'
-        + (COMMERCIAL[title]?.days ? ' (المدة المعتادة: ' + COMMERCIAL[title]?.days + ')' : '') + '.\n\n';
-
-  const message =
-    'أهلاً ' + fullName + '،\n\n'
-    + '«' + (opt?.label || title) + '» بـ' + amount.toLocaleString('ar-SA') + ' ريال'
-    + (creditedFrom ? ' (بعد خصم ما دفعته في الخطوة الأولى)' : '') + '.\n'
-    + 'رابط الدفع — فيه المبلغ وحساب التحويل وخانة الإيصال، بلا تسجيل:\n'
-    + payLink + '\n\n'
-    + deliverLine
-    + accountLine
-    + 'وإن احتجت أي شيء فأنا معك.\n' + sign;
 
   await sb.from('deal_events').insert({
     company_id: companyId, kind: 'service',
@@ -293,7 +255,7 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({
-    ok: true, link, pay_link: payLink, message, company_name: companyName, request_id: requestId, existing: !isNew,
+    ok: true, link, hold, message, company_name: companyName, request_id: requestId, existing: !isNew,
     service_label: opt?.label || title, amount,
   });
 }

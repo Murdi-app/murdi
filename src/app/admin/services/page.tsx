@@ -3,11 +3,12 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
-import { COMMISSION_SERVICES, CONTRACT_BEFORE_PAYMENT, CONTRACT_LABEL, type ContractType } from '@/lib/contracts'
+import { COMMISSION_SERVICES, CONTRACT_LABEL, type ContractType } from '@/lib/contracts'
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
 import { canonicalTitle, displayName } from '@/lib/serviceCatalog'
 import FeasibilityIntake from '@/components/FeasibilityIntake'
 import ContractIntake from '@/components/ContractIntake'
+import FeeSettingsPanel from '@/components/FeeSettingsPanel'
 import { SERVICES } from '@/lib/serviceSuggestion'
 import { ACTIVITIES, fieldsFor } from '@/lib/financialActivities'
 import { buildPdfHtml } from '@/lib/pdfTemplate'
@@ -86,6 +87,17 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   const [edits, setEdits] = useState<Record<string, { deliverable: string; price: string }>>({})
   const [contracts, setContracts] = useState<Record<string, any>>({})
   const [cEdits, setCEdits] = useState<Record<string, any>>({})
+  // رسالتا الطلب (العقد/السند ثم السداد) كما يبنيهما الخادم — للنسخ والإرسال
+  const [docMsg, setDocMsg] = useState<Record<string, { issued: string | null; signed: string | null; blocked: string | null }>>({})
+  const [cErr, setCErr] = useState<Record<string, string>>({})
+  async function loadDocMsg(srId: string) {
+    try {
+      const r = await fetch('/api/admin/doc-message?sr=' + encodeURIComponent(srId))
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setCErr(p => ({ ...p, [srId]: d.error || 'تعذّر بناء الرسالة' })); return }
+      setDocMsg(p => ({ ...p, [srId]: { issued: d.issued, signed: d.signed, blocked: d.blocked } }))
+    } catch { setCErr(p => ({ ...p, [srId]: 'انقطع الاتصال — لم تُبنَ الرسالة' })) }
+  }
   const [integrity, setIntegrity] = useState<Record<string, any>>({})
   const [fixEdits, setFixEdits] = useState<Record<string, any>>({})
   const [inputsOpen, setInputsOpen] = useState<Record<string, boolean>>({})
@@ -547,28 +559,37 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   }
 
   async function saveContract(c: any, status?: string) {
-    setBusy(c.service_request_id)
+    setBusy(c.service_request_id); setCErr(p => ({ ...p, [c.service_request_id]: '' }))
     const e = cEdits[c.id] || {}
     const pick = (k: string) => e[k] !== undefined ? e[k] : c[k]
     const numOrNull = (k: string) => { const v = pick(k); return v === '' || v === null || v === undefined ? null : Number(v) }
-    // نص العقد لا يُرسل: الخادم يعيد توليده من الحقول، فلا يفترق النص عن الأرقام أبداً
-    await fetch('/api/admin/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      id: c.id,
-      client_name: pick('client_name'), client_id_number: pick('client_id_number'),
-      establishment_name: pick('establishment_name'), establishment_cr: pick('establishment_cr'),
-      fee_type: pick('fee_type') || 'deferred',
-      fee_percent: numOrNull('fee_percent'),
-      fixed_amount: numOrNull('fixed_amount'),
-      success_min: numOrNull('success_min'),
-      success_base: pick('success_base') || null,
-      status,
-    }) })
-    if (status === 'issued') {
-      await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'in_follow_up' }) })
-    }
-    if (status === 'completed') {
-      await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'completed' }) })
-    }
+    try {
+      // قيمة العقد على الطلب أولاً: منها يُعاد مقدَّم «تمويل العقد» وتتبعه المسودّة
+      if (e.deal_value !== undefined) {
+        const r0 = await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, contract_value: e.deal_value }) })
+        if (!r0.ok) { const d0 = await r0.json().catch(() => ({})); setCErr(p => ({ ...p, [c.service_request_id]: 'لم تُحفظ قيمة العقد — ' + (d0.error || r0.status) })); setBusy(''); return }
+      }
+      // نص العقد لا يُرسل: الخادم يعيد توليده من الحقول، فلا يفترق النص عن الأرقام أبداً.
+      // واسم الموقّع وهويته لا يُرسلان: يكتبهما الموقّع بنفسه عند التوقيع.
+      const r = await fetch('/api/admin/contracts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        id: c.id,
+        establishment_name: pick('establishment_name'), establishment_cr: pick('establishment_cr'),
+        fee_type: pick('fee_type') || 'deferred',
+        fee_percent: numOrNull('fee_percent'),
+        fixed_amount: e.deal_value !== undefined && e.fixed_amount === undefined ? undefined : numOrNull('fixed_amount'),
+        success_min: numOrNull('success_min'),
+        success_base: pick('success_base') || null,
+        deal_value: numOrNull('deal_value'),
+        status,
+      }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setCErr(p => ({ ...p, [c.service_request_id]: d.error || 'لم يُحفظ العقد' })); setBusy(''); return }
+      if (d.warn) setCErr(p => ({ ...p, [c.service_request_id]: d.warn }))
+      if (status === 'issued' && d.message) setDocMsg(p => ({ ...p, [c.service_request_id]: { issued: d.message, signed: null, blocked: null } }))
+      if (status === 'completed') {
+        await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.service_request_id, status: 'completed' }) })
+      }
+    } catch { setCErr(p => ({ ...p, [c.service_request_id]: 'انقطع الاتصال — لم يُحفظ' })) }
     await load()
     setBusy('')
   }
@@ -589,6 +610,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
       <div style={{ maxWidth:900, margin:'0 auto', padding:'32px 24px' }}>
         <h1 style={{ fontSize:24, fontWeight:900, color:'#1A3D34', marginBottom:6 }}>طلبات الخدمات</h1>
         <p style={{ color:'#6B8A80', fontSize:14, fontWeight:600, marginBottom:16 }}>جهّز الخدمة، حدّد السعر بعد التفاوض، ثم أصدرها للعميل</p>
+        <FeeSettingsPanel />
 
         {!addOpen && (
           <button onClick={openAdd} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'10px 22px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:24 }}>➕ إنشاء طلب خدمة نيابةً عن العميل</button>
@@ -793,8 +815,21 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   <button onClick={() => savePitchNums(r.id, r.company_id)} disabled={busy === 'pn' + r.id} style={{ marginTop:10, background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'pn' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ أرقام العرض'}</button>
                 </div>
               )}
+              {/* سند الخدمة (الرسم الثابت): يصدر آلياً مع التسعير، ورسالته من هنا */}
+              {!COMMISSION_SERVICES[r.service_title] && r.status === 'priced' && (
+                <div style={{ marginBottom:12 }}>
+                  <button onClick={() => loadDocMsg(r.id)} style={{ background:'#fff', color:'#1A3D34', border:'1.5px solid #1A3D34', padding:'7px 16px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12, cursor:'pointer' }}>💬 رسالة سند الخدمة للعميل</button>
+                  {cErr[r.id] && <div style={{ color:'#A8342A', fontSize:12, fontWeight:800, marginTop:6 }}>{cErr[r.id]}</div>}
+                  {docMsg[r.id] && (
+                    <div style={{ display:'grid', gap:8, marginTop:8 }}>
+                      {docMsg[r.id].issued && <textarea readOnly value={docMsg[r.id].issued || ''} rows={7} style={{ width:'100%', border:'1.5px solid #BFE0D3', borderRadius:10, padding:10, fontFamily:'Cairo', fontSize:12.5, lineHeight:1.9 }} />}
+                      {docMsg[r.id].blocked && <div style={{ color:'#9A7B2E', fontSize:12, fontWeight:800 }}>{docMsg[r.id].blocked}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
               {/* «تمويل العقد» صار له عقد (١ أكتوبر) ويبقى له زرّ التجهيز: مخرَجه ملف العقد الائتماني */}
-              {(!COMMISSION_SERVICES[r.service_title] || CONTRACT_BEFORE_PAYMENT.has(r.service_title) || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
+              {(!COMMISSION_SERVICES[r.service_title] || r.service_title === 'تمويل العقد' || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               {r.service_title === 'إعداد القوائم المالية المعتمدة' && (
@@ -1004,8 +1039,9 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       <span style={{ fontSize:12, fontWeight:700, color:'#6B8A80' }}>{cStat[c.status] || c.status}</span>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>
-                      <input value={val('client_name')} onChange={e=>setC('client_name', e.target.value)} placeholder="اسم العميل (الطرف الثاني)" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
-                      <input value={val('client_id_number')} onChange={e=>setC('client_id_number', e.target.value)} placeholder="رقم الهوية" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
+                      <div style={{ gridColumn:'1 / -1', color:'#6B8A80', fontSize:11.5, fontWeight:700 }}>اسم الموقّع ورقم هويته يبقيان نقاطاً يكتبهما هو عند التوقيع — من سجّل قد يكون موظفاً لا المالك.{c.signer_name ? ' وقّعه: ' + c.signer_name + ' · ' + (c.signer_id_number || '') : ''}</div>
+                      <input value={val('deal_value')} onChange={e=>setC('deal_value', e.target.value)} type="number" placeholder="قيمة العقد محلّ الخدمة (ريال)" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
+                      <div style={{ color:'#9DB3AB', fontSize:11, fontWeight:700, alignSelf:'center' }}>{c.contract_type === 'contract_finance' ? 'منها يُحسب المقدَّم من إعداداتك' : 'تُطبع في التمهيد إن كُتبت'}</div>
                       <input value={val('establishment_name')} onChange={e=>setC('establishment_name', e.target.value)} placeholder="اسم المنشأة" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                       <input value={val('establishment_cr')} onChange={e=>setC('establishment_cr', e.target.value)} placeholder="السجل التجاري" style={{ border:'1.5px solid #EAF2EE', borderRadius:10, padding:'8px 12px', fontFamily:'Cairo', fontSize:12.5 }} />
                     </div>
@@ -1064,6 +1100,19 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                       {(c.status === 'signed' || c.status === 'issued') && <button onClick={() => saveContract(c, 'completed')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>🏆 إتمام (استحقاق العمولة)</button>}
                     </div>
                     {c.signed_file_url && <a href={'/api/contract-file?redirect=1&id=' + c.id} target="_blank" rel="noopener noreferrer" style={{ display:'inline-block', marginTop:8, color:'#2E9E7B', fontWeight:700, fontSize:12.5 }}>📎 عرض النسخة الموقّعة من العميل</a>}
+                    {cErr[r.id] && <div style={{ background:'#FDECEA', color:'#A8342A', borderRadius:10, padding:'8px 12px', fontSize:12.5, fontWeight:800, marginTop:8 }}>{cErr[r.id]}</div>}
+                    {c.status !== 'draft' && (
+                      <div style={{ marginTop:10 }}>
+                        <button onClick={() => loadDocMsg(r.id)} style={{ background:'#fff', color:'#1A3D34', border:'1.5px solid #1A3D34', padding:'7px 16px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:12, cursor:'pointer' }}>💬 رسالتا العميل (العقد · السداد)</button>
+                      </div>
+                    )}
+                    {docMsg[r.id] && (
+                      <div style={{ display:'grid', gap:8, marginTop:8 }}>
+                        {docMsg[r.id].issued && <textarea readOnly value={docMsg[r.id].issued || ''} rows={7} style={{ width:'100%', border:'1.5px solid #BFE0D3', borderRadius:10, padding:10, fontFamily:'Cairo', fontSize:12.5, lineHeight:1.9 }} />}
+                        {docMsg[r.id].signed && <textarea readOnly value={docMsg[r.id].signed || ''} rows={6} style={{ width:'100%', border:'1.5px solid #BFE0D3', borderRadius:10, padding:10, fontFamily:'Cairo', fontSize:12.5, lineHeight:1.9 }} />}
+                        {docMsg[r.id].blocked && <div style={{ color:'#9A7B2E', fontSize:12, fontWeight:800 }}>رسالة السداد: {docMsg[r.id].blocked}</div>}
+                      </div>
+                    )}
                   </div>
                 )
                 })()}

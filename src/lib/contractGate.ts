@@ -1,20 +1,26 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CONTRACT_BEFORE_PAYMENT } from '@/lib/contracts';
+import { needsSignedContract } from '@/lib/contracts';
 
-// ★ ١ أكتوبر — لا يُفتح دفع خدمةٍ عقدُها شرطٌ قبل أن يوقّعه العميل.
-//   وصلت فاتورة «تمويل العقد» عميلاً بلا عقد، فسأل بحقّ: كيف أدفع ولا أعرف
-//   ما تلتزمون به وما ألتزم به؟ والحارس هنا لبابَي الدفع (التحويل · الرابط)،
-//   والشاشة تقرأ القاعدة نفسها من `CONTRACT_BEFORE_PAYMENT`.
+// ★ ١ أكتوبر — لا يُفتح دفعٌ قبل وثيقته، في كل الخدمات:
+//   · ما فيه أتعاب استكمال (نسبة): عقدٌ **موقَّع**.
+//   · ما برسمٍ ثابت: سند خدمةٍ **صادر**.
+//   وصلت فاتورة «تمويل العقد» عميلاً بلا عقد فسأل بحقّ: كيف أدفع ولا أعرف ما
+//   تلتزمون به وما ألتزم به؟ والحارس هنا لبابَي الدفع (التحويل · الرابط)، وشاشة
+//   العميل تقرأ القاعدة نفسها (`needsSignedContract`).
 
 export const CONTRACT_FIRST_MSG =
-  'عقد هذه الخدمة يصلك قبل الدفع — وقّعه من لوحتك في المنصة (murdi.sa/goal) أولاً، ثم يُفتح الدفع. وللاستفسار واتساب 0570749196';
+  'عقد هذه الخدمة يصلك قبل الدفع — وقّعه من الرابط الذي يصلك منّا أو من لوحتك في المنصة، ثم يُفتح الدفع. وللاستفسار واتساب 0570749196';
+export const VOUCHER_FIRST_MSG =
+  'سند هذه الخدمة لم يصدر بعد — يصلك قبل الدفع. وللاستفسار واتساب 0570749196';
 
-/** رسالة المنع إن كان الدفع مقفلاً حتى التوقيع، وإلا null */
+/** رسالة المنع إن كان الدفع مقفلاً، وإلا null */
 export async function contractGate(sb: SupabaseClient, sr: { id: string; service_title?: string | null }): Promise<string | null> {
-  if (!CONTRACT_BEFORE_PAYMENT.has(String(sr.service_title || ''))) return null;
-  const { data, error } = await sb.from('contracts').select('id')
-    .eq('service_request_id', sr.id).eq('status', 'signed').limit(1).maybeSingle();
+  const percent = needsSignedContract(String(sr.service_title || ''));
+  const { data, error } = await sb.from('contracts').select('id, status, contract_type')
+    .eq('service_request_id', sr.id).neq('status', 'draft');
   // الفشل في القراءة لا يُقرأ «موقَّع» — يُمنع الدفع ويُقال السبب
-  if (error) return 'تعذّر التحقق من توقيع العقد — أعد المحاولة بعد قليل';
-  return data ? null : CONTRACT_FIRST_MSG;
+  if (error) return 'تعذّر التحقق من وثيقة الخدمة — أعد المحاولة بعد قليل';
+  const docs = data || [];
+  if (percent) return docs.some((d) => d.status === 'signed' || d.status === 'completed') ? null : CONTRACT_FIRST_MSG;
+  return docs.length ? null : VOUCHER_FIRST_MSG;
 }

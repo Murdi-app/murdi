@@ -6,7 +6,7 @@ import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
-import { COMMISSION_SERVICES, CONTRACT_BEFORE_PAYMENT } from '@/lib/contracts';
+import { COMMISSION_SERVICES, needsSignedContract } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
@@ -53,6 +53,11 @@ export default function GoalPage() {
   const [docs, setDocs] = useState<{ id: string; title: string; created_at: string }[]>([]);
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null; optionKey?: string | null; deliveredAt?: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
+  // وثيقة كل طلبٍ بعينه (عقد أو سند خدمة) — بها يُفتح الدفع أو يُقفل
+  const [docsBySr, setDocsBySr] = useState<Record<string, { id: string; status: string; type: string; body: string }>>({});
+  // شرائح مقدَّم «تمويل العقد» كما في إعدادات المالك — فلا يُعرض سعرٌ ويُحصَّل غيره
+  const [cfTiers, setCfTiers] = useState<{ upTo: number | null; price: number }[] | null>(null);
+  useEffect(() => { fetch('/api/pricing').then((r) => r.json()).then((d) => { if (Array.isArray(d?.contract_finance_tiers)) setCfTiers(d.contract_finance_tiers); }).catch(() => {}); }, []);
   const [openDetails, setOpenDetails] = useState<string>('');
   const [orderFor, setOrderFor] = useState<string>('');       // الخدمة المفتوح لها نموذج الطلب
   const [orderInvest, setOrderInvest] = useState<string>('');  // حجم الاستثمار كما أدخله العميل
@@ -186,12 +191,15 @@ export default function GoalPage() {
       setServiceRequests(reqMap);
       const { data: ctrs } = await supabase
         .from('contracts')
-        .select('id, contract_type, status, contract_body, signed_file_url')
+        .select('id, contract_type, status, contract_body, signed_file_url, service_request_id')
         .eq('company_id', comp.id)
         .order('created_at', { ascending: false });
       const ctrMap: Record<string, { id: string; status: string; body: string; signedUrl: string | null }> = {};
       for (const c of (ctrs || [])) { if (c.status !== 'draft' && !ctrMap[c.contract_type]) ctrMap[c.contract_type] = { id: c.id, status: c.status, body: c.contract_body, signedUrl: c.signed_file_url }; }
       setClientContracts(ctrMap);
+      const bySr: Record<string, { id: string; status: string; type: string; body: string }> = {};
+      for (const c of (ctrs || [])) { const k = String(c.service_request_id || ''); if (k && c.status !== 'draft' && !bySr[k]) bySr[k] = { id: c.id, status: c.status, type: c.contract_type, body: c.contract_body }; }
+      setDocsBySr(bySr);
       // ★ التحويل المعلَّق يخصّ طلبه هو لا كلَّ خدمات المنشأة.
       //   كان يُقرأ أحدثُ تحويلٍ معلَّقٍ للمنشأة بلا `service_request_id`، ثم
       //   يُخفى زرُّ الدفع في **كل** بطاقةٍ مسعَّرة ويُكتب فيها «استلمنا
@@ -269,7 +277,7 @@ export default function GoalPage() {
     const investment = Number(String(orderInvest).replace(/[^\d]/g, '')) || 0;
     const opt = c?.options?.find((o) => o.key === orderOption);
     // خيار له سعر معلن يأخذ سعره، وإلا فسعر الشريحة بحسب حجم الاستثمار
-    const quoted = opt && opt.price != null ? opt.price : priceFor(canonicalTitle(orderFor), investment).amount;
+    const quoted = opt && opt.price != null ? opt.price : priceFor(canonicalTitle(orderFor), investment, canonicalTitle(orderFor) === 'تمويل العقد' ? cfTiers : null).amount;
     const inputs: Record<string, unknown> = {};
     if (c?.tiersBy === 'investment') { inputs.totalInvestment = investment; inputs.projectKind = orderKind; }
     if (orderOption) inputs.option = orderOption;
@@ -899,23 +907,34 @@ export default function GoalPage() {
                           {req.status === 'priced' && pendingSrIds.has(String(req.id || '')) && (
                             <div className="text-center text-[#1A7A5A] font-black text-xs leading-relaxed">استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تُحوّل مرة أخرى.</div>
                           )}
-                          {/* ★ العقد قبل الدفع (١ أكتوبر): خدمةٌ عقدُها شرط لا يظهر زرّ دفعها حتى يوقّعه —
-                              والخادم يمنعه أيضاً (`contractGate`) */}
-                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || ''))
-                            && CONTRACT_BEFORE_PAYMENT.has(title) && clientContracts[COMMISSION_SERVICES[title]]?.status !== 'signed' && (
-                            <div className="text-center text-[#9A7B2E] font-black text-xs leading-relaxed mt-1">
-                              {clientContracts[COMMISSION_SERVICES[title]]
-                                ? 'وقّع العقد أدناه أولاً — ثم يُفتح الدفع.'
-                                : 'عقد الخدمة يصلك هنا قبل الدفع — نجهّزه لك الآن.'}
-                            </div>
-                          )}
-                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || ''))
-                            && !(CONTRACT_BEFORE_PAYMENT.has(title) && clientContracts[COMMISSION_SERVICES[title]]?.status !== 'signed') && (
-                            <div className="flex flex-col gap-2 mt-1">
-                              <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
-                              <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
-                            </div>
-                          )}
+                          {/* ★ العقد أولاً (١ أكتوبر): لا زرّ دفع قبل وثيقة الطلب — عقدٌ موقَّع لما فيه
+                              نسبة، وسند خدمة صادر للرسم الثابت. والخادم يمنعه أيضاً (`contractGate`). */}
+                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || '')) && (() => {
+                            const doc = docsBySr[String(req.id || '')];
+                            const percent = needsSignedContract(title);
+                            const open = percent ? (doc?.status === 'signed' || doc?.status === 'completed') : !!doc;
+                            const show = (body: string) => {
+                              const url = URL.createObjectURL(new Blob([contractHtml(body, doc?.type === 'voucher' ? 'سند خدمة' : 'عقد الخدمة')], { type: 'text/html' }));
+                              const w = window.open(url, '_blank');
+                              if (!w) window.location.href = url;
+                            };
+                            if (!open) return (
+                              <div className="text-center text-[#9A7B2E] font-black text-xs leading-relaxed mt-1">
+                                {percent
+                                  ? (doc ? 'وقّع العقد أدناه أولاً — ثم يُفتح الدفع.' : 'عقد الخدمة يصلك هنا قبل الدفع — نراجعه لك الآن.')
+                                  : 'سند الخدمة يصدر قبل الدفع — يصلك خلال وقتٍ قصير.'}
+                              </div>
+                            );
+                            return (
+                              <div className="flex flex-col gap-2 mt-1">
+                                <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
+                                {doc && doc.type === 'voucher' && (
+                                  <button onClick={() => show(String(doc.body || ''))} className="text-center py-2 rounded-full border border-[#1A3D34] text-[#1A3D34] font-black text-xs">سند الخدمة — ما تشمله ومدّتها وسعرها</button>
+                                )}
+                                <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>
+                              </div>
+                            );
+                          })()}
                           {/* رابطٌ حقيقي لا نافذةٌ تُكتب بعد انتظار — نفس علّة
                               وثائق العميل التي أخفت استشارة هرم عن صاحبها.
                               والعميل يفتح بهذا الزرّ ملفه الذي دفع ثمنه. */}
@@ -1010,7 +1029,7 @@ export default function GoalPage() {
         const tiered = c?.tiersBy === 'investment';
         const shown = opt && opt.price != null
           ? { amount: opt.price, label: opt.price.toLocaleString('ar-SA') + ' ر.س' }
-          : priceFor(canonicalTitle(orderFor), investment);
+          : priceFor(canonicalTitle(orderFor), investment, canonicalTitle(orderFor) === 'تمويل العقد' ? cfTiers : null);
         const needInvestment = tiered && (!opt || opt.price == null);
         const ready = !needInvestment || investment > 0;
         return (

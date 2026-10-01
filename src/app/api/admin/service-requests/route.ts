@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { loadFeeSettings, contractFinanceUpfront, CONTRACT_FINANCE } from '@/lib/feeSettings';
+import { ensureDocument, refreshDraft } from '@/lib/contractFirst';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -69,7 +71,33 @@ export async function PATCH(req: Request) {
   if (body.status === 'priced') updates.priced_at = new Date().toISOString();
   if (body.status === 'delivered') updates.delivered_at = new Date().toISOString();
   if (body.status === 'completed') updates.completed_at = new Date().toISOString();
+
+  // ★ قيمة العقد (١ أكتوبر): تُكتب على الطلب، ومقدَّم «تمويل العقد» يُعاد من إعدادات
+  //   المالك ما دام الطلب لم يُدفع — ومسودّة عقده تتبعها.
+  const { data: cur } = await admin.from('service_requests').select('service_title, status, paid_at').eq('id', body.id).maybeSingle();
+  if (body.contract_value !== undefined) {
+    const v = Number(String(body.contract_value).replace(/[,٬\s]/g, ''));
+    updates.contract_value = Number.isFinite(v) && v > 0 ? v : null;
+    if (cur?.service_title === CONTRACT_FINANCE && !cur.paid_at && body.price === undefined && Number(updates.contract_value) > 0) {
+      const fees = await loadFeeSettings(admin);
+      const up = contractFinanceUpfront(fees, Number(updates.contract_value));
+      if (up) { updates.price = up; updates.quoted_price = up; }
+    }
+  }
   const { error } = await admin.from('service_requests').update(updates).eq('id', body.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+
+  // العقد أولاً: كل طلبٍ صار مسعَّراً تصدر وثيقته — سندٌ للثابت، ومسودّةُ عقدٍ لما فيه نسبة
+  const nowStatus = String(body.status || cur?.status || '');
+  let doc: { kind: string; status: string } | null = null;
+  let docErr: string | null = null;
+  if (nowStatus === 'priced') {
+    try { doc = await ensureDocument(admin, String(body.id)); }
+    catch (e) { docErr = 'سُعّر الطلب وتعذّر إصدار وثيقته — ' + (e instanceof Error ? e.message : ''); }
+    // مسودّةٌ موجودة تتبع المقدَّم وقيمة العقد الجديدين
+    if (doc?.status === 'draft' && (updates.price !== undefined || updates.contract_value !== undefined)) {
+      await refreshDraft(admin, String(body.id));
+    }
+  }
+  return NextResponse.json({ ok: true, doc, warn: docErr });
 }

@@ -27,7 +27,8 @@ function TransferInner() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [err, setErr] = useState('');
+  // رابط دفعٍ قصير انتهى أو أُلغي يصل هنا بـ?expired=1 — يُقال له ذلك لا صفحةٌ فارغة
+  const [err, setErr] = useState(params.get('expired') ? 'انتهت صلاحية رابط الدفع أو أُلغي — اطلب رابطاً جديداً على واتساب 0570749196' : '');
   const [copied, setCopied] = useState(false);
   const [due, setDue] = useState<number | null>(null);
   const [dueState, setDueState] = useState<'loading' | 'ok' | 'none' | 'error'>(serviceRequestId || payToken ? 'loading' : 'none');
