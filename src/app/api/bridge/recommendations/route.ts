@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import { submitRecommendation } from '@/lib/codexActions';
+import { submitRecommendation, setCodexFields } from '@/lib/codexActions';
 import { admin, bridgeAuth } from '@/lib/bridge';
 
 // POST /api/bridge/recommendations {files: [{path, content}]} — ملفات Codex من inbox/ في المستودع الخاص.
 // كل ملفٍ يُتحقق منه ويُضاف إلى صندوق التوصيات الحالي (pending) للمراجعة — لا يعدّل ولا يرسل.
 // منع التكرار مرتين: الملف نفسه (المسار + بصمة المحتوى) يعيد نتيجته المحفوظة، والتوصية نفسها ببصمتها.
+// ★ وعنصرٌ فيه "op": "set_priority" يكتب codex_priority وcodex_flag مباشرةً — بالدالة نفسها وقيودها
+//   التي في PATCH /api/awards/{id}/codex (رقم بين -50 و50 · dhai_task|needs_dr|none · reason إلزامي).
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -30,7 +32,13 @@ export async function POST(req: Request) {
     const out: unknown[] = [];
     if (!recs.length) out.push({ code: 400, error: 'الملف ليس JSON صالحاً' });
     for (const r of recs.slice(0, 50)) {
-      const x = await submitRecommendation(sb, (r && typeof r === 'object' ? r : null) as Record<string, unknown> | null);
+      const item = (r && typeof r === 'object' ? r : null) as Record<string, unknown> | null;
+      if (item && item.op === 'set_priority') {
+        const x = await setCodexFields(sb, String(item.award_id || ''), item);
+        out.push({ op: 'set_priority', award_id: item.award_id, code: x.status, ...x.json });
+        continue;
+      }
+      const x = await submitRecommendation(sb, item);
       out.push({ code: x.status, ...x.json });   // code: نتيجة الطلب · status: حال التوصية في الصندوق
     }
     await sb.from('bridge_files').insert({ file_key: key, path, result: out });
