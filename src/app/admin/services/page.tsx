@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
-import { COMMISSION_SERVICES } from '@/lib/contracts'
+import { COMMISSION_SERVICES, CONTRACT_BEFORE_PAYMENT, CONTRACT_LABEL, type ContractType } from '@/lib/contracts'
 import { priceFor, COMMERCIAL } from '@/lib/servicePricing'
 import { canonicalTitle, displayName } from '@/lib/serviceCatalog'
 import FeasibilityIntake from '@/components/FeasibilityIntake'
@@ -793,7 +793,8 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   <button onClick={() => savePitchNums(r.id, r.company_id)} disabled={busy === 'pn' + r.id} style={{ marginTop:10, background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'pn' + r.id ? 'جارٍ الحفظ...' : '💾 احفظ أرقام العرض'}</button>
                 </div>
               )}
-              {(!COMMISSION_SERVICES[r.service_title] || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
+              {/* «تمويل العقد» صار له عقد (١ أكتوبر) ويبقى له زرّ التجهيز: مخرَجه ملف العقد الائتماني */}
+              {(!COMMISSION_SERVICES[r.service_title] || CONTRACT_BEFORE_PAYMENT.has(r.service_title) || (r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && !r.delivered_at)) && (<>
               <button onClick={() => prepare(r.id)} disabled={busy === r.id} style={{ background:'#C9A84C', color:'#1A3D34', border:'none', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:900, fontSize:13, cursor:'pointer', marginBottom:12 }}>{busy === r.id ? 'جارٍ التجهيز...' : '✨ جهّز الخدمة بمنهجية مُرضي'}</button>
 
               {r.service_title === 'إعداد القوائم المالية المعتمدة' && (
@@ -999,7 +1000,7 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                 return (
                   <div style={{ marginTop:16, paddingTop:16, borderTop:'1px dashed #EAD9A8' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                      <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:14 }}>📄 عقد {c.contract_type === 'investment' ? 'تجهيز ملف استثماري' : 'تجهيز ملف تمويلي'}</div>
+                      <div style={{ color:'#9A7B2E', fontWeight:900, fontSize:14 }}>📄 عقد {CONTRACT_LABEL[c.contract_type as ContractType] || 'تجهيز ملف تمويلي'}</div>
                       <span style={{ fontSize:12, fontWeight:700, color:'#6B8A80' }}>{cStat[c.status] || c.status}</span>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>

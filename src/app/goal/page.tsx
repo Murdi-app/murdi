@@ -6,7 +6,7 @@ import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
-import { COMMISSION_SERVICES } from '@/lib/contracts';
+import { COMMISSION_SERVICES, CONTRACT_BEFORE_PAYMENT } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
@@ -899,7 +899,18 @@ export default function GoalPage() {
                           {req.status === 'priced' && pendingSrIds.has(String(req.id || '')) && (
                             <div className="text-center text-[#1A7A5A] font-black text-xs leading-relaxed">استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تُحوّل مرة أخرى.</div>
                           )}
-                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || '')) && (
+                          {/* ★ العقد قبل الدفع (١ أكتوبر): خدمةٌ عقدُها شرط لا يظهر زرّ دفعها حتى يوقّعه —
+                              والخادم يمنعه أيضاً (`contractGate`) */}
+                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || ''))
+                            && CONTRACT_BEFORE_PAYMENT.has(title) && clientContracts[COMMISSION_SERVICES[title]]?.status !== 'signed' && (
+                            <div className="text-center text-[#9A7B2E] font-black text-xs leading-relaxed mt-1">
+                              {clientContracts[COMMISSION_SERVICES[title]]
+                                ? 'وقّع العقد أدناه أولاً — ثم يُفتح الدفع.'
+                                : 'عقد الخدمة يصلك هنا قبل الدفع — نجهّزه لك الآن.'}
+                            </div>
+                          )}
+                          {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || ''))
+                            && !(CONTRACT_BEFORE_PAYMENT.has(title) && clientContracts[COMMISSION_SERVICES[title]]?.status !== 'signed') && (
                             <div className="flex flex-col gap-2 mt-1">
                               <div className="text-center text-[#1A3D34] font-black text-lg">{Number(req.price).toLocaleString('ar-SA')} ر.س</div>
                               <button onClick={() => router.push('/pay/transfer?amount=' + req.price + '&kind=service&company_id=' + companyId + '&sr=' + (req.id || ''))} className="text-center py-2.5 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفع</button>

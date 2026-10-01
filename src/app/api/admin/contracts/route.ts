@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { fundingContract, investmentContract, acquisitionContract, ContractFields, type FeeType } from '@/lib/contracts';
+import { renderContract, ContractFields, type FeeType } from '@/lib/contracts';
 
 // آلية الأتعاب تُقرأ من صفوف العقد ذاتها، فنص العقد يتبع الحقول ولا يُكتب يدوياً
 const FEE_COLS = ['client_name', 'client_id_number', 'establishment_name', 'establishment_cr',
@@ -23,9 +23,8 @@ function toFields(r: Record<string, unknown>): ContractFields {
   };
 }
 
-function render(type: string, f: ContractFields): string {
-  return type === 'acquisition' ? acquisitionContract(f) : type === 'investment' ? investmentContract(f) : fundingContract(f);
-}
+// النصّ بنوعه من مصدره في contracts.ts — كانت نسخةٌ هنا تُفرِّع الأنواع بنفسها
+const render = renderContract;
 import { requireAdmin } from '@/lib/requireAdmin';
 import { COMMERCIAL } from '@/lib/servicePricing';
 
@@ -84,7 +83,7 @@ export async function POST(req: Request) {
   // كانت تُقرأ من أعمدة في طلب الخدمة لا يكتبها أحد، فتخرج كل مسودّة «نسبة نجاح بلا مقدّم» —
   // على خدمة مقدّمها معلن. فالمصدر الصحيح هو سجل الأسعار نفسه: إن كان للخدمة سعر معلن،
   // فهو مقدّم مستحق، ومعه نسبة نجاح إن نصّ عليها السجل.
-  const BASE_BY_TYPE: Record<string, string> = { funding: 'financing', investment: 'round', acquisition: 'deal' };
+  const BASE_BY_TYPE: Record<string, string> = { funding: 'financing', investment: 'round', acquisition: 'deal', contract_finance: 'financing' };
   let seed: Record<string, unknown> = { fee_type: 'percent', success_base: BASE_BY_TYPE[String(contractType)] || 'financing' };
 
   if (serviceRequestId) {
@@ -107,6 +106,11 @@ export async function POST(req: Request) {
         success_base: sr.success_base || BASE_BY_TYPE[String(contractType)] || 'financing',
         fixed_amount: (sr.fee_type ? (sr.fee_type === 'fixed' || sr.fee_type === 'both') : inferred !== 'percent') ? upfront : null,
       };
+      // ★ ١ أكتوبر: «تمويل العقد» بآلية المؤجَّل — المقدَّم ما سُعّر به الطلب، والنسبة ٦٪
+      //   بقرار المالك (يُعدَّل في المسودّة لكل عميل)
+      if (contractType === 'contract_finance') {
+        seed = { ...seed, fee_type: 'deferred', fixed_amount: upfront, fee_percent: sr.success_pct ?? 6 };
+      }
     }
   }
   const text = render(String(contractType), toFields({ ...seed, ...party }));
@@ -189,6 +193,9 @@ export async function PATCH(req: Request) {
     const fixed = Number(merged.fixed_amount ?? 0);
     if ((ft === 'percent' || ft === 'both') && !(pct > 0)) missing.push('__pct');
     if ((ft === 'fixed'   || ft === 'both') && !(fixed > 0)) missing.push('__fixed');
+    // المؤجَّل: مقدَّمٌ ونسبة معاً — وكان يُصدَر بأيهما فارغاً فيُقرأ «(....٪)» في عقدٍ يُوقَّع
+    if (ft === 'deferred' && !(pct > 0)) missing.push('__pct');
+    if (ft === 'deferred' && !(fixed > 0)) missing.push('__fixed');
     LABEL.__pct = 'نسبة أتعاب النجاح';
     LABEL.__fixed = 'المبلغ المقدّم';
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { contractGate } from '@/lib/contractGate';
 import { createClient } from '@supabase/supabase-js';
 
 // رابط الدفع بلا تسجيل — /pay/transfer?t=<pay_token>
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
     .eq('service_request_id', sr.id).eq('status', 'awaiting_confirmation').limit(1).maybeSingle();
   return NextResponse.json({
     ok: true, title: sr.service_title, status: sr.status, received: !!pending,
+    contract_first: await contractGate(admin(), { id: String(sr.id), service_title: sr.service_title }),
     amount: sr.status === 'priced' && Number(sr.price) > 0 ? Number(sr.price) : null,
   });
 }
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
   }
   const due = Number(sr.price ?? 0);
   if (!due || due <= 0) return NextResponse.json({ error: 'هذه الخدمة لم تُسعَّر بعد' }, { status: 409 });
+  const blocked = await contractGate(admin(), { id: String(sr.id), service_title: sr.service_title });
+  if (blocked) return NextResponse.json({ error: blocked, contract_first: true }, { status: 409 });
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: 'أرفق صورة الإيصال أولاً' }, { status: 400 });
   }

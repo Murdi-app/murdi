@@ -40,6 +40,8 @@ function TransferInner() {
         setTitle(String(d.title || ''));
         if (d.received) { setErr('استلمنا تحويلك لهذه الخدمة — قيد المراجعة. لا تحوّل مرة أخرى.'); }
         if (d.amount === null) { setErr('هذا الطلب لا ينتظر دفعاً الآن — لا تحوّل، وراسلنا واتساب 0570749196.'); setDueState('none'); return; }
+        // العقد قبل الدفع — يُقال السبب ولا يُعرض رقم حسابٍ يُحوَّل إليه
+        if (d.contract_first) { setErr(String(d.contract_first)); setDueState('none'); return; }
         setDue(Number(d.amount)); setDueState('ok');
       })
       .catch(() => { setErr('تعذّر الاتصال — أعد فتح الصفحة'); setDueState('error'); });
@@ -51,6 +53,7 @@ function TransferInner() {
         const d = await r.json().catch(() => ({}));
         if (!r.ok) { setErr(d.error || 'تعذّر التحقق من الطلب'); setDueState('error'); return; }
         if (d.amount === null) { setErr('هذا الطلب لا ينتظر دفعاً الآن — لا تحوّل، وراجع لوحتك.'); setDueState('none'); return; }
+        if (d.contract_first) { setErr(String(d.contract_first)); setDueState('none'); return; }
         setDue(Number(d.amount)); setDueState('ok');
       })
       .catch(() => { setErr('تعذّر الاتصال — أعد فتح الصفحة'); setDueState('error'); });

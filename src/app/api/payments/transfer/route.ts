@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { contractGate } from '@/lib/contractGate';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
@@ -37,6 +38,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: true, status: sr.status, title: sr.service_title,
       amount: sr.status === 'priced' && Number(sr.price) > 0 ? Number(sr.price) : null,
+      contract_first: await contractGate(sb, { id: String(sr.id), service_title: sr.service_title }),
     });
   } catch {
     return NextResponse.json({ error: 'تعذّر التحقق من الطلب' }, { status: 500 });
@@ -93,7 +95,7 @@ export async function POST(req: Request) {
   if (kind === 'service') {
     if (!serviceRequestId) return NextResponse.json({ error: 'رقم الطلب مطلوب' }, { status: 400 });
     const { data: sr } = await sb0.from('service_requests')
-      .select('id, company_id, price, quoted_price, status').eq('id', serviceRequestId).maybeSingle();
+      .select('id, company_id, price, quoted_price, status, service_title').eq('id', serviceRequestId).maybeSingle();
     if (!sr || String(sr.company_id) !== companyId) {
       return NextResponse.json({ error: 'طلب غير معروف' }, { status: 403 });
     }
@@ -107,6 +109,8 @@ export async function POST(req: Request) {
     // صحيح عن خدمة بـ٧٬٩٠٠. حزامٌ ثانٍ فوق منع الكتابة في القاعدة.
     const due = Number(sr.price ?? 0);
     if (!due || due <= 0) return NextResponse.json({ error: 'هذه الخدمة لم تُسعَّر بعد' }, { status: 409 });
+    const blocked = await contractGate(sb0, { id: String(sr.id), service_title: sr.service_title });
+    if (blocked) return NextResponse.json({ error: blocked, contract_first: true }, { status: 409 });
     amountSar = due;
   }
 
