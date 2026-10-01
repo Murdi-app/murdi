@@ -7,7 +7,11 @@
 var ENDPOINT = 'https://murdi.sa/api/inbound/gmail';
 
 function decode_(data) {
-  return Utilities.newBlob(Utilities.base64DecodeWebSafe(data)).getDataAsString('UTF-8');
+  // الخدمة المتقدّمة تُرجع البايتات مصفوفةً أحياناً، ونصّاً web-safe بلا حشوٍ أحياناً
+  if (typeof data !== 'string') return Utilities.newBlob(data).getDataAsString('UTF-8');
+  var s = data.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Utilities.newBlob(Utilities.base64Decode(s)).getDataAsString('UTF-8');
 }
 
 function textOf_(p) {
