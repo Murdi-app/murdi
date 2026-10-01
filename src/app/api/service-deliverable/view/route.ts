@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { isolateLatinHtml } from '@/lib/pdfTemplate';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
@@ -83,7 +84,8 @@ export async function GET(req: Request) {
       + 'white-space:pre-wrap;color:#12302A;max-width:860px;margin:0 auto">'
       + esc(body) + '</body></html>';
 
-  return new Response(html, {
+  // كل نصٍّ لاتيني داخل السطر العربي يُعزل اتجاهياً عند العرض — يشمل كل مخرَجٍ مخزَّن
+  return new Response(isolateLatinHtml(html), {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',

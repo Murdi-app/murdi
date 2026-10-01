@@ -23,6 +23,15 @@ export function newKey(): { key: string; hash: string; prefix: string } {
 export type CodexCtx = { sb: SupabaseClient; keyId: string };
 
 /**
+ * ★ ١ أكتوبر (بأمر المالك): Codex أُوقف. كل أبوابه (REST · الإضافة · الجسر) نائمةٌ
+ *   بإعداد `codex_enabled` في award_settings، بلا حذفٍ لمفتاحٍ ولا كود — يوقظها المالك وحده.
+ */
+export async function codexEnabled(sb: { from: ReturnType<typeof admin>['from'] }): Promise<boolean> {
+  const { data } = await sb.from('award_settings').select('value').eq('key', 'codex_enabled').maybeSingle();
+  return String(data?.value || '') === 'true';
+}
+
+/**
  * يغلّف مسار Codex: يتحقق من المفتاح (Authorization: Bearer …)، ويسجّل الاستدعاء بنتيجته.
  * المفتاح الملغى أو المجهول يُردّ 401 ويُسجَّل أيضاً.
  */
@@ -36,7 +45,8 @@ export async function withCodex(req: Request, path: string, handler: (ctx: Codex
     if (data && !data.revoked_at && (!data.expires_at || Date.parse(String(data.expires_at)) > Date.now())) keyId = String(data.id);
   }
   let res: NextResponse;
-  if (!keyId) res = NextResponse.json({ error: 'مفتاح غير صالح أو ملغى' }, { status: 401 });
+  if (!(await codexEnabled(sb))) res = NextResponse.json({ error: 'Codex موقوف بأمر المالك (codex_enabled)' }, { status: 503 });
+  else if (!keyId) res = NextResponse.json({ error: 'مفتاح غير صالح أو ملغى' }, { status: 401 });
   else {
     try { res = await handler({ sb, keyId }); }
     catch (e) { res = NextResponse.json({ error: e instanceof Error ? e.message : 'خطأ' }, { status: 500 }); }

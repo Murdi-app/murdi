@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { isolateLatinHtml } from '@/lib/pdfTemplate';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditMemo, memoGaps, MEMO_CSS } from '@/lib/creditMemo';
@@ -102,7 +103,7 @@ ${buildCreditMemo(company, fin)}
 ${standingHtml}
 </body></html>`;
 
-  return new NextResponse(html, {
+  return new NextResponse(isolateLatinHtml(html), {
     status: 200,
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });

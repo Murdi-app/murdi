@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { hashKey, KEY_NAME } from '@/lib/codexAuth';
+import { hashKey, KEY_NAME, codexEnabled } from '@/lib/codexAuth';
 import { readFeed } from '@/lib/awardsFeed';
 import { submitRecommendation, setCodexFields, REC_KINDS, CODEX_FLAGS } from '@/lib/codexActions';
 import { originOf } from '@/lib/oauth';
@@ -77,6 +77,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const sb = admin();
+  // Codex موقوف بأمر المالك — الإضافة نائمة بلا حذف (codex_enabled)
+  if (!(await codexEnabled(sb))) return Response.json({ error: 'Codex موقوف بأمر المالك' }, { status: 503 });
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   let keyId: string | null = null;
   if (token) {

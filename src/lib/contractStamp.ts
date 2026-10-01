@@ -11,7 +11,8 @@
 // `STAMP_IMAGE_URL` وحده.
 
 import { LICENCE_NO, CR_NO, ADVISOR_LINE, ADVISOR_LINE_EN } from './legalStance';
-import { MURDI_FONT_IMPORT, MURDI_HEAD_CSS, murdiHeader } from './pdfTemplate';
+import { MURDI_FONT_IMPORT, MURDI_HEAD_CSS, murdiHeader, isoLatin } from './pdfTemplate';
+import { CONTRACT_DATE_LINE } from './contracts';
 
 /** ختمٌ مصوَّر إن وُجد — وإلا رُسم الختم أدناه */
 export const STAMP_IMAGE_URL = '';
@@ -68,7 +69,7 @@ export function studySeal(lang: 'ar' | 'en' = 'ar'): string {
     <div style="font-size:15px;font-weight:900;color:#1A3D34">${en ? 'Dr. Abdulhakim Almurdi' : 'د. عبدالحكيم المرضي'}</div>
     <div style="font-size:12px;color:#5E7C73;font-weight:700">${en
       ? ADVISOR_LINE_EN + '<br>Holol Almurdi Financial Consulting · CR ' + CR_NO
-      : ADVISOR_LINE + '<br>حلول المرضي للاستشارات المالية · سجل تجاري ' + CR_NO}</div>
+      : isoLatin(ADVISOR_LINE) + '<br>حلول المرضي للاستشارات المالية · سجل تجاري ' + CR_NO}</div>
   </div>
   <div style="flex:0 0 auto">${stampBlock(128)}</div>
 </div>`;
@@ -90,8 +91,19 @@ export function contractHtml(body: string, title = 'عقد الخدمة', signer
     : '';
   const MARK = '\u0000STAMP\u0000';
 
+  // تاريخ التحرير يُعبّأ بتاريخ التوقيع الإلكتروني (هجري أم القرى + ميلادي) إن وُقّع من المنصة
+  let src = String(body || '');
+  if (signer) {
+    const d = new Date(signer.at);
+    const h = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-arab', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Riyadh' }).formatToParts(d);
+    const g = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Riyadh' }).formatToParts(d);
+    const part = (p: Intl.DateTimeFormatPart[], t: string) => p.find((x) => x.type === t)?.value || '';
+    src = src.replace(CONTRACT_DATE_LINE, 'حُرّر في: ' + part(h, 'day') + '/' + part(h, 'month') + '/' + part(h, 'year') + 'هـ الموافق '
+      + part(g, 'day') + '/' + part(g, 'month') + '/' + part(g, 'year') + 'م');
+  }
   // موضع الختم: سطر توقيع الطرف الأول. وإن لم يوجد، ذُيّل به العقد.
-  let text = esc(String(body || ''));
+  // والنص اللاتيني (FL-… · البريد · الروابط) يُعزل اتجاهياً بعد التهريب
+  let text = isoLatin(esc(src));
   const sig = /^(الطرف الأول: .*\n?التوقيع: .*)$/m;
   text = sig.test(text) ? text.replace(sig, '$1\n' + MARK) : text + '\n' + MARK;
 
@@ -113,7 +125,7 @@ ${MURDI_HEAD_CSS}
 .ft{margin-top:22px;padding-top:10px;border-top:1px solid #EFF5F2;font-size:10.5px;color:#A3B7B0;text-align:center;line-height:1.9}
 @media print{body{background:#fff;padding:0}.sheet{border:0;border-radius:0;padding:0;max-width:none}}
 </style></head><body><div class="sheet">
-${murdiHeader('سجل تجاري ' + CR_NO + ' · ترخيص المستشار رقم ' + LICENCE_NO + ' · partners@murdi.sa')}
+${murdiHeader()}
 <div class="doc">${before}</div>
 <div class="stamp">${stampBlock()}</div>
 <div class="doc">${after || ''}</div>

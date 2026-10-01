@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import StaffActivity from '@/components/StaffActivity'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import AdminNav from '@/components/AdminNav'
@@ -70,6 +71,8 @@ export default function AdminPage() {
             فصار التنبيه يدفعك لملاحقة تجديدٍ لا تبيعه. حُذف. */}
 
         <PushToggle />
+
+        <StaffActivity />
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:32 }}>
           {stat.map((s,i) => (

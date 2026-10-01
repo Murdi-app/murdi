@@ -8,11 +8,37 @@ export const MURDI_HEAD_CSS =
   + '.hd .n { font-size: 30px; font-weight: 900; color: #2E9E7B; }'
   + '.hd .s { font-size: 13px; color: #6B8A80; margin-top: 4px; }'
   + '.hd .c { font-size: 12px; color: #9DB3AB; margin-top: 8px; }';
-/** الترويسة؛ و`legal` سطرٌ إضافي تحتها (السجل والترخيص في العقود) */
-export function murdiHeader(legal?: string): string {
+// ★ ١ أكتوبر (بأمر المالك): كل نصٍّ لاتيني داخل سطر عربي (البريد · FL-… · الروابط)
+//   يُعزل اتجاهياً فلا يقفز في الجملة. والعزل على **نصوص** الوثيقة وحدها: تُحمى
+//   كتل style وscript والوسوم، ولا يُعاد عزل ما هو داخل <bdi>.
+// الكيانات المهرَّبة (&amp; &nbsp; &#1234;) تُطابَق أولاً وتُترك كما هي — وإلا انكسرت
+const LATIN_RUN = /&[A-Za-z0-9#]+;|[A-Za-z0-9@._\-\/:+?=%]*[A-Za-z][A-Za-z0-9@._\-\/:+?=%]*/g;
+/** يعزل المقاطع اللاتينية في نصٍّ مهرَّب (بلا وسوم) */
+export function isoLatin(text: string): string {
+  return text.replace(LATIN_RUN, (m) => (m.startsWith('&') && m.endsWith(';') ? m : '<bdi dir="ltr">' + m + '</bdi>'));
+}
+/** يعزل المقاطع اللاتينية في نصوص وثيقة HTML كاملة — لا في وسومها ولا أنماطها ولا سكربتها */
+export function isolateLatinHtml(html: string): string {
+  const kept: string[] = [];
+  const guarded = html.replace(/<(style|script|title|head)\b[\s\S]*?<\/\1>/gi, (m) => { kept.push(m); return '\u0000' + (kept.length - 1) + '\u0000'; });
+  let inBdi = 0;
+  const out = guarded.replace(/(<[^>]*>)|([^<]+)/g, (m, tag: string | undefined, text: string | undefined) => {
+    if (tag) {
+      if (/^<bdi\b/i.test(tag)) inBdi++;
+      else if (/^<\/bdi>/i.test(tag)) inBdi = Math.max(0, inBdi - 1);
+      return tag;
+    }
+    return inBdi ? String(text) : isoLatin(String(text));
+  });
+  return out.replace(/\u0000(\d+)\u0000/g, (_, i) => kept[Number(i)]);
+}
+
+/** الترويسة: الاسم، والشركة، ثم السجل والترخيص في سطر، والبريد في سطرٍ مستقل */
+export function murdiHeader(): string {
   return '<div class="hd">\n  <div class="n">مُرضي</div>\n  <div class="s">منصة جاهزية رأس المال</div>\n'
     + '  <div class="c">شركة حلول المرضي للاستشارات المالية · حي الربيع، الرياض</div>\n'
-    + (legal ? '  <div class="c">' + legal + '</div>\n' : '') + '</div>';
+    + '  <div class="c">سجل تجاري 7039663724 · ترخيص المستشار رقم <bdi dir="ltr">FL-457927015</bdi></div>\n'
+    + '  <div class="c"><bdi dir="ltr">partners@murdi.sa</bdi></div>\n</div>';
 }
 
 export function buildPdfHtml(title: string, body: string): string {
@@ -53,7 +79,7 @@ export function buildPdfHtml(title: string, body: string): string {
     if (t === '') { html += '<br/>\n'; continue }
     html += '<p style=\"margin:6px 0\">' + t.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>') + '</p>\n'
   }
-  const safe = html
+  const safe = isolateLatinHtml(html)
   return `<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${title}</title>
 <style>
 ${MURDI_FONT_IMPORT}

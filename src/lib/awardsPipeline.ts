@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { codexEnabled } from '@/lib/codexAuth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadConfig, compose, kindFor, stageFor, num, waDigits, type Award } from '@/lib/awards';
 import { waConfig, sendWaTemplate } from '@/lib/whatsappApi';
@@ -204,7 +205,9 @@ export async function notifyDecisions(sb: SupabaseClient): Promise<number> {
     sb.from('award_hypotheses').select('id, category, stage, updated_at').eq('approved', false),
     sb.from('award_settings').select('key, value').in('key', ['general_email_approved', 'whatsapp_template_approved', 'gap_email_approved']),
   ]);
-  for (const a of fl.data || []) items.push({ key: 'flag:' + a.id + ':' + a.codex_flag_at, title: '🔷 Codex يحتاج قرارك', body: String(a.company_name) + ' — ' + String(a.codex_reason || '') });
+  // ما علّمه Codex لا يُشعَر به وCodex موقوف (codex_enabled)
+  const codexOn = await codexEnabled(sb);
+  if (codexOn) for (const a of fl.data || []) items.push({ key: 'flag:' + a.id + ':' + a.codex_flag_at, title: '🔷 Codex يحتاج قرارك', body: String(a.company_name) + ' — ' + String(a.codex_reason || '') });
   for (const t of ob.data || []) items.push({ key: 'obj:' + t.id, title: '⚠️ اعتراضٌ مهم من عميل', body: String(t.objection || '') });
   for (const t of tp.data || []) items.push({ key: 'tpl:' + t.id + ':' + t.updated_at, title: '✍️ قالبٌ معدَّل ينتظر اعتمادك', body: String(t.category) + ' / ' + String(t.stage) });
   for (const h of hy.data || []) items.push({ key: 'hyp:' + h.id + ':' + h.updated_at, title: '✍️ فرضيةٌ تنتظر اعتمادك', body: String(h.category) + ' / ' + String(h.stage) });

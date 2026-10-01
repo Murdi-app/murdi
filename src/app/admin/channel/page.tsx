@@ -171,7 +171,12 @@ export default function ChannelPage() {
           ))}
         </div>
 
-        {/* ═══ واتساب المنصة (بدل ضي عند غيابها) ═══ */}
+        {/* ═══ واتساب المنصة (بدل ضي عند غيابها) ═══
+            ★ ١ أكتوبر (بأمر المالك): موقوف ومخفيّ — الواتساب بيد ضي وحدها. يُظهره ويشغّله
+              إعداد whatsapp_api_enabled وحده (لا يُحذف الكود). */}
+        {!d.whatsapp.switch_on ? (
+          <div style={{ ...card, color: M, fontSize: 12.5, fontWeight: 700 }}>واتساب المنصة موقوف بأمر الدكتور — الواتساب بيد ضي وحدها.</div>
+        ) : (
         <div style={card}>
           <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 4 }}>واتساب المنصة — بدل ضي عند غيابها</div>
           <div style={{ color: M, fontSize: 12.5, marginBottom: 8 }}>
@@ -194,10 +199,12 @@ export default function ChannelPage() {
             <button disabled={!!busy} onClick={() => { const to = prompt('رقم تصله رسالة الاختبار (05…):'); if (to) void act({ action: 'wa_test', to }, 'رسالة واتساب تجريبية') }} style={btn('#fff', G)}>أرسل تجربة</button>
           </div>
         </div>
+        )}
 
         {/* ═══ مفتاح Codex ═══ */}
         <div style={card}>
           <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 6 }}>ربط Codex</div>
+          <div style={{ background: '#FBF5E8', color: '#8A6D1F', borderRadius: 8, padding: '8px 12px', fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>Codex موقوف بأمر الدكتور (codex_enabled) — المفتاح والجسر نائمان بلا حذف، وكل طلبٍ منه يُرَدّ.</div>
           <div style={{ background: d.mcp.linked ? '#EAF6F1' : '#F2F5F4', borderRadius: 10, padding: '8px 12px', fontSize: 13, marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <b>إضافة ChatGPT:</b> {d.mcp.linked ? 'مربوطة (بموافقتك) · آخر استعمال ' + when(d.mcp.last_used_at) : 'غير مربوطة — تُضاف في ChatGPT بعنوان https://murdi.sa/api/mcp'}
             {d.mcp.linked && <button disabled={!!busy} onClick={() => confirm('إلغاء ربط ChatGPT كله؟') && act({ action: 'mcp_revoke' }, 'إلغاء الربط')} style={btn('#fff', RED)}>ألغِ الربط</button>}

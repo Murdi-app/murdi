@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { isolateLatinHtml } from '@/lib/pdfTemplate';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
@@ -72,7 +73,7 @@ export async function GET(req: Request) {
 
   // المتن وثيقة HTML كاملة بترويستها — تُعاد كما هي. ولا تُخزَّن في وسيطٍ
   // عام: وثيقة عميلٍ بأرقامه لا تُحفظ في ذاكرة شبكة توصيل.
-  return new Response(body, {
+  return new Response(isolateLatinHtml(body), {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
