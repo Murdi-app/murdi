@@ -6,6 +6,7 @@ import { canonicalTitle, displayName, involvesOutreach } from '@/lib/serviceCata
 import { PAID_STATUSES } from '@/lib/serviceStatus';
 import { isAwaiting, TRIAGE_KINDS } from '@/lib/replyStatus';
 import { isFrozen } from '@/lib/frozen';
+import { logStaff } from '@/lib/staffLog';
 
 // لوحة المتابعة — ما يراه من يلاحق مخاطبات الجهات.
 //
@@ -334,5 +335,6 @@ export async function PATCH(req: Request) {
   );
   const { error: e } = await admin.from('outreach_messages').update(patch).eq('id', id);
   if (e) return NextResponse.json({ error: e.message }, { status: 500 });
+  await logStaff(who, b.called === true ? 'entity_call' : 'entity_update', { table: 'outreach_messages', id, note: patch.staff_note ? String(patch.staff_note) : null });
   return NextResponse.json({ ok: true });
 }

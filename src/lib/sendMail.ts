@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
 
 // مُرسِل واحد صادق.
 //
@@ -32,11 +33,29 @@ export type MailInput = {
 
 const client = () => new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * ★ ١ أكتوبر (بأمر المالك): العناوين التي ارتدّت تُعلَّم «عنوان غير صالح» في
+ * `email_blocklist`، ولا يخرج إليها بريدٌ بعدها من أي مسار — فالحارس هنا عند
+ * المُرسِل الواحد لا في كل شاشة. يُرجع ما كان محظوراً من العناوين.
+ */
+export async function blockedEmails(to: string | string[]): Promise<string[]> {
+  const list = (Array.isArray(to) ? to : [to]).map((e) => String(e || '').trim().toLowerCase()).filter(Boolean);
+  if (!list.length || !process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  try {
+    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
+    const { data } = await sb.from('email_blocklist').select('email').in('email', list);
+    return (data || []).map((r: { email: string }) => r.email);
+  } catch { return []; }
+}
+
 export async function sendMail(input: MailInput): Promise<MailResult> {
   // مفتاح غائب يُقال صراحةً، لا يُترجم إلى «فشل مجهول»
   if (!process.env.RESEND_API_KEY) {
     return { ok: false, reason: 'مفتاح مزوّد البريد (RESEND_API_KEY) غير مضبوط في بيئة التشغيل' };
   }
+
+  const blocked = await blockedEmails(input.to);
+  if (blocked.length) return { ok: false, reason: 'عنوان غير صالح (ارتدّ سابقاً): ' + blocked.join('، ') };
 
   try {
     const res = await client().emails.send({

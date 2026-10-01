@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { runClientHunt, runCallListHunt } from '@/lib/clientHunt';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { requireStaff } from '@/lib/requireStaff';
+import { blockedEmails } from '@/lib/sendMail';
 
 export const maxDuration = 300;
 
@@ -124,6 +125,8 @@ export async function PATCH(req: Request) {
   let sent = 0;
   const errors: string[] = [];
   for (const lead of batch) {
+    // العنوان المرتدّ سابقاً لا يُطرق ثانية (`email_blocklist`)
+    if ((await blockedEmails(String(lead.email))).length) { errors.push(lead.company_name + ': عنوان غير صالح'); continue; }
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',

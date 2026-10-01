@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireStaff } from '@/lib/requireStaff';
 import { redactTimeline, redactContract } from '@/lib/staffRedact';
+import { logStaff } from '@/lib/staffLog';
 
 // لوحة الصفقة: خطّ زمني واحد لكل عميل، ودفتر الأسماء المتراكم.
 // نصف العمل الذي يُباع كان يعيش في صندوق بريد؛ هذا المسار يُدخله المنصة.
@@ -74,7 +75,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { error: denied } = await requireStaff();
+  const { who, error: denied } = await requireStaff();
   if (denied) return NextResponse.json({ error: denied }, { status: 401 });
   const b = await req.json().catch(() => ({}));
 
@@ -91,10 +92,12 @@ export async function POST(req: Request) {
     entity_name: b?.entity_name ? String(b.entity_name).slice(0, 200) : null,
     title: title.slice(0, 300),
     detail: b?.detail ? String(b.detail).slice(0, 4000) : null,
-    actor: 'owner',
+    // ★ ١ أكتوبر: كان يُكتب «owner» ولو سجّلته موظفة — فيُنسب عملها للمالك
+    actor: who?.role === 'admin' ? 'owner' : 'staff',
     needs_owner: false,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logStaff(who, b?.entity_name ? 'entity_call' : 'deal_note', { table: 'companies', id: companyId, note: (b?.entity_name ? String(b.entity_name) + ' — ' : '') + title });
 
   // كل مكالمة مع جهة تحصد اسماً — الدفتر يُبنى من العمل لا من جلسة إدخال
   if (b?.entity_name && (b?.person_name || b?.person_email || b?.person_phone)) {

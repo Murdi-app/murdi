@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { sendMail, mailStatus } from '@/lib/sendMail';
 import { TEMPLATES, findTemplate, fillTemplate } from '@/lib/clientTemplates';
+import { logStaff } from '@/lib/staffLog';
 
 // مراسلة العملاء — لا الجهات.
 //
@@ -264,6 +265,7 @@ export async function POST(req: Request) {
     .eq('id', saved.id);
   await logEvent(sb, companyId, 'أُرسلت رسالة للعميل: ' + subject, sender.name + ' ← ' + toEmail, who.role === 'admin' ? 'owner' : 'staff');
 
+  await logStaff(who, 'client_message', { table: 'client_messages', id: String(saved.id), note: subject });
   return NextResponse.json({ ok: true, sent: true, id: saved.id });
 }
 

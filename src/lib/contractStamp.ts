@@ -82,6 +82,16 @@ export function studySeal(lang: 'ar' | 'en' = 'ar'): string {
 /** توقيع الموقّع الإلكتروني — يُطبع تحت العقد إن وُقّع من المنصة */
 export type ContractSignature = { name: string; idNumber: string; at: string };
 
+/** «حُرّر في: ١٠/٠٤/١٤٤٨هـ الموافق ٠١/١٠/٢٠٢٦م» — هجري أم القرى وميلادي بتوقيت الرياض */
+export function writtenOn(at: string | Date): string {
+  const d = new Date(at);
+  const fmt = (cal: string) => new Intl.DateTimeFormat('ar-SA-u-ca-' + cal + '-nu-arab', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Riyadh' }).formatToParts(d);
+  const part = (p: Intl.DateTimeFormatPart[], t: string) => p.find((x) => x.type === t)?.value || '';
+  const h = fmt('islamic-umalqura'), g = fmt('gregory');
+  return 'حُرّر في: ' + part(h, 'day') + '/' + part(h, 'month') + '/' + part(h, 'year') + 'هـ الموافق '
+    + part(g, 'day') + '/' + part(g, 'month') + '/' + part(g, 'year') + 'م';
+}
+
 export function contractHtml(body: string, title = 'عقد الخدمة', signer?: ContractSignature | null): string {
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const signedNote = signer
@@ -93,14 +103,16 @@ export function contractHtml(body: string, title = 'عقد الخدمة', signer
 
   // تاريخ التحرير يُعبّأ بتاريخ التوقيع الإلكتروني (هجري أم القرى + ميلادي) إن وُقّع من المنصة
   let src = String(body || '');
-  if (signer) {
-    const d = new Date(signer.at);
-    const h = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-arab', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Riyadh' }).formatToParts(d);
-    const g = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-arab', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Riyadh' }).formatToParts(d);
-    const part = (p: Intl.DateTimeFormatPart[], t: string) => p.find((x) => x.type === t)?.value || '';
-    src = src.replace(CONTRACT_DATE_LINE, 'حُرّر في: ' + part(h, 'day') + '/' + part(h, 'month') + '/' + part(h, 'year') + 'هـ الموافق '
-      + part(g, 'day') + '/' + part(g, 'month') + '/' + part(g, 'year') + 'م');
-  }
+  if (signer) src = src.replace(CONTRACT_DATE_LINE, writtenOn(signer.at));
+
+  // ★ ١ أكتوبر (بأمر المالك): عنوان الوثيقة في الوسط عريضاً، و«حُرّر في» تحته أصغر.
+  //   السطر الأول عنوانها، والثاني تاريخها إن بدأ بـ«حُرّر في».
+  const lines = src.replace(/^\s+/, '').split('\n');
+  const docTitle = lines.shift() || '';
+  const dateLine = /^حُرّر في/.test(lines[0] || '') ? String(lines.shift()) : '';
+  src = lines.join('\n').replace(/^\n+/, '');
+  const head = '<div class="ttl">' + isoLatin(esc(docTitle)) + '</div>'
+    + (dateLine ? '<div class="dt">' + esc(dateLine) + '</div>' : '');
   // موضع الختم: سطر توقيع الطرف الأول. وإن لم يوجد، ذُيّل به العقد.
   // والنص اللاتيني (FL-… · البريد · الروابط) يُعزل اتجاهياً بعد التهريب
   let text = isoLatin(esc(src));
@@ -121,11 +133,14 @@ body{margin:0;font-family:Cairo,system-ui,sans-serif;color:#1A3D34;background:#F
 .sheet{max-width:860px;margin:0 auto;background:#fff;border:1px solid #E1EDE8;border-radius:14px;padding:30px 30px 34px}
 ${MURDI_HEAD_CSS}
 .doc{white-space:pre-wrap;line-height:2;font-size:14px}
+.ttl{text-align:center;font-weight:900;font-size:21px;line-height:1.6;margin:6px 0 2px;color:#1A3D34}
+.dt{text-align:center;font-size:12px;color:#5E7C73;margin-bottom:16px}
 .stamp{margin:14px 0 4px}
 .ft{margin-top:22px;padding-top:10px;border-top:1px solid #EFF5F2;font-size:10.5px;color:#A3B7B0;text-align:center;line-height:1.9}
 @media print{body{background:#fff;padding:0}.sheet{border:0;border-radius:0;padding:0;max-width:none}}
 </style></head><body><div class="sheet">
 ${murdiHeader()}
+${head}
 <div class="doc">${before}</div>
 <div class="stamp">${stampBlock()}</div>
 <div class="doc">${after || ''}</div>

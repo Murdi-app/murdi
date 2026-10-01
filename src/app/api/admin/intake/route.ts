@@ -10,6 +10,7 @@ import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { asOwnership, asRoute } from '@/lib/ownership';
 import { canonicalTitle, CATALOG } from '@/lib/serviceCatalog';
 import { isPaidStatus } from '@/lib/serviceStatus';
+import { logStaff } from '@/lib/staffLog';
 
 // فتح ملف عميلٍ باعته الموظفة بالهاتف.
 //
@@ -254,6 +255,7 @@ export async function POST(req: Request) {
     actor: who.role === 'admin' ? 'owner' : 'staff', needs_owner: false,
   });
 
+  await logStaff(who, 'intake', { table: 'service_requests', id: String(requestId), note: companyName });
   return NextResponse.json({
     ok: true, link, hold, message, company_name: companyName, request_id: requestId, existing: !isNew,
     service_label: opt?.label || title, amount,

@@ -3,6 +3,7 @@ import { COMMERCIAL } from '@/lib/servicePricing';
 import { COMMISSION_SERVICES, renderContract, needsSignedContract } from '@/lib/contracts';
 import { loadFeeSettings, completionPctFor, fillMessage, type FeeSettings } from '@/lib/feeSettings';
 import { shortLink, SITE } from '@/lib/shortLinks';
+import { writtenOn } from '@/lib/contractStamp';
 
 // ★ ١ أكتوبر (بأمر المالك) — «العقد أولاً» في كل الخدمات:
 //   · خدمةٌ فيها أتعاب استكمال (نسبة) ← عقدٌ يُصدره المالك ويوقّعه العميل، ثم الدفع.
@@ -38,9 +39,10 @@ export function voucherBody(title: string, optionKey: string | null, price: numb
   ];
   const days = opt?.days || c?.days || 'يُتّفق عليه';
   const vat = s.vatRate > 0
-    ? 'المبلغ المستحق: (' + money(price) + ') ريال سعودي شاملاً ضريبة القيمة المضافة (' + s.vatRate + '٪).'
+    ? 'المبلغ المستحق: (' + money(price) + ') ريال سعودي شاملاً ضريبة القيمة المضافة (' + s.vatRate + '٪)، ويصدر به فاتورة ضريبية نظامية.'
     : 'المبلغ المستحق: (' + money(price) + ') ريال سعودي.';
   return `سند خدمة — ${label}
+${writtenOn(new Date())}
 
 صادرٌ من: شركة حلول المرضي للاستشارات المالية، سجل تجاري رقم (7039663724)، ترخيص المستشار رقم (FL-457927015).
 إلى: ${company.name || '(..............)'}، سجل تجاري رقم (${company.cr || '..............'}).

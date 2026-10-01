@@ -7,6 +7,7 @@ import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { confirmPayment } from '@/lib/confirmPayment';
 import { redactTimeline } from '@/lib/staffRedact';
+import { logStaff } from '@/lib/staffLog';
 
 // مكتب الطلبات — شاشة المساعِدة.
 //
@@ -215,6 +216,7 @@ export async function PATCH(req: Request) {
         detail: [missing ? 'ينقصه: ' + missing : '', next ? 'الخطوة التالية: ' + next : '', 'سجّلته: ' + name].filter(Boolean).join(' · '),
         actor: who.role === 'admin' ? 'admin' : 'staff', needs_owner: false,
       });
+      await logStaff(who, 'file_update', { table: 'service_requests', id, note: done });
       return NextResponse.json({ ok: true });
     }
   }
@@ -384,5 +386,6 @@ export async function PATCH(req: Request) {
   const noteForViewer = payNote && who.role !== 'admin'
     ? 'بقي في هذا التحويل أمرٌ يحتاج المالك، وقد أُبلغ به.'
     : payNote;
+  await logStaff(who, approve ? 'desk_approve' : 'desk_reject', { table: 'service_requests', id });
   return NextResponse.json({ ok: true, note: noteForViewer });
 }
