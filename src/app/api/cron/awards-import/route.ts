@@ -3,12 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized } from '@/lib/cronAuth';
 import { importAwardsFromNews } from '@/lib/awardsImport';
 import { logError } from '@/lib/logError';
+import { withJobRun } from '@/lib/jobRun';
 
 // مستورد الترسيات اليومي — يوقظه `pg_cron` (المهمة `awards-import`) ٦:٠٠ الرياض،
 // قبل جرد الصباح فيُحسب ما دخل في سطر الترسيات.
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   try {
@@ -20,3 +21,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّر الاستيراد' }, { status: 500 });
   }
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('awards-import', handle);

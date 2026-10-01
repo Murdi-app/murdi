@@ -5,12 +5,13 @@ import { riyadhDate } from '@/lib/staffBrief';
 import { sendPush } from '@/lib/push';
 import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { logError } from '@/lib/logError';
+import { withJobRun } from '@/lib/jobRun';
 
 // ★ ١ أكتوبر (بأمر المالك): من لم يُسجَّل لها شيءٌ في المنصة حتى ١٢ ظهراً يصل المالك
 //   إشعار. يوقظها pg_cron (staff-noon-check) الأحد–الخميس ٩:٠٠ UTC.
 export const maxDuration = 30;
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const today = riyadhDate();
@@ -47,3 +48,6 @@ export async function POST(req: Request) {
   }
   return NextResponse.json({ ok: true, idle: [] });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('staff-noon', handle);

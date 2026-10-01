@@ -5,6 +5,7 @@ import { riyadhDate } from '@/lib/staffBrief';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { logError } from '@/lib/logError';
+import { withJobRun } from '@/lib/jobRun';
 
 // توجيه الصباح يخرج وحده — بأمر المالك (٣٠/٩): لا ينتظر إذنه. يُكتب ٤:٤٥ ويُعرض عليه (يعدّله أو
 // يعتمده مبكراً إن شاء)، وما بقي مسوّدةً يُرسل هنا ٧:٣٠ بتوقيت الرياض (pg_cron: staff-briefs-send).
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 const OWNER = 'hololalmurdi.fs@gmail.com';
 const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const today = riyadhDate();
@@ -34,3 +35,6 @@ export async function POST(req: Request) {
   if (out.length) await sendPush({ title: '🗂️ خرج توجيه الموظفتين', body: out.join(' · '), url: '/admin', tag: 'briefs-sent-' + today }, OWNER).catch(() => null);
   return NextResponse.json({ ok: true, sent: out });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('briefs-send', handle);

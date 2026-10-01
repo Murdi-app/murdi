@@ -5,13 +5,14 @@ import { enqueueReady, sendDue, closeNoReply, autoConsult, notifyReplies, notify
 import { autoReview } from '@/lib/autoReview';
 import { codexEnabled } from '@/lib/codexAuth';
 import { logError } from '@/lib/logError';
+import { withJobRun } from '@/lib/jobRun';
 
 // قناة الفائزين تعمل وحدها — يوقظها `pg_cron` (المهمة `awards-pipeline`) كل ربع ساعة:
 // تصفّ الجاهز · ترسل المستحق (النافذة والسقف والإيقاف في الإعدادات) · تغلق من لا يرد ·
 // تولّد الاستشارة لمن ردّ وتأهّل. كل خطوةٍ مستقلة: فشلُ واحدة لا يوقف الباقي.
 export const maxDuration = 300;
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const out: Record<string, unknown> = {};
@@ -29,3 +30,6 @@ export async function POST(req: Request) {
   await step('consult', () => autoConsult(sb));
   return NextResponse.json({ ok: true, ...out });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('awards-pipeline', handle);

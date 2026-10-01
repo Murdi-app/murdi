@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { withJobRun } from '@/lib/jobRun';
 
 // فحص روابط التقديم — مرة لكل جهة لا لكل صف مطابقة.
 // كان الفحص يجري على صفوف match_results: ١٬٦٨١ صفاً فُحص منها ٢٨٦ في شهرين،
@@ -67,7 +68,7 @@ async function cronAuthorized(req: Request): Promise<boolean> {
   return diff === 0;
 }
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) {
     const denied = await requireAdmin();
     if (denied) return NextResponse.json({ error: denied }, { status: 401 });
@@ -126,3 +127,6 @@ export async function POST(req: Request) {
     done: (remaining || 0) === 0,
   });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('check-links', handle);

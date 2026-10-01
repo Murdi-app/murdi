@@ -5,6 +5,7 @@ import { buildBriefs, riyadhDate } from '@/lib/staffBrief';
 import { sendMail } from '@/lib/sendMail';
 import { logError } from '@/lib/logError';
 import { sendPush } from '@/lib/push';
+import { withJobRun } from '@/lib/jobRun';
 
 // توجيه الصباح — يُكتب هنا ويُعرض على المالك، ولا يخرج إلى الموظفتين إلا بضغطته.
 // يوقظه `pg_cron` (المهمة `staff-briefs`) الساعة ٤:٤٥ بتوقيت الرياض.
@@ -21,7 +22,7 @@ const admin = () => createClient(
 );
 const esc = (s: unknown) => String(s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string));
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const sb = admin();
   const today = riyadhDate();
@@ -65,3 +66,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'تعذّرت كتابة التوجيه' }, { status: 500 });
   }
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('briefs', handle);

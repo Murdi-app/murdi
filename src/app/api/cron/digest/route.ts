@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { awardsDailyLine, awardsFunnelLine } from '@/lib/awards';
+import { withJobRun } from '@/lib/jobRun';
 
 // جرد المنصة — يُحسب في القاعدة ويصل بريدك، بلا جلسة ولا شاشة إذن ولا حاسب مفتوح.
 // مهام Claude المجدولة كانت تقف عند طلب الإذن فتموت معلّقة، ولا «سماح دائم» في التطبيق.
@@ -135,7 +136,7 @@ function html(d: Digest, title: string): string {
   </div></div>`;
 }
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   }
@@ -177,3 +178,6 @@ export async function POST(req: Request) {
   }
   return NextResponse.json({ ok: true, sent: true, decisions: dec.length });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('digest', handle);

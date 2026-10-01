@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { ANSWERED } from '@/lib/replyStatus';
+import { withJobRun } from '@/lib/jobRun';
 
 // نبض المعاودة — يعمل من داخل القاعدة، بلا جلسة ولا إذن ولا حاسب مفتوح.
 // الفرق بينه وبين المهمة المجدولة: هذا لا يقرأ بريداً ولا يفكّر، بل يحسب من
@@ -78,7 +79,7 @@ const daysSince = (d: string | null) =>
 
 const iso = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
 
-export async function POST(req: Request) {
+async function handle(req: Request) {
   if (!(await cronAuthorized(req))) {
     return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   }
@@ -206,3 +207,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, sent: true, silent: silentDoors.length, bounced: bounced.length });
 }
+
+// ★ سجلّ تشغيل + إشعار المالك عند فشلين متتاليين (`job_runs`)
+export const POST = withJobRun('followups', handle);
