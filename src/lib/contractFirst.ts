@@ -120,7 +120,7 @@ export async function refreshDraft(sb: SupabaseClient, srId: string): Promise<vo
 }
 
 /** اسم من يُخاطَب في الرسالة، والبريد لرابط كلمة المرور */
-async function party(sb: SupabaseClient, companyId: string): Promise<{ name: string; email: string | null }> {
+export async function party(sb: SupabaseClient, companyId: string): Promise<{ name: string; email: string | null }> {
   const { data: co } = await sb.from('companies').select('owner_name, user_id').eq('id', companyId).maybeSingle();
   let email: string | null = null;
   if (co?.user_id) {

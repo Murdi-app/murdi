@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { resolveShort } from '@/lib/shortLinks';
 import { contractHtml } from '@/lib/contractStamp';
-import { signedMessage } from '@/lib/contractFirst';
+import { signedMessage, party } from '@/lib/contractFirst';
+import { sendClientMail } from '@/lib/clientMail';
+import { sendPush } from '@/lib/push';
+import { OWNER_EMAIL } from '@/lib/notifyLead';
 import { contractGate } from '@/lib/contractGate';
 import { notifyTeam } from '@/lib/notifyLead';
 
@@ -22,7 +25,7 @@ async function load(code: string) {
     .select('id, status, contract_type, contract_body, service_request_id, signer_name, signer_id_number, signed_at')
     .eq('id', link.contract_id).maybeSingle();
   if (!c || c.status === 'draft') return null;
-  const { data: sr } = await sb.from('service_requests').select('id, service_title, price, status').eq('id', String(c.service_request_id)).maybeSingle();
+  const { data: sr } = await sb.from('service_requests').select('id, company_id, service_title, price, status').eq('id', String(c.service_request_id)).maybeSingle();
   return { sb, c, sr };
 }
 
@@ -72,9 +75,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
   if (!done?.length) return NextResponse.json({ error: 'العقد موقَّع من قبل' }, { status: 409 });
   let m: { text: string; payLink: string; siteLink: string } | null = null;
   if (sr) m = await signedMessage(sb, String(sr.id), 'توقيع العميل').catch(() => null);
+  // ★ رسالة الدفع تخرج للعميل تلقائياً لحظة التوقيع — على بريده المسجّل — ويُبلَّغ المالك
+  let mailed: { ok: boolean; reason?: string } = { ok: false, reason: 'لا رسالة' };
+  if (sr && m) {
+    const p = await party(sb, String(sr.company_id)).catch(() => ({ name: '', email: null as string | null }));
+    mailed = p.email
+      ? await sendClientMail(sb, { companyId: String(sr.company_id), toEmail: p.email, toName: p.name, subject: 'رابط السداد — ' + String(sr.service_title || ''), body: m.text, event: 'رسالة الدفع بعد التوقيع' })
+      : { ok: false, reason: 'لا بريد مسجّل للعميل' };
+  }
+  await sendPush({
+    title: '✍️ وقّع العميل عقده', body: String(sr?.service_title || '') + ' — ' + name + (mailed.ok ? ' · خرجت له رسالة الدفع' : ' · لم تخرج رسالة الدفع: ' + (mailed.reason || '')),
+    url: '/admin/services', important: true, tag: 'signed-owner-' + c.id,
+  }, OWNER_EMAIL).catch(() => null);
   await notifyTeam({
     subject: '✍️ وقّع العميل عقد «' + String(sr?.service_title || '') + '»',
-    head: 'وصل العقد موقّعاً — رسالة الدفع أدناه جاهزة لترسلوها له',
+    head: mailed.ok ? 'وصل العقد موقّعاً — وخرجت للعميل رسالة الدفع على بريده' : 'وصل العقد موقّعاً — لم تخرج رسالة الدفع آلياً، أرسلوها له',
     facts: [['الخدمة', String(sr?.service_title || '')], ['الموقّع', name], ['رسالة الدفع', m?.text || '']],
     url: '/admin/services', pushTitle: '✍️ عقدٌ موقَّع', pushBody: String(sr?.service_title || '') + ' — ' + name, tag: 'signed-' + c.id,
   }).catch(() => {});
