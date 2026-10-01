@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { sendPush } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -13,6 +13,18 @@ export const runtime = 'nodejs';
 // الحالة إلى «موقَّع». ولا يُصدَّق على ما يصله: يُقرأ العقد من القاعدة، ولا
 // يُشعَر إلا إن كان موقَّعاً حقاً، وتوقيعه حديثاً، ولم يُشعَر عنه من قبل —
 // فالتكرار إزعاج، والخبر عن مالٍ لا يُبنى على ما يرسله طرفٌ خارجي.
+// ★ ١ أكتوبر: كان مفتوحاً لأي أحد — صار يشترط سرّ الجدولة كأخويه (`new-client` · `approval`)
+async function authorized(req: Request, admin: SupabaseClient): Promise<boolean> {
+  const given = req.headers.get('x-cron-secret') || '';
+  if (!given) return false;
+  const { data } = await admin.from('app_config').select('value').eq('key', 'cron_secret').maybeSingle();
+  const want = String((data as { value?: unknown } | null)?.value || '');
+  if (!want || given.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= given.charCodeAt(i) ^ want.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const contractId = String(body?.contractId || '');
@@ -22,6 +34,7 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.SUPABASE_SERVICE_ROLE_KEY as string,
   );
+  if (!(await authorized(req, admin))) return NextResponse.json({ error: 'غير مصرّح' }, { status: 401 });
 
   const { data: ct } = await admin.from('contracts')
     .select('id, status, company_id, fee_percent, signed_at')

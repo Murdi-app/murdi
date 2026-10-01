@@ -6,6 +6,7 @@ import { OPEN_PAID_STATUSES } from '@/lib/serviceStatus';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { confirmPayment } from '@/lib/confirmPayment';
+import { redactTimeline } from '@/lib/staffRedact';
 
 // مكتب الطلبات — شاشة المساعِدة.
 //
@@ -161,7 +162,8 @@ export async function GET() {
     role: who.role,
     job: who.role === 'admin' ? 'admin' : who.job,
     may_decide: mayDecide,
-    files: Object.fromEntries(paidCos.map((c) => [c, { events: evBy.get(c) || [], has_financials: finSet.has(c), matches: mCount.get(c) || 0 }])),
+    // ★ ١ أكتوبر: الأحداث تُنقّى كما في `admin/deal` — كان فيها «دفعة مؤكَّدة — 990 ريال» خاماً
+    files: Object.fromEntries(paidCos.map((c) => [c, { events: who.role === 'admin' ? (evBy.get(c) || []) : redactTimeline(evBy.get(c) || []), has_financials: finSet.has(c), matches: mCount.get(c) || 0 }])),
     requests: (reqs || []).map((r) => {
       const { price, quoted_price, ...rest } = r as Record<string, unknown>;
       // السعر ومبلغ التحويل لمن يقرّر وحده — بهما يطابق التحويل. ورغد لا
