@@ -46,6 +46,7 @@ export async function POST(req: Request) {
     } else if (mode === 'timeouts') {
       const r = await runTimeouts(sb);
       out = r;
+      if (r.unsigned.length) await sendPush({ title: '✍️ لم يوقّع بعد التذكير', body: r.unsigned.slice(0, 4).join(' · '), url: '/admin/services', important: true, tag: 'unsigned-' + t0.toISOString().slice(0, 10) }, OWNER_EMAIL).catch(() => null);
       const lines = [...r.issued.map((x) => 'عقد: ' + x), ...r.postponed];
       if (lines.length) await sendPush({ title: '⏳ انقضت مهلة قرار', body: lines.slice(0, 4).join(' · '), url: '/admin/services', important: r.issued.length > 0, tag: 'timeouts-' + t0.toISOString().slice(0, 13) }, OWNER_EMAIL).catch(() => null);
     } else if (mode === 'watchdog') {

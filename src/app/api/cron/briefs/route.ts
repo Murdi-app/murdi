@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cronAuthorized, signLink } from '@/lib/cronAuth';
 import { buildBriefs, riyadhDate } from '@/lib/staffBrief';
+import { markReminded } from '@/lib/signReminders';
 import { sendMail } from '@/lib/sendMail';
 import { logError } from '@/lib/logError';
 import { sendPush } from '@/lib/push';
@@ -38,6 +39,8 @@ async function handle(req: Request) {
       status: 'draft', note: b.by === 'claude' ? 'كتبه Claude من بيانات المنصة' : 'كُتب من بيانات المنصة (تعذّرت صياغة Claude)',
     })));
     if (iErr) throw new Error(iErr.message);
+    // تذكير التوقيع يظهر لضي مرةً واحدة — يُعلَّم بعد حفظ التوجيه (قاعدة المالك ٣/١٠)
+    await markReminded(sb, briefs.flatMap((b) => b.reminderIds || []), today);
 
     const token = await signLink('briefs', today);
     const link = SITE + '/api/briefs/approve?d=' + today + '&t=' + token;

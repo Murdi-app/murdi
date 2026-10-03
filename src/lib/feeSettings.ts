@@ -16,6 +16,8 @@ export type FeeSettings = {
   vatRate: number;
   msgIssued: string;
   msgSigned: string;
+  /** ★ ٣ أكتوبر: تذكير التوقيع — واتساب واحد ترسله ضي بعد يومَي عمل بلا توقيع (نصٌّ اعتمده المالك) */
+  msgSignReminder: string;
   firstDelivery: Record<string, string>;
 };
 
@@ -26,12 +28,13 @@ export const FEE_DEFAULTS: FeeSettings = {
   vatRate: 0,
   msgIssued: 'أهلاً {الاسم}،\nجهّزنا لكم {الوثيقة} خدمة «{الخدمة}». للاطلاع عليه: {رابط العقد}\nالدكتور عبدالحكيم المرضي — مُرضي',
   msgSigned: 'شكراً لكم. رابط سداد المقدّم ({المبلغ} ريال): {رابط الدفع}\nالدكتور عبدالحكيم المرضي — مُرضي',
+  msgSignReminder: 'السلام عليكم أستاذ {الاسم}،\nمعك ضي من مكتب الدكتور عبدالحكيم المرضي.\nنذكّرك بـ{الوثيقة} خدمة «{الخدمة}» اللي أصدرناه لك، ووصلك رابطه على بريدك. تقدر تراجعه وتوقّعه من هنا مباشرة: {رابط العقد}\nوبعد التوقيع يوصلك رابط السداد تلقائياً، ونبدأ العمل على ملفك.\nوأي استفسار على العقد أو الخدمة، أنا موجودة على هذا الرقم، أو تقدر تتواصل مع المكتب على 0570749196.',
   firstDelivery: {},
 };
 
 const KEYS: Record<string, keyof FeeSettings> = {
   completion_pct: 'completionPct', contract_finance_upfront: 'cfUpfront', vat_rate: 'vatRate',
-  msg_issued: 'msgIssued', msg_signed: 'msgSigned', first_delivery: 'firstDelivery',
+  msg_issued: 'msgIssued', msg_signed: 'msgSigned', msg_sign_reminder: 'msgSignReminder', first_delivery: 'firstDelivery',
 };
 export const SETTING_KEYS = Object.keys(KEYS);
 
@@ -46,7 +49,7 @@ export async function loadFeeSettings(sb: SupabaseClient): Promise<FeeSettings> 
     const v = r.value as unknown;
     if (k === 'vatRate') { const n = Number(v); if (Number.isFinite(n) && n >= 0 && n < 100) out.vatRate = n; }
     else if (k === 'cfUpfront') { if (Array.isArray(v) && v.every((t) => t && Number(t.price) > 0)) out.cfUpfront = v as PriceTier[]; }
-    else if (k === 'msgIssued' || k === 'msgSigned') { if (typeof v === 'string' && v.trim()) out[k] = v; }
+    else if (k === 'msgIssued' || k === 'msgSigned' || k === 'msgSignReminder') { if (typeof v === 'string' && v.trim()) out[k] = v; }
     else if (v && typeof v === 'object' && !Array.isArray(v)) (out as Record<string, unknown>)[k] = v;
   }
   return out;

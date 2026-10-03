@@ -44,6 +44,7 @@ function check(key: string, v: unknown): string | null {
   if (key === 'vat_rate') { const n = Number(v); return n >= 0 && n < 100 ? null : 'نسبة الضريبة بين ٠ و٩٩'; }
   if (key === 'msg_issued') return typeof v === 'string' && v.includes('{رابط العقد}') ? null : 'الرسالة الأولى لا بدّ أن تحمل {رابط العقد}';
   if (key === 'msg_signed') return typeof v === 'string' && v.includes('{رابط الدفع}') ? null : 'الرسالة الثانية لا بدّ أن تحمل {رابط الدفع}';
+  if (key === 'msg_sign_reminder') return typeof v === 'string' && v.includes('{رابط العقد}') && !/ريال|﷼|٪|%/.test(v) ? null : 'تذكير التوقيع يحمل {رابط العقد}، ولا مبلغ فيه (ترسله الموظفة)';
   if (key === 'first_delivery') return v && typeof v === 'object' && !Array.isArray(v) ? null : 'صيغة غير صحيحة';
   return 'مفتاح غير معروف';
 }

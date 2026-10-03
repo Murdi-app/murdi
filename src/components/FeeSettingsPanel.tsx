@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 // إعدادات الأتعاب والرسائل — في شاشة الخدمات للمالك. النسبة هنا هي ما تبدأ به
 // مسودّة كل عقد؛ ويُعدّلها المالك لكل عميل في عقده قبل إصداره.
 
-type S = { completionPct: Record<string, number>; cfUpfront: { upTo: number | null; price: number }[]; vatRate: number; msgIssued: string; msgSigned: string; firstDelivery: Record<string, string> }
+type S = { completionPct: Record<string, number>; cfUpfront: { upTo: number | null; price: number }[]; vatRate: number; msgIssued: string; msgSigned: string; msgSignReminder: string; firstDelivery: Record<string, string> }
 const G = '#1A3D34', M = '#6B8A80'
 const inp: React.CSSProperties = { border: '1.5px solid #EAF2EE', borderRadius: 10, padding: '7px 10px', fontFamily: 'Cairo', fontSize: 12.5, width: '100%', boxSizing: 'border-box' }
 
@@ -86,6 +86,12 @@ export default function FeeSettingsPanel() {
               <div style={{ color: M, fontSize: 11, marginBottom: 4 }}>المتغيرات: {'{المبلغ} {رابط الدفع} {رابط المنصة} {ما يصلكم}'}</div>
               <textarea rows={7} value={s.msgSigned} onChange={(e) => setS({ ...s, msgSigned: e.target.value })} style={{ ...inp, lineHeight: 1.9 }} />
               <button style={btn} onClick={() => save('msg_signed', s.msgSigned)}>احفظ الرسالة الثانية</button>
+            </div>
+            <div>
+              <div style={{ color: G, fontWeight: 900, fontSize: 13, marginBottom: 6 }}>تذكير التوقيع — واتساب واحد من ضي بعد يومَي عمل بلا توقيع</div>
+              <div style={{ color: M, fontSize: 11, marginBottom: 4 }}>المتغيرات: {'{الاسم} {الخدمة} {الوثيقة} {رابط العقد}'} — وبعد يومَي عمل آخرين بلا توقيع يصلك إشعار</div>
+              <textarea rows={7} value={s.msgSignReminder} onChange={(e) => setS({ ...s, msgSignReminder: e.target.value })} style={{ ...inp, lineHeight: 1.9 }} />
+              <button style={btn} onClick={() => save('msg_sign_reminder', s.msgSignReminder)}>احفظ تذكير التوقيع</button>
             </div>
             <div>
               <div style={{ color: G, fontWeight: 900, fontSize: 13, marginBottom: 6 }}>«ما يصلكم» لكل خدمة في الرسالة الثانية</div>

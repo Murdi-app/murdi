@@ -5,6 +5,7 @@ import { involvesOutreach } from './serviceCatalog';
 import { isFrozen } from './frozen';
 import { needsSignedContract } from './contracts';
 import { redactTimeline } from './staffRedact';
+import { dueReminders, type Reminder } from './signReminders';
 
 // توجيه الصباح للموظفتين — يُكتب من بيانات المنصة نفسها.
 //
@@ -20,7 +21,7 @@ import { redactTimeline } from './staffRedact';
 //   · رغد لا تتواصل مع صاحب ملفٍ إلا بتوجيه المالك.
 //   · لا يخرج شيءٌ إلى الموظفة إلا بضغطة المالك على «اعتمد وأرسل».
 
-export type Brief = { recipient: 'dhai' | 'raghad'; to: string; subject: string; body: string; items: number; by?: 'claude' | 'platform'; why?: string };
+export type Brief = { recipient: 'dhai' | 'raghad'; to: string; subject: string; body: string; items: number; by?: 'claude' | 'platform'; why?: string; reminderIds?: string[] };
 
 const SIGN = '\n\nد. عبدالحكيم المرضي';
 const ORD = ['أولاً', 'ثانياً', 'ثالثاً', 'رابعاً', 'خامساً', 'سادساً'];
@@ -176,7 +177,7 @@ const RULES: Record<Brief['recipient'], string> = {
   raghad: 'رغد: مرحلتها ما بعد الدفع وجهات التمويل — ملفّات من دفع، والاتصال بالجهات المُسندة إليها (ومنها: تعميد، إمكان، لندو، الأهلي نقاط البيع، Funding Souq) وتسجيل اسم المسؤول ورقمه وملاحظتها في شاشة «المتابعة» بعد كل مكالمة. لا تتواصل مع صاحب أي ملف، ولا مع جهةٍ لم تُسنَد إليها، إلا بتوجيه المالك. والملفّ الذي دفع صاحبه ولم يُخاطَب له باب تبلّغ به المالك اليوم.',
 };
 
-async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brief> {
+async function polish(sb: SupabaseClient, b: Brief, today: string, extraNotes: string[] = []): Promise<Brief> {
   const { askClaude } = await import('./claudeApi');
   // آخر يوم عمل (الأحد يُقرأ فيه الخميس — الجمعة والسبت عطلة)
   let yt = Date.parse(today + 'T12:00:00Z') - 86400_000;
@@ -191,7 +192,7 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
   const { data: ctxAll } = await sb.from('brief_context').select('note, message').eq('active', true)
     .in('audience', [b.recipient, 'both']).lte('starts_on', today).or('expires_on.is.null,expires_on.gte.' + today).order('id');
   const ctx = (ctxAll || []).filter((c) => !c.message);
-  const verbatim = (ctxAll || []).filter((c) => c.message);
+  const verbatim = [...(ctxAll || []).filter((c) => c.message).map((c) => ({ note: c.note })), ...extraNotes.map((note) => ({ note }))];
   const { data: evs } = await sb.from('deal_events').select('title, detail, kind, created_at, company_id')
     .gte('created_at', y + 'T00:00:00+03:00').in('kind', ['contract_signed', 'client_email', 'file_update', 'service', 'note'])
     .order('created_at', { ascending: false }).limit(25);
@@ -230,19 +231,24 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
  * ★ ٣ أكتوبر (بأمر المالك): «مهمة اليوم الأولى» بنصٍّ كتبه المالك ليُرسل بحرفه (واتساب) —
  * توضع بعد سطر التحية كما هي، خارج الصياغة والفحص (فيها ما أذن به المالك نفسه).
  */
-async function withVerbatim(sb: SupabaseClient, b: Brief, today: string): Promise<Brief> {
-  const { data } = await sb.from('brief_context').select('note, message').eq('active', true).not('message', 'is', null)
+async function withVerbatim(sb: SupabaseClient, b: Brief, today: string, extra: Reminder[] = []): Promise<Brief> {
+  const { data: rows } = await sb.from('brief_context').select('note, message').eq('active', true).not('message', 'is', null)
     .in('audience', [b.recipient, 'both']).lte('starts_on', today).or('expires_on.is.null,expires_on.gte.' + today).order('id');
-  if (!data?.length) return b;
+  const data = [...(rows || []), ...extra.map((r) => ({ note: r.note, message: r.message }))];
+  if (!data.length) return b;
   const block = data.map((v, i) => (data.length > 1 ? 'مهمة اليوم ' + (i + 1) + ' — ' : 'مهمة اليوم الأولى — ') + v.note + ':\n\n'
     + '———\n' + String(v.message).trim() + '\n———').join('\n\n');
   const lines = b.body.split('\n');
   const head = lines.shift() || '';
-  return { ...b, body: head + '\n\n' + block + '\n\n' + lines.join('\n').replace(/^\n+/, ''), items: b.items + data.length };
+  return { ...b, body: head + '\n\n' + block + '\n\n' + lines.join('\n').replace(/^\n+/, ''), items: b.items + data.length,
+    reminderIds: extra.map((r) => r.contractId) };
 }
 
 export async function buildBriefs(sb: SupabaseClient, today = riyadhDate()): Promise<Brief[]> {
   const base = await Promise.all([dhaiBrief(sb, today), raghadBrief(sb, today)]);
-  const written = await Promise.all(base.map((b) => polish(sb, b, today).catch((e) => ({ ...b, by: 'platform' as const, why: e instanceof Error ? e.message : String(e) }))));
-  return Promise.all(written.map((b) => withVerbatim(sb, b, today)));
+  // تذكير التوقيع (قاعدة المالك ٣/١٠) — لضي وحدها، بنصّه المعتمد
+  const rem = await dueReminders(sb, today).catch(() => [] as Reminder[]);
+  const written = await Promise.all(base.map((b) => polish(sb, b, today, b.recipient === 'dhai' ? rem.map((r) => r.note) : [])
+    .catch((e) => ({ ...b, by: 'platform' as const, why: e instanceof Error ? e.message : String(e) }))));
+  return Promise.all(written.map((b) => withVerbatim(sb, b, today, b.recipient === 'dhai' ? rem : [])));
 }

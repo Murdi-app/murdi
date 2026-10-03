@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { issueAndSend } from '@/lib/contractIssue';
+import { unsignedAfterReminder } from '@/lib/signReminders';
 
 // ★ ١ أكتوبر (بأمر المالك): لا مهمة تنتظر ردّ المالك. لكل ما ينتظر قراره مهلةٌ وخيارٌ
 //   افتراضيٌّ آمن، ويصله إشعارٌ بما حدث مرةً واحدة (`decision_marks`):
@@ -12,7 +13,7 @@ import { issueAndSend } from '@/lib/contractIssue';
 //   ويُستثنى بأمره: الاستشارة المجانية (الفجوة) والقوالب الجديدة — تبقى تنتظر اعتماده.
 
 const H = 3600_000;
-export type TimeoutResult = { issued: string[]; postponed: string[] };
+export type TimeoutResult = { issued: string[]; postponed: string[]; unsigned: string[] };
 
 async function mark(sb: SupabaseClient, t: string, id: string, action: string, note = ''): Promise<boolean> {
   const { error } = await sb.from('decision_marks').insert({ ref_table: t, ref_id: id, action, note });
@@ -20,7 +21,7 @@ async function mark(sb: SupabaseClient, t: string, id: string, action: string, n
 }
 
 export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
-  const r: TimeoutResult = { issued: [], postponed: [] };
+  const r: TimeoutResult = { issued: [], postponed: [], unsigned: [] };
   const { data: setting } = await sb.from('fee_settings').select('value').eq('key', 'auto_issue_hours').maybeSingle();
   const autoH = Number(setting?.value ?? 24) || 24;
 
@@ -33,6 +34,9 @@ export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
       r.issued.push(name + (x.sent ? ' — صدر وخرجت رسالته إلى ' + x.to : ' — صدر، ولم تخرج الرسالة: ' + (x.reason || '')));
     } catch (e) { r.issued.push(name + ' — تعذّر: ' + (e instanceof Error ? e.message : e)); }
   }
+
+  // ★ ٣/١٠: ذُكّر بالواتساب ولم يوقّع خلال يومَي عمل ← إشعار المالك باسمه، ولا يعود لضي
+  r.unsigned = await unsignedAfterReminder(sb, new Date(Date.now() + 3 * H).toISOString().slice(0, 10)).catch(() => []);
 
   const { data: msgs } = await sb.from('client_messages').select('id, subject, created_by_name').eq('status', 'بانتظار الاعتماد').lt('created_at', new Date(Date.now() - 24 * H).toISOString());
   for (const m of msgs || []) {
