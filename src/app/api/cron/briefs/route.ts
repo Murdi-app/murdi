@@ -35,7 +35,7 @@ async function handle(req: Request) {
     const briefs = await buildBriefs(sb, today);
     const { error: iErr } = await sb.from('daily_briefs').insert(briefs.map((b) => ({
       brief_date: today, recipient: b.recipient, to_email: b.to, subject: b.subject, body: b.body,
-      status: 'draft', note: 'كُتب آلياً من بيانات المنصة',
+      status: 'draft', note: b.by === 'claude' ? 'كتبه Claude من بيانات المنصة' : 'كُتب من بيانات المنصة (تعذّرت صياغة Claude)',
     })));
     if (iErr) throw new Error(iErr.message);
 

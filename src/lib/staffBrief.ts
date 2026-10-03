@@ -3,6 +3,7 @@ import { closesOpportunity } from './outcomes';
 import { OPEN_PAID_STATUSES } from './serviceStatus';
 import { involvesOutreach } from './serviceCatalog';
 import { isFrozen } from './frozen';
+import { needsSignedContract } from './contracts';
 
 // توجيه الصباح للموظفتين — يُكتب من بيانات المنصة نفسها.
 //
@@ -18,7 +19,7 @@ import { isFrozen } from './frozen';
 //   · رغد لا تتواصل مع صاحب ملفٍ إلا بتوجيه المالك.
 //   · لا يخرج شيءٌ إلى الموظفة إلا بضغطة المالك على «اعتمد وأرسل».
 
-export type Brief = { recipient: 'dhai' | 'raghad'; to: string; subject: string; body: string; items: number };
+export type Brief = { recipient: 'dhai' | 'raghad'; to: string; subject: string; body: string; items: number; by?: 'claude' | 'platform'; why?: string };
 
 const SIGN = '\n\nد. عبدالحكيم المرضي';
 const ORD = ['أولاً', 'ثانياً', 'ثالثاً', 'رابعاً', 'خامساً', 'سادساً'];
@@ -74,8 +75,24 @@ async function dhaiBrief(sb: SupabaseClient, today: string): Promise<Brief> {
 
   section('تحويلٌ وصل وينتظر تأكيده في مكتب الطلبات (طابقيه بالإيصال ثم أكّديه):',
     pick('transfer', 10), (r) => who(r.name, r.person));
+  // ★ ٣ أكتوبر: «العقد أولاً» — الطلب الذي عقده لم يُوقَّع لا يُعاد له رابط دفع (لا يُفتح
+  //   الدفع قبل التوقيع)؛ يُذكَّر صاحبه برابط العقد الذي وصله على بريده.
+  const ordered = pick('ordered', 10);
+  const coIds = ordered.map((r) => r.ref_id);
+  const { data: srs } = coIds.length
+    ? await sb.from('service_requests').select('id, company_id, service_title').in('company_id', coIds).eq('status', 'priced')
+    : { data: [] as { id: string; company_id: string; service_title: string }[] };
+  const srIds = (srs || []).map((s) => s.id);
+  const { data: docs } = srIds.length
+    ? await sb.from('contracts').select('service_request_id, status, contract_type').in('service_request_id', srIds)
+    : { data: [] as { service_request_id: string; status: string; contract_type: string }[] };
+  const awaitingSign = new Set((srs || []).filter((s) => needsSignedContract(s.service_title)
+    && !(docs || []).some((d) => d.service_request_id === s.id && ['signed', 'completed'].includes(d.status))).map((s) => String(s.company_id)));
+  const line = (r: HotRow) => who(r.name, r.person) + ' — ' + String(r.reason || '').replace(/\s*ولم يدفع$/, '');
+  section('عقدٌ أُرسل ولم يُوقَّع بعد (ذكّريه بفتح رابط العقد من بريده وتوقيعه — الدفع يُفتح له بعد التوقيع، فلا ترسلي رابط دفع):',
+    ordered.filter((r) => awaitingSign.has(r.ref_id)), line);
   section('طلبٌ مسعَّر ينتظر التحويل (أعيدي له رابط الدفع):',
-    pick('ordered', 10), (r) => who(r.name, r.person) + ' — ' + String(r.reason || '').replace(/\s*ولم يدفع$/, ''));
+    ordered.filter((r) => !awaitingSign.has(r.ref_id)), line);
   section('طلب خدمةً من الموقع ولم يُتّصل به:',
     pick('inquiry', 8), (r) => who(r.name, r.person) + ' — ' + String(r.reason || ''));
   section('ملفٌّ مكتمل ولم يصدر له عقد (الأحدث أولاً):',
@@ -146,6 +163,49 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
   return { recipient: 'raghad', to: 'raghad@murdi.sa', subject: 'توجيه اليوم — ' + arDay(today), body, items: untouched.length + stale.length };
 }
 
+// ★ ٣ أكتوبر (بأمر المالك: «اكتب التوجيه كل صباح من نفسك»): الحقائق تُجمع أعلاه من
+//   المنصة كما هي، ثم يكتب Claude التوجيه منها بصوت المالك — أولوياتٌ وسببٌ ونبرة، لا قائمةٌ
+//   جافة. ولا يضيف اسماً ولا رقماً ليس في الحقائق. ويُفحص الناتج: لا مبلغ، ولا كلمة محظورة،
+//   ولا ذكر لآلةٍ أو ذكاءٍ اصطناعي (الموظفتان لا تعلمان)، والتوقيع باسم المالك — وإلا خرج
+//   توجيه المنصة الأصلي، فلا يمرّ صباحٌ بلا توجيه.
+const FORBIDDEN = /(قرض|كفالة|claude|chatgpt|ذكاء\s*اصطناعي|\bAI\b|بوت|نموذج لغوي|ريال|﷼|٪|%|\bSAR\b)/i;
+
+const RULES: Record<Brief['recipient'], string> = {
+  dhai: 'ضي: مرحلتها من وصول العميل إلى أن يدفع — الفرص الساخنة، والمكالمة الأولى، ومكتب الطلبات، وتأكيد التحويل بمطابقة الإيصال، وقناة الفائزين بالترسيات. لا تتصل بأي جهة تمويل ولا تراسلها. بعد كل مكالمة تسجّل «اتصلتُ» ثم النتيجة ثم موعد المعاودة.',
+  raghad: 'رغد: مرحلتها ما بعد الدفع وجهات التمويل — ملفّات من دفع، والاتصال بالجهات المُسندة إليها (ومنها: تعميد، إمكان، لندو، الأهلي نقاط البيع، Funding Souq) وتسجيل اسم المسؤول ورقمه وملاحظتها في شاشة «المتابعة» بعد كل مكالمة. لا تتواصل مع صاحب أي ملف، ولا مع جهةٍ لم تُسنَد إليها، إلا بتوجيه المالك. والملفّ الذي دفع صاحبه ولم يُخاطَب له باب تبلّغ به المالك اليوم.',
+};
+
+async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brief> {
+  const { askClaude } = await import('./claudeApi');
+  // آخر يوم عمل (الأحد يُقرأ فيه الخميس — الجمعة والسبت عطلة)
+  let yt = Date.parse(today + 'T12:00:00Z') - 86400_000;
+  while ([5, 6].includes(new Date(yt).getUTCDay())) yt -= 86400_000;
+  const y = new Date(yt).toISOString().slice(0, 10);
+  const { data: act } = await sb.rpc('staff_activity', { p_from: y, p_to: y });
+  const { data: st } = await sb.from('staff').select('name').eq('email', b.to).maybeSingle();
+  const mine = ((act || []) as { name: string; touches: number; files: number }[]).find((a) => a.name === st?.name);
+  const { data: lastBrief } = await sb.from('daily_briefs').select('read_at').eq('to_email', b.to).eq('brief_date', y).maybeSingle();
+  const facts = 'توجيه المنصة لليوم (الحقائق — لا تُضف عليها اسماً ولا رقماً):\n' + b.body
+    + '\n\nآخر يوم عمل (' + arDay(y) + '): ' + (mine ? 'سُجّل لها ' + mine.touches + ' عملاً على ' + mine.files + ' ملفاً' : 'لا شيء مسجّل لها')
+    + (lastBrief ? (lastBrief.read_at ? '، وقرأت توجيه ذلك اليوم.' : '، ولم تضغط «قرأته» على توجيه ذلك اليوم.') : '.');
+  const text = await askClaude(
+    'أنت الدكتور عبدالحكيم المرضي، مالك مكتب «مُرضي» للاستشارات المالية، تكتب بنفسك توجيه الصباح لموظفتك. '
+    + 'عربيٌّ فصيحٌ قريب، دافئٌ وحازم، قصيرٌ (بين ١٢٠ و٢٦٠ كلمة). ابدأ «صباح الخير يا ' + (b.recipient === 'dhai' ? 'ضي' : 'رغد') + '». '
+    + 'رتّب المهام بالأولوية: الأقرب إلى إغلاق أو دفع أولاً، وقل لماذا في نصف سطر. اذكر الأسماء كما وردت حرفياً. '
+    + 'إن كان آخر يوم عملٍ لها بلا عملٍ مسجّل أو لم تقرأ توجيهه فنبّه بلطفٍ وحزم في سطر واحد، وإن عملت فاشكرها في نصف سطر. '
+    + 'لا تذكر أي مبلغ أو سعر أو نسبة أو ما دفعه عميل. لا تستعمل كلمة «قرض» ولا «كفالة». لا تذكر أنك آلة أو برنامج. '
+    + 'لا تضف مهمةً أو اسماً أو رقماً ليس في الحقائق. واختم بسطرٍ واحد هو: د. عبدالحكيم المرضي\n\nحدود دورها: ' + RULES[b.recipient],
+    facts, 4000);
+  const out = text.trim().replace(/\*\*/g, '').replace(/^#+\s*/gm, '');
+  const bad = FORBIDDEN.exec(out);
+  const why = out.length < 200 ? 'قصير' : out.length > 3500 ? 'طويل'
+    : !/د\.\s*عبدالحكيم المرضي\s*$/.test(out) ? 'بلا توقيع'
+    : bad ? 'كلمة محظورة: ' + bad[0]
+    : /[\d٠-٩][\d,٬.]*\s*(ألف|مليون)/.test(out) ? 'مبلغ' : '';
+  return why ? { ...b, by: 'platform', why } : { ...b, body: out, by: 'claude' };
+}
+
 export async function buildBriefs(sb: SupabaseClient, today = riyadhDate()): Promise<Brief[]> {
-  return Promise.all([dhaiBrief(sb, today), raghadBrief(sb, today)]);
+  const base = await Promise.all([dhaiBrief(sb, today), raghadBrief(sb, today)]);
+  return Promise.all(base.map((b) => polish(sb, b, today).catch((e) => ({ ...b, by: 'platform' as const, why: e instanceof Error ? e.message : String(e) }))));
 }
