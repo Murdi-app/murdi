@@ -188,8 +188,10 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
   const { data: lastBrief } = await sb.from('daily_briefs').select('read_at').eq('to_email', b.to).eq('brief_date', y).maybeSingle();
   // ★ «وين وصلنا»: توجيهات المالك القائمة لهذه الموظفة (`brief_context` — تُكتب من محادثته
   //   مع Claude)، وما استجدّ على الملفات منذ آخر يوم عمل (deal_events منقّاةً من المال والأرقام).
-  const { data: ctx } = await sb.from('brief_context').select('note').eq('active', true)
+  const { data: ctxAll } = await sb.from('brief_context').select('note, message').eq('active', true)
     .in('audience', [b.recipient, 'both']).lte('starts_on', today).or('expires_on.is.null,expires_on.gte.' + today).order('id');
+  const ctx = (ctxAll || []).filter((c) => !c.message);
+  const verbatim = (ctxAll || []).filter((c) => c.message);
   const { data: evs } = await sb.from('deal_events').select('title, detail, kind, created_at, company_id')
     .gte('created_at', y + 'T00:00:00+03:00').in('kind', ['contract_signed', 'client_email', 'file_update', 'service', 'note'])
     .order('created_at', { ascending: false }).limit(25);
@@ -201,6 +203,8 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
   const facts = 'توجيه المنصة لليوم (الحقائق — لا تُضف عليها اسماً ولا رقماً):\n' + b.body
     + (ctx?.length ? '\n\nتوجيهات الدكتور القائمة لها (اجعل ما يخصّ اليوم منها مهاماً واضحة في مكانها من الأولوية، ولا تكرّر القواعد الثابتة كلها كل يوم — يكفي ما يمسّ مهام اليوم):\n' + ctx.map((c) => '· ' + c.note).join('\n') : '')
     + (news ? '\n\nما استجدّ على الملفات منذ آخر يوم عمل (للسياق — استعمل منه ما يخصّ مرحلتها فقط):\n' + news : '')
+    + (verbatim.length ? '\n\nتنبيه: فوق توجيهك تُوضع «مهمة اليوم الأولى» بنصٍّ كتبه الدكتور بنفسه: ' + verbatim.map((v) => v.note).join(' · ')
+      + ' — لا تذكرها في توجيهك أصلاً، واحذف من ترتيبك كل بندٍ عن الشخص أو المنشأة المذكورين فيها (فالرسالة تكفي اليوم).' : '')
     + '\n\nآخر يوم عمل (' + arDay(y) + '): ' + (mine ? 'سُجّل لها ' + mine.touches + ' عملاً على ' + mine.files + ' ملفاً' : 'لا شيء مسجّل لها')
     + (lastBrief ? (lastBrief.read_at ? '، وقرأت توجيه ذلك اليوم.' : '، ولم تضغط «قرأته» على توجيه ذلك اليوم.') : '.');
   const text = await askClaude(
@@ -222,7 +226,23 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
   return why ? { ...b, by: 'platform', why } : { ...b, body: out, by: 'claude' };
 }
 
+/**
+ * ★ ٣ أكتوبر (بأمر المالك): «مهمة اليوم الأولى» بنصٍّ كتبه المالك ليُرسل بحرفه (واتساب) —
+ * توضع بعد سطر التحية كما هي، خارج الصياغة والفحص (فيها ما أذن به المالك نفسه).
+ */
+async function withVerbatim(sb: SupabaseClient, b: Brief, today: string): Promise<Brief> {
+  const { data } = await sb.from('brief_context').select('note, message').eq('active', true).not('message', 'is', null)
+    .in('audience', [b.recipient, 'both']).lte('starts_on', today).or('expires_on.is.null,expires_on.gte.' + today).order('id');
+  if (!data?.length) return b;
+  const block = data.map((v, i) => (data.length > 1 ? 'مهمة اليوم ' + (i + 1) + ' — ' : 'مهمة اليوم الأولى — ') + v.note + ':\n\n'
+    + '———\n' + String(v.message).trim() + '\n———').join('\n\n');
+  const lines = b.body.split('\n');
+  const head = lines.shift() || '';
+  return { ...b, body: head + '\n\n' + block + '\n\n' + lines.join('\n').replace(/^\n+/, ''), items: b.items + data.length };
+}
+
 export async function buildBriefs(sb: SupabaseClient, today = riyadhDate()): Promise<Brief[]> {
   const base = await Promise.all([dhaiBrief(sb, today), raghadBrief(sb, today)]);
-  return Promise.all(base.map((b) => polish(sb, b, today).catch((e) => ({ ...b, by: 'platform' as const, why: e instanceof Error ? e.message : String(e) }))));
+  const written = await Promise.all(base.map((b) => polish(sb, b, today).catch((e) => ({ ...b, by: 'platform' as const, why: e instanceof Error ? e.message : String(e) }))));
+  return Promise.all(written.map((b) => withVerbatim(sb, b, today)));
 }
