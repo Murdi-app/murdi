@@ -33,6 +33,11 @@ const WORK = /تشييد|إنشاء|انشاء|بناء|تنفيذ أعمال|أ
 const OWN_ASSET = /مستشفى|مستشفي|مقر|مبنى|مبني|مصنع|فرع|برج|مجمع|فندق|مشروعها|مدرسة|مركز/;
 /** إيجارٌ وتأجير واستئجار وبيع أرض ليست ترسيات */
 const NOT_AWARD = /إيجار|ايجار|تأجير|تاجير|استئجار|بيع أرض|بيع ارض|شراء أرض|شراء ارض|بيع قطعة|شراء قطعة/;
+/**
+ * ★ ٣ أكتوبر (بأمر المالك): لا يُدخل ما ليس عقد تنفيذ — البيع والإيجار والتسويق والمزايدات
+ * والتأمين والإعلان والوساطة والتمويل. (أدخل المستورد ١٩ في يوم، ١٦ منها مدرجة كبيرة أو ليست تنفيذاً.)
+ */
+const NOT_EXECUTION = /(?:^|[\s«"(])(?:و|ل|لـ)?(?:بيع|البيع|شراء|تسويق|التسويق|مزايد|المزايد|مزاد|المزاد|تأمين|التأمين|إعلاني|اعلاني|إعلانات|الإعلانات|وساطة|الوساطة|تمويل|التمويل|محصول|إيجار|الإيجار|تأجير|التأجير|استحواذ|الاستحواذ|اكتتاب|الاكتتاب)/;
 
 /** الطرف الآخر: «مع X» أو «على X» (ترسيةٌ منها عليه) — شركةً لا جهة حكومية */
 function counterpartyOf(t: string): string | null {
@@ -217,12 +222,70 @@ const norm = (s: string) => clean(s).replace(/[«»"“”']/g, '')
 const sameAs = (seen: Set<string>, k: string) => k.length > 0 && seen.has(k);
 
 /** يستورد ويُدخل الجديد — ويمنع التكرار: الشركة نفسها خلال عشرة أيام خبرٌ واحد */
-export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; blocked: number; errors: string[] }> {
+/** مطابقٌ لـ `award_org_name_key` في القاعدة — فالمشغّل والمستورد يقرآن القائمة بالمفتاح نفسه */
+const nameKey = (s: string) => String(s || '')
+  .replace(/[ً-ْـ]/g, '')
+  .replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+  .replace(/(^|\s)(شركه|الشركه|مؤسسه|المؤسسه|المحدوده|ذات|المسؤوليه|المسئوليه|شخص|واحد)(?=\s|$)/g, ' ')
+  .replace(/[^ء-يa-zA-Z0-9]/g, '');
+
+export async function screenParsed(sb: SupabaseClient, all: Parsed[], errors: string[]): Promise<{ keep: Parsed[]; notExec: number; listed: number }> {
+  const exec = all.filter((p) => !NOT_EXECUTION.test(p.headline + ' ' + (p.tender_title || '')));
+  const notExec = all.length - exec.length;
+  const { data: lc } = await sb.from('listed_companies').select('name_key, market');
+  const tasi = new Set((lc || []).filter((r) => r.market === 'tasi').map((r) => String(r.name_key)));
+  const known = new Set((lc || []).map((r) => String(r.name_key)));
+  // المنفّذ المجهول («منفّذ …») لا يُقاس إدراجه — المدرجة هي المالكة، والمطلوب منفّذها
+  const ask = Array.from(new Set(exec.filter((p) => !p.executor_unknown && !known.has(nameKey(p.company_name))).map((p) => p.company_name)));
+  if (ask.length) {
+    try {
+      const { jsonOf } = await import('./claudeApi');
+      // بحثٌ في الويب للتحقق (رمز التداول في تداول/أرقام/مباشر) — الذاكرة وحدها لم تعرف «أسمنت الرياض»
+      const messages: { role: string; content: unknown }[] = [{ role: 'user', content:
+        'لكل شركة سعودية أدناه (وردت في أخبار عقود): هل هي مدرجة في السوق الرئيسية «تاسي»، أم السوق الموازية «نمو»، أم غير مدرجة؟ '
+        + 'ابحث عن رمز تداولها في تداول أو أرقام أو مباشر إن لم تتيقّن. الأخبار المالية التي تعلن فيها شركةٌ توقيع عقد غالباً إفصاحٌ لشركة مدرجة. '
+        + 'أعد في آخر ردّك JSON فقط: {"companies":[{"name":"الاسم كما ورد","market":"tasi|nomu|none"}]}\n\n'
+        + ask.map((n, i) => (i + 1) + '. ' + n).join('\n') }];
+      let text = '';
+      for (let turn = 0; turn < 6; turn++) {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY as string, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages, tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: Math.min(12, ask.length * 2) }] }),
+        });
+        if (!res.ok) throw new Error('Claude ' + res.status);
+        const data = await res.json() as { content: { type: string; text?: string }[]; stop_reason: string };
+        text += data.content.filter((b) => b.type === 'text').map((b) => b.text || '').join('');
+        if (data.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: data.content }); continue; }
+        break;
+      }
+      const all = text.match(/\{[\s\S]*"companies"[\s\S]*\}/g);
+      const j = jsonOf<{ companies: { name: string; market: 'tasi' | 'nomu' | 'none' }[] }>(all ? all[all.length - 1] : '');
+      const learned = (j?.companies || []).filter((c) => c.market === 'tasi' || c.market === 'nomu');
+      for (const c of learned) {
+        const k = nameKey(c.name);
+        if (c.market === 'tasi') tasi.add(k);
+        await sb.from('listed_companies').insert({ name: c.name, market: c.market, name_key: k, added_by: 'Claude — فرز الاستيراد' });
+      }
+    } catch (e) { errors.push('فرز الإدراج: ' + (e instanceof Error ? e.message : String(e))); }
+  }
+  const keep = exec.filter((p) => p.executor_unknown || !tasi.has(nameKey(p.company_name)));
+  return { keep, notExec, listed: exec.length - keep.length };
+}
+
+export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; blocked: number; not_execution: number; listed_tasi: number; errors: string[] }> {
   const errors: string[] = [];
   const all: Parsed[] = [];
   for (const q of QUERIES) {
     try { all.push(...await fetchQuery(q, days)); } catch (e) { errors.push(q + ': ' + (e instanceof Error ? e.message : String(e))); }
   }
+  // ★ ٣ أكتوبر (بأمر المالك) — فرزٌ قبل الإدخال لا بعده:
+  //   ١) ما ليس عقد تنفيذ (بيع · إيجار · تسويق · مزايدة · تأمين …) لا يُدخل.
+  //   ٢) المدرجة في السوق الرئيسية (تاسي) لا تُدخل — تُعرف من `listed_companies`، وما لم يكن فيها
+  //      يُسأل عنه Claude دفعةً واحدة، ويُضاف ما يثبت إدراجه إلى القائمة فلا يُسأل عنه ثانية.
+  //      ونمو (السوق الموازية) يبقى. وإن تعذّر السؤال دخل الخبر كالسابق ومشغّل القاعدة يعلّمه.
+  const filtered = await screenParsed(sb, all, errors);
+  all.length = 0; all.push(...filtered.keep);
   const since = new Date(Date.now() - 10 * 86400_000).toISOString().slice(0, 10);
   const { data: recent, error } = await sb.from('contract_awards').select('company_name, buyer_entity, contract_value, awarded_at, created_at')
     .or('awarded_at.gte.' + since + ',created_at.gte.' + since);
@@ -272,5 +335,5 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
       else inserted++;
     }
   }
-  return { found: all.length, inserted, skipped, blocked, errors };
+  return { found: all.length, inserted, skipped, blocked, not_execution: filtered.notExec, listed_tasi: filtered.listed, errors };
 }
