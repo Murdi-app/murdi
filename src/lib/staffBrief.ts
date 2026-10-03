@@ -4,6 +4,7 @@ import { OPEN_PAID_STATUSES } from './serviceStatus';
 import { involvesOutreach } from './serviceCatalog';
 import { isFrozen } from './frozen';
 import { needsSignedContract } from './contracts';
+import { redactTimeline } from './staffRedact';
 
 // توجيه الصباح للموظفتين — يُكتب من بيانات المنصة نفسها.
 //
@@ -185,16 +186,32 @@ async function polish(sb: SupabaseClient, b: Brief, today: string): Promise<Brie
   const { data: st } = await sb.from('staff').select('name').eq('email', b.to).maybeSingle();
   const mine = ((act || []) as { name: string; touches: number; files: number }[]).find((a) => a.name === st?.name);
   const { data: lastBrief } = await sb.from('daily_briefs').select('read_at').eq('to_email', b.to).eq('brief_date', y).maybeSingle();
+  // ★ «وين وصلنا»: توجيهات المالك القائمة لهذه الموظفة (`brief_context` — تُكتب من محادثته
+  //   مع Claude)، وما استجدّ على الملفات منذ آخر يوم عمل (deal_events منقّاةً من المال والأرقام).
+  const { data: ctx } = await sb.from('brief_context').select('note').eq('active', true)
+    .in('audience', [b.recipient, 'both']).lte('starts_on', today).or('expires_on.is.null,expires_on.gte.' + today).order('id');
+  const { data: evs } = await sb.from('deal_events').select('title, detail, kind, created_at, company_id')
+    .gte('created_at', y + 'T00:00:00+03:00').in('kind', ['contract_signed', 'client_email', 'file_update', 'service', 'note'])
+    .order('created_at', { ascending: false }).limit(25);
+  const coIds = Array.from(new Set((evs || []).map((e) => String(e.company_id)).filter(Boolean)));
+  const { data: cos } = coIds.length ? await sb.from('companies').select('id, company_name').in('id', coIds) : { data: [] as { id: string; company_name: string }[] };
+  const coName = new Map((cos || []).map((c) => [String(c.id), String(c.company_name)]));
+  const news = redactTimeline((evs || []).map((e) => ({ ...e, title: (coName.get(String(e.company_id)) || '') + ': ' + e.title })))
+    .map((e) => '· ' + String(e.title).slice(0, 160)).join('\n');
   const facts = 'توجيه المنصة لليوم (الحقائق — لا تُضف عليها اسماً ولا رقماً):\n' + b.body
+    + (ctx?.length ? '\n\nتوجيهات الدكتور القائمة لها (اجعل ما يخصّ اليوم منها مهاماً واضحة في مكانها من الأولوية، ولا تكرّر القواعد الثابتة كلها كل يوم — يكفي ما يمسّ مهام اليوم):\n' + ctx.map((c) => '· ' + c.note).join('\n') : '')
+    + (news ? '\n\nما استجدّ على الملفات منذ آخر يوم عمل (للسياق — استعمل منه ما يخصّ مرحلتها فقط):\n' + news : '')
     + '\n\nآخر يوم عمل (' + arDay(y) + '): ' + (mine ? 'سُجّل لها ' + mine.touches + ' عملاً على ' + mine.files + ' ملفاً' : 'لا شيء مسجّل لها')
     + (lastBrief ? (lastBrief.read_at ? '، وقرأت توجيه ذلك اليوم.' : '، ولم تضغط «قرأته» على توجيه ذلك اليوم.') : '.');
   const text = await askClaude(
     'أنت الدكتور عبدالحكيم المرضي، مالك مكتب «مُرضي» للاستشارات المالية، تكتب بنفسك توجيه الصباح لموظفتك. '
-    + 'عربيٌّ فصيحٌ قريب، دافئٌ وحازم، قصيرٌ (بين ١٢٠ و٢٦٠ كلمة). ابدأ «صباح الخير يا ' + (b.recipient === 'dhai' ? 'ضي' : 'رغد') + '». '
+    + 'عربيٌّ فصيحٌ قريب، دافئٌ وحازم، موجزٌ (بين ١٥٠ و٣٢٠ كلمة). ابدأ «صباح الخير يا ' + (b.recipient === 'dhai' ? 'ضي' : 'رغد') + '». '
     + 'رتّب المهام بالأولوية: الأقرب إلى إغلاق أو دفع أولاً، وقل لماذا في نصف سطر. اذكر الأسماء كما وردت حرفياً. '
     + 'إن كان آخر يوم عملٍ لها بلا عملٍ مسجّل أو لم تقرأ توجيهه فنبّه بلطفٍ وحزم في سطر واحد، وإن عملت فاشكرها في نصف سطر. '
     + 'لا تذكر أي مبلغ أو سعر أو نسبة أو ما دفعه عميل. لا تستعمل كلمة «قرض» ولا «كفالة». لا تذكر أنك آلة أو برنامج. '
-    + 'لا تضف مهمةً أو اسماً أو رقماً ليس في الحقائق. واختم بسطرٍ واحد هو: د. عبدالحكيم المرضي\n\nحدود دورها: ' + RULES[b.recipient],
+    + 'لا تضف مهمةً أو اسماً أو رقماً ليس في الحقائق أو توجيهات الدكتور. '
+    + 'اذكر كل منشأة باسمها كما ورد حرفياً، ولا تفترض أبداً أن اسمين مختلفين منشأةٌ واحدة، ولا تنقل جهةً أو مهمةً من منشأة إلى أخرى — '
+    + 'ملفٌّ في التوجيهات لم يرد في قائمة اليوم اذكره وحده بتوجيهه. واختم بسطرٍ واحد هو: د. عبدالحكيم المرضي\n\nحدود دورها: ' + RULES[b.recipient],
     facts, 4000);
   const out = text.trim().replace(/\*\*/g, '').replace(/^#+\s*/gm, '');
   const bad = FORBIDDEN.exec(out);
