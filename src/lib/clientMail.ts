@@ -7,21 +7,22 @@ import { sendMail } from '@/lib/sendMail';
 export const OWNER_FROM = 'مُرضي للاستشارات المالية <partners@murdi.sa>';
 export const OWNER_SENDER = 'د. عبدالحكيم المرضي';
 
-export const mailHtml = (body: string) =>
-  '<div style="font-family:Arial,Tahoma,sans-serif;line-height:1.9;direction:rtl;text-align:right;color:#1A3D34;font-size:14.5px;">'
+/** `ltr` للرسائل الإنجليزية (عملاء أجانب) — وإلا فالعربية من اليمين */
+export const mailHtml = (body: string, ltr = false) =>
+  '<div style="font-family:Arial,Tahoma,sans-serif;line-height:1.9;direction:' + (ltr ? 'ltr;text-align:left' : 'rtl;text-align:right') + ';color:#1A3D34;font-size:14.5px;">'
   + body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#1A6B55;">$1</a>').replace(/\n/g, '<br>')
   + '</div>';
 
 export async function sendClientMail(sb: SupabaseClient, m: {
-  companyId: string; toEmail: string; toName?: string | null; subject: string; body: string; event: string;
+  companyId: string; toEmail: string; toName?: string | null; subject: string; body: string; event: string; ltr?: boolean;
 }): Promise<{ ok: boolean; id?: string | null; reason?: string; at: string }> {
   const at = new Date().toISOString();
   const { data: saved } = await sb.from('client_messages').insert({
     company_id: m.companyId, to_name: m.toName || null, to_email: m.toEmail, template_key: null,
     subject: m.subject.slice(0, 300), body: m.body, status: 'مسودة', created_by_name: OWNER_SENDER,
   }).select('id').single();
-  const res = await sendMail({ from: OWNER_FROM, to: m.toEmail, replyTo: 'partners@murdi.sa', subject: m.subject, html: mailHtml(m.body) });
+  const res = await sendMail({ from: OWNER_FROM, to: m.toEmail, replyTo: 'partners@murdi.sa', subject: m.subject, html: mailHtml(m.body, m.ltr) });
   if (saved?.id) {
     await sb.from('client_messages').update(res.ok
       ? { status: 'مُرسلة', sent_at: at, error_note: null, provider_id: res.id }
