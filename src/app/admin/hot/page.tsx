@@ -15,10 +15,10 @@ type Row = {
   email: string | null; company_id: string | null; tier: number
   reason: string; money: number | null; at: string | null; next_step: string; opener: string | null
   touches: number; last_outcome: string | null; last_note: string | null
-  last_at: string | null; next_action_at: string | null; state: string
+  last_at: string | null; next_action_at: string | null; state: string; follow?: boolean
 }
 // `money_on_table` يعود null للموظفة — الخادم يحذفه لا الشاشة
-type Stats = { due: number; untouched: number; waiting: number; closed: number; money_on_table: number | null }
+type Stats = { due: number; untouched: number; waiting: number; closed: number; follow?: number; money_on_table: number | null }
 
 const C = { ink: '#1A3D34', soft: '#5E7C73', line: '#E4EFEA', bg: '#F7FBF9', gold: '#C9A84C', red: '#B4622A', green: '#1A6B55' }
 
@@ -44,7 +44,7 @@ const dayCount = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d)
 export default function HotPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
-  const [view, setView] = useState<'due' | 'waiting' | 'closed'>('due')
+  const [view, setView] = useState<'due' | 'follow' | 'waiting' | 'closed'>('due')
   const [copied, setCopied] = useState('')
   const [open, setOpen] = useState('')
   const [outcome, setOutcome] = useState<string>(OUTCOMES[1])
@@ -86,7 +86,11 @@ export default function HotPage() {
     setBusy(false)
   }
 
-  const shown = useMemo(() => rows.filter(r => r.state === view), [rows, view])
+  // «متابعاتي»: كل من آخرُ نتيجته مهتم · طلب معاودة · لم يرد · أرسلتُ رسالة — حتى نتيجةٍ مُغلِقة
+  //   أو دفع، مرتَّبين بموعد الخطوة التالية (الأقرب أولاً، وما بلا موعد في الرأس)
+  const shown = useMemo(() => view === 'follow'
+    ? rows.filter(r => r.follow).sort((a, b) => String(a.next_action_at || '').localeCompare(String(b.next_action_at || '')))
+    : rows.filter(r => r.state === view), [rows, view])
 
   const tile = (n: number | string, t: string, c: string) => (
     <div style={{ flex: '1 1 140px', border: '1px solid ' + C.line, borderRadius: 12, padding: '13px 15px', background: '#fff' }}>
@@ -148,7 +152,7 @@ export default function HotPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {([['due', 'اليوم'], ['waiting', 'تنتظر موعدها'], ['closed', 'مغلقة']] as const).map(([k, l]) => (
+        {([['due', 'اليوم'], ['follow', 'متابعاتي' + (stats?.follow ? ' (' + stats.follow + ')' : '')], ['waiting', 'تنتظر موعدها'], ['closed', 'مغلقة']] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setView(k)}
             style={{
               padding: '7px 16px', borderRadius: 999, cursor: 'pointer', fontFamily: 'Cairo,sans-serif',

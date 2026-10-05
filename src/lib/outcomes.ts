@@ -34,12 +34,24 @@ export const isOutcome = (v: unknown): v is Outcome =>
   (OUTCOMES as readonly string[]).includes(String(v ?? ''));
 
 /**
- * ما يُغلق الفرصة فلا تعود إلى صفّ اليوم.
+ * ما يُغلق الفرصة فلا تعود إلى صفّ اليوم ولا إلى «متابعاتي».
  *
- * و«غير مؤهل الآن» ليست منها عمداً: معناها أنه لا يُخدَم **اليوم**، فيعود
- * حين ترتفع جاهزيته. وإغلاقُه نهائياً يحرق عميلاً ينضج بعد شهرين.
+ * ★ ٥ أكتوبر (المالك): «غير مؤهل الآن» صارت تُغلق (كانت تعود)، و«لم يرد ٣ مرات»
+ *   تُكتب آلياً بعد ثالث «لم يرد» متتالية. والدفع يُغلق أيضاً — يُقرأ من المدفوعات.
  */
-export const CLOSING_OUTCOMES: readonly string[] = ['غير مهتم', 'رقم خاطئ', 'تحوّل عميلاً', 'طلب عدم التواصل'];
+export const CLOSING_OUTCOMES: readonly string[] = ['غير مهتم', 'غير مؤهل الآن', 'رقم خاطئ', 'تحوّل عميلاً', 'طلب عدم التواصل', 'لم يرد ٣ مرات'];
+
+/** ما يُبقي العميل في «متابعاتي» حتى نتيجةٍ مُغلِقة أو دفع */
+export const FOLLOW_OUTCOMES: readonly string[] = ['مهتم', 'طلب معاودة', 'لم يرد', 'أرسلتُ رسالة'];
+export const NO_ANSWER_LIMIT = 3;
+export const NO_ANSWER_CLOSED = 'لم يرد ٣ مرات';
+
+/** يوم العمل التالي بتوقيت الرياض (الأحد–الخميس) — موعد معاودة «لم يرد» */
+export function nextWorkday(from = new Date()): string {
+  const d = new Date(from.getTime() + 3 * 3600_000);
+  do { d.setUTCDate(d.getUTCDate() + 1); } while (d.getUTCDay() === 5 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
+}
 export const closesOpportunity = (v: string | null | undefined): boolean =>
   !!v && CLOSING_OUTCOMES.includes(v);
 

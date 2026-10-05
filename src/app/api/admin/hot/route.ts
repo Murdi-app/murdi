@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
-import { OUTCOMES, isOutcome, closesOpportunity } from '@/lib/outcomes';
+import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
 //
@@ -55,15 +55,66 @@ export async function GET() {
     if (!last.has(k)) last.set(k, t);
   }
 
+  // ★ «متابعاتي» (٥ أكتوبر): كان العميل يختفي من قائمتها بعد أول اتصال — الطلب
+  //   يخرج حين contacted، والتقييم والتسجيل يخرجان حين يتبدّل صفّهما — ولو كانت
+  //   النتيجة «مهتم» أو «طلب معاودة». فصار كلُّ من آخرُ نتيجته متابعةً يُستعاد من
+  //   سجلّ اللمسات نفسه، ويبقى حتى نتيجةٍ مُغلِقة أو دفع.
+  const since = new Date(Date.now() - 120 * 86400_000).toISOString();
+  const { data: recent } = await sb.from('hot_touches').select('source, ref_id, outcome, note, next_action_at, actor_name, created_at')
+    .neq('source', 'award').gte('created_at', since).order('created_at', { ascending: false }).limit(5000);
+  const inList = new Set(rows.map((r) => r.source + '|' + r.ref_id));
+  const lastAll = new Map<string, Touch>();
+  for (const t of (recent || []) as Touch[]) { const k = t.source + '|' + t.ref_id; if (!lastAll.has(k)) lastAll.set(k, t); }
+  const lost = [...lastAll.values()].filter((t) => FOLLOW_OUTCOMES.includes(String(t.outcome)) && !inList.has(t.source + '|' + t.ref_id));
+  const ids = (src: string[]) => lost.filter((t) => src.includes(t.source)).map((t) => t.ref_id);
+  const [ma, si, co] = await Promise.all([
+    ids(['assessment']).length ? sb.from('mini_assessments').select('id, full_name, company_name, phone').in('id', ids(['assessment'])) : Promise.resolve({ data: [] }),
+    ids(['inquiry']).length ? sb.from('service_inquiries').select('id, full_name, company_name, phone, email, service_title').in('id', ids(['inquiry'])) : Promise.resolve({ data: [] }),
+    ids(['signup', 'file', 'ordered']).length ? sb.from('companies').select('id, company_name, phone').in('id', ids(['signup', 'file', 'ordered'])) : Promise.resolve({ data: [] }),
+  ]);
+  const det = new Map<string, { name: string | null; phone: string | null; email?: string | null; company_id?: string | null; what?: string }>();
+  for (const m of (ma.data || []) as Record<string, string | null>[]) det.set('assessment|' + m.id, { name: m.company_name || m.full_name, phone: m.phone });
+  for (const m of (si.data || []) as Record<string, string | null>[]) det.set('inquiry|' + m.id, { name: m.company_name || m.full_name, phone: m.phone, email: m.email, what: m.service_title || '' });
+  for (const m of (co.data || []) as Record<string, string | null>[]) for (const src of ['signup', 'file', 'ordered']) det.set(src + '|' + m.id, { name: m.company_name, phone: m.phone, company_id: String(m.id) });
+  const extra: Row[] = lost.flatMap((t) => {
+    const d = det.get(t.source + '|' + t.ref_id);
+    if (!d) return [];
+    return [{
+      source: t.source, ref_id: t.ref_id, name: d.name, phone: d.phone, email: d.email || null, company_id: d.company_id || null,
+      tier: 3, reason: 'متابعة — آخر نتيجة «' + t.outcome + '»' + (d.what ? ' · طلب «' + d.what + '»' : ''), money: 0, at: t.created_at,
+      next_step: 'تابعي حسب ما اتُّفق عليه في آخر مكالمة' + (t.note ? ': ' + t.note.slice(0, 160) : ''),
+    }];
+  });
+  rows.push(...extra);
+  // من دفع خرج من المتابعة — يُطابَق بالمنشأة أو بآخر ٩ أرقام من الجوال
+  const { data: paidRows } = await sb.from('payments').select('company_id, companies(phone)').eq('status', 'paid');
+  const paidCo = new Set<string>(), paidPh = new Set<string>();
+  for (const p of (paidRows || []) as { company_id: string; companies: { phone: string | null } | { phone: string | null }[] | null }[]) {
+    paidCo.add(String(p.company_id));
+    const ph = Array.isArray(p.companies) ? p.companies[0]?.phone : p.companies?.phone;
+    if (ph) paidPh.add(ph.replace(/\D/g, '').slice(-9));
+  }
+  const isPaid = (r: Row) => (r.company_id && paidCo.has(String(r.company_id))) || (!!r.phone && paidPh.has(r.phone.replace(/\D/g, '').slice(-9)));
+  for (const t of (recent || []) as Touch[]) { const k = t.source + '|' + t.ref_id; if (!last.has(k)) last.set(k, t); }
+  // عدد المحاولات لكل فرصة — اللمسة الواحدة قد تأتي في القراءتين فتُعدّ بوقتها مرةً واحدة
+  const seen = new Set<string>(), countOf = new Map<string, number>();
+  for (const t of [...all, ...((recent || []) as Touch[])]) {
+    const k = t.source + '|' + t.ref_id;
+    if (seen.has(k + '@' + t.created_at)) continue;
+    seen.add(k + '@' + t.created_at); countOf.set(k, (countOf.get(k) || 0) + 1);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const merged = rows.map((r) => {
     const t = last.get(r.source + '|' + r.ref_id) || null;
     // مغلقة = لا تُعرض · مؤجّلة بموعد لم يحن = تنتظر · غير ذلك = اليوم
-    const closed = closesOpportunity(t?.outcome);
+    const paid = r.tier > 1 && isPaid(r);
+    const closed = closesOpportunity(t?.outcome) || (paid && !!t);
     const waiting = !!t?.next_action_at && t.next_action_at > today;
     return {
       ...r,
-      touches: all.filter((x) => x.source === r.source && x.ref_id === r.ref_id).length,
+      follow: !closed && FOLLOW_OUTCOMES.includes(String(t?.outcome || '')),
+      touches: countOf.get(r.source + '|' + r.ref_id) || 0,
       last_outcome: t?.outcome || null,
       last_note: t?.note || null,
       last_at: t?.created_at || null,
@@ -88,6 +139,7 @@ export async function GET() {
       untouched: due.filter((m) => m.touches === 0).length,
       waiting: merged.filter((m) => m.state === 'waiting').length,
       closed: merged.filter((m) => m.state === 'closed').length,
+      follow: merged.filter((m) => m.follow).length,
       money_on_table: isStaff ? null : money,
     },
   });
@@ -104,7 +156,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}));
   const source = String(b?.source || '');
   const refId = String(b?.ref_id || '');
-  const outcome = String(b?.outcome || '');
+  let outcome = String(b?.outcome || '');
   if (!source || !refId) return NextResponse.json({ error: 'source و ref_id مطلوبان' }, { status: 400 });
   if (!isOutcome(outcome)) {
     return NextResponse.json({ error: 'نتيجة غير معروفة: ' + outcome + ' — المقبول: ' + OUTCOMES.join(' · ') }, { status: 400 });
@@ -114,7 +166,15 @@ export async function POST(req: Request) {
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
 
   const note = b?.note ? String(b.note).slice(0, 2000) : null;
-  const when = b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null;
+  let when = b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null;
+  // ★ «لم يرد» تعود بعد يوم عمل، حتى ٣ محاولات متتالية، ثم تُغلق «لم يرد ٣ مرات»
+  if (outcome === 'لم يرد') {
+    const { data: prev } = await sb.from('hot_touches').select('outcome').eq('source', source).eq('ref_id', refId).order('created_at', { ascending: false }).limit(NO_ANSWER_LIMIT);
+    let run = 0;
+    for (const p of prev || []) { if (p.outcome === 'لم يرد') run++; else break; }
+    if (run + 1 >= NO_ANSWER_LIMIT) { outcome = NO_ANSWER_CLOSED; when = null; }
+    else if (!when) when = nextWorkday();
+  }
 
   // ★ صفُّ المصدر يُحدَّث **قبل** تسجيل اللمسة، لا بعدها.
   //   فقد كانت اللمسة تُكتب أولاً ثم يسقط تحديثُ التقييم على قيد القاعدة،
