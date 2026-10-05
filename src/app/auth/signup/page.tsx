@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { arError } from '@/lib/arError'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { waNumber } from '@/lib/phone'
@@ -93,7 +94,7 @@ export default function SignUp() {
     //   دخول بلا كلمةٍ واحدة تشرح. حسابه أُنشئ فعلاً، فيُقال له ذلك ويُعطى
     //   الباب الصحيح بدل أن يُقذف في دائرة.
     if (cErr) {
-      fail('أُنشئ حسابك، لكن تعذّر حفظ بيانات المنشأة: ' + cErr.message
+      fail('أُنشئ حسابك، لكن تعذّر حفظ بيانات المنشأة: ' + arError(cErr)
         + ' — اضغط «تسجيل الدخول» ثم أكمل بياناتك، أو راسلنا على 0570749196')
       return
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { arError } from '@/lib/arError'
 import { contractHtml } from '@/lib/contractStamp'
 import ConsultationPanel from './ConsultationPanel';
 import { useRouter } from 'next/navigation';
@@ -294,7 +295,7 @@ export default function GoalPage() {
     const safeName = (file.name || 'file.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_');
     const path = companyId + '/' + contractId + '_' + Date.now() + '_' + safeName;
     const { error: upErr } = await supabase.storage.from('contracts').upload(path, file);
-    if (upErr) { alert('تعذّر رفع الملف: ' + (upErr.message || JSON.stringify(upErr))); return; }
+    if (upErr) { alert('تعذّر رفع الملف: ' + arError(upErr)); return; }
     // يُخزَّن المسار لا رابطاً عاماً: العقد الموقّع يحمل رقم الهوية،
     // ولا يُفتح إلا برابط موقّع قصير الأجل عبر /api/contract-file
     // ★ كان يُقال «تم بنجاح» مهما وقع: رفضٌ من القاعدة يُبقي العقد «صادراً»

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { arError } from '@/lib/arError'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -35,7 +36,7 @@ export default function UpdatePasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setError('تعذر التحديث: ' + error.message)
+      setError('تعذر التحديث: ' + arError(error))
     } else {
       setDone(true)
       // من جاء من رابطٍ فتحته له الموظفة يُنزَل على خدماته لا على النظرة

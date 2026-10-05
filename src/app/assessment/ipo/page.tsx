@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { arError } from '@/lib/arError'
 import { useRouter } from 'next/navigation';
 
 const SECTOR = [
@@ -144,7 +145,7 @@ export default function IpoAssessment() {
       savedRef.current = true;
       router.push('/assessment/ipo/result');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
+      setError(arError(e));
       setLoading(false);
     }
   };

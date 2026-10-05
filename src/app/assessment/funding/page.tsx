@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { arError } from '@/lib/arError'
 import { cleanNum } from '@/lib/numInput';
 import { useRouter } from 'next/navigation';
 
@@ -175,7 +176,7 @@ export default function FundingAssessment() {
       savedRef.current = true;
       router.push('/assessment/funding/result');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع');
+      setError(arError(e));
       setLoading(false);
     }
   };
