@@ -28,9 +28,9 @@ export default function ResetPage() {
    setLoading(true)
    setError('')
 
-   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-     redirectTo: window.location.origin + '/auth/callback?next=/auth/update-password'
-   })
+   // ★ الرسالة تخرج عربيةً من المنصة (/api/auth/reset) لا بقالب Supabase الإنجليزي
+   const r = await fetch('/api/auth/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).catch(() => null)
+   const error = !r || !r.ok
 
    if (error) {
      setError('تعذر إرسال البريد. تحقق من الإيميل.')
