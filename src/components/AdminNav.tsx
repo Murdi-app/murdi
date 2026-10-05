@@ -35,6 +35,7 @@ const LINKS: Link[] = [
   { href: '/admin/awards', label: 'الترسيات', icon: '🏗️' },
   { href: '/admin/channel', label: 'قناة الفائزين', icon: '🛰️' },
   { href: '/admin/briefs', label: 'التوجيهات المرسلة', icon: '📨' },
+  { href: '/admin/fees', label: 'أتعاب الاستكمال', icon: '🧾' },
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
   { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },

@@ -6,6 +6,7 @@ import { OPEN_PAID_STATUSES } from '@/lib/serviceStatus';
 import { sendMail } from '@/lib/sendMail';
 import { sendPush } from '@/lib/push';
 import { confirmPayment } from '@/lib/confirmPayment';
+import { feeFromContract, nextInvoiceNo } from '@/lib/successFees';
 import { redactTimeline } from '@/lib/staffRedact';
 import { logStaff } from '@/lib/staffLog';
 
@@ -155,6 +156,8 @@ export async function GET() {
     if (l.length < 4) l.push({ title: e.title, detail: e.detail, actor: e.actor, created_at: e.created_at });
     evBy.set(k, l);
   }
+  const paidSr = (reqs || []).filter((r) => (OPEN_PAID_STATUSES as readonly string[]).includes(String(r.status))).map((r) => String(r.id));
+  const { data: sfs } = paidSr.length ? await sb.from('success_fees').select('service_request_id, funder_name, approved_amount, expected_disbursement, booked_at').in('service_request_id', paidSr) : { data: [] };
   const finSet = new Set((fins || []).map((f: { company_id: string }) => String(f.company_id)));
   const mCount = new Map<string, number>();
   for (const m of (mres || []) as { company_id: string }[]) mCount.set(String(m.company_id), (mCount.get(String(m.company_id)) || 0) + 1);
@@ -165,6 +168,8 @@ export async function GET() {
     may_decide: mayDecide,
     // ★ ١ أكتوبر: الأحداث تُنقّى كما في `admin/deal` — كان فيها «دفعة مؤكَّدة — 990 ريال» خاماً
     files: Object.fromEntries(paidCos.map((c) => [c, { events: who.role === 'admin' ? (evBy.get(c) || []) : redactTimeline(evBy.get(c) || []), has_financials: finSet.has(c), matches: mCount.get(c) || 0 }])),
+    // مرحلة التمويل لكل ملف — الجهة والمبلغ المعتمد وموعد الصرف وهل قُيِّد (بلا أتعاب ولا فاتورة: تلك للمالك)
+    funding: Object.fromEntries((sfs || []).map((f: Record<string, unknown>) => [String(f.service_request_id), { funder: f.funder_name, approved: f.approved_amount, expected: f.expected_disbursement, booked: !!f.booked_at }])),
     requests: (reqs || []).map((r) => {
       const { price, quoted_price, ...rest } = r as Record<string, unknown>;
       // السعر ومبلغ التحويل لمن يقرّر وحده — بهما يطابق التحويل. ورغد لا
@@ -201,7 +206,7 @@ export async function PATCH(req: Request) {
       const missing = String(b0.missing || '').trim().slice(0, 400);
       const next = String(b0.next || '').trim().slice(0, 300);
       const to = String(b0.status || '');
-      if (!id || !done) return NextResponse.json({ error: 'اكتبي ما تمّ على الملف' }, { status: 400 });
+      if (!id || (!done && !b0.milestone)) return NextResponse.json({ error: 'اكتبي ما تمّ على الملف' }, { status: 400 });
       const sb = admin();
       const { data: r } = await sb.from('service_requests').select('id, company_id, service_title, status').eq('id', id).maybeSingle();
       if (!r) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
@@ -211,8 +216,47 @@ export async function PATCH(req: Request) {
       const { error: uErr } = await sb.from('service_requests').update(patch).eq('id', id);
       if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
       const name = who.role === 'admin' ? 'المالك' : (who.email === 'raghad@murdi.sa' ? 'رغد' : who.email === 'dhai@murdi.sa' ? 'ضي' : who.email);
+      // ★ مرحلة التمويل (٥ أكتوبر): «وافقت الجهة» لا يُقبل بلا الجهة والمبلغ وموعد الصرف،
+      //   و«قُيِّد التمويل» يحسب أتعاب الاستكمال من العقد ويُصدر فاتورةً مسوّدةً تنتظر المالك.
+      const milestone = String(b0.milestone || '');
+      let feeNote = '';
+      if (milestone === 'approved') {
+        const funder = String(b0.funder || '').trim().slice(0, 120);
+        const amount = Number(String(b0.amount || '').replace(/[^\d.]/g, ''));
+        const date = String(b0.expected || '').slice(0, 10);
+        if (!funder || !(amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return NextResponse.json({ error: '«وافقت الجهة» يحتاج: اسم الجهة، والمبلغ المعتمد، وموعد الصرف المتوقع' }, { status: 400 });
+        }
+        const { error: fErr } = await sb.from('success_fees').upsert({
+          service_request_id: id, company_id: r.company_id, funder_name: funder, approved_amount: amount,
+          expected_disbursement: date, approved_logged_at: new Date().toISOString(), approved_logged_by: name, updated_at: new Date().toISOString(),
+        }, { onConflict: 'service_request_id' });
+        if (fErr) return NextResponse.json({ error: fErr.message }, { status: 500 });
+        feeNote = 'وافقت ' + funder + ' — الصرف المتوقع ' + date;
+      } else if (milestone === 'booked') {
+        const { data: f } = await sb.from('success_fees').select('id, approved_amount, funder_name, invoice_status').eq('service_request_id', id).maybeSingle();
+        if (!f) return NextResponse.json({ error: 'سجّلي «وافقت الجهة» أولاً (الجهة والمبلغ وموعد الصرف)' }, { status: 400 });
+        if (f.invoice_status === 'draft' || f.invoice_status === 'approved') return NextResponse.json({ error: 'قُيِّد هذا التمويل من قبل وصدرت فاتورته' }, { status: 409 });
+        const booked = Number(String(b0.amount || '').replace(/[^\d.]/g, '')) || Number(f.approved_amount);
+        let calc;
+        try { calc = await feeFromContract(sb, id, booked); }
+        catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّر حساب الأتعاب' }, { status: 400 }); }
+        const invoiceNo = await nextInvoiceNo(sb);
+        const { error: bErr } = await sb.from('success_fees').update({
+          booked_amount: booked, booked_at: new Date().toISOString(), booked_by: name, contract_id: calc.contractId,
+          fee_pct: calc.pct, vat_rate: calc.vatRate, vat_inclusive: calc.inclusive, fee_net: calc.net, fee_vat: calc.vat, fee_total: calc.total,
+          invoice_no: invoiceNo, invoice_status: 'draft', updated_at: new Date().toISOString(),
+        }).eq('id', f.id);
+        if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
+        feeNote = 'قُيِّد التمويل لدى ' + f.funder_name;
+        const { data: co } = await sb.from('companies').select('company_name').eq('id', r.company_id).maybeSingle();
+        const money = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        await sendPush({ title: '🧾 فاتورة استكمال تنتظر اعتمادك', body: (co?.company_name || '') + ' — ' + money(calc.total) + ' ريال (' + calc.pct + '٪ من ' + money(booked) + ')', url: '/admin/fees', important: true, tag: 'fee-' + id }, OWNER).catch(() => null);
+        await sendMail({ from: FROM, to: OWNER, subject: '🧾 فاتورة استكمال تنتظر اعتمادك — ' + (co?.company_name || ''),
+          html: '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34">قُيِّد تمويل <b>' + esc(co?.company_name) + '</b> لدى ' + esc(f.funder_name) + ' بمبلغ ' + money(booked) + ' ريال.<br>أتعاب الاستكمال (' + calc.pct + '٪ من العقد): ' + money(calc.net) + ' + ضريبة ' + money(calc.vat) + ' = <b>' + money(calc.total) + ' ريال</b>' + (calc.inclusive ? ' (العقد ينصّ على أن الأتعاب شاملة الضريبة)' : ' (العقد لا ينصّ على الضريبة — أُضيفت فوق الأتعاب)') + '.<br>الفاتورة ' + invoiceNo + ' مسوّدة لا تخرج قبل اعتمادك.<p><a href="https://murdi.sa/admin/fees" style="background:#1A3D34;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none">راجِع واعتمد</a></p></div>' }).catch(() => null);
+      }
       await sb.from('deal_events').insert({
-        company_id: r.company_id, kind: 'file_update', title: done.slice(0, 200),
+        company_id: r.company_id, kind: 'file_update', title: (feeNote ? feeNote + ' · ' : '') + done.slice(0, 200),
         detail: [missing ? 'ينقصه: ' + missing : '', next ? 'الخطوة التالية: ' + next : '', 'سجّلته: ' + name].filter(Boolean).join(' · '),
         actor: who.role === 'admin' ? 'admin' : 'staff', needs_owner: false,
       });

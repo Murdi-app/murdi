@@ -79,7 +79,8 @@ export default function DeskPage() {
   const [mayDecide, setMayDecide] = useState(false)
   const [job, setJob] = useState('')
   const [files, setFiles] = useState<Record<string, FileInfo>>({})
-  const [logF, setLogF] = useState<Record<string, { done?: string; missing?: string; next?: string; status?: string }>>({})
+  const [logF, setLogF] = useState<Record<string, { done?: string; missing?: string; next?: string; status?: string; milestone?: string; funder?: string; amount?: string; expected?: string }>>({})
+  const [funding, setFunding] = useState<Record<string, { funder: string; approved: number; expected: string; booked: boolean }>>({})
   const [mRun, setMRun] = useState<Record<string, string>>({})
 
   const load = async () => {
@@ -94,7 +95,7 @@ export default function DeskPage() {
     const d = await r.json()
     setReqs(d.requests || []); setMatches(d.matches || [])
     setMayDecide(d.may_decide === true)
-    setJob(String(d.job || '')); setFiles(d.files || {})
+    setJob(String(d.job || '')); setFiles(d.files || {}); setFunding(d.funding || {})
     setLoading(false)
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -172,10 +173,11 @@ export default function DeskPage() {
   // «سجّلي ما تم» — يحرّك تاريخ الملف ويكتب أثره في خطّ الصفقة
   const saveLog = async (r: Req) => {
     const f = logF[r.id] || {}
-    if (!f.done?.trim()) { setErr('اكتبي ما تمّ على ملف ' + (r.company?.company_name || '')); return }
+    if (!f.done?.trim() && !f.milestone) { setErr('اكتبي ما تمّ على ملف ' + (r.company?.company_name || '')); return }
+    if (f.milestone === 'approved' && (!f.funder?.trim() || !f.amount?.trim() || !f.expected)) { setErr('«وافقت الجهة» يحتاج: اسم الجهة، والمبلغ المعتمد، وموعد الصرف المتوقع'); return }
     setBusy(r.id); setErr('')
     const res = await fetch('/api/staff/desk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'log', id: r.id, done: f.done, missing: f.missing, next: f.next, status: f.status }) }).catch(() => null)
+      body: JSON.stringify({ kind: 'log', id: r.id, done: f.done, missing: f.missing, next: f.next, status: f.status, milestone: f.milestone, funder: f.funder, amount: f.amount, expected: f.expected }) }).catch(() => null)
     setBusy('')
     const d = res ? await res.json().catch(() => ({})) : {}
     if (!res || !res.ok) { setErr(d.error || 'لم يُسجَّل'); return }
@@ -276,6 +278,26 @@ export default function DeskPage() {
                         </div>
                       </div>
                       <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                        {funding[r.id] && (
+                          <div style={{ fontSize: 12.5, background: '#E9F5EF', color: '#1E7A5E', borderRadius: 8, padding: '6px 10px' }}>
+                            ✓ وافقت {funding[r.id].funder} على {Number(funding[r.id].approved).toLocaleString('ar-SA')} ريال — الصرف المتوقع {funding[r.id].expected}{funding[r.id].booked ? ' · قُيِّد التمويل' : ''}
+                          </div>
+                        )}
+                        <select value={f.milestone || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, milestone: e.target.value } })} style={inp}>
+                          <option value="">— مرحلة التمويل (اختياري) —</option>
+                          <option value="approved">وافقت الجهة على التمويل</option>
+                          {funding[r.id] && !funding[r.id].booked && <option value="booked">قُيِّد التمويل (صُرف للعميل)</option>}
+                        </select>
+                        {f.milestone === 'approved' && (
+                          <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+                            <input placeholder="اسم الجهة *" value={f.funder || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, funder: e.target.value } })} style={inp} />
+                            <input placeholder="المبلغ المعتمد (ريال) *" inputMode="numeric" value={f.amount || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, amount: e.target.value } })} style={inp} />
+                            <label style={{ fontSize: 12, color: '#6B8A80' }}>موعد الصرف المتوقع *<input type="date" value={f.expected || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, expected: e.target.value } })} style={inp} /></label>
+                          </div>
+                        )}
+                        {f.milestone === 'booked' && (
+                          <input placeholder={'المبلغ الذي صُرف فعلاً (اتركيه فارغاً إن كان ' + Number(funding[r.id]?.approved || 0).toLocaleString('ar-SA') + ')'} inputMode="numeric" value={f.amount || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, amount: e.target.value } })} style={inp} />
+                        )}
                         <textarea placeholder="ما الذي تمّ؟ (مثال: كلمت الجهة المُسندة — طلبوا قوائم سنتين، وبلّغت المكتب)" value={f.done || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, done: e.target.value } })} rows={2} style={inp} />
                         <input placeholder="ما الذي ينقص الملف؟ (اختياري)" value={f.missing || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, missing: e.target.value } })} style={inp} />
                         <input placeholder="الخطوة التالية وموعدها (اختياري)" value={f.next || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, next: e.target.value } })} style={inp} />
