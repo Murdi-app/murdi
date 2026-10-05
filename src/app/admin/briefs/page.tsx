@@ -25,7 +25,7 @@ export default function BriefsPage() {
       <AdminNav />
       <h1 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px' }}>📨 التوجيهات المرسلة</h1>
       <p style={{ fontSize: 13, color: '#6B8A80', margin: '0 0 14px', lineHeight: 1.9 }}>
-        آخر ٣٠ يوماً. يخرج كل توجيه باسمك من dr.abdulhakim@murdi.sa، ونسخةٌ مخفية منه إلى partners@. نسبة القراءة: {readPct.toLocaleString('ar-SA')}٪
+        آخر ٣٠ يوماً. يخرج كل توجيه باسمك من partners@murdi.sa، ونسخةٌ مخفية منه تصل صندوقك نفسه. نسبة القراءة: {readPct.toLocaleString('ar-SA')}٪
       </p>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {[['', 'الكل'], ['dhai', 'ضي'], ['raghad', 'رغد']].map(([k, l]) => (
