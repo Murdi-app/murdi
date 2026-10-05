@@ -101,7 +101,7 @@ export default function ConsultationPanel() {
 
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
+      <div dir="rtl" className="min-h-screen bg-[#FBFCFB] flex items-center justify-center" style={{ fontFamily: 'Cairo, sans-serif' }}>
         <p className="text-[#6B8A80] font-bold">جارٍ التحميل...</p>
       </div>
     );

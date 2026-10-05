@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { arError } from '@/lib/arError'
 import { contractHtml } from '@/lib/contractStamp'
 import ConsultationPanel from './ConsultationPanel';
+import './mobile-ui.css';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
@@ -317,8 +318,47 @@ export default function GoalPage() {
   // دائماً — سواء بقي في رصيده تشغيلة أم لا.
   const showResults = (matchCount || 0) > 0 || matchNotice === 'running' || matching || canMatch;
 
+  const matchPrompt = (<>
+{!showResults && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
+        <div className="murdi-client-next-step">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-right">
+              <div className="text-white font-black text-sm">درجتك جاهزة — والخطوة التالية مجانية</div>
+              <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">اطلب تشغيل المطابقة لتعرف كم جهة تنطبق شروطها على ملفك. لا يُطلب منك دفع في هذه الخطوة.</div>
+            </div>
+            <button onClick={() => setShowPaywall(true)} className="font-black text-sm px-6 py-2.5 rounded-full whitespace-nowrap" style={{ background: '#C9A84C', color: '#1A3D34', border: 'none', cursor: 'pointer' }}>اطلب المطابقة ←</button>
+          </div>
+        </div>
+      )}
+  </>);
+
   return (
-    <div dir="rtl" className="min-h-screen overflow-x-hidden bg-[#FBFCFB]" style={{ fontFamily: 'Tajawal, Cairo, sans-serif' }}>
+    <div dir="rtl" className="murdi-client-dashboard min-h-screen bg-[#FBFCFB]" style={{ fontFamily: 'Cairo, sans-serif' }}>
+      {/* الشريط العلوي */}
+      <nav className="murdi-client-header bg-white border-b border-[#F0F5F3] px-4 md:px-6 py-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-[#1A3D34] flex items-center justify-center">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <span className="font-black text-[#1A3D34] text-lg block leading-tight">مُرضي</span>
+              <span className="text-[10px] tracking-widest text-[#A3BAB2] font-black">MURDI</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={async () => {
+              // كان رابطاً يُعيد التوجيه بلا إنهاء الجلسة — فمن يفتح الجهاز بعده يدخل على الملف المالي
+              try {
+                const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
+                await sb.auth.signOut();
+              } catch {}
+              router.push('/auth/login');
+            }} className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</button>
+          </div>
+        </div>
+      </nav>
+
       {loadErr && (
         <div style={{ background: '#FBEEEC', color: '#A5281B', borderBottom: '1px solid #F0D6D1', padding: '12px 16px', textAlign: 'center', fontWeight: 800, fontSize: 14 }}>
           {loadErr} <button onClick={() => window.location.reload()} style={{ marginRight: 8, background: '#1A3D34', color: '#fff', border: 0, borderRadius: 20, padding: '4px 14px', fontWeight: 800, cursor: 'pointer' }}>إعادة المحاولة</button>
@@ -577,78 +617,24 @@ export default function GoalPage() {
         </div>
       )}
 
-      {!showResults && !pendingTransfer && Object.keys(scores || {}).length > 0 && (
-        <div style={{ background: '#1A3D34', padding: '14px 16px' }}>
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-right">
-              <div className="text-white font-black text-sm">درجتك جاهزة — والخطوة التالية مجانية</div>
-              <div className="text-[#CFE0DA] text-xs font-bold mt-1 leading-relaxed">اطلب تشغيل المطابقة لتعرف كم جهة تنطبق شروطها على ملفك. لا يُطلب منك دفع في هذه الخطوة.</div>
-            </div>
-            <button onClick={() => setShowPaywall(true)} className="font-black text-sm px-6 py-2.5 rounded-full whitespace-nowrap" style={{ background: '#C9A84C', color: '#1A3D34', border: 'none', cursor: 'pointer' }}>اطلب المطابقة ←</button>
-          </div>
-        </div>
-      )}
-
-      {/* الشريط العلوي */}
-      <nav className="bg-white border-b border-[#F0F5F3] px-3 md:px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-[#1A3D34] flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 7H21V13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            <div>
-              <span className="font-black text-[#1A3D34] text-lg block leading-tight">مُرضي</span>
-              <span className="text-[10px] tracking-widest text-[#A3BAB2] font-black">MURDI</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={async () => {
-              // كان رابطاً يُعيد التوجيه بلا إنهاء الجلسة — فمن يفتح الجهاز بعده يدخل على الملف المالي
-              try {
-                const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
-                await sb.auth.signOut();
-              } catch {}
-              router.push('/auth/login');
-            }} className="px-4 py-2 rounded-full border border-[#E8F5EF] text-[#6B8A80] font-bold text-sm">خروج</button>
-          </div>
-        </div>
-      </nav>
-
-      {/* شريط التبويبات */}
-      <div className="bg-white border-b border-[#F0F5F3] px-3 md:px-6">
-        <div className="max-w-5xl mx-auto flex gap-1 overflow-x-auto min-w-0">
-          {[
-            { id: 'overview', label: 'نظرة عامة' },
-            { id: 'consult', label: 'الاستشارة والأسئلة' },
-            { id: 'services', label: 'الخدمات' },
-          ].map((t) => (
-            <button key={t.id} onClick={() => { tabChosen.current = true; setTab(t.id as 'overview' | 'consult' | 'services'); }}
-              className={'px-3 md:px-5 py-4 font-black text-[13px] md:text-sm whitespace-nowrap transition border-b-[3px] ' + (tab === t.id ? 'text-[#1A3D34] border-[#C9A84C]' : 'text-[#9DB3AB] border-transparent hover:text-[#6B8A80]')}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 py-12">
-
-        {tab === 'overview' && (<>
+      {tab === 'overview' && (
+        <section className="murdi-client-summary max-w-5xl mx-auto px-4 pt-6" aria-label="ملف الجاهزية">
         {/* ملف الجاهزية */}
         {doneScores.length > 0 && (
-          <div className="mb-12">
-            <div className="rounded-2xl p-6 md:p-8 mb-5 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
+          <div className="murdi-client-readiness mb-6">
+            <div className="murdi-client-score rounded-2xl p-6 md:p-8 mb-4 text-center" style={{ background: 'linear-gradient(135deg,#1A3D34,#2E5D4E)' }}>
               <p className="text-[#C9D8D0] text-sm font-bold mb-2">مؤشر جاهزية {company?.name || 'شركتك'}</p>
               <div className="text-5xl md:text-6xl font-black text-[#C9A84C] leading-none">{overall}<span className="text-2xl text-[#9DB3AB]"> / 100</span></div>
               <p className="text-white font-bold mt-4">شركتك أفضل من <span className="text-[#C9A84C]">{pct}%</span> من الشركات في مرحلتك</p>
               <p className="text-[#8FA8A0] text-xs font-bold mt-1">يتحدّث مع كل تقييم</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            {matchPrompt}
+            <div className="murdi-client-reports grid grid-cols-3 gap-2 mb-4">
               {TRACKS.map((t) => (
-                <div key={t.id} className="bg-white rounded-2xl p-5 border-2 border-[#F0F5F3] text-center">
-                  <div className="w-10 h-[3px] bg-[#C9A84C] mb-5"></div>
+                <div key={t.id} className="murdi-client-report bg-white rounded-xl p-3 border border-[#E8F5EF] text-center">
                   <div className="font-black text-[#1A3D34] text-sm mb-2">{t.title.replace('أريد ', '').replace('تجهيز الشركة لل', '')}</div>
                   {scores[t.id] !== undefined ? (
-                    <div className={'text-3xl font-black leading-none ' + (scores[t.id] >= 70 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{scores[t.id]}</div>
+                    <div className={'text-xl font-bold leading-none ' + (scores[t.id] >= 70 ? 'text-[#1A3D34]' : 'text-[#C9A84C]')}>{doneScores.length === 1 ? <><span className="sr-only">{scores[t.id]} </span><span className="text-xs">تم التقييم</span></> : scores[t.id]}</div>
                   ) : (
                     <div className="text-xs font-bold text-[#A3BAB2] mt-2">لم يُقيَّم</div>
                   )}
@@ -661,11 +647,34 @@ export default function GoalPage() {
           </div>
         )}
 
+        </section>
+      )}
+      {tab !== 'overview' && <div className="max-w-5xl mx-auto px-4 pt-6">{matchPrompt}</div>}
+
+      {/* شريط التبويبات */}
+      <div className="murdi-client-tabs bg-white border-b border-[#F0F5F3] px-4 md:px-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-3 min-w-0">
+          {[
+            { id: 'overview', label: 'نظرة عامة' },
+            { id: 'consult', label: 'الاستشارة والأسئلة' },
+            { id: 'services', label: 'الخدمات' },
+          ].map((t) => (
+            <button key={t.id} onClick={() => { tabChosen.current = true; setTab(t.id as 'overview' | 'consult' | 'services'); }}
+              className={'px-1 md:px-5 py-4 font-bold text-[12px] md:text-sm transition border-b-[3px] ' + (tab === t.id ? 'text-[#1A3D34] border-[#C9A84C]' : 'text-[#9DB3AB] border-transparent hover:text-[#6B8A80]')}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="murdi-client-main max-w-5xl mx-auto px-4 py-6">
+
+        {tab === 'overview' && (<>
         {showCard && company && (
           <div onClick={() => setShowCard(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(11,28,30,0.55)' }}>
             <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl p-8 max-w-md w-full">
               <div className="border-b-2 border-[#C9A84C] pb-3 mb-4">
-                <div className="text-xl font-black text-[#1A3D34]" style={{ fontFamily: 'Amiri, serif' }}>{company.name}</div>
+                <div className="text-xl font-black text-[#1A3D34]" style={{ fontFamily: 'Cairo, sans-serif' }}>{company.name}</div>
                 <div className="text-[#6B8A80] text-xs font-bold">{company.sector ? 'قطاع ' + company.sector + ' • ' : ''}ملف جاهزية رأس المال</div>
               </div>
               <div className="flex justify-between mb-4">
@@ -686,9 +695,11 @@ export default function GoalPage() {
           </div>
         )}
 
+        <details className="murdi-client-goal" open={doneScores.length === 0}>
+          <summary className="murdi-client-change-goal">تغيير الهدف</summary>
         {/* الترحيب والمسارات */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Amiri, serif' }}>ما هدف شركتك القادم؟</h1>
+          <h1 className="text-3xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Cairo, sans-serif' }}>ما هدف شركتك القادم؟</h1>
           <p className="text-[#6B8A80] font-bold">اختر هدفك، وسنوجّه التحليل والتقييم بناءً عليه</p>
         </div>
 
@@ -699,9 +710,9 @@ export default function GoalPage() {
               {selected === t.id && (
                 <span className="absolute top-4 left-4 w-7 h-7 rounded-full bg-[#1A3D34] text-white flex items-center justify-center text-sm font-black">✓</span>
               )}
-              <div className="w-10 h-[3px] bg-[#C9A84C] mb-5"></div>
+
               <h3 className="font-black text-[#1A3D34] text-lg mb-1">{t.title}</h3>
-              <p className="text-[10px] tracking-widest text-[#A3BAB2] font-black mb-3">{t.en}</p>
+
               <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">{t.desc}</p>
             </button>
           ))}
@@ -712,6 +723,7 @@ export default function GoalPage() {
             ابدأ التقييم
           </button>
         </div>
+        </details>
         </>)}
 
         <div style={{ display: tab === 'consult' ? 'block' : 'none' }}>
@@ -721,7 +733,7 @@ export default function GoalPage() {
         {tab === 'services' && (
         <div className="mb-16">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Amiri, serif' }}>من التوصية إلى التنفيذ</h2>
+            <h2 className="text-2xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Cairo, sans-serif' }}>من التوصية إلى التنفيذ</h2>
             <p className="text-[#6B8A80] font-bold text-sm leading-relaxed max-w-xl mx-auto mb-4">المنصة تكشف لك ما تحتاجه شركتك. وفريق د. عبدالحكيم المرضي ينفّذه معك خطوةً بخطوة — بسعر معلن ومدة معلومة، بلا مكالمة ولا مساومة.</p>
             <div className="inline-flex flex-col items-center gap-1 px-6 py-3 rounded-2xl bg-[#F7FBF9] border border-[#EAF2EE]">
               <div className="text-[#1A3D34] font-black text-sm">{SERVICE_COUNT} خدمة تؤهّل منشأتك لرأس المال</div>
@@ -732,7 +744,7 @@ export default function GoalPage() {
           {/* ما يقوله ملفك — دليل من إجاباته يصنع السؤال الذي لا تجيبه إلا المطابقة */}
           {pitch && !showResults && (
             <div className="rounded-2xl p-6 mb-8 text-center" style={{ background: '#1A3D34' }}>
-              <div className="text-white font-black text-base mb-3" style={{ fontFamily: 'Amiri, serif' }}>{pitch.headline}</div>
+              <div className="text-white font-black text-base mb-3" style={{ fontFamily: 'Cairo, sans-serif' }}>{pitch.headline}</div>
               {pitch.lines.map((l, i) => (
                 <p key={i} className="text-[#CFE0DA] text-sm font-bold leading-loose mb-2 max-w-2xl mx-auto text-right">{l}</p>
               ))}
@@ -1003,7 +1015,7 @@ export default function GoalPage() {
         {tab === 'overview' && (<>
         <div className="bg-[#1A3D34] rounded-3xl p-10 text-center mb-16">
           <p className="text-[#C9A84C] font-black text-sm tracking-widest mb-3">المنهجية</p>
-          <h2 className="text-2xl font-black text-white mb-4" style={{ fontFamily: 'Amiri, serif' }}>مُرضي مبنية على منهجية د. عبدالحكيم المرضي</h2>
+          <h2 className="text-2xl font-black text-white mb-4" style={{ fontFamily: 'Cairo, sans-serif' }}>مُرضي مبنية على منهجية د. عبدالحكيم المرضي</h2>
           <p className="text-[#A3BAB2] font-bold leading-loose max-w-2xl mx-auto mb-6">
             مستشار سعودي معتمد — دكتوراه في إدارة الأعمال، عضو في البورد الأمريكي لإدارة الأعمال، وخبرة 15 سنة في التمويل وفي مجال المال والأعمال.
             كل تحليل وتقييم واستشارة في المنصة تمر عبر هذه المنهجية: أرقامك الفعلية، معايير السوق السعودي، وكلام مباشر بلا مجاملات.
