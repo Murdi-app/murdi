@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { linkValid } from '@/lib/cronAuth';
 import { riyadhDate } from '@/lib/staffBrief';
 import { sendMail } from '@/lib/sendMail';
+import { BRIEF_FROM, BRIEF_BCC, BRIEF_REPLY_TO } from '@/lib/briefMail';
 
 // «اعتمد وأرسل» — من بريد المالك.
 //
@@ -10,7 +11,6 @@ import { sendMail } from '@/lib/sendMail';
 //   لخرج التوجيه بلا كلمة المالك — وهو ما نصّ ألا يكون.
 // ★ والتوقيع مشتقٌّ من سرّ المهام ومقيَّدٌ بالتاريخ، ولا يصلح إلا ليومه.
 
-const FROM = 'د. عبدالحكيم المرضي <partners@murdi.sa>';
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL as string,
   process.env.SUPABASE_SERVICE_ROLE_KEY as string
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     const { data: took } = await sb.from('daily_briefs').update({ status: 'sending' }).eq('id', b.id).eq('status', 'draft').select('id');
     if (!took?.length) continue;
     const html = '<div dir="rtl" style="font-family:Arial,Tahoma;line-height:1.95;color:#1A3D34;font-size:15px;white-space:pre-wrap">' + esc(b.body) + '</div>';
-    const r = await sendMail({ from: FROM, to: String(b.to_email), subject: String(b.subject), html, replyTo: 'partners@murdi.sa' });
+    const r = await sendMail({ from: BRIEF_FROM, to: String(b.to_email), bcc: BRIEF_BCC, subject: String(b.subject), html, replyTo: BRIEF_REPLY_TO });
     await sb.from('daily_briefs').update(r.ok
       ? { status: 'sent', sent_at: new Date().toISOString() }
       : { status: 'draft', note: 'فشل الإرسال: ' + r.reason }).eq('id', b.id);

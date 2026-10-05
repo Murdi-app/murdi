@@ -26,6 +26,8 @@ export type MailInput = {
   subject: string;
   html: string;
   replyTo?: string;
+  /** نسخة مخفية — مثلاً نسخة المكتب من توجيه الموظفتين */
+  bcc?: string | string[];
   attachments?: { filename: string; content: string }[];
   /** مفتاح عدم التكرار لدى مزوّد البريد — الإرسال نفسه بالمفتاح نفسه لا يخرج مرتين (صندوق الصادر) */
   idempotencyKey?: string;
@@ -64,6 +66,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
       subject: input.subject,
       html: input.html,
       ...(input.replyTo ? { replyTo: input.replyTo } : {}),
+      ...(input.bcc ? { bcc: input.bcc } : {}),
       ...(input.attachments && input.attachments.length ? { attachments: input.attachments } : {}),
     }, input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined);
 
