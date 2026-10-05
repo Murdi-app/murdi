@@ -55,7 +55,7 @@ export default function FeesPage() {
           </div>
           {f.fee_total !== null && (
             <div style={{ marginTop: 8, fontSize: 13.5 }}>
-              الأتعاب {f.fee_pct}٪: {m(f.fee_net)} + ضريبة {f.vat_rate}٪ {m(f.fee_vat)} = <b>{m(f.fee_total)} ريال</b> {f.vat_inclusive ? '(العقد: شاملة الضريبة)' : '(العقد لا يذكر الضريبة — أُضيفت فوقها)'}
+              الأتعاب {f.fee_pct}٪: {m(f.fee_net)} + ضريبة {f.vat_rate}٪ {m(f.fee_vat)} = <b>{m(f.fee_total)} ريال</b> (شاملة الضريبة)
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <button onClick={() => setShow(show === f.id ? '' : f.id)} style={{ background: '#fff', border: '1px solid ' + G, color: G, borderRadius: 8, padding: '6px 14px', fontFamily: 'inherit', cursor: 'pointer' }}>{show === f.id ? 'إخفاء الفاتورة' : 'عرض الفاتورة ' + f.invoice_no}</button>
                 {f.invoice_status === 'draft' && <>
