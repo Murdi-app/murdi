@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const key = createHash('sha256').update(email).digest('hex').slice(0, 24);
   // رسالةٌ واحدة كل دقيقتين لكل بريد — لا يُغرق صندوق أحدٍ بالضغط المتكرر
   const { count } = await sb.from('api_calls').select('id', { count: 'exact', head: true })
-    .eq('path', '/api/auth/reset').eq('note', key).gte('created_at', new Date(Date.now() - 120_000).toISOString());
+    .eq('path', '/api/auth/reset').eq('note', key).gte('at', new Date(Date.now() - 120_000).toISOString());
   if ((count || 0) > 0) return NextResponse.json({ ok: true });
   await sb.from('api_calls').insert({ method: 'POST', path: '/api/auth/reset', status: 200, note: key });
 
