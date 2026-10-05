@@ -111,11 +111,13 @@ export function contractHtml(body: string, title = 'عقد الخدمة', signer
   const docTitle = lines.shift() || '';
   const dateLine = /^حُرّر في/.test(lines[0] || '') ? String(lines.shift()) : '';
   src = lines.join('\n').replace(/^\n+/, '');
-  const head = '<div class="ttl">' + isoLatin(esc(docTitle)) + '</div>'
+  // ★ ٥ أكتوبر: وثيقةٌ إنجليزية (عميلٌ أجنبي) — عنوانها يبدأ بحرفٍ لاتيني ← من اليسار، بلا عزلٍ اتجاهي
+  const ltr = /^[A-Za-z]/.test(docTitle.trim());
+  const head = '<div class="ttl">' + (ltr ? esc(docTitle) : isoLatin(esc(docTitle))) + '</div>'
     + (dateLine ? '<div class="dt">' + esc(dateLine) + '</div>' : '');
   // موضع الختم: سطر توقيع الطرف الأول. وإن لم يوجد، ذُيّل به العقد.
   // والنص اللاتيني (FL-… · البريد · الروابط) يُعزل اتجاهياً بعد التهريب
-  let text = isoLatin(esc(src));
+  let text = ltr ? esc(src) : isoLatin(esc(src));
   const sig = /^(الطرف الأول: .*\n?التوقيع: .*)$/m;
   text = sig.test(text) ? text.replace(sig, '$1\n' + MARK) : text + '\n' + MARK;
 
@@ -141,10 +143,10 @@ ${MURDI_HEAD_CSS}
 </style></head><body><div class="sheet">
 ${murdiHeader()}
 ${head}
-<div class="doc">${before}</div>
-<div class="stamp">${stampBlock()}</div>
-<div class="doc">${after || ''}</div>
+<div class="doc"${ltr ? ' dir="ltr" style="text-align:left"' : ''}>${before}</div>
+<div class="stamp"${ltr ? ' style="text-align:left"' : ''}>${stampBlock()}</div>
+<div class="doc"${ltr ? ' dir="ltr" style="text-align:left"' : ''}>${after || ''}</div>
 ${signedNote || ''}
-<div class="ft">وثيقة صادرة عن شركة حلول المرضي للاستشارات المالية · سرية بين طرفيها</div>
+<div class="ft">${ltr ? 'Issued by Holol Almurdi Financial Consulting (Murdi) · Confidential between the parties' : 'وثيقة صادرة عن شركة حلول المرضي للاستشارات المالية · سرية بين طرفيها'}</div>
 </div></body></html>`;
 }

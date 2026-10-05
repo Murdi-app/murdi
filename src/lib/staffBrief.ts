@@ -90,11 +90,16 @@ async function dhaiBrief(sb: SupabaseClient, today: string): Promise<Brief> {
     : { data: [] as { service_request_id: string; status: string; contract_type: string }[] };
   const awaitingSign = new Set((srs || []).filter((s) => needsSignedContract(s.service_title)
     && !(docs || []).some((d) => d.service_request_id === s.id && ['signed', 'completed'].includes(d.status))).map((s) => String(s.company_id)));
+  // ★ ٥ أكتوبر: وثيقةٌ ما زالت «مسودّة» لم يُصدرها المالك — لم يصل العميلَ شيء، فلا تُكلَّف ضي بها بعد
+  const ownerDraft = new Set((srs || []).filter((s) => (docs || []).some((d) => d.service_request_id === s.id && d.status === 'draft')
+    && !(docs || []).some((d) => d.service_request_id === s.id && d.status !== 'draft')).map((s) => String(s.company_id)));
+  const live = ordered.filter((r) => !(ownerDraft.has(r.ref_id) && (srs || []).filter((s) => String(s.company_id) === r.ref_id)
+    .every((s) => (docs || []).some((d) => d.service_request_id === s.id && d.status === 'draft'))));
   const line = (r: HotRow) => who(r.name, r.person) + ' — ' + String(r.reason || '').replace(/\s*ولم يدفع$/, '');
   section('عقدٌ أُرسل ولم يُوقَّع بعد (ذكّريه بفتح رابط العقد من بريده وتوقيعه — الدفع يُفتح له بعد التوقيع، فلا ترسلي رابط دفع):',
-    ordered.filter((r) => awaitingSign.has(r.ref_id)), line);
+    live.filter((r) => awaitingSign.has(r.ref_id)), line);
   section('طلبٌ مسعَّر ينتظر التحويل (أعيدي له رابط الدفع):',
-    ordered.filter((r) => !awaitingSign.has(r.ref_id)), line);
+    live.filter((r) => !awaitingSign.has(r.ref_id)), line);
   section('طلب خدمةً من الموقع ولم يُتّصل به:',
     pick('inquiry', 8), (r) => who(r.name, r.person) + ' — ' + String(r.reason || ''));
   section('ملفٌّ مكتمل ولم يصدر له عقد (الأحدث أولاً):',
