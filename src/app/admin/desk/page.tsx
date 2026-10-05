@@ -231,7 +231,7 @@ export default function DeskPage() {
             ملفّات تنتظرك · {active.length}
           </h2>
           <p style={{ fontSize: 12.5, color: '#6B8A80', margin: '0 0 12px', lineHeight: 1.8 }}>
-            هؤلاء أتمّوا اتفاقهم معنا، فهم أولى من كل شيء. الأقدمُ وقوفاً أولاً — اتصلي واسألي: ما الذي ينقص ملفك عندنا؟ ثم اكتبي جوابه كما قاله.
+            هؤلاء أتمّوا اتفاقهم معنا، فهم أولى من كل شيء. الأقدمُ وقوفاً أولاً — اقرئي آخر ما سُجّل، وسجّلي ما تمّ عليه وما ينقصه. ولا تتصلي بصاحب الملف إلا حين يطلب توجيهك ذلك صراحةً، ولا تذكري له اسم جهةٍ لم يُعرض عليها ملفه ولا أي تفصيل من جانب الجهات.
           </p>
           {active.length === 0 && (
             <div style={{ ...CARD, color: '#8CA49B', fontSize: 13 }}>لا ملفّ واقفاً الآن.</div>
@@ -276,7 +276,7 @@ export default function DeskPage() {
                         </div>
                       </div>
                       <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                        <textarea placeholder="ما الذي تمّ؟ (مثال: كلمت منافع — طلبوا قوائم سنتين، وأرسلت للعميل قائمة المطلوب)" value={f.done || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, done: e.target.value } })} rows={2} style={inp} />
+                        <textarea placeholder="ما الذي تمّ؟ (مثال: كلمت الجهة المُسندة — طلبوا قوائم سنتين، وبلّغت المكتب)" value={f.done || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, done: e.target.value } })} rows={2} style={inp} />
                         <input placeholder="ما الذي ينقص الملف؟ (اختياري)" value={f.missing || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, missing: e.target.value } })} style={inp} />
                         <input placeholder="الخطوة التالية وموعدها (اختياري)" value={f.next || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, next: e.target.value } })} style={inp} />
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
