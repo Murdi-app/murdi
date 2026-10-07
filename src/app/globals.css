@@ -12,18 +12,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ★ ٧ أكتوبر: كان الوضع الداكن في الجوال يقلب لون النص الافتراضي أبيض — والمنصة كلها بخلفيات
+   فاتحة، فما كتبته ضي في خانات الملاحظات ظهر أبيض على أبيض. المنصة فاتحةٌ دائماً، والخانات بلونٍ صريح. */
+:root { color-scheme: light; }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+input, textarea, select {
+  color: #1A3D34;
+  -webkit-text-fill-color: currentColor;
+}
+input::placeholder, textarea::placeholder { color: #9DB3AB; -webkit-text-fill-color: #9DB3AB; }
 
 /* Murdi Mobile Responsive */
 @media (max-width: 768px) {
