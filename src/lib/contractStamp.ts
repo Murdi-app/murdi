@@ -147,7 +147,7 @@ ${MURDI_HEAD_CSS}
 .ft{margin-top:22px;padding-top:10px;border-top:1px solid #EFF5F2;font-size:10.5px;color:#A3B7B0;text-align:center;line-height:1.9}
 @media print{body{background:#fff;padding:0}.sheet{border:0;border-radius:0;padding:0;max-width:none}}
 </style></head><body><div class="sheet">
-${murdiHeader()}
+${murdiHeader({ tagline: false })}
 ${head}
 <div class="doc"${ltr ? ' dir="ltr" style="text-align:left"' : ''}>${before}</div>
 <div class="stamp"${ltr ? ' style="text-align:left"' : ''}>${stampBlock()}</div>

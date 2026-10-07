@@ -75,6 +75,8 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
     return { ok: false, reason: 'مفتاح مزوّد البريد (RESEND_API_KEY) غير مضبوط في بيئة التشغيل' };
   }
 
+  // عنوانٌ داخلي لعميلٍ بلا بريد (فُتح على جواله) — لا يُراسَل أبداً
+  if (recipients(input.to).some((e) => e.endsWith('@wa.murdi.sa'))) return { ok: false, reason: 'العميل بلا بريد — أرسلي له واتساب' };
   const blocked = await blockedEmails(input.to);
   if (blocked.length) return { ok: false, reason: 'عنوان غير صالح (ارتدّ سابقاً): ' + blocked.join('، ') };
 

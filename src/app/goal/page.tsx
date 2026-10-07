@@ -924,7 +924,7 @@ export default function GoalPage() {
                               نسبة، وسند خدمة صادر للرسم الثابت. والخادم يمنعه أيضاً (`contractGate`). */}
                           {req.status === 'priced' && req.price && !pendingSrIds.has(String(req.id || '')) && (() => {
                             const doc = docsBySr[String(req.id || '')];
-                            const percent = needsSignedContract(title);
+                            const percent = needsSignedContract(title, (req as { option_key?: string | null }).option_key);
                             const open = percent ? (doc?.status === 'signed' || doc?.status === 'completed') : !!doc;
                             const show = (body: string) => {
                               const url = URL.createObjectURL(new Blob([contractHtml(body, doc?.type === 'voucher' ? 'سند خدمة' : 'عقد الخدمة')], { type: 'text/html' }));

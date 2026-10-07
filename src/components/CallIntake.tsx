@@ -150,8 +150,10 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
   const quote = intakeQuote(title, optKey,
     service === 'feasibility' && totalInvestment > 0 ? totalInvestment : num(value), num(units))
   const needNumbers = service === 'feasibility' && optKey === 'quick'
-  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== '' && who.email.trim() !== ''
-    && (!needNumbers || enough) && typeof quote.amount === 'number' && quote.amount > 0
+  // ★ ٧ أكتوبر (بأمر المالك — «مسار العميل واحد»): الاسم والجوال يكفيان لفتح الملف. البريد إن وُجد،
+  //   وإلا فُتح على الجوال ورسائله واتساب منك. وأرقام المشروع تُستكمل بعد الفتح لا قبله.
+  const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== ''
+    && typeof quote.amount === 'number' && quote.amount > 0
 
   const openFile = async () => {
     setErr(''); setBusy(true)
@@ -276,7 +278,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
             {card('من هو', (
               <div style={grid()}>
                 {([
-                  ['full_name', 'الاسم الكامل *'], ['phone', 'الجوال *'], ['email', 'البريد الإلكتروني *'],
+                  ['full_name', 'الاسم الكامل *'], ['phone', 'الجوال *'], ['email', 'البريد الإلكتروني (إن وُجد)'],
                   ['company_name', 'اسم المنشأة أو المشروع'], ['city', 'المدينة'], ['sector', 'النشاط'],
                 ] as [keyof typeof who, string][]).map(([k, t]) => (
                   <div key={k}>
@@ -406,7 +408,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
             </button>
             {!canOpen && (
               <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.85 }}>
-                يلزم الاسم والجوال والبريد{needNumbers ? ' وأرقام المشروع' : ''}{!quote.amount ? ' ومبلغٌ معلن للخدمة' : ''}. والبريد ضروري — بلا بريدٍ لا حساب، وبلا حسابٍ لا رابط.
+                يلزم الاسم والجوال{!quote.amount ? ' ومبلغٌ معلن للخدمة' : ''}. والبريد إن وُجد — وبلا بريد تُرسلين له الرابط واتساب.{needNumbers && !enough ? ' وأرقام المشروع تُستكمل بعد الفتح.' : ''}
               </p>
             )}
             <p style={{ color: MUTED, fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '14px 0 0', lineHeight: 1.9 }}>

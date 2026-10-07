@@ -34,8 +34,9 @@ export function isolateLatinHtml(html: string): string {
 }
 
 /** الترويسة: الاسم، والشركة، ثم السجل والترخيص في سطر، والبريد في سطرٍ مستقل */
-export function murdiHeader(): string {
-  return '<div class="hd">\n  <div class="n">مُرضي</div>\n  <div class="s">منصة جاهزية رأس المال</div>\n'
+/** ★ ٧ أكتوبر: العقود والسندات بلا «منصة جاهزية رأس المال» — «مُرضي» شعاراً وحده (`{ tagline: false }`) */
+export function murdiHeader(opts: { tagline?: boolean } = {}): string {
+  return '<div class="hd">\n  <div class="n">مُرضي</div>\n' + (opts.tagline === false ? '' : '  <div class="s">منصة جاهزية رأس المال</div>\n')
     + '  <div class="c">شركة حلول المرضي للاستشارات المالية · حي الربيع، الرياض</div>\n'
     + '  <div class="c">سجل تجاري 7039663724 · ترخيص المستشار رقم <bdi dir="ltr">FL-457927015</bdi></div>\n'
     + '  <div class="c"><bdi dir="ltr">partners@murdi.sa</bdi></div>\n</div>';

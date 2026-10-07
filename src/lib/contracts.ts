@@ -218,7 +218,7 @@ ${CONTRACT_DATE_LINE}
 
 البند الأول: موضوع العقد
 يقدّم الطرف الأول للطرف الثاني خدمة تجهيز الملف التمويلي ورفع الجاهزية، وتشمل على سبيل المثال لا الحصر:
-${f.withStatements ? '- إعداد القوائم المالية بمستوى ائتماني عبر مكتب محاسبي معتمد تحت إشراف الطرف الأول، مع تحليله الائتماني المرفق.\n' : ''}- دراسة الحالة المالية للطرف الثاني وتشخيص جاهزيته التمويلية.
+- دراسة الحالة المالية للطرف الثاني وتشخيص جاهزيته التمويلية.
 - مراجعة المستندات وتجميع المتطلبات اللازمة وتنظيمها في ملف متكامل.
 - معالجة الفجوات ورفع جاهزية الملف بما يتوافق مع متطلبات الجهات التمويلية.
 - إعداد ملف غرض التمويل بصورة احترافية تُبرز قوة المركز المالي.
@@ -549,7 +549,6 @@ The Second Party wishes to prepare its financing file and raise its readiness to
 
 Clause 1: Scope of Service
 The First Party provides the Second Party with the funding file preparation and negotiation service, which includes:
-- Preparing credit-grade financial statements through an accredited accounting office under the First Party's direct supervision, with the First Party's credit analysis attached.
 - Studying the Second Party's financial position and diagnosing its financing readiness.
 - Reviewing documents, collecting the requirements and organising them into a complete file.
 - Addressing gaps and raising the file's readiness in line with financing institutions' requirements.
@@ -614,7 +613,10 @@ export const CONTRACT_LABEL: Record<ContractType, string> = {
 // ★ «العقد أولاً» لكل الخدمات (١ أكتوبر): ما فيه أتعاب استكمال ← عقدٌ موقَّع قبل الدفع،
 //   وما سواه ← سند خدمة صادر. هنا لأن شاشة العميل تقرؤها (لا تصل إليها مكتبات الخادم)،
 //   والحارس في `@/lib/contractGate`.
-export const needsSignedContract = (title: string): boolean => Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || ''));
+// ★ ٧ أكتوبر: الخيار السريع (٩٩٠ — الحكم/الفحص الائتماني) رسمٌ ثابت داخل خدمةٍ نسبتها في خيارها الكامل —
+//   فيصدر له سند خدمةٍ فوراً لا عقدٌ ينتظر المالك (كان يُحبس عقداً فلا يُرسَل لصاحبه رابط).
+export const needsSignedContract = (title: string, optionKey?: string | null): boolean =>
+  Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || '')) && optionKey !== 'quick';
 
 const COMMISSION_SERVICES_TABLE: Record<string, Exclude<ContractType, 'voucher'>> = {
   'تمويل العقد': 'contract_finance',

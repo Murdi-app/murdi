@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
+import { phoneEmail } from '@/lib/phoneEmail';
 import { waNumber } from '@/lib/phone';
 import { COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing';
 import { loadFeeSettings, CONTRACT_FINANCE } from '@/lib/feeSettings';
@@ -75,9 +76,12 @@ export async function POST(req: Request) {
 
   if (!fullName) return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبيه 05xxxxxxxx' }, { status: 400 });
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    return NextResponse.json({ error: 'البريد غير صحيح — وبلا بريدٍ لا يُفتح حساب ولا يُرسل رابط' }, { status: 400 });
+  // ★ ٧ أكتوبر (بأمر المالك): البريد اختياري — بلا بريد يُفتح الحساب على الجوال (عنوانٌ داخلي لا يُراسَل)،
+  //   ورسائل العميل واتساب من الموظفة. والبريد إن كُتب يُتحقق منه.
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return NextResponse.json({ error: 'البريد غير صحيح — صحّحيه أو اتركيه فارغاً' }, { status: 400 });
   }
+  const accountEmail = email || phoneEmail(phone);
 
   const inputs = {
     capex: numOf(raw.capex), workingCapital: numOf(raw.workingCapital),
@@ -87,9 +91,7 @@ export async function POST(req: Request) {
     ownFunds: numOf(raw.ownFunds), financingAmount: numOf(raw.financingAmount),
     financingYears: numOf(raw.financingYears) || 4, financingRate: numOf(raw.financingRate) || 8,
   };
-  if (kind === 'feasibility' && optionKey === 'quick' && (inputs.unitPrice <= 0 || inputs.unitsYear1 <= 0 || (inputs.capex + inputs.workingCapital) <= 0)) {
-    return NextResponse.json({ error: 'أرقام المشروع ناقصة — لا يُفتح ملف بلا سعر ووحدات وتكلفة' }, { status: 400 });
-  }
+  // أرقام المشروع تُستكمل بعد الفتح — لا تمنع فتح الملف ولا الدفع (٧ أكتوبر)
 
   const sb = admin();
 
@@ -99,7 +101,7 @@ export async function POST(req: Request) {
   let userId = '';
   let isNew = false;
   const { data: created, error: cErr } = await sb.auth.admin.createUser({
-    email,
+    email: accountEmail,
     email_confirm: true,
     user_metadata: { full_name: fullName, phone, source: 'intake', opened_by: who.email },
   });
@@ -108,11 +110,11 @@ export async function POST(req: Request) {
     // البريد مستعمل — يُبحث عن صاحبه في `profiles` لا بتصفّح المستخدمين.
     // كان البحث يقرأ أول مئتَي حساب فقط، فمن كان بعدهم لا يُعثر عليه ويُردّ
     // بخطأ وهو مسجَّل — عيبٌ لا يظهر اليوم ويظهر حين تكبر القائمة.
-    const { data: prof } = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
+    const { data: prof } = await sb.from('profiles').select('id').eq('email', accountEmail).maybeSingle();
     if (prof?.id) userId = String(prof.id);
     else {
       const { data: list } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const hit = (list?.users || []).find((u) => String(u.email || '').toLowerCase() === email);
+      const hit = (list?.users || []).find((u) => String(u.email || '').toLowerCase() === accountEmail);
       if (!hit) return NextResponse.json({ error: 'تعذّر فتح الحساب: ' + (cErr?.message || 'سبب غير معروف') }, { status: 500 });
       userId = hit.id;
     }
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
 
   // صفّ التعريف كما يكتبه التسجيل العادي — فلا يختلف من فُتح له ملفٌ من
   // مكالمة عمّن سجّل بنفسه في أي شاشة تقرأ هذا الجدول.
-  await sb.from('profiles').upsert({ id: userId, email, company_name: companyName }, { onConflict: 'id' });
+  await sb.from('profiles').upsert({ id: userId, email: accountEmail, company_name: companyName }, { onConflict: 'id' });
 
   // ═══ المنشأة ═══
   const { data: existingCo } = await sb.from('companies').select('id, company_name').eq('user_id', userId).maybeSingle();

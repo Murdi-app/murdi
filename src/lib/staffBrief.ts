@@ -82,13 +82,13 @@ async function dhaiBrief(sb: SupabaseClient, today: string): Promise<Brief> {
   const ordered = pick('ordered', 10);
   const coIds = ordered.map((r) => r.ref_id);
   const { data: srs } = coIds.length
-    ? await sb.from('service_requests').select('id, company_id, service_title').in('company_id', coIds).eq('status', 'priced')
-    : { data: [] as { id: string; company_id: string; service_title: string }[] };
+    ? await sb.from('service_requests').select('id, company_id, service_title, option_key').in('company_id', coIds).eq('status', 'priced')
+    : { data: [] as { id: string; company_id: string; service_title: string; option_key: string | null }[] };
   const srIds = (srs || []).map((s) => s.id);
   const { data: docs } = srIds.length
     ? await sb.from('contracts').select('service_request_id, status, contract_type').in('service_request_id', srIds)
     : { data: [] as { service_request_id: string; status: string; contract_type: string }[] };
-  const awaitingSign = new Set((srs || []).filter((s) => needsSignedContract(s.service_title)
+  const awaitingSign = new Set((srs || []).filter((s) => needsSignedContract(s.service_title, s.option_key)
     && !(docs || []).some((d) => d.service_request_id === s.id && ['signed', 'completed'].includes(d.status))).map((s) => String(s.company_id)));
   // ★ ٥ أكتوبر: وثيقةٌ ما زالت «مسودّة» لم يُصدرها المالك — لم يصل العميلَ شيء، فلا تُكلَّف ضي بها بعد
   const ownerDraft = new Set((srs || []).filter((s) => (docs || []).some((d) => d.service_request_id === s.id && d.status === 'draft')

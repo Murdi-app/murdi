@@ -15,7 +15,8 @@ export const VOUCHER_FIRST_MSG =
 
 /** رسالة المنع إن كان الدفع مقفلاً، وإلا null */
 export async function contractGate(sb: SupabaseClient, sr: { id: string; service_title?: string | null }): Promise<string | null> {
-  const percent = needsSignedContract(String(sr.service_title || ''));
+  const { data: o } = await sb.from('service_requests').select('option_key').eq('id', sr.id).maybeSingle();
+  const percent = needsSignedContract(String(sr.service_title || ''), o?.option_key as string | null);
   const { data, error } = await sb.from('contracts').select('id, status, contract_type')
     .eq('service_request_id', sr.id).neq('status', 'draft');
   // الفشل في القراءة لا يُقرأ «موقَّع» — يُمنع الدفع ويُقال السبب

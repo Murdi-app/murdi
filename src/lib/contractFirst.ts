@@ -3,6 +3,7 @@ import { COMMERCIAL } from '@/lib/servicePricing';
 import { COMMISSION_SERVICES, renderContract, needsSignedContract } from '@/lib/contracts';
 import { loadFeeSettings, completionPctFor, fillMessage, type FeeSettings } from '@/lib/feeSettings';
 import { shortLink, SITE } from '@/lib/shortLinks';
+import { isPhoneEmail } from '@/lib/phoneEmail';
 import { writtenOn } from '@/lib/contractStamp';
 
 // ★ ١ أكتوبر (بأمر المالك) — «العقد أولاً» في كل الخدمات:
@@ -13,7 +14,7 @@ import { writtenOn } from '@/lib/contractStamp';
 
 export type DocKind = 'contract' | 'voucher';
 export { needsSignedContract };
-export const docKindFor = (title: string): DocKind => (needsSignedContract(title) ? 'contract' : 'voucher');
+export const docKindFor = (title: string, optionKey?: string | null): DocKind => (needsSignedContract(title, optionKey) ? 'contract' : 'voucher');
 
 type SR = { id: string; company_id: string; service_title: string; option_key: string | null; price: number | null; contract_value: number | null; status: string };
 
@@ -69,7 +70,7 @@ ${vat}
  */
 export async function ensureDocument(sb: SupabaseClient, srId: string): Promise<{ kind: DocKind; id: string; status: string; created: boolean }> {
   const sr = await loadSR(sb, srId);
-  const kind = docKindFor(sr.service_title);
+  const kind = docKindFor(sr.service_title, sr.option_key);
   const { data: ex } = await sb.from('contracts').select('id, status, contract_type')
     .eq('service_request_id', sr.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (ex) return { kind, id: String(ex.id), status: String(ex.status), created: false };
@@ -130,6 +131,8 @@ export async function party(sb: SupabaseClient, companyId: string): Promise<{ na
     const { data } = await sb.auth.admin.getUserById(String(co.user_id));
     email = data?.user?.email || null;
   }
+  // عميلٌ فُتح على جواله بلا بريد ← لا بريد يُراسَل؛ رسائله واتساب من الموظفة
+  if (isPhoneEmail(email)) email = null;
   return { name: String(co?.owner_name || '').trim(), email };
 }
 
@@ -143,7 +146,8 @@ export async function issuedMessage(sb: SupabaseClient, srId: string, by?: strin
   const p = await party(sb, sr.company_id);
   const link = await shortLink(sb, 'c', { contractId: String(doc.id), srId: sr.id, companyId: sr.company_id, by });
   const text = fillMessage(s.msgIssued, {
-    'الاسم': p.name || 'عميلنا الكريم', 'الخدمة': sr.service_title,
+    // اسم ما يدفع له العميل: الخيار إن كان (الحكم الائتماني ٩٩٠) لا اسم الخدمة الأم
+    'الاسم': p.name || 'عميلنا الكريم', 'الخدمة': (sr.option_key && COMMERCIAL[sr.service_title]?.options?.find((o) => o.key === sr.option_key)?.label) || sr.service_title,
     'الوثيقة': doc.contract_type === 'voucher' ? 'سند' : 'عقد', 'رابط العقد': link, 'رابط قصير': link,
   });
   return { text: doc.contract_type === 'voucher' ? text.replace('وبعد التوقيع يصلكم رابط السداد.', 'ورابط السداد في الصفحة نفسها.').replace('للاطلاع عليه وتوقيعه', 'للاطلاع عليه') : text, link };
