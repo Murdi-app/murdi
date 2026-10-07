@@ -108,7 +108,9 @@ export async function refreshDraft(sb: SupabaseClient, srId: string): Promise<vo
   const { data: c } = await sb.from('contracts').select('id, contract_type, status, fee_percent, fixed_amount, fee_scope, lang, with_statements')
     .eq('service_request_id', sr.id).eq('status', 'draft').order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!c || c.contract_type === 'voucher') return;
-  const { data: co } = await sb.from('companies').select('company_name, cr_number').eq('id', sr.company_id).maybeSingle();
+  const { data: co0 } = await sb.from('companies').select('company_name, company_name_en, cr_number').eq('id', sr.company_id).maybeSingle();
+  // العقد الإنجليزي باسم المنشأة الإنجليزي إن وُجد
+  const co = co0 ? { ...co0, company_name: c.lang === 'en' && co0.company_name_en ? co0.company_name_en : co0.company_name } : co0;
   // ★ ٧/١٠: سعرٌ صفرٌ صريح = «الدفع عند الصرف» (لا مقدَّم) — لا يُقلب إلى نقاط
   const fixed = sr.price !== null && sr.price !== undefined ? Number(sr.price) : (c.fixed_amount !== null ? Number(c.fixed_amount) : undefined);
   const fields = { feeType: 'deferred' as const, fixedAmount: fixed, feePercent: Number(c.fee_percent) || undefined, feeScope: (c.fee_scope === 'each' ? 'each' : 'first') as 'each' | 'first', lang: (c.lang === 'en' ? 'en' : 'ar') as 'en' | 'ar', withStatements: c.with_statements === true,
