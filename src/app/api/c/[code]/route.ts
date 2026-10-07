@@ -49,8 +49,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ code: string }
   });
 }
 
-// ★ ٧ أكتوبر: الموقّع الأجنبي (كينجدوم — مالكٌ هندي) يكتب اسمه كما في إقامته بالحروف اللاتينية
-const AR_NAME = /^[ء-يA-Za-z\s.'-]{6,80}$/;
+// ★ ٧ أكتوبر (بأمر المالك): العقد كله عربي — الاسم والتوقيع بالعربية وحدها، تماشياً مع النظام السعودي
+const AR_NAME = /^[ء-ي\s]{6,80}$/;
 const SA_ID = /^[12]\d{9}$/;
 
 export async function POST(req: Request, ctx: { params: Promise<{ code: string }> }) {
@@ -63,7 +63,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const name = String(b.name || '').replace(/\s+/g, ' ').trim();
   const id = String(b.id_number || '').replace(/[^\d]/g, '');
-  if (!AR_NAME.test(name)) return NextResponse.json({ error: 'اكتب اسمك الثلاثي كما في الهوية أو الإقامة — Write your full name as in your ID / Iqama' }, { status: 400 });
+  if (!AR_NAME.test(name)) return NextResponse.json({ error: 'اكتب اسمك الثلاثي بالعربي كما في الهوية أو الإقامة' }, { status: 400 });
   if (!SA_ID.test(id)) return NextResponse.json({ error: 'رقم الهوية أو الإقامة عشرة أرقام يبدأ بـ1 أو 2' }, { status: 400 });
   if (b.agree !== true) return NextResponse.json({ error: 'اقرأ العقد ووافق عليه أولاً' }, { status: 400 });
   const now = new Date().toISOString();

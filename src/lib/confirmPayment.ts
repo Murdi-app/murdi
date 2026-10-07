@@ -115,9 +115,8 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
         // الجهات صراحةً في الكتالوج — فلا تُمنح عليه تشغيلة مطابقة لا يشمله
         // ثمنها. أما «الحكم الائتماني لمنشأتك» (quick في مسار التمويل) فيسمّي
         // جهاته، فيبقى على المنح.
-        const quickCheck = String(target.option_key || '') === 'quick'
-          && canonicalTitle(String(title || '')) === 'دراسة الجدوى الاقتصادية';
-        if (title && !quickCheck && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
+        // ★ ٧ أكتوبر (بأمر المالك): الفحص الائتماني كلّه سواء — فحص المشروع يسمّي جهاته أيضاً، فيُمنح المطابقة
+        if (title && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
       }
       // وإن لم يُختم لأنه تجاوز الدفع، فلا ملاحظة: العمل جارٍ والدفعة قُيّدت له
     }
