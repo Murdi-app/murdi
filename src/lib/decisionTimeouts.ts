@@ -25,7 +25,10 @@ export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
   const { data: setting } = await sb.from('fee_settings').select('value').eq('key', 'auto_issue_hours').maybeSingle();
   const autoH = Number(setting?.value ?? 24) || 24;
 
-  const { data: drafts } = await sb.from('contracts').select('id, company_id').eq('status', 'draft').lt('updated_at', new Date(Date.now() - autoH * H).toISOString());
+  // ★ ٧/١٠: أصدرت المهلةُ سنداً تركه المالك مسودّةً عمداً للمراجعة (كينجدوم ٦/١٠) — فلا تمسّ إلا
+  //   مسودّات العقود الآلية (طلب العميل)، لا السندات ولا ما أُمسك للمراجعة (`auto_issue=false`).
+  const { data: drafts } = await sb.from('contracts').select('id, company_id').eq('status', 'draft').eq('auto_issue', true)
+    .neq('contract_type', 'voucher').lt('updated_at', new Date(Date.now() - autoH * H).toISOString());
   for (const d of drafts || []) {
     const { data: co } = await sb.from('companies').select('company_name').eq('id', d.company_id).maybeSingle();
     const name = String(co?.company_name || d.id);

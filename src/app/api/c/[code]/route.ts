@@ -38,7 +38,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ code: string }
   const signer = c.signed_at && c.signer_name ? { name: String(c.signer_name), idNumber: String(c.signer_id_number || ''), at: String(c.signed_at) } : null;
   const html = contractHtml(String(c.contract_body || ''), voucher ? 'سند خدمة' : 'عقد الخدمة', signer);
   let links: { pay: string; site: string } | null = null;
-  if (sr && sr.status === 'priced' && !(await contractGate(sb, { id: String(sr.id), service_title: sr.service_title }))) {
+  if (sr && sr.status === 'priced' && Number(sr.price) > 0 && !(await contractGate(sb, { id: String(sr.id), service_title: sr.service_title }))) {
     const m = await signedMessage(sb, String(sr.id), 'رابط العقد');
     links = { pay: m.payLink, site: m.siteLink };
   }
@@ -49,7 +49,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ code: string }
   });
 }
 
-const AR_NAME = /^[ء-ي\s]{6,80}$/;
+// ★ ٧ أكتوبر: الموقّع الأجنبي (كينجدوم — مالكٌ هندي) يكتب اسمه كما في إقامته بالحروف اللاتينية
+const AR_NAME = /^[ء-يA-Za-z\s.'-]{6,80}$/;
 const SA_ID = /^[12]\d{9}$/;
 
 export async function POST(req: Request, ctx: { params: Promise<{ code: string }> }) {
@@ -62,7 +63,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
   const b = await req.json().catch(() => ({} as Record<string, unknown>));
   const name = String(b.name || '').replace(/\s+/g, ' ').trim();
   const id = String(b.id_number || '').replace(/[^\d]/g, '');
-  if (!AR_NAME.test(name)) return NextResponse.json({ error: 'اكتب اسمك الثلاثي بالعربي كما في الهوية' }, { status: 400 });
+  if (!AR_NAME.test(name)) return NextResponse.json({ error: 'اكتب اسمك الثلاثي كما في الهوية أو الإقامة — Write your full name as in your ID / Iqama' }, { status: 400 });
   if (!SA_ID.test(id)) return NextResponse.json({ error: 'رقم الهوية أو الإقامة عشرة أرقام يبدأ بـ1 أو 2' }, { status: 400 });
   if (b.agree !== true) return NextResponse.json({ error: 'اقرأ العقد ووافق عليه أولاً' }, { status: 400 });
   const now = new Date().toISOString();
@@ -73,6 +74,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
     .eq('id', c.id).eq('status', 'issued').select('id');
   if (error) return NextResponse.json({ error: 'تعذّر حفظ التوقيع — ' + error.message }, { status: 500 });
   if (!done?.length) return NextResponse.json({ error: 'العقد موقَّع من قبل' }, { status: 409 });
+  // ★ ٧ أكتوبر: بلا مقدَّم (الدفع عند الصرف) — لا رسالة دفع ولا رابط؛ يبدأ العمل فوراً ويُنقل
+  //   الطلب إلى «قيد التجهيز» (ملفّات رغد)، ويُبلَّغ المالك.
+  if (sr && !(Number(sr.price) > 0)) {
+    await sb.from('service_requests').update({ status: 'in_progress', updated_at: now }).eq('id', String(sr.id)).in('status', ['priced', 'submitted']);
+    await sendPush({ title: '✍️ وقّع العميل عقده — بلا مقدَّم', body: String(sr.service_title || '') + ' — ' + name + ' · بدأ العمل، والأتعاب عند الصرف', url: '/admin/services', important: true, tag: 'signed-owner-' + c.id }, OWNER_EMAIL).catch(() => null);
+    await notifyTeam({
+      subject: '✍️ وقّع العميل عقد «' + String(sr.service_title || '') + '»',
+      head: 'وصل العقد موقّعاً — بلا مقدَّم، والأتعاب عند الصرف. انتقل الملف إلى «قيد التجهيز».',
+      facts: [['الخدمة', String(sr.service_title || '')], ['الموقّع', name]],
+      url: '/admin/services', pushTitle: '✍️ عقدٌ موقَّع', pushBody: String(sr.service_title || '') + ' — ' + name, tag: 'signed-' + c.id,
+    }).catch(() => {});
+    return NextResponse.json({ ok: true, links: null });
+  }
   let m: { text: string; payLink: string; siteLink: string } | null = null;
   if (sr) m = await signedMessage(sb, String(sr.id), 'توقيع العميل').catch(() => null);
   // ★ رسالة الدفع تخرج للعميل تلقائياً لحظة التوقيع — على بريده المسجّل — ويُبلَّغ المالك
