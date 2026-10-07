@@ -222,6 +222,9 @@ const norm = (s: string) => clean(s).replace(/[«»"“”']/g, '')
 const sameAs = (seen: Set<string>, k: string) => k.length > 0 && seen.has(k);
 
 /** يستورد ويُدخل الجديد — ويمنع التكرار: الشركة نفسها خلال عشرة أيام خبرٌ واحد */
+/** جهاتٌ ضخمة مالكةٌ للمشاريع — لا تُخاطَب، والمطلوب منفّذها الصغير أو المتوسط */
+const MEGA_OWNER = /الدرعية|الدرعيه|نيوم|روشن|البحر الأحمر|البحر الاحمر|القدية|القديه|داون تاون|المربع الجديد|حديقة الملك سلمان|الرياض الخضراء|مطار الملك سلمان|العلا|أمالا|امالا|صندوق الاستثمارات|\b(?:Diriyah|NEOM|ROSHN|Red Sea Global|Qiddiya|PIF)\b/i;
+
 /** مطابقٌ لـ `award_org_name_key` في القاعدة — فالمشغّل والمستورد يقرآن القائمة بالمفتاح نفسه */
 const nameKey = (s: string) => String(s || '')
   .replace(/[ً-ْـ]/g, '')
@@ -229,7 +232,7 @@ const nameKey = (s: string) => String(s || '')
   .replace(/(^|\s)(شركه|الشركه|مؤسسه|المؤسسه|المحدوده|ذات|المسؤوليه|المسئوليه|شخص|واحد)(?=\s|$)/g, ' ')
   .replace(/[^ء-يa-zA-Z0-9]/g, '');
 
-export async function screenParsed(sb: SupabaseClient, all: Parsed[], errors: string[]): Promise<{ keep: Parsed[]; notExec: number; listed: number }> {
+export async function screenParsed(sb: SupabaseClient, all: Parsed[], errors: string[]): Promise<{ keep: Parsed[]; notExec: number; listed: number; mega: number }> {
   const exec = all.filter((p) => !NOT_EXECUTION.test(p.headline + ' ' + (p.tender_title || '')));
   const notExec = all.length - exec.length;
   const { data: lc } = await sb.from('listed_companies').select('name_key, market');
@@ -269,11 +272,16 @@ export async function screenParsed(sb: SupabaseClient, all: Parsed[], errors: st
       }
     } catch (e) { errors.push('فرز الإدراج: ' + (e instanceof Error ? e.message : String(e))); }
   }
-  const keep = exec.filter((p) => p.executor_unknown || !tasi.has(nameKey(p.company_name)));
-  return { keep, notExec, listed: exec.length - keep.length };
+  const keep0 = exec.filter((p) => p.executor_unknown || !tasi.has(nameKey(p.company_name)));
+  // ★ ٧ أكتوبر (بأمر المالك): تُسقط كل ترسيةٍ فوق ٥٠٠ مليون، وكل مشروعٍ مالكه جهةٌ ضخمة (الدرعية · نيوم ·
+  //   روشن · البحر الأحمر · القدية وأمثالها) ما لم يُسمَّ فيه منفّذٌ ليس هو الجهة نفسها (مقاولٌ صغير أو متوسط —
+  //   والكبير المدرج سقط قبلها بفرز تاسي).
+  const keep = keep0.filter((p) => !(Number(p.contract_value) > 500_000_000)
+    && !(MEGA_OWNER.test(p.company_name) || (p.executor_unknown && MEGA_OWNER.test(p.news_company + ' ' + (p.buyer_entity || '')))));
+  return { keep, notExec, listed: exec.length - keep0.length, mega: keep0.length - keep.length };
 }
 
-export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; blocked: number; not_execution: number; listed_tasi: number; errors: string[] }> {
+export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promise<{ found: number; inserted: number; skipped: number; blocked: number; not_execution: number; listed_tasi: number; mega_dropped: number; errors: string[] }> {
   const errors: string[] = [];
   const all: Parsed[] = [];
   for (const q of QUERIES) {
@@ -335,5 +343,5 @@ export async function importAwardsFromNews(sb: SupabaseClient, days = 3): Promis
       else inserted++;
     }
   }
-  return { found: all.length, inserted, skipped, blocked, not_execution: filtered.notExec, listed_tasi: filtered.listed, errors };
+  return { found: all.length, inserted, skipped, blocked, not_execution: filtered.notExec, listed_tasi: filtered.listed, mega_dropped: filtered.mega, errors };
 }

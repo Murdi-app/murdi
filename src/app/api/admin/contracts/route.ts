@@ -24,6 +24,8 @@ function toFields(r: Record<string, unknown>): ContractFields {
     successMin: r.success_min as number,
     contractValue: r.deal_value as number,
     feeScope: r.fee_scope === 'each' ? 'each' : 'first',
+    lang: r.lang === 'en' ? 'en' : 'ar',
+    withStatements: r.with_statements === true,
   };
 }
 
@@ -159,7 +161,7 @@ export async function PATCH(req: Request) {
   // إعادة توليد نص العقد بالحقول المعبأة (الحقول هي المصدر، لا النص)
   // السلسلة مكتوبة حرفياً لا مبنيةً من مصفوفة — وإلا فقد Supabase استنتاج النوع وعاد GenericStringError
   const { data: existingRaw } = await admin.from('contracts')
-    .select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent, deal_value, fee_type, fixed_amount, success_min, success_base, fee_scope')
+    .select('contract_type, client_name, client_id_number, establishment_name, establishment_cr, fee_percent, deal_value, fee_type, fixed_amount, success_min, success_base, fee_scope, lang, with_statements')
     .eq('id', body.id).single();
   const existing = existingRaw as unknown as Record<string, unknown> | null;
   if (existing) {

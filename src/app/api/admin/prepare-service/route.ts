@@ -8,6 +8,7 @@ import { canonicalTitle, displayName } from '@/lib/serviceCatalog';
 import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 import { buildComputedStatements, renderStatementsHtml } from '@/lib/financialCompute';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { stripUnreliable } from '@/lib/finFlags';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 const MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6'];
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     } catch {}
   }
   const { data: fd } = await admin.from('financial_data').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  stripUnreliable(fd);
   const { data: rr } = await admin.from('readiness_results').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   // مدخلات مالية يدوية (لخدمة إعداد القوائم المالية) — إن وُجدت، تُبنى عليها قوائم فعلية

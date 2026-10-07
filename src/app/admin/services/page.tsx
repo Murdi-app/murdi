@@ -28,6 +28,7 @@ const STAT: Record<string, { t: string; bg: string; fg: string }> = {
   completed: { t: 'مكتملة', bg: '#EAF7F0', fg: '#1E7A5A' },
   rejected: { t: 'مرفوضة', bg: '#FBEEEC', fg: '#C0564B' },
   cancelled: { t: 'ملغاة', bg: '#F2F5F4', fg: '#7E938C' },
+  on_hold: { t: 'موقوف — بانتظار العميل', bg: '#FBF1E6', fg: '#8A5A2E' },
 }
 
 // حالةٌ لا يعرفها الجدول أعلاه لا تُقرأ «بانتظار التجهيز».
@@ -110,6 +111,13 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
   const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
 
   // \u2605 \u0648\u0644\u0648\u062d\u0629\u064c \u0641\u0627\u0631\u063a\u0629 \u062a\u064f\u0642\u0631\u0623 \u00ab\u0644\u0627 \u0637\u0644\u0628\u0627\u062a\u00bb\u060c \u0648\u0642\u062f \u062a\u0643\u0648\u0646 \u00ab\u0644\u0645 \u0623\u0633\u062a\u0637\u0639 \u0627\u0644\u0642\u0631\u0627\u0621\u0629\u00bb. \u0641\u064a\u064f\u0642\u0627\u0644 \u0627\u0644\u0641\u0634\u0644.
+  async function holdToggle(id: string, action: 'hold' | 'resume') {
+    if (action === 'hold' && !confirm('إيقاف الملف «بانتظار العميل»؟ يخرج من قائمة رغد ومن التوجيه، ولا تُسجَّل له أتعاب استكمال حتى تعيده.')) return
+    setBusy(id)
+    await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action }) }).catch(() => null)
+    setBusy(''); await load()
+  }
+
   async function load() {
     try {
       const res = await fetch('/api/admin/service-requests')
@@ -662,7 +670,13 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   <div style={{ color:'#6B8A80', fontSize:13, fontWeight:600, marginTop:2 }}>{(r.companies?.company_name) || 'شركة'} · {r.companies?.phone || '—'}</div>
                   <div style={{ color:'#9DB3AB', fontSize:11.5, fontWeight:600, marginTop:2 }}>📅 {fmtDate(r.created_at)}</div>
                 </div>
-                <span style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:700, background:st.bg, color:st.fg }}>{st.t}</span>
+                <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ padding:'4px 14px', borderRadius:20, fontSize:12, fontWeight:700, background:st.bg, color:st.fg }}>{st.t}</span>
+                  {/* ★ ٧ أكتوبر: «موقوف — بانتظار العميل» بزرّ المالك، ويعود الملف نشطاً بزرّه وحده */}
+                  {r.status === 'on_hold'
+                    ? <button onClick={() => holdToggle(r.id, 'resume')} disabled={busy === r.id} style={{ background:'#1A3D34', color:'#fff', border:0, padding:'4px 12px', borderRadius:20, fontFamily:'Cairo', fontWeight:800, fontSize:11.5, cursor:'pointer' }}>↩︎ أعده نشطاً</button>
+                    : (!dead && <button onClick={() => holdToggle(r.id, 'hold')} disabled={busy === r.id} style={{ background:'#fff', color:'#8A5A2E', border:'1px solid #E6CDB0', padding:'4px 12px', borderRadius:20, fontFamily:'Cairo', fontWeight:800, fontSize:11.5, cursor:'pointer' }}>⏸ أوقفه — بانتظار العميل</button>)}
+                </div>
               </div>
 
               {/* ما اشتراه العميل — كان محفوظاً في القاعدة ولا يظهر هنا،

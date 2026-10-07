@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditMemo, memoGaps, MEMO_CSS } from '@/lib/creditMemo';
 import { demandFromMatches, blockersFromMatches, isRejected } from '@/lib/gapDemand';
+import { stripUnreliable } from '@/lib/finFlags';
 
 // ملف غرض التمويل يُولَّد من القاعدة لا يُكتب باليد.
 // GET ?company_id=…            → صفحة كاملة للطباعة أو الإرسال
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
     .eq('company_id', companyId)
     .order('updated_at', { ascending: false })
     .limit(1).maybeSingle();
+  stripUnreliable(fin);
 
   if (!fin) {
     return NextResponse.json(

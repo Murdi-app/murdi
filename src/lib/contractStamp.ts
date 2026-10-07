@@ -12,7 +12,7 @@
 
 import { LICENCE_NO, CR_NO, ADVISOR_LINE, ADVISOR_LINE_EN } from './legalStance';
 import { MURDI_FONT_IMPORT, MURDI_HEAD_CSS, murdiHeader, isoLatin } from './pdfTemplate';
-import { CONTRACT_DATE_LINE } from './contracts';
+import { CONTRACT_DATE_LINE, CONTRACT_DATE_LINE_EN } from './contracts';
 
 /** ختمٌ مصوَّر إن وُجد — وإلا رُسم الختم أدناه */
 export const STAMP_IMAGE_URL = '';
@@ -94,22 +94,28 @@ export function writtenOn(at: string | Date): string {
 
 export function contractHtml(body: string, title = 'عقد الخدمة', signer?: ContractSignature | null): string {
   const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const en = /^[A-Za-z]/.test(String(body || '').trim());
   const signedNote = signer
-    ? '<div class="doc" style="margin-top:14px;padding:10px 14px;border:1.5px solid #2E9E7B;border-radius:10px;font-size:13px">'
-      + 'وقّعه الطرف الثاني إلكترونياً عبر منصة مُرضي: ' + esc(signer.name) + ' · هوية رقم ' + esc(signer.idNumber)
-      + ' · ' + esc(new Date(signer.at).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })) + '</div>'
+    ? (en
+      ? '<div class="doc" dir="ltr" style="margin-top:14px;padding:10px 14px;border:1.5px solid #2E9E7B;border-radius:10px;font-size:13px;text-align:left">'
+        + 'Signed electronically by the Second Party via the Murdi platform: ' + esc(signer.name) + ' · ID/Iqama ' + esc(signer.idNumber)
+        + ' · ' + esc(new Date(signer.at).toLocaleString('en-GB', { timeZone: 'Asia/Riyadh' })) + '</div>'
+      : '<div class="doc" style="margin-top:14px;padding:10px 14px;border:1.5px solid #2E9E7B;border-radius:10px;font-size:13px">'
+        + 'وقّعه الطرف الثاني إلكترونياً عبر منصة مُرضي: ' + esc(signer.name) + ' · هوية رقم ' + esc(signer.idNumber)
+        + ' · ' + esc(new Date(signer.at).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })) + '</div>')
     : '';
   const MARK = '\u0000STAMP\u0000';
 
   // تاريخ التحرير يُعبّأ بتاريخ التوقيع الإلكتروني (هجري أم القرى + ميلادي) إن وُقّع من المنصة
   let src = String(body || '');
-  if (signer) src = src.replace(CONTRACT_DATE_LINE, writtenOn(signer.at));
+  if (signer) src = src.replace(CONTRACT_DATE_LINE, writtenOn(signer.at))
+    .replace(CONTRACT_DATE_LINE_EN, 'Date: ' + new Date(signer.at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }));
 
   // ★ ١ أكتوبر (بأمر المالك): عنوان الوثيقة في الوسط عريضاً، و«حُرّر في» تحته أصغر.
   //   السطر الأول عنوانها، والثاني تاريخها إن بدأ بـ«حُرّر في».
   const lines = src.replace(/^\s+/, '').split('\n');
   const docTitle = lines.shift() || '';
-  const dateLine = /^حُرّر في/.test(lines[0] || '') ? String(lines.shift()) : '';
+  const dateLine = /^(حُرّر في|Date:)/.test(lines[0] || '') ? String(lines.shift()) : '';
   src = lines.join('\n').replace(/^\n+/, '');
   // ★ ٥ أكتوبر: وثيقةٌ إنجليزية (عميلٌ أجنبي) — عنوانها يبدأ بحرفٍ لاتيني ← من اليسار، بلا عزلٍ اتجاهي
   const ltr = /^[A-Za-z]/.test(docTitle.trim());

@@ -3,6 +3,7 @@ import { deliverableUpdate } from '@/lib/serviceStatus';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { buildCreditVerdict, VERDICT_CSS, type VerdictMatch } from '@/lib/creditVerdict';
+import { stripUnreliable } from '@/lib/finFlags';
 
 // توليد «الحكم الائتماني» — مخرَج الفحص السريع (٩٩٠) على مسار التمويل.
 //
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  stripUnreliable(fd);
   if (!fd) return NextResponse.json({ error: 'لا توجد بيانات مالية لهذه المنشأة' }, { status: 422 });
 
   // طبقة التصحيح تسبق مُدخَل العميل — كما في بقية المخرجات، فلا تتناقض

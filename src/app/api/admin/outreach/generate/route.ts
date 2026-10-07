@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { buildFullOutreach, type ClientInput, type EntityInput } from '@/lib/outreachGenerate';
 import { logError } from '@/lib/logError';
 import { requirePage, ownsCompany } from '@/lib/requireStaff';
+import { stripUnreliable } from '@/lib/finFlags';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -37,11 +38,12 @@ async function buildClient(admin: Admin, companyId: string): Promise<ClientInput
 
   const { data: fd } = await admin
     .from('financial_data')
-    .select('annual_revenue, net_profit, requested_amount, funding_purpose')
+    .select('annual_revenue, net_profit, requested_amount, funding_purpose, flags')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  stripUnreliable(fd);
   const { data: rr } = await admin
     .from('readiness_results')
     .select('readiness_score, verdict')

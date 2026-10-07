@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 
 // مُرسِل واحد صادق.
 //
@@ -50,6 +51,24 @@ export async function blockedEmails(to: string | string[]): Promise<string[]> {
   } catch { return []; }
 }
 
+const digestOf = (subject: string, html: string) => createHash('sha256').update(subject + '\u0000' + html).digest('hex');
+const recipients = (to: string | string[]) => (Array.isArray(to) ? to : [to]).map((e) => String(e || '').trim().toLowerCase()).filter(Boolean);
+const logDb = () => process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string) : null;
+
+async function recentlySent(to: string | string[], subject: string, html: string): Promise<boolean> {
+  const sb = logDb(); if (!sb) return false;
+  try {
+    const { data } = await sb.from('mail_sent_log').select('id').in('to_email', recipients(to)).eq('digest', digestOf(subject, html))
+      .gt('created_at', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(1);
+    return !!data?.length;
+  } catch { return false; }
+}
+async function logSent(to: string | string[], subject: string, html: string): Promise<void> {
+  const sb = logDb(); if (!sb) return;
+  try { await sb.from('mail_sent_log').insert(recipients(to).map((e) => ({ to_email: e, digest: digestOf(subject, html), subject: subject.slice(0, 200) }))); } catch { /* */ }
+}
+
 export async function sendMail(input: MailInput): Promise<MailResult> {
   // مفتاح غائب يُقال صراحةً، لا يُترجم إلى «فشل مجهول»
   if (!process.env.RESEND_API_KEY) {
@@ -58,6 +77,10 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
 
   const blocked = await blockedEmails(input.to);
   if (blocked.length) return { ok: false, reason: 'عنوان غير صالح (ارتدّ سابقاً): ' + blocked.join('، ') };
+
+  // ★ ٧ أكتوبر (بأمر المالك): لا يخرج النصّ نفسه للمستلم نفسه خلال ٢٤ ساعة — ضغطتان رسالةٌ واحدة
+  const dup = await recentlySent(input.to, input.subject, input.html);
+  if (dup) return { ok: false, reason: 'أُرسلت الرسالة نفسها لهذا المستلم خلال ٢٤ ساعة — لم تُكرَّر' };
 
   try {
     const res = await client().emails.send({
@@ -82,6 +105,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
       // لا خطأ ولا معرّف: حالة لا تُفهم، ولا تُكتب نجاحاً
       return { ok: false, reason: 'المزوّد لم يُعِد معرّفاً للرسالة — لا يمكن تأكيد قبولها' };
     }
+    await logSent(input.to, input.subject, input.html);
     return { ok: true, id };
   } catch (e) {
     return { ok: false, reason: 'تعذّر الاتصال بمزوّد البريد: ' + String(e).slice(0, 160) };

@@ -9,6 +9,7 @@ import { checkFinancialIntegrity, normalizeDebt } from '@/lib/dataIntegrity';
 import { generateFeasibility, buildFeasibilityHTML, type FeasibilityContext } from '@/lib/feasibilityGenerate';
 import { logError } from '@/lib/logError';
 import { requireAdmin } from '@/lib/requireAdmin';
+import { stripUnreliable } from '@/lib/finFlags';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -115,6 +116,7 @@ export async function POST(req: Request) {
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
+  stripUnreliable(fd);
 
   // أحدث تقييم
   const { data: rr } = await admin

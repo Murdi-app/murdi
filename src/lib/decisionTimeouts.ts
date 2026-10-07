@@ -13,7 +13,7 @@ import { unsignedAfterReminder } from '@/lib/signReminders';
 //   ويُستثنى بأمره: الاستشارة المجانية (الفجوة) والقوالب الجديدة — تبقى تنتظر اعتماده.
 
 const H = 3600_000;
-export type TimeoutResult = { issued: string[]; postponed: string[]; unsigned: string[] };
+export type TimeoutResult = { issued: string[]; postponed: string[]; unsigned: string[]; blanks: string[] };
 
 async function mark(sb: SupabaseClient, t: string, id: string, action: string, note = ''): Promise<boolean> {
   const { error } = await sb.from('decision_marks').insert({ ref_table: t, ref_id: id, action, note });
@@ -21,7 +21,7 @@ async function mark(sb: SupabaseClient, t: string, id: string, action: string, n
 }
 
 export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
-  const r: TimeoutResult = { issued: [], postponed: [], unsigned: [] };
+  const r: TimeoutResult = { issued: [], postponed: [], unsigned: [], blanks: [] };
   const { data: setting } = await sb.from('fee_settings').select('value').eq('key', 'auto_issue_hours').maybeSingle();
   const autoH = Number(setting?.value ?? 24) || 24;
 
@@ -40,6 +40,16 @@ export async function runTimeouts(sb: SupabaseClient): Promise<TimeoutResult> {
 
   // ★ ٣/١٠: ذُكّر بالواتساب ولم يوقّع خلال يومَي عمل ← إشعار المالك باسمه، ولا يعود لضي
   r.unsigned = await unsignedAfterReminder(sb, new Date(Date.now() + 3 * H).toISOString().slice(0, 10)).catch(() => []);
+
+  // ★ ٧/١٠: «وافقت الجهة» بقيت خانةٌ منه فارغة (الجهة · المبلغ · موعد الصرف) ٢٤ ساعة ← إشعارٌ باسم الموظفة والملف
+  const { data: sf } = await sb.from('success_fees').select('id, company_id, funder_name, approved_amount, expected_disbursement, approved_logged_by')
+    .not('approved_logged_at', 'is', null).lt('approved_logged_at', new Date(Date.now() - 24 * H).toISOString());
+  for (const f of sf || []) {
+    const miss = [!String(f.funder_name || '').trim() && 'الجهة', !(Number(f.approved_amount) > 0) && 'المبلغ', !f.expected_disbursement && 'موعد الصرف'].filter(Boolean);
+    if (!miss.length || !(await mark(sb, 'success_fees', String(f.id), 'blank_alert'))) continue;
+    const { data: co } = await sb.from('companies').select('company_name').eq('id', f.company_id).maybeSingle();
+    r.blanks.push((f.approved_logged_by || 'موظفة') + ' — ' + String(co?.company_name || '') + ': ينقص ' + miss.join('، '));
+  }
 
   const { data: msgs } = await sb.from('client_messages').select('id, subject, created_by_name').eq('status', 'بانتظار الاعتماد').lt('created_at', new Date(Date.now() - 24 * H).toISOString());
   for (const m of msgs || []) {

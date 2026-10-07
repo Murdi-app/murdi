@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { logError } from '@/lib/logError';
 import { parseItemsLenient } from '@/lib/salvageJson';
 import { sendMail } from '@/lib/sendMail';
+import { stripUnreliable } from '@/lib/finFlags';
 
 type Rec = Record<string, any>;
 
@@ -372,6 +373,7 @@ export async function runAutoMatch(companyId: string, track: 'funding' | 'invest
     if (!company) return { done: true, total: 0, next: 0 };
     const { data: fd } = await admin.from('financial_data').select('*')
       .eq('company_id', companyId).order('created_at', { ascending: false }).limit(1).single();
+    stripUnreliable(fd);
     if (!fd) return { done: true, total: 0, next: 0 };
     const isInvest = track === 'investment';
     const rev = Number(fd.annual_revenue) || 0;

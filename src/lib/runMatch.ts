@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { suggestService, suggestionBox } from '@/lib/serviceSuggestion';
 import { sendMail } from '@/lib/sendMail';
 import { logError } from '@/lib/logError';
+import { stripUnreliable } from '@/lib/finFlags';
 
 const ACT_LABELS: Record<string, string> = { retail: 'تجزئة/مطاعم', contracting: 'مقاولات/توريد', services: 'خدمات', manufacturing: 'تصنيع', wholesale: 'تجارة جملة', other_activity: 'أخرى' };
 const TYPE_LABELS: Record<string, string> = { cash: 'تمويل نقدي', working_capital: 'رأس مال عامل', revenue: 'تمويل الإيرادات', pos: 'تمويل نقاط البيع', invoices: 'تمويل الفواتير والمستخلصات', assets: 'تمويل أصول ومعدات', vehicles: 'تمويل مركبات وأساطيل', real_estate: 'عقاري تجاري', lc: 'اعتمادات وخطابات ضمان', project: 'تمويل مشاريع وعقود' };
@@ -293,6 +294,7 @@ async function runInvestmentMatch(companyId: string, scoreArg?: number): Promise
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
+  stripUnreliable(fd);
   if (fd === null) return;
 
   const { data: rr } = await adminClient
@@ -428,9 +430,11 @@ async function runFundingMatch(companyId: string): Promise<void> {
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
+  stripUnreliable(fd);
   if (fd === null) {
     // fallback: قد لا يكون assessment_type=funding، نأخذ الأحدث
     const { data: fd2 } = await adminClient.from('financial_data').select('*').eq('company_id', company.id).order('created_at', { ascending: false }).limit(1).single();
+    stripUnreliable(fd2);
     if (fd2 === null) return;
     Object.assign(fd as object || {}, fd2);
   }
@@ -658,6 +662,7 @@ async function runIpoMatch(companyId: string, scoreArg?: number): Promise<void> 
   if (company === null || company.account_status !== 'active') return;
 
   const { data: fd } = await adminClient.from('financial_data').select('*').eq('company_id', company.id).eq('assessment_type', 'ipo').order('created_at', { ascending: false }).limit(1).single();
+  stripUnreliable(fd);
   if (fd === null) return;
 
   const { data: rr } = await adminClient.from('readiness_results').select('readiness_score, verdict, top_obstacles, improvement_plan, months_to_ready, valuation_estimate').eq('company_id', company.id).eq('result_type', 'ipo').order('created_at', { ascending: false }).limit(1).single();

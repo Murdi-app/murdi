@@ -62,6 +62,20 @@ export async function PATCH(req: Request) {
   const admin = await getAdmin();
   if (admin === null) return NextResponse.json({ error: 'غير مصرح' }, { status: 403 });
   const body = await req.json();
+  // ★ ٧ أكتوبر (بأمر المالك): «موقوف — بانتظار العميل» — يخرج الملف من قائمة رغد النشطة ومن التوجيه،
+  //   ولا تُسجَّل له أتعاب استكمال؛ ويعود إلى حالته السابقة بزرّ المالك وحده.
+  if (body.action === 'hold' || body.action === 'resume') {
+    const { data: s } = await admin.from('service_requests').select('status, hold_prev_status').eq('id', body.id).maybeSingle();
+    if (!s) return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
+    const now = new Date().toISOString();
+    const patch = body.action === 'hold'
+      ? (s.status === 'on_hold' ? null : { status: 'on_hold', hold_prev_status: s.status, held_at: now, hold_note: String(body.note || '').slice(0, 300) || null, updated_at: now })
+      : (s.status !== 'on_hold' ? null : { status: s.hold_prev_status || 'in_follow_up', hold_prev_status: null, held_at: null, hold_note: null, updated_at: now });
+    if (!patch) return NextResponse.json({ ok: true, unchanged: true });
+    const { error: hErr } = await admin.from('service_requests').update(patch).eq('id', body.id);
+    if (hErr) return NextResponse.json({ error: hErr.message }, { status: 500 });
+    return NextResponse.json({ ok: true, status: patch.status });
+  }
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.status) updates.status = body.status;
   if (body.admin_deliverable !== undefined) updates.admin_deliverable = body.admin_deliverable;

@@ -33,6 +33,10 @@ export interface ContractFields {
   floorAmount?: string | number; // ما لا تنزل عنه الاتعاب عند الابراء الجزئي
   /** ★ ٧ أكتوبر: نطاق نسبة الاستكمال — 'first' أول تسهيل (الافتراضي) · 'each' كل تسهيلٍ مرةً */
   feeScope?: 'first' | 'each';
+  /** ★ ٧ أكتوبر: لغة العقد — 'en' لعميلٍ أجنبي (الآن لقالب تجهيز الملف وحده) */
+  lang?: 'ar' | 'en';
+  /** ★ ٧ أكتوبر: النطاق يشمل إعداد القوائم عبر مكتب محاسبي معتمد تحت إشرافنا (كينجدوم · SK) */
+  withStatements?: boolean;
 }
 
 /** جملة ذيل الأتعاب (أثناء العقد أو ستة أشهر بعده) بنطاقها */
@@ -211,7 +215,7 @@ ${CONTRACT_DATE_LINE}
 
 البند الأول: موضوع العقد
 يقدّم الطرف الأول للطرف الثاني خدمة تجهيز الملف التمويلي ورفع الجاهزية، وتشمل على سبيل المثال لا الحصر:
-- دراسة الحالة المالية للطرف الثاني وتشخيص جاهزيته التمويلية.
+${f.withStatements ? '- إعداد القوائم المالية بمستوى ائتماني عبر مكتب محاسبي معتمد تحت إشراف الطرف الأول، مع تحليله الائتماني المرفق.\n' : ''}- دراسة الحالة المالية للطرف الثاني وتشخيص جاهزيته التمويلية.
 - مراجعة المستندات وتجميع المتطلبات اللازمة وتنظيمها في ملف متكامل.
 - معالجة الفجوات ورفع جاهزية الملف بما يتوافق مع متطلبات الجهات التمويلية.
 - إعداد ملف غرض التمويل بصورة احترافية تُبرز قوة المركز المالي.
@@ -495,7 +499,104 @@ ${tailClause(f)}
 export type ContractType = 'funding' | 'investment' | 'acquisition' | 'contract_finance' | 'voucher';
 
 /** نصّ العقد بنوعه — مصدرٌ واحد للمسودّة وتحريرها */
+/** سطر التاريخ في العقد الإنجليزي — يُعبّأ بتاريخ التوقيع الإلكتروني (`contractHtml`) */
+export const CONTRACT_DATE_LINE_EN = 'Date: ____ / ____ / 2026';
+
+/**
+ * ★ ٧ أكتوبر (بأمر المالك — كينجدوم، مالكٌ هندي): عقد «تجهيز ملف التمويل والتفاوض» بالإنجليزية،
+ * مطابقٌ لبنود القالب العربي المعتمد: لا مقدَّم (إن كان صفراً) · نسبة من حدّ أول تسهيل (أو كل تسهيل)
+ * مرةً واحدة · شاملة الضريبة · ستة أشهر تتجدّد وذيل ستة أشهر · السرية · سند نافذ · نطاقٌ يشمل إعداد
+ * القوائم عبر مكتب محاسبي معتمد تحت إشرافنا مع تحليلنا الائتماني.
+ */
+export function fundingContractEn(f: ContractFields): string {
+  const D = (v: string | number | undefined, fb: string) => (v === undefined || v === null || v === '' ? fb : String(v));
+  const upZero = String(f.fixedAmount ?? '') !== '' && Number(f.fixedAmount) === 0;
+  const up = Number(f.fixedAmount || 0).toLocaleString('en-US');
+  const pct = D(f.feePercent, '....');
+  const each = f.feeScope === 'each';
+  const fees = [
+    upZero
+      ? 'No upfront fee. The Second Party pays nothing on signing this Agreement; all of the First Party\'s fees are deferred until financing is made available, as set out below.'
+      : 'Upfront fee. SAR (' + up + ') payable on signing this Agreement, for opening the file, studying the case and starting the preparation.',
+    each
+      ? 'Completion fee: (' + pct + '%) of the limit of each facility approved for the Second Party by any institution to which its file was presented during the term of this Agreement — due once per facility, and not repeated on its renewal or increase, or on drawdowns and repayments within its limit.'
+      : 'Completion fee: (' + pct + '%) of the limit of the first facility approved for the Second Party by any institution to which its file was presented — due once only: not on any subsequent facility, not on its renewal or increase, and not repeated on drawdowns and repayments within the limit.',
+    'What this fee covers. The First Party\'s service extends beyond delivering the file: reviewing the offers and conditions received and explaining their effect in riyals · reviewing the facility agreement and its annexes before signing · arranging the drawdown schedule to match the Second Party\'s cash cycle · and following up on the conditions precedent until disbursement. As the service ends when the facility becomes available, the fee falls due on that day.',
+    'Due date: the fee is payable when the facility is credited to the Second Party\'s account or made available for drawdown. If made available in tranches, the fee falls due pro rata to the amount made available, until complete on the approved limit.',
+    'The fees stated in this Clause are inclusive of Value Added Tax, and a lawful tax invoice is issued for them.',
+    'The First Party receives no commission or consideration — direct or indirect — from any financing institution; its fees come from the Second Party alone, for an advisory service rendered to it. The First Party does not guarantee approval by any institution, does not grant or approve financing, and the application and contracting remain directly between the Second Party and the institution.',
+  ];
+  const ORD = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh'];
+  return `FUNDING FILE PREPARATION AND NEGOTIATION SERVICE AGREEMENT
+${CONTRACT_DATE_LINE_EN}
+
+This Agreement is made between:
+
+First Party: Holol Almurdi Financial Consulting (Murdi), Commercial Registration No. (7039663724), represented by Advisor Dr. Abdulhakim Almurdi, ID No. (1101036539), Advisor Licence No. (FL-457927015) — the "First Party".
+
+Second Party: ${D(f.establishmentName, '(..............)')}, Commercial Registration No. (${D(f.establishmentCr, '..............')}), represented in signing this Agreement by:
+Name: (..............................)
+ID / Iqama No.: (..............................)
+Capacity: owner of the establishment or authorised signatory — the "Second Party".
+
+Both parties acknowledge their full legal capacity and agree as follows:
+
+Preamble
+The Second Party wishes to prepare its financing file and raise its readiness to obtain financing from suitable institutions. In view of the First Party's experience in financial advisory and file preparation, the parties agree to organise this service under the following clauses.
+
+Clause 1: Scope of Service
+The First Party provides the Second Party with the funding file preparation and negotiation service, which includes:
+- Preparing credit-grade financial statements through an accredited accounting office under the First Party's direct supervision, with the First Party's credit analysis attached.
+- Studying the Second Party's financial position and diagnosing its financing readiness.
+- Reviewing documents, collecting the requirements and organising them into a complete file.
+- Addressing gaps and raising the file's readiness in line with financing institutions' requirements.
+- Preparing a professional financing file that presents the strength of the financial position.
+- Identifying the institutions whose published criteria apply to the Second Party, and presenting the file to them — on the Second Party's written mandate and for study purposes — and following up on their responses.
+- Negotiating offers and terms on the Second Party's behalf, and following up until disbursement.
+The First Party delivers the financing file within (7) working days of the start of service, begins presenting it to institutions within (3) working days of the Second Party's approval of the file, and reports weekly on the status of each institution.
+The application and contracting with any institution remain directly between the Second Party and that institution; the First Party does not sign or commit on its behalf.
+
+Clause 2: Fees
+The Second Party shall pay the First Party fees for the service described in Clause 1 as follows:
+${fees.map((t, i) => ORD[i] + ' — ' + t).join('\n')}
+
+Clause 3: Term and Start of Service
+This Agreement runs for (six) months from the date of signing and renews for an equal period unless either party notifies the other in writing of non-renewal at least fifteen days before it ends.
+Signing this Agreement, together with any of the following by the Second Party, constitutes the actual start of service: delivering the documents required for the file, authorising the First Party to prepare and follow up the file, or approving the prepared file for submission to any financing institution.
+
+Clause 4: The File and its Rights
+The prepared file, including its analysis, drafting and arrangement, is the work of the First Party and is delivered to the Second Party for use for its purpose — it may not be transferred to another establishment or attributed to anyone other than its author.
+The completion fee stated in Clause 2 remains due on ${each ? 'each facility' : 'the first facility'} approved for the Second Party by any of the institutions to which its file was presented, during the term of this Agreement or within six months of its expiry.
+
+Clause 5: Confidentiality
+The First Party shall keep confidential all information and documents delivered by the Second Party, and shall disclose them only to the institutions to which the Second Party mandates it in writing to present its file, and only to the extent required to study the file. This obligation survives the end of this Agreement.
+
+Clause 6: Enforceable Instrument
+The Second Party agrees to issue an electronic promissory note through the Nafith platform as security for the fees due, and the First Party may present it directly to the enforcement court in case of default in payment.
+
+Clause 7: Second Party's Obligations and Acknowledgements
+The Second Party shall provide accurate and complete information, and shall supply the First Party with any documents requested by institutions within (3) working days of being notified of the request.
+The Second Party acknowledges that the First Party does not guarantee approval of financing, but provides a file preparation, readiness and advisory service, and that the final decision rests with the financing institution.
+
+Clause 8: Capacity of the First Party
+The First Party is a financial advisory firm, Advisor Licence No. (FL-457927015), acting in a purely advisory role: it prepares the file, provides advice and represents the Second Party in presenting it to institutions on its mandate.
+The decision to grant remains with the financing institution, and the decision to accept and contract remains with the Second Party.
+
+Clause 9: Governing Law
+This Agreement is governed by the laws of the Kingdom of Saudi Arabia, and any dispute shall be settled in accordance with the applicable regulations. An Arabic translation may be prepared for official purposes and shall reflect this Agreement.
+
+Clause 10: Signature
+The parties acknowledge that this Agreement is binding and fully effective once signed by both. Signature is valid whether by scanned handwritten signature, by approving the Agreement and uploading the signed copy through the Murdi electronic platform, by exchange through the approved electronic means between the parties (such as email or WhatsApp), or through approved e-signature platforms. Approval or exchange of the signed copy by any of these means is equivalent to exchanging the original, has the legal effect of a handwritten signature, and may be relied upon between the parties and before the competent authorities. This Agreement is made in two copies, one for each party.
+
+First Party: Advisor Dr. Abdulhakim Almurdi — Holol Almurdi Financial Consulting
+Signature: Abdulhakim
+
+Second Party: (..............................)
+Signature: ............`;
+}
+
 export function renderContract(type: string, f: ContractFields): string {
+  if (f.lang === 'en' && (type === 'funding' || !type)) return fundingContractEn(f);
   return type === 'acquisition' ? acquisitionContract(f)
     : type === 'investment' ? investmentContract(f)
     : type === 'contract_finance' ? contractFinanceContract(f)
