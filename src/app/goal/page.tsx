@@ -11,7 +11,9 @@ import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES, needsSignedContract } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
-import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
+import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
+import MainServices, { MAIN_SERVICES } from '@/components/MainServices';
+import MyFile from '@/components/MyFile';
 
 const TRACKS = [
   { id: 'funding', icon: '', title: 'أريد تمويلاً', en: 'FUNDING READINESS', desc: 'اعرف مدى جاهزية شركتك للحصول على تمويل، وما الذي يمنعها، وكيف تتأهل.', href: '/assessment/funding' },
@@ -28,9 +30,7 @@ export default function GoalPage() {
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
-  // كان هذا الحقل يقيس اشتراكاً ربعياً أُلغي من المنصة. وما يحكم هذه
-  // الشاشة اليوم شيء آخر: هل تملك تشغيلة مطابقة؟ فسُمِّي بما يقيسه.
-  // ومن اشترك قبل الإلغاء يبقى على حقه حتى تنتهي مدّته المسجَّلة.
+  // هل تملك تشغيلة مطابقة؟ (ويبقى لعميلَين قديمين حقُّ تشغيلٍ مسجَّل حتى تنتهي مدّته)
   const [canMatch, setCanMatch] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matchCounts, setMatchCounts] = useState<Record<string, number>>({});
@@ -766,7 +766,16 @@ export default function GoalPage() {
               <a onClick={(e) => { e.preventDefault(); setShowPaywall(true); }} href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
             </div>
           )}
-          {CATALOG.map((cat, ci) => (
+          {/* ★ ٨ أكتوبر (المالك): «ملفي» لمن دفع، ثم الخدمات الخمس الرئيسية بطُعمها، ثم «خدمات إضافية» */}
+          <MyFile />
+          <MainServices requested={serviceRequests} onOrder={(title) => {
+            const cat = CATALOG.find((c) => c.items.includes(title));
+            const label = cat?.label || '';
+            if (needsForm(title)) { setOrderCategory(label); openOrder(title); } else { submitServiceRequest(title, label); }
+          }} />
+          <details className="mb-7" open={Object.keys(serviceRequests).some((t) => !(MAIN_SERVICES as readonly string[]).includes(t))}>
+            <summary className="cursor-pointer text-center font-black text-[#1A3D34] py-3 rounded-full border border-[#E3EAE7] mb-5">خدمات إضافية</summary>
+          {CATALOG.map((cat) => ({ ...cat, items: cat.items.filter((t) => !CLIENT_HIDDEN.includes(t) && (!(MAIN_SERVICES as readonly string[]).includes(t) || !!serviceRequests[t])) })).filter((cat) => cat.items.length > 0).map((cat, ci) => (
             <div key={ci} className="mb-7">
               <div className="flex items-baseline gap-3 mb-4 border-b-2 border-[#EAF2EE] pb-2">
                 <span className="text-lg font-black text-[#1A3D34]">{cat.label}</span>
@@ -1024,6 +1033,7 @@ export default function GoalPage() {
               </div>
             </div>
           ))}
+          </details>
         </div>
         )}
 

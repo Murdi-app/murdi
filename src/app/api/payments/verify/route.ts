@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   const sb = admin();
   const meta = mp.metadata || {};
   const companyId = meta.company_id || null;
-  const kind = meta.kind || 'subscription';
+  const kind = meta.kind || 'service';
   const isPaid = mp.status === 'paid';
 
   // هل سبق تسجيل هذه الدفعة؟ (idempotent)

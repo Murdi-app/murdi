@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { DIRECT_ORDER, displayName, commercialFor } from '@/lib/serviceCatalog';
+import { DIRECT_ORDER, displayName, commercialFor, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { tiktokEvent } from '@/lib/tiktokPixel';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
@@ -35,7 +35,7 @@ const inputCls: React.CSSProperties = {
   background: '#fff', boxSizing: 'border-box',
 };
 
-const DIRECT = DIRECT_ORDER;
+const DIRECT = DIRECT_ORDER.filter((t) => !CLIENT_HIDDEN.includes(t));
 const FUNDING_SERVICE = 'تجهيز ملف التمويل والتفاوض';
 
 function RequestForm() {

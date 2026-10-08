@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SignedInServicesStrip from '@/components/SignedInServicesStrip';
-import { CATALOG, DIRECT_ORDER, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis, serviceAnchor } from '@/lib/serviceCatalog';
+import { CATALOG, DIRECT_ORDER, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis, serviceAnchor, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
 import type { ServiceCommercial } from '@/lib/servicePricing';
 
 // السعر كما يُقال لزائر لا حقلَ أمامه.
@@ -119,8 +119,8 @@ function Card({ title }: { title: string }) {
 }
 
 export default function ServicesPage() {
-  const direct = DIRECT_ORDER;
-  const diagnosed = CATALOG.map((c) => ({ ...c, items: c.items.filter((t) => needsDiagnosis(t)) })).filter((c) => c.items.length > 0);
+  const direct = DIRECT_ORDER.filter((t) => !CLIENT_HIDDEN.includes(t));
+  const diagnosed = CATALOG.map((c) => ({ ...c, items: c.items.filter((t) => needsDiagnosis(t) && !CLIENT_HIDDEN.includes(t)) })).filter((c) => c.items.length > 0);
 
   return (
     <div className="sv" dir="rtl">

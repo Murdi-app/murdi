@@ -3,7 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
-// نوع الدفعة يُقرأ مرة واحدة، ورسم العضوية لا يأتي من الرابط
+// نوع الدفعة يُقرأ مرة واحدة — والافتراضي دفعة خدمة
 const kindOf = (p: URLSearchParams) => p.get('kind') || 'service';
 
 const BANK = { name: 'البنك الأهلي السعودي SNB', beneficiary: 'شركة حلول المرضي للإستشارات المالية', iban: 'SA3710000026300000961004' };

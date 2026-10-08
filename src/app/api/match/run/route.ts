@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
   const credits = Number((co as Record<string, unknown>).match_credits || 0);
   if (!legacy && credits <= 0) {
-    return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — ادفع رسم التشغيل ثم أعد المحاولة', needsPayment: true }, { status: 402 });
+    return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — اطلب المطابقة وسيمنحك فريق مُرضي تشغيلة', needsPayment: false }, { status: 402 });
   }
 
   const { data: rr } = await admin.from('readiness_results').select('result_type').eq('company_id', co.id);

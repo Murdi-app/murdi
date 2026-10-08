@@ -127,6 +127,10 @@ export const DIRECT_ORDER: string[] = [
   'التقييم العادل المعمّق',
 ];
 
+/** ★ ٨ أكتوبر (المالك): ما لا يُعرض للعميل خدمةً مستقلة — يبقى في النظام ولوحة المالك وحدهما.
+ *  «إعداد القوائم المالية» مستندٌ يُجهَّز داخل الملف لاحقاً لا خدمةٌ تُباع وحدها. */
+export const CLIENT_HIDDEN: string[] = ['إعداد القوائم المالية المعتمدة'];
+
 /** هل تحتاج هذه الخدمة تشخيصاً (تقييماً) قبل أن تُطلب؟ */
 export function needsDiagnosis(title: string): boolean {
   return !DIRECT_ORDER.includes(canonicalTitle(title));
@@ -155,7 +159,7 @@ export function serviceAnchor(title: string): string {
 }
 
 // عدد الخدمات المعروضة — يُقرأ في واجهة المنصة فلا يتخلّف الرقم عن القائمة
-export const SERVICE_COUNT = CATALOG.reduce((n, c) => n + c.items.length, 0);
+export const SERVICE_COUNT = CATALOG.reduce((n, c) => n + c.items.filter((t) => !CLIENT_HIDDEN.includes(t)).length, 0);
 
 // ═══ الخدمات التي فيها مخاطبة جهات ═══
 // «دفع ولم يُخاطَب له بابٌ واحد» لا يصحّ إلا على خدمةٍ ثمنُها المخاطبة. وكانت
