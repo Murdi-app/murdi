@@ -92,7 +92,7 @@ export default function LangRuntime() {
         else if (m.type === 'attributes') queued.push(m.target)
         else m.addedNodes.forEach((n) => queued.push(n))
       }
-      if (!raf) raf = requestAnimationFrame(flush)
+      if (!raf) raf = window.setTimeout(flush, 16)
     })
     mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...ATTRS] }) }
     import('@/lib/i18n/en.json').then((m) => {
@@ -100,7 +100,7 @@ export default function LangRuntime() {
       DICT = (m.default || m) as unknown as Record<string, string>
       run(); observe()
     }).finally(() => html.classList.remove('i18n-pending'))
-    return () => { cancelled = true; mo?.disconnect(); if (raf) cancelAnimationFrame(raf) }
+    return () => { cancelled = true; mo?.disconnect(); if (raf) clearTimeout(raf) }
   }, [path])
   return null
 }
