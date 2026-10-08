@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import TrackLure from '@/components/TrackLure';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
 import { createBrowserClient } from '@supabase/ssr';
@@ -193,12 +194,15 @@ export default function IpoResult() {
       <div className="max-w-xl mx-auto space-y-6">
 
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#E8F5EF] text-center">
-          <p className="text-[#6B8A80] font-bold mb-2">IPO Readiness Score</p>
+          <p className="text-[#6B8A80] font-bold mb-2">درجة جاهزيتك للطرح</p>
           <p className="text-6xl font-black" style={{ color: scoreColor }}>{result.readiness_score}</p>
           <p className="text-lg font-black text-[#1A3D34] mt-3">{result.verdict}</p>
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
           {market && <p className="text-[#1A3D34] font-black text-sm mt-2">{market}</p>}
         </div>
+
+        {/* ★ ٨ أكتوبر: طُعم الخدمة تحت الدرجة مباشرة */}
+        <TrackLure track="investment" />
 
         {(result.months_to_ready ?? 0) > 0 && (
           <div className="bg-gradient-to-br from-[#1A3D34] to-[#2E5D4E] rounded-2xl p-6 text-center shadow-sm">

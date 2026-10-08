@@ -130,8 +130,8 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
         {fz?.program ? (
           <div className="font-black" style={{ color: G }}>أنسب جهة حكومية لمشروعك: <span style={{ color: GOLD }}>{fz.program.name}</span> — يموّل {fz.program.max}، ويشترط {fz.program.requirement}.</div>
         ) : null}
-        {fz?.families ? <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>ومشروعك بهذا الحجم يفتح {fz.families.toLocaleString('ar-SA')} عائلةً من جهات التمويل — والدراسة الكاملة تُبنى على متطلبات أنسبها.</div> : null}
-        {!fz?.program && !fz?.families && <div className="text-sm" style={{ color: '#6B8A80' }}>اكتب حجم الاستثمار واضغط «احسب».</div>}
+        {fz?.funders ? <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>و<b style={{ color: G }}>{fz.funders.toLocaleString('ar-SA')}</b> جهة تمويل ومستثمر يناسبهم مشروعك — نعرضه عليهم بعد الدراسة.</div> : null}
+        {!fz?.program && !fz?.funders && <div className="text-sm" style={{ color: '#6B8A80' }}>اكتب حجم الاستثمار واضغط «احسب».</div>}
       </Card>
 
       <Card title="الاستثمار" sub="لمن يريد شريكاً أو مستثمراً في منشأته" cta="خلّنا نشتغلها عنك" onCta={() => onOrder(MAIN_SERVICES[3])} pending={pend(MAIN_SERVICES[3])}>
@@ -147,6 +147,14 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
               <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>{inv.value.basis === 'profit' ? 'بمضاعفات ربح قطاعك' : 'بمضاعف الإيراد — لأن الربح غير موجب'} — تقديرٌ أولي لا تقييمٌ معتمد.</div>
             </>
           ) : <Missing fields={inv?.missing || ['الإيراد السنوي']} />}
+        {/* ★ ٨ أكتوبر: ما يُسلَّم فعلاً في الخدمة — المبني في المنصة وحده (العرض التقديمي · ملف العرض · المطابقة).
+            لا ورقة شروط ولا غرفة بيانات ولا اتفاقية سرية: غير مبنية بعد. ولا «مخاطبة المستثمرين»: عقد الاستثمار يجعلها للعميل وحده. */}
+        <div className="text-sm font-black mt-1 mb-1" style={{ color: G }}>ما تحصل عليه في الخدمة:</div>
+        <ul className="text-sm font-bold mb-3 space-y-1" style={{ color: '#5E7C73', listStyle: 'none', padding: 0 }}>
+          <li>✓ عرض تقديمي للمستثمر بالعربية والإنجليزية</li>
+          <li>✓ ملف العرض الاستثماري بالعربية والإنجليزية</li>
+          <li>✓ قائمة المستثمرين والصناديق التي تنطبق معاييرها على منشأتك</li>
+        </ul>
       </Card>
 
       <Card title="الاستحواذ" sub="تبيع منشأتك أو تشتري منشأة" cta="خلّنا نشتغلها عنك" onCta={() => onOrder(MAIN_SERVICES[4])} pending={pend(MAIN_SERVICES[4])}>

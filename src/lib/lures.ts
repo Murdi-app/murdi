@@ -15,7 +15,7 @@ export type Lures = {
   funding: { lure: FundingLure; missing: string[] };
   investment: { value: ValueLure; investors: number | null; missing: string[] };
   acquisition: { value: ValueLure; buyOpportunities: number | null; missing: string[] };
-  feasibility: { program: { name: string; max: string; requirement: string } | null; families: number | null; missing: string[] };
+  feasibility: { program: { name: string; max: string; requirement: string } | null; families: number | null; funders: number | null; missing: string[] };
   contract: ContractLure;
   sector: string | null;
 };
@@ -129,7 +129,7 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
   }
 
   // ٣) دراسة الجدوى: أنسب برنامجٍ حكومي مُتحقَّق منه لقطاعه + عدد عائلات الممولين التي تفتحها بوابة الجدوى
-  const feasibility: Lures['feasibility'] = { program: null, families: null, missing: [] };
+  const feasibility: Lures['feasibility'] = { program: null, families: null, funders: null, missing: [] };
   const { data: progs } = await sb.from('gov_programs').select('name, sector_keywords, max_text, requirement, verified, sort, max_investment').eq('verified', true).order('sort');
   const hit = (progs || []).find((p) => { const cap = Number(p.max_investment) || 0; if (cap && ((fz?.investment && fz.investment > cap) || (!fz?.investment && rev !== null && rev > cap))) return false; try { return new RegExp(String(p.sector_keywords), 'i').test(sector); } catch { return false; } });
   if (hit) feasibility.program = { name: String(hit.name), max: String(hit.max_text), requirement: String(hit.requirement) };
@@ -141,6 +141,22 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
       foreignOwner: !!fd?.owner_nationality && !/سعود/.test(String(fd.owner_nationality)), ownerNationality: String(fd?.owner_nationality || ''),
       largeBuyers: false, sectorText: sector,
     }).length;
+    // عدد الجهات (٨ أكتوبر): من مطابقاتٍ حقيقية — مطابقات الجدوى المحفوظة، وجهات تمويلٍ طابقت منشآتٍ بحجم المشروع،
+    // ومستثمرون من مطابقات الاستثمار. عددٌ بلا أسماء، ولا يُعرض إن لم تقم وراءه مطابقة.
+    const scale = fz.ask && fz.ask > 0 ? fz.ask : fz.investment;
+    const set = new Set<string>();
+    const [{ data: fzm }, { data: peers }] = await Promise.all([
+      sb.from('match_results').select('provider').eq('track', 'feasibility').eq('status', 'new').gt('fit_score', 0),
+      sb.from('financial_data').select('company_id').gte('annual_revenue', scale * 0.5).lte('annual_revenue', scale * 2).neq('company_id', companyId),
+    ]);
+    for (const r of fzm || []) set.add(String(r.provider));
+    const ids = Array.from(new Set((peers || []).map((p) => String(p.company_id))));
+    if (ids.length) {
+      const { data: pm } = await sb.from('match_results').select('provider').in('company_id', ids).eq('track', 'funding').eq('status', 'new').gte('fit_score', 50);
+      for (const r of pm || []) set.add(String(r.provider));
+    }
+    for (const r of inv || []) set.add(String(r.provider));
+    feasibility.funders = set.size || null;
   } else feasibility.missing.push('حجم الاستثمار في المشروع');
 
   return {
@@ -151,4 +167,23 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
     contract,
     sector: sector || null,
   };
+}
+
+/** طُعم التقييم المختصر المجاني (زائرٌ بلا حساب): أعدادٌ حقيقية بحسب شريحة الإيراد وحدها — لا مدى تمويل،
+ *  فلا ربح معروف. والمدى يُحسب بعد التسجيل. */
+export const MINI_REV_BRACKETS: [number, number][] = [[0, 1_000_000], [1_000_000, 3_000_000], [3_000_000, 10_000_000], [10_000_000, 1e12]];
+export async function miniLures(sb: SupabaseClient, revIdx: number): Promise<{ funders: number | null; investors: number | null }> {
+  const b = MINI_REV_BRACKETS[revIdx];
+  let funders: number | null = null;
+  if (b) {
+    const { data: peers } = await sb.from('financial_data').select('company_id').gte('annual_revenue', b[0]).lt('annual_revenue', b[1]);
+    const ids = Array.from(new Set((peers || []).map((p) => String(p.company_id))));
+    if (ids.length) {
+      const { data: pm } = await sb.from('match_results').select('provider').in('company_id', ids).eq('track', 'funding').eq('status', 'new').gte('fit_score', 50);
+      funders = new Set((pm || []).map((r) => String(r.provider))).size || null;
+    }
+  }
+  const { data: inv } = await sb.from('match_results').select('provider').eq('track', 'investment').eq('status', 'new').gt('fit_score', 0);
+  const investors = inv && inv.length ? new Set(inv.map((r) => String(r.provider))).size : null;
+  return { funders, investors };
 }

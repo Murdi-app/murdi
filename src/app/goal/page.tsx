@@ -29,6 +29,9 @@ export default function GoalPage() {
   const [showCard, setShowCard] = useState(false);
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [highlightService, setHighlightService] = useState('');
+  // ★ ٨ أكتوبر: زرّ «خلّنا نشتغلها عنك» في نتيجة التقييم يصل هنا بـ?order= — فيُفتح طلب الخدمة نفسه مرةً واحدة
+  const [reqsLoaded, setReqsLoaded] = useState(false);
+  const orderFired = useRef(false);
   const [companyId, setCompanyId] = useState('');
   // هل تملك تشغيلة مطابقة؟
   const [canMatch, setCanMatch] = useState(false);
@@ -190,6 +193,7 @@ export default function GoalPage() {
       // المحتوى المُسلَّم لا يُقرأ هنا — يُطلب من الخادم عند الطباعة، بعد التحقق من الحالة
       for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null, optionKey: r.option_key ?? null, deliveredAt: r.delivered_at ?? null }; }
       setServiceRequests(reqMap);
+      setReqsLoaded(true);
       const { data: ctrs } = await supabase
         .from('contracts')
         .select('id, contract_type, status, contract_body, signed_file_url, service_request_id')
@@ -262,6 +266,23 @@ export default function GoalPage() {
     const c = commercialFor(title);
     return Boolean(c && (c.tiersBy === 'investment' || (c.options && c.options.length)));
   };
+
+  const orderMain = (title: string) => {
+    const cat = CATALOG.find((c) => c.items.includes(title));
+    const label = cat?.label || '';
+    if (needsForm(title)) { setOrderCategory(label); openOrder(title); } else { submitServiceRequest(title, label); }
+  };
+
+  useEffect(() => {
+    if (orderFired.current || !reqsLoaded || !companyId) return;
+    const t = new URLSearchParams(window.location.search).get('order');
+    if (!t || !(MAIN_SERVICES as readonly string[]).includes(t)) return;
+    orderFired.current = true;
+    setTab('services');
+    setHighlightService(t);
+    const st = serviceRequests[t]?.status;
+    if (!st || ['rejected', 'cancelled'].includes(String(st))) orderMain(t);
+  }, [reqsLoaded, companyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openOrder = (title: string) => {
     const c = commercialFor(title);
@@ -765,11 +786,7 @@ export default function GoalPage() {
           )}
           {/* ★ ٨ أكتوبر (المالك): «ملفي» لمن دفع، ثم الخدمات الخمس الرئيسية بطُعمها، ثم «خدمات إضافية» */}
           <MyFile />
-          <MainServices requested={serviceRequests} onOrder={(title) => {
-            const cat = CATALOG.find((c) => c.items.includes(title));
-            const label = cat?.label || '';
-            if (needsForm(title)) { setOrderCategory(label); openOrder(title); } else { submitServiceRequest(title, label); }
-          }} />
+          <MainServices requested={serviceRequests} onOrder={orderMain} />
           <details className="mb-7" open={Object.keys(serviceRequests).some((t) => !(MAIN_SERVICES as readonly string[]).includes(t))}>
             <summary className="cursor-pointer text-center font-black text-[#1A3D34] py-3 rounded-full border border-[#E3EAE7] mb-5">خدمات إضافية</summary>
           {CATALOG.map((cat) => ({ ...cat, items: cat.items.filter((t) => !CLIENT_HIDDEN.includes(t) && (!(MAIN_SERVICES as readonly string[]).includes(t) || !!serviceRequests[t])) })).filter((cat) => cat.items.length > 0).map((cat, ci) => (

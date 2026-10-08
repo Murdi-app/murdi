@@ -104,6 +104,26 @@ export default function MiniAssessment() {
     else setStep(QUESTIONS.length)
   }
 
+  // ★ ٨ أكتوبر: طُعم الخدمة تحت الدرجة — أعدادٌ حقيقية بحسب شريحة الإيراد؛ والمدى بعد التسجيل (لا ربح معروف هنا)
+  const [mini, setMini] = useState<{ funders: number | null; investors: number | null } | null>(null)
+  useEffect(() => {
+    if (step !== QUESTIONS.length || blocked || mini) return
+    fetch('/api/lures/mini?rev=' + (picks[Q_REVENUE] ?? -1)).then(r => r.ok ? r.json() : null).then(d => { if (d) setMini({ funders: d.funders ?? null, investors: d.investors ?? null }) }).catch(() => {})
+  }, [step, blocked]) // eslint-disable-line react-hooks/exhaustive-deps
+  const goalIdx = picks[QUESTIONS.length - 1] ?? -1
+  const wantsInvest = goalIdx === 1 || goalIdx === 2
+  const lureBox = (onCta: () => void) => (
+    <div style={{ background: '#F6FAF8', border: '1px solid #D5E6DE', borderRadius: 14, padding: '14px 16px', margin: '14px 0', textAlign: 'right' }}>
+      <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{wantsInvest ? 'الاستثمار' : 'تجهيز الملف التمويلي'}</div>
+      {wantsInvest
+        ? (mini?.investors ? <div style={{ color: '#5E7C73', fontWeight: 800, fontSize: 14 }}><b style={{ color: '#C9A84C' }}>{mini.investors.toLocaleString('ar-SA')}</b> مستثمر وصندوق في قاعدة مطابقتنا</div> : null)
+        : (mini?.funders ? <div style={{ color: '#5E7C73', fontWeight: 800, fontSize: 14 }}><b style={{ color: '#C9A84C' }}>{mini.funders.toLocaleString('ar-SA')}</b> جهة تموّل منشآت بحجم إيرادك</div> : null)}
+      <div style={{ color: '#9A7B2E', fontWeight: 800, fontSize: 13.5, marginTop: 4 }}>{wantsInvest ? 'سجّل لنحسب لك قيمة منشأتك' : 'سجّل لنحسب لك مدى تمويلك'}</div>
+      <button onClick={onCta} style={{ width: '100%', marginTop: 10, padding: '11px 0', borderRadius: 99, background: '#1A3D34', color: '#fff', fontWeight: 900, fontSize: 14, border: 0 }}>خلّنا نشتغلها عنك</button>
+    </div>
+  )
+  const nameRef = useRef<HTMLInputElement>(null)
+
   const weight = leadWeight(picks[Q_REVENUE] ?? -1, picks[Q_YEARS] ?? -1)
 
   const score = ans.reduce((s, val) => s + val, 0)
@@ -223,10 +243,11 @@ export default function MiniAssessment() {
           <div className="lp-mini-card">
             <div className="lp-mini-score" style={{ color: v.color }}>{pct}<span>/100</span></div>
             <div className="lp-mini-verdict" style={{ background: v.color }}>{v.label}</div>
+            {lureBox(() => { nameRef.current?.focus(); nameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) })}
             <p className="lp-mini-text">{v.text}</p>
             <div className="lp-mini-gate">
               <p className="lp-mini-gate-t">اكتب اسمك وجوالك ليتواصل معك مستشار مُرضي، ويطلعك على نتيجتك التفصيلية وخطوتك التالية نحو رأس المال.</p>
-              <input className="lp-mini-input" placeholder="الاسم" value={name} onChange={e => setName(e.target.value)} />
+              <input ref={nameRef} className="lp-mini-input" placeholder="الاسم" value={name} onChange={e => setName(e.target.value)} />
               <input className="lp-mini-input" placeholder="اسم المنشأة" value={biz} onChange={e => setBiz(e.target.value)} />
               <input className="lp-mini-input" placeholder="رقم الجوال 05xxxxxxxx" inputMode="tel" maxLength={14} value={phone} onChange={e => setPhone(e.target.value)} />
               {err && <div className="lp-mini-err">{err}</div>}
@@ -242,6 +263,7 @@ export default function MiniAssessment() {
             <div className="lp-mini-check">✓</div>
             <h3>هذه بدايتك يا {name}</h3>
             <p className="lp-mini-thanks-sub">درجتك {pct}/100 — وصلَنا طلبك وسيتواصل معك مستشار مُرضي قريباً. وهذا ما يفتحه لك مرضي:</p>
+            {lureBox(() => router.push('/auth/signup'))}
 
             <div className="lp-mini-benefits">
               <div className="lp-mini-benefit">

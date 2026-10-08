@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import TrackLure from '@/components/TrackLure';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
@@ -201,6 +202,9 @@ export default function FundingResult() {
           <p className="text-xl font-black text-[#1A3D34] mt-4">{result.verdict}</p>
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
         </div>
+
+        {/* ★ ٨ أكتوبر: طُعم الخدمة تحت الدرجة مباشرة */}
+        <TrackLure track="funding" />
 
         <div className="bg-gradient-to-l from-[#1A3D34] to-[#1A3D34] rounded-3xl p-7 text-white shadow-lg">
           <div className="flex items-center gap-3 mb-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import TrackLure from '@/components/TrackLure';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
 import { createBrowserClient } from '@supabase/ssr';
@@ -200,6 +201,9 @@ export default function InvestmentResult() {
           <p className="text-xl font-black text-[#1A3D34] mt-3">{result.verdict}</p>
           <p className="text-[#A3BAB2] text-xs font-bold mt-2 leading-relaxed">تحليل وفق منهجية د. عبدالحكيم المرضي — دكتوراه إدارة الأعمال، عضوية البورد الأمريكي، وخبرة 15 عاماً في القطاع المالي</p>
         </div>
+
+        {/* ★ ٨ أكتوبر: طُعم الخدمة تحت الدرجة مباشرة */}
+        <TrackLure track="investment" />
 
         {result.top_obstacles?.length > 0 && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E8F5EF]">
