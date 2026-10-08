@@ -104,8 +104,8 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
 
   // ٣) دراسة الجدوى: أنسب برنامجٍ حكومي مُتحقَّق منه لقطاعه + عدد عائلات الممولين التي تفتحها بوابة الجدوى
   const feasibility: Lures['feasibility'] = { program: null, families: null, missing: [] };
-  const { data: progs } = await sb.from('gov_programs').select('name, sector_keywords, max_text, requirement, verified, sort').eq('verified', true).order('sort');
-  const hit = (progs || []).find((p) => { try { return new RegExp(String(p.sector_keywords), 'i').test(sector); } catch { return false; } });
+  const { data: progs } = await sb.from('gov_programs').select('name, sector_keywords, max_text, requirement, verified, sort, max_investment').eq('verified', true).order('sort');
+  const hit = (progs || []).find((p) => { if (fz?.investment && p.max_investment && fz.investment > Number(p.max_investment)) return false; try { return new RegExp(String(p.sector_keywords), 'i').test(sector); } catch { return false; } });
   if (hit) feasibility.program = { name: String(hit.name), max: String(hit.max_text), requirement: String(hit.requirement) };
   if (!sector) feasibility.missing.push('قطاع المشروع');
   if (fz?.investment && fz.investment > 0) {
