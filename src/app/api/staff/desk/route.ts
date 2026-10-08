@@ -206,7 +206,7 @@ export async function PATCH(req: Request) {
       const missing = String(b0.missing || '').trim().slice(0, 400);
       const next = String(b0.next || '').trim().slice(0, 300);
       const to = String(b0.status || '');
-      if (!id || (!done && !b0.milestone)) return NextResponse.json({ error: 'اكتبي ما تمّ على الملف' }, { status: 400 });
+      if (!id || (!done && !b0.milestone && !b0.presented_to)) return NextResponse.json({ error: 'اكتبي ما تمّ على الملف' }, { status: 400 });
       const sb = admin();
       const { data: r } = await sb.from('service_requests').select('id, company_id, service_title, status').eq('id', id).maybeSingle();
       if (!r) return NextResponse.json({ error: 'الملف غير موجود' }, { status: 404 });
@@ -255,6 +255,10 @@ export async function PATCH(req: Request) {
         await sendMail({ from: FROM, to: OWNER, subject: '🧾 فاتورة استكمال تنتظر اعتمادك — ' + (co?.company_name || ''),
           html: '<div dir="rtl" style="font-family:Arial;line-height:1.9;color:#1A3D34">قُيِّد تمويل <b>' + esc(co?.company_name) + '</b> لدى ' + esc(f.funder_name) + ' بمبلغ ' + money(booked) + ' ريال.<br>أتعاب الاستكمال (' + calc.pct + '٪ من العقد): ' + money(calc.net) + ' + ضريبة ' + money(calc.vat) + ' = <b>' + money(calc.total) + ' ريال</b>' + ' (شاملة الضريبة)' + '.<br>الفاتورة ' + invoiceNo + ' مسوّدة لا تخرج قبل اعتمادك.<p><a href="https://murdi.sa/admin/fees" style="background:#1A3D34;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none">راجِع واعتمد</a></p></div>' }).catch(() => null);
       }
+      // ★ «عرضتُ الملف على جهة» (٨ أكتوبر، المالك): كل جهةٍ تُسجَّل باسمها، فيقرأ «ملفي» عددها للعميل
+      const presented = String(b0.presented_to || '').trim().slice(0, 120);
+      if (presented) await sb.from('deal_events').insert({ company_id: r.company_id, kind: 'file_presented', entity_name: presented, title: 'عُرض الملف على جهة', detail: 'سجّلته: ' + name, actor: who.role === 'admin' ? 'admin' : 'staff', needs_owner: false });
+      if (!done && !milestone && presented) return NextResponse.json({ ok: true });
       await sb.from('deal_events').insert({
         company_id: r.company_id, kind: 'file_update', title: (feeNote ? feeNote + ' · ' : '') + done.slice(0, 200),
         detail: [missing ? 'ينقصه: ' + missing : '', next ? 'الخطوة التالية: ' + next : '', 'سجّلته: ' + name].filter(Boolean).join(' · '),

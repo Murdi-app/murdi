@@ -421,11 +421,6 @@ export default function IpoResult() {
           return (
           <div className="rounded-3xl p-7" style={{ background: '#1A3D34' }}>
             <h3 className="text-white font-black text-lg mb-3 text-center">مطابقة مسار الطرح — الخطوة التي تحوّل درجتك إلى خطة</h3>
-
-            {/* كان هنا زرّ «فعّل ملفك» يمضي إلى /pay — بوابة اشتراكٍ ربعي
-                أُلغي، ووعدٌ بـ«استشارات مفتوحة أربعة أشهر» لا نبيعه اليوم.
-                والمطابقة صارت مجانية بإذن المكتب، لأنها تكلّفنا ولا نأخذ
-                عليها ريالاً. فحلّ الصدق محلّ الجدار. */}
             <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(46,158,123,0.14)', border: '1.5px solid rgba(46,158,123,0.4)' }}>
               <div className="flex items-baseline justify-between gap-3 mb-1">
                 <span className="text-white font-black text-[15px]">المطابقة</span>

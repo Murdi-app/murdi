@@ -71,9 +71,8 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
     if (aErr) notes.push('مُنحت التشغيلة ولم يُفتح الحساب (' + aErr.message + ').');
   };
 
-  // الاشتراك الربعي أُلغي: الدفعة صارت تشتري تشغيلة مطابقة واحدة لأي مسار.
-  // ويبقى المشتركون القدامى على مدتهم — لا نقطع عليهم ما دفعوه قبل التغيير.
-  if ((pay.kind === 'subscription' || pay.kind === 'match_run') && pay.company_id) {
+  // دفعة تشغيل مطابقة (نوعٌ قديم) تمنح تشغيلة واحدة
+  if (pay.kind === 'match_run' && pay.company_id) {
     await grant(String(pay.company_id));
   }
 

@@ -65,7 +65,7 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
     const delay = Math.max(1, Math.round(Number(cDays || 90) / 30));
     const p = computeContract({ value, months: Number(cMonths) || 12, collectDelay: delay });
     const m = p.worst ? p.worst.m : 0;
-    return { gap: p.gap, month: m, label: m ? 'الشهر ' + m.toLocaleString('ar-SA') + ' من التنفيذ' : '' };
+    return { gap: p.gap, month: m, label: m ? 'الشهر ' + m.toLocaleString('ar-SA') + ' من التنفيذ' : '', profit: p.profit, perf: p.bonds.perf };
   }, [cv, cDays, cMonths]);
 
   const inp = 'w-full px-3 py-2 rounded-lg text-sm font-bold border';
@@ -87,7 +87,11 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
           : f?.lure && f.lure.hi > 0 ? (
             <>
               <div className="font-black" style={{ color: G }}>منشأتك مؤهلة لتمويل تقديري من <span style={{ color: GOLD }}>{sar(f.lure.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(f.lure.hi)}</span></div>
-              {f.lure.n ? <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>{f.lure.n.toLocaleString('ar-SA')} جهة تموّل منشآت بحجمك — أسماؤها تظهر بعد الحكم الائتماني (٩٩٠)</div> : null}
+              <div className="mt-2 rounded-lg p-2" style={{ background: '#fff', border: '1px solid #EAD9A8' }}>
+                <div className="font-black text-sm" style={{ color: G }}>فرصتك في الحصول على التمويل: <span style={{ color: GOLD, fontSize: 18 }}>{f.lure.chance.toLocaleString('ar-SA')}٪</span></div>
+                <div className="text-xs font-bold" style={{ color: '#6B8A80' }}>وقد ترتفع أو تنخفض بحسب خطوات المستشار والفريق في تجهيز ملفك وعرضه على الجهة المناسبة.</div>
+              </div>
+              {f.lure.n ? <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>{f.lure.n.toLocaleString('ar-SA')} جهة تموّل منشآت بحجمك — أسماؤها تظهر بعد الحكم الائتماني (٩٩٠)</div> : null}
               <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>تقديرٌ من سعة سدادك (ربحك بعد أقساطك) — والقرار للجهة الممولة.</div>
             </>
           ) : f?.lure?.note ? <div className="text-sm font-bold" style={{ color: '#9A7B2E' }}>{f.lure.note}</div>
@@ -101,7 +105,11 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
           <label className="text-xs font-bold col-span-2" style={{ color: '#6B8A80' }}>صرف المستخلص بعد (يوم)<input className={inp} inputMode="numeric" value={cDays} onChange={(e) => setCDays(e.target.value)} /></label>
         </div>
         {contract && contract.gap > 0 ? (
-          <div className="font-black" style={{ color: G }}>عقدك يحتاج <span style={{ color: GOLD }}>{sar(contract.gap)}</span> سيولة، وأصعب نقطة {contract.label}</div>
+          <>
+            <div className="font-black" style={{ color: G }}>عقدك يحتاج <span style={{ color: GOLD }}>{sar(contract.gap)}</span> سيولة، وأصعب نقطة {contract.label}</div>
+            {contract.profit > 0 && <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>وربح عقدك المتوقع قرابة <b style={{ color: G }}>{sar(contract.profit)}</b> — لا تخسره بنقص السيولة.</div>}
+            <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>نرتّب لك تمويل هذه الفجوة من أكثر من جهة: ضمان حسن الأداء{contract.perf > 0 ? ' (' + sar(contract.perf) + ')' : ''}، وتسييل المستخلصات، واعتماد المورّدين — بخطة شهرية جاهزة للجهة.</div>
+          </>
         ) : contract ? <div className="text-sm font-bold" style={{ color: '#1E7A5E' }}>بهذه المدد لا يحتاج عقدك سيولةً إضافية — تأكّد من مدة الصرف الفعلية.</div>
           : <div className="text-sm" style={{ color: '#6B8A80' }}>اكتب قيمة العقد ومدة صرف المستخلص — ويظهر رقمك فوراً.</div>}
         <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>تقديرٌ بتكلفة مباشرة ٨٠٪ من القيمة وبلا دفعة مقدمة — والتحليل الكامل يدخل بنود عقدك نفسها.</div>
@@ -125,7 +133,9 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
           : inv?.value ? (
             <>
               <div className="font-black" style={{ color: G }}>القيمة التقديرية لمنشأتك من <span style={{ color: GOLD }}>{sar(inv.value.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(inv.value.hi)}</span></div>
+              <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>بهذه القيمة، حصة ٢٠٪ تعادل قرابة <b style={{ color: G }}>{sar(inv.value.lo * 0.2)}</b> إلى <b style={{ color: G }}>{sar(inv.value.hi * 0.2)}</b> نقداً لنموّ منشأتك — دون قرضٍ ولا أقساط.</div>
               {inv.investors ? <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>{inv.investors.toLocaleString('ar-SA')} مستثمر وصندوق يستهدف قطاعك</div> : null}
+              <div className="text-xs font-bold mt-1" style={{ color: '#6B8A80' }}>والتجهيز الصحيح للعرض — الحوكمة والقوائم وخطة النمو — يرفع هذه القيمة عند التفاوض.</div>
               <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>{inv.value.basis === 'profit' ? 'بمضاعفات ربح قطاعك' : 'بمضاعف الإيراد — لأن الربح غير موجب'} — تقديرٌ أولي لا تقييمٌ معتمد.</div>
             </>
           ) : <Missing fields={inv?.missing || ['الإيراد السنوي']} />}

@@ -8,7 +8,7 @@ import { buildFeasibilityScopes } from '@/lib/feasibilityScopes';
 // ★ القاعدة: لا رقم مختلَق. إن نقصت البيانات يُطلب الحقل الناقص وحده (missing)، وإن لم توجد
 //   بيانات حقيقية وراء العدد (n) يُعاد null فلا يُعرض.
 
-export type FundingLure = { lo: number; hi: number; n: number | null; note?: string } | null;
+export type FundingLure = { lo: number; hi: number; n: number | null; chance: number; note?: string } | null;
 export type ValueLure = { lo: number; hi: number; basis: 'profit' | 'revenue' } | null;
 export type Lures = {
   funding: { lure: FundingLure; missing: string[] };
@@ -70,11 +70,17 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
         }
       }
       n = set.size || null;
+      // ★ فرصة الحصول على التمويل — سقفها ٦٠٪ (المالك، ٨ أكتوبر): من درجة جاهزية التمويل إن وُجدت،
+      //   وإلا من نسبة سعة السداد إلى المبلغ المطلوب. وتُقال معها: ترتفع أو تنخفض بخطوات المستشار والفريق.
+      const { data: sc } = await sb.from('readiness_results').select('readiness_score').eq('company_id', companyId).eq('result_type', 'funding').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const score = num(sc?.readiness_score);
+      const ratio = cap.ratio ?? (cap.principal > 0 ? 1 : 0);
+      const chance = Math.max(15, Math.min(60, score !== null ? Math.round(score * 0.6) : ratio >= 1 ? 55 : ratio >= 0.6 ? 45 : ratio >= 0.3 ? 35 : 25));
       if (cap.principal > 0) {
         const hi = round(cap.principal);
-        funding.lure = { lo: round(hi * 0.6), hi, n };
+        funding.lure = { lo: round(hi * 0.6), hi, n, chance };
       } else {
-        funding.lure = { lo: 0, hi: 0, n, note: 'ربحك الحالي بعد أقساطك القائمة لا يتّسع لتمويلٍ جديد — والتجهيز يبدأ بمعالجة ذلك' };
+        funding.lure = { lo: 0, hi: 0, n, chance, note: 'ربحك الحالي بعد أقساطك القائمة لا يتّسع لتمويلٍ جديد — والتجهيز يبدأ بمعالجة ذلك' };
       }
     }
   }

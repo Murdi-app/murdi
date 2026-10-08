@@ -22,13 +22,15 @@ export async function GET() {
   const { data: reqs } = await admin.from('service_requests').select('id, service_title, status, paid_at, created_at')
     .eq('company_id', co.id).in('status', PAID).in('service_title', FILE_SERVICES).order('created_at', { ascending: false });
   if (!reqs?.length) return NextResponse.json({ files: [] });
-  const [{ data: evs }, { data: outs }, { data: fees }] = await Promise.all([
+  const [{ data: evs }, { data: outs }, { data: pres }, { data: fees }] = await Promise.all([
     admin.from('deal_events').select('created_at').eq('company_id', co.id).eq('kind', 'file_update').order('created_at').limit(1),
     admin.from('outreach_messages').select('entity_name, sent_at').eq('company_id', co.id).not('sent_at', 'is', null),
+    admin.from('deal_events').select('entity_name, created_at').eq('company_id', co.id).eq('kind', 'file_presented'),
     admin.from('success_fees').select('service_request_id, approved_logged_at, booked_at').in('service_request_id', reqs.map((r) => r.id)),
   ]);
-  const funders = new Set((outs || []).map((o) => String(o.entity_name)));
-  const lastSent = (outs || []).map((o) => String(o.sent_at)).sort().pop() || null;
+  const norm = (s: unknown) => String(s || '').trim().toLowerCase();
+  const funders = new Set([...(outs || []).map((o) => norm(o.entity_name)), ...(pres || []).map((p) => norm(p.entity_name))].filter(Boolean));
+  const lastSent = [...(outs || []).map((o) => String(o.sent_at)), ...(pres || []).map((p) => String(p.created_at))].sort().pop() || null;
   const prepared = evs?.[0]?.created_at || null;
   const files = reqs.map((r) => {
     const f = (fees || []).find((x) => x.service_request_id === r.id);

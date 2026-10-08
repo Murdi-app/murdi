@@ -30,7 +30,7 @@ export default function GoalPage() {
   const [tab, setTab] = useState<'overview' | 'consult' | 'services'>('overview');
   const [highlightService, setHighlightService] = useState('');
   const [companyId, setCompanyId] = useState('');
-  // هل تملك تشغيلة مطابقة؟ (ويبقى لعميلَين قديمين حقُّ تشغيلٍ مسجَّل حتى تنتهي مدّته)
+  // هل تملك تشغيلة مطابقة؟
   const [canMatch, setCanMatch] = useState(false);
   const [matchCount, setMatchCount] = useState<number | null>(null);
   const [matchCounts, setMatchCounts] = useState<Record<string, number>>({});
@@ -137,7 +137,7 @@ export default function GoalPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: comp, error: compErr } = await supabase
-        .from('companies').select('id, company_name, sector, match_credits, subscription_active, subscription_end')
+        .from('companies').select('id, company_name, sector, match_credits')
         .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       // ★ خطأٌ مؤقت في القراءة كان يُعامَل «لا منشأة» فيُطرد العميل إلى التسجيل
       if (compErr) { setLoadErr('تعذّر تحميل حسابك الآن — أعد فتح الصفحة بعد لحظة.'); return; }
@@ -158,8 +158,7 @@ export default function GoalPage() {
         return;
       }
       setCompany({ name: comp.company_name || 'شركتك', sector: comp.sector || '' });
-      const legacySub = comp.subscription_active === true && (!comp.subscription_end || new Date(comp.subscription_end) > new Date());
-      setCanMatch(legacySub || Number(comp.match_credits || 0) > 0);
+      setCanMatch(Number(comp.match_credits || 0) > 0);
       const out: Record<string, number> = {};
       const { data: rows } = await supabase
         .from('readiness_results')
@@ -761,9 +760,7 @@ export default function GoalPage() {
               {pitch.lines.map((l, i) => (
                 <p key={i} className="text-[#CFE0DA] text-sm font-bold leading-loose mb-2 max-w-2xl mx-auto text-right">{l}</p>
               ))}
-              {/* كان يمضي إلى /pay — بوابة اشتراكٍ أُلغي. والخطوة التالية مجانية،
-                  فصار الزرّ ينزل إلى موضع الطلب لا إلى صفحة دفع. */}
-              <a onClick={(e) => { e.preventDefault(); setShowPaywall(true); }} href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
+                            <a onClick={(e) => { e.preventDefault(); setShowPaywall(true); }} href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
             </div>
           )}
           {/* ★ ٨ أكتوبر (المالك): «ملفي» لمن دفع، ثم الخدمات الخمس الرئيسية بطُعمها، ثم «خدمات إضافية» */}

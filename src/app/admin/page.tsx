@@ -67,9 +67,6 @@ export default function AdminPage() {
 
       <div style={{ maxWidth:1000, margin:'0 auto', padding:'32px 24px' }}>
 
-        {/* كان هنا تنبيه «اشتراكات قاربت على الانتهاء». والاشتراك أُلغي،
-            فصار التنبيه يدفعك لملاحقة تجديدٍ لا تبيعه. حُذف. */}
-
         <PushToggle />
 
         <StaffActivity />

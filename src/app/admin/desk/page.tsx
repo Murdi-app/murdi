@@ -79,7 +79,7 @@ export default function DeskPage() {
   const [mayDecide, setMayDecide] = useState(false)
   const [job, setJob] = useState('')
   const [files, setFiles] = useState<Record<string, FileInfo>>({})
-  const [logF, setLogF] = useState<Record<string, { done?: string; missing?: string; next?: string; status?: string; milestone?: string; funder?: string; amount?: string; expected?: string }>>({})
+  const [logF, setLogF] = useState<Record<string, { done?: string; missing?: string; next?: string; status?: string; milestone?: string; funder?: string; amount?: string; expected?: string; presented?: string }>>({})
   const [funding, setFunding] = useState<Record<string, { funder: string; approved: number; expected: string; booked: boolean }>>({})
   const [mRun, setMRun] = useState<Record<string, string>>({})
 
@@ -173,11 +173,11 @@ export default function DeskPage() {
   // «سجّلي ما تم» — يحرّك تاريخ الملف ويكتب أثره في خطّ الصفقة
   const saveLog = async (r: Req) => {
     const f = logF[r.id] || {}
-    if (!f.done?.trim() && !f.milestone) { setErr('اكتبي ما تمّ على ملف ' + (r.company?.company_name || '')); return }
+    if (!f.done?.trim() && !f.milestone && !f.presented?.trim()) { setErr('اكتبي ما تمّ على ملف ' + (r.company?.company_name || '')); return }
     if (f.milestone === 'approved' && (!f.funder?.trim() || !f.amount?.trim() || !f.expected)) { setErr('«وافقت الجهة» يحتاج: اسم الجهة، والمبلغ المعتمد، وموعد الصرف المتوقع'); return }
     setBusy(r.id); setErr('')
     const res = await fetch('/api/staff/desk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: 'log', id: r.id, done: f.done, missing: f.missing, next: f.next, status: f.status, milestone: f.milestone, funder: f.funder, amount: f.amount, expected: f.expected }) }).catch(() => null)
+      body: JSON.stringify({ kind: 'log', id: r.id, done: f.done, missing: f.missing, next: f.next, status: f.status, milestone: f.milestone, funder: f.funder, amount: f.amount, expected: f.expected, presented_to: f.presented }) }).catch(() => null)
     setBusy('')
     const d = res ? await res.json().catch(() => ({})) : {}
     if (!res || !res.ok) { setErr(d.error || 'لم يُسجَّل'); return }
@@ -283,6 +283,7 @@ export default function DeskPage() {
                             ✓ وافقت {funding[r.id].funder} على {Number(funding[r.id].approved).toLocaleString('ar-SA')} ريال — الصرف المتوقع {funding[r.id].expected}{funding[r.id].booked ? ' · قُيِّد التمويل' : ''}
                           </div>
                         )}
+                        <input placeholder="عرضتُ الملف على جهة — اكتبي اسمها (اختياري)" value={f.presented || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, presented: e.target.value } })} style={inp} />
                         <select value={f.milestone || ''} onChange={e => setLogF({ ...logF, [r.id]: { ...f, milestone: e.target.value } })} style={inp}>
                           <option value="">— مرحلة التمويل (اختياري) —</option>
                           <option value="approved">وافقت الجهة على التمويل</option>

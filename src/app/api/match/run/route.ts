@@ -66,14 +66,13 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY as string
   );
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, match_credits').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    .select('id, match_credits').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف منشأة' }, { status: 404 });
 
-  // نفس بوابة /api/match/start: رصيد تشغيلة، أو اشتراك قديم لم تنتهِ مدته.
+  // نفس بوابة /api/match/start: رصيد تشغيلة.
   // الدفعات تُخصم في start؛ وهذا المسار يقرأ الرصيد ولا يخصم، فلا تُحتسب التشغيلة مرتين.
-  const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
   const credits = Number((co as Record<string, unknown>).match_credits || 0);
-  if (!legacy && credits <= 0) {
+  if (credits <= 0) {
     return NextResponse.json({ error: 'لا توجد تشغيلة متاحة — اطلب المطابقة وسيمنحك فريق مُرضي تشغيلة', needsPayment: false }, { status: 402 });
   }
 

@@ -26,8 +26,6 @@ interface Company {
   payment_confirmed_at: string | null
   is_locked: boolean
   created_at: string
-  subscription_start?: string
-  subscription_end?: string
   approved_tracks?: string[]
   track_request?: string | null
 }
@@ -288,8 +286,7 @@ export default function ApprovalsPage() {
   async function approve(c: Company) {
     setBusy(c.id)
     const { data: { user } } = await supabase.auth.getUser()
-    // الاعتماد كان يفتح اشتراكاً ربعياً مع كل ضغطة. ولا اشتراك في المنصة،
-    // فالاعتماد اليوم تفعيلُ حسابٍ لا أكثر — والتقييم بعده مجاني.
+    // الاعتماد تفعيلُ حسابٍ لا أكثر — والتقييم بعده مجاني.
     await updateCompany(c.id, {
       account_status: 'active',
       is_locked: true,
@@ -301,8 +298,7 @@ export default function ApprovalsPage() {
     setBusy(null)
   }
 
-  // كانت «تفعيل الحساب» تستدعي renew فتمنح أربعة أشهر اشتراكاً. حُذف
-  // التجديد كلّه: التفعيل يفتح الحساب، والتقييم مجاني، والمطابقة بإذن.
+  // التفعيل يفتح الحساب، والتقييم مجاني، والمطابقة بإذن.
   async function activate(c: Company) {
     setBusy(c.id)
     await updateCompany(c.id, { account_status: 'active' }, 'تفعيل الحساب')
@@ -532,9 +528,6 @@ export default function ApprovalsPage() {
               )}
               <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:12 }}>
                 <span style={{ color:'#9DB3AB', fontSize:12, fontWeight:600 }}>📅 سجّل: {fmtDate(c.created_at)}</span>
-                {/* لا يُباع اشتراك بعد اليوم. ويبقى هذا السطر لمن اشترك قبل الإلغاء —
-                    حقٌّ دفع ثمنه، يُعرض ولا يُجدَّد. */}
-                {c.subscription_end && (() => { const end = new Date(c.subscription_end); const days = Math.ceil((end.getTime() - Date.now())/(24*60*60*1000)); const col = days < 0 ? '#9DB3AB' : '#8A6D1A'; return <span style={{ color: col, fontSize:12, fontWeight:700 }}>اشتراك قديم {days < 0 ? 'منتهٍ' : 'ساري حتى ' + fmtDate(c.subscription_end)}</span> })()}
               </div>
               <div className="ap-actions">
                 {c.receipt_path && (

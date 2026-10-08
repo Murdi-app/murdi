@@ -17,17 +17,15 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string);
   const { data: co } = await admin.from('companies')
-    .select('id, subscription_active, subscription_end, approved_tracks, match_credits, admin_note').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    .select('id, approved_tracks, match_credits, admin_note').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (!co) return NextResponse.json({ error: 'لا يوجد ملف' }, { status: 404 });
   // الملف الموقوف بأمر المالك لا تُشغَّل له مطابقة — ولو بقي له رصيد قديم
   if (isFrozen(co.admin_note)) return NextResponse.json({ error: FROZEN_CLIENT_MSG, frozen: true }, { status: 423 });
 
   const tk = track === 'investment' ? 'investment' : 'funding';
 
-  // الاشتراك أُلغي، ثم أُلغي رسم التشغيل بعده. والباقي: تشغيلة تُمنح بإذن
-  // المكتب (‏/api/match/request‏). ويبقى المشتركون القدامى على حقهم.
-  const legacy = co.subscription_active === true && (!co.subscription_end || new Date(co.subscription_end) > new Date());
-  if (!legacy) {
+  // التشغيلة تُمنح بإذن المكتب (‏/api/match/request‏)
+  {
     // الخصم ذرّي في القاعدة: نقرتان متتاليتان كانتا تُشغّلان مرتين بمقابل واحد
     const { data: took } = await admin.rpc('consume_match_credit', { p_company: co.id });
     if (took !== true) {
@@ -47,7 +45,7 @@ export async function POST(req: Request) {
   const url = process.env.WORKER_URL;
   if (!url) {
     // المشغّل معطّل: تُعاد التشغيلة المخصومة، فلا يدفع العميل ثمن عطلٍ عندنا
-    if (!legacy) await admin.rpc('grant_match_credit', { p_company: co.id, p_n: 1 });
+    await admin.rpc('grant_match_credit', { p_company: co.id, p_n: 1 });
     return NextResponse.json({ error: 'المشغّل غير مهيأ' }, { status: 500 });
   }
 
