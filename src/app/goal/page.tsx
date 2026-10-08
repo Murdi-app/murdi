@@ -11,8 +11,10 @@ import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES, needsSignedContract } from '@/lib/contracts';
 import { priceFor } from '@/lib/servicePricing';
 import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
-import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
-import MainServices, { MAIN_SERVICES } from '@/components/MainServices';
+import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
+import { MAIN_SERVICES } from '@/components/MainServices';
+import type { Lures } from '@/lib/lures';
+import { computeContract } from '@/lib/contractCompute';
 import MyFile from '@/components/MyFile';
 
 const TRACKS = [
@@ -265,6 +267,38 @@ export default function GoalPage() {
   const needsForm = (title: string) => {
     const c = commercialFor(title);
     return Boolean(c && (c.tiersBy === 'investment' || (c.options && c.options.length)));
+  };
+
+  // طُعم البطاقات الثلاث — من /api/lures (المحركات القائمة)، يُقرأ مرةً لمن له منشأة
+  const [lures, setLures] = useState<Lures | null>(null);
+  useEffect(() => {
+    if (!companyId) return;
+    fetch('/api/lures').then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.lures) setLures(d.lures); }).catch(() => {});
+  }, [companyId]);
+  const sarN = (n: number) => Math.round(n).toLocaleString('ar-SA') + ' ريال';
+  const luresLine = (title: string): string | null => {
+    if (!lures) return null;
+    const t = canonicalTitle(title);
+    if (t === 'دراسة الجدوى الاقتصادية') {
+      const p = lures.feasibility.program, n = lures.feasibility.funders;
+      if (!p && !n) return null;
+      return 'مشروعك يناسب ' + [p ? p.name + ' — ' + p.max : '', n ? n.toLocaleString('ar-SA') + ' جهة تمويل ومستثمر' : ''].filter(Boolean).join(' و');
+    }
+    if (t === 'تجهيز ملف عرض المستثمر والتفاوض') {
+      const v = lures.investment.value;
+      if (!v) return null;
+      return 'قيمتك اليوم ' + sarN(v.lo) + ' – ' + sarN(v.hi)
+        + (v.after ? ' — وبعد تنفيذ عقودك ' + sarN(v.after.lo) + ' – ' + sarN(v.after.hi) : '')
+        + (lures.investment.investors ? ' — و' + lures.investment.investors.toLocaleString('ar-SA') + ' مستثمر يستهدف قطاعك' : '');
+    }
+    if (t === 'تمويل العقد') {
+      const c = lures.contract;
+      if (!c) return null;
+      const p = computeContract({ value: c.value, months: c.months, collectDelay: Math.max(1, Math.round((c.collectDays || 90) / 30)) });
+      if (!(p.gap > 0) || !p.worst) return null;
+      return 'فجوة عقدك ' + sarN(p.gap) + ' — وأصعب شهر: الشهر ' + p.worst.m.toLocaleString('ar-SA') + ' من التنفيذ';
+    }
+    return null;
   };
 
   const orderMain = (title: string) => {
@@ -784,12 +818,10 @@ export default function GoalPage() {
                             <a onClick={(e) => { e.preventDefault(); setShowPaywall(true); }} href="#match-request" className="inline-block mt-3 font-black text-sm px-7 py-3 rounded-full" style={{ background: '#C9A84C', color: '#1A3D34' }}>اطلب تشغيل المطابقة ←</a>
             </div>
           )}
-          {/* ★ ٨ أكتوبر (المالك): «ملفي» لمن دفع، ثم الخدمات الخمس الرئيسية بطُعمها، ثم «خدمات إضافية» */}
+          {/* ★ ٨ أكتوبر (المالك): «ملفي» لمن دفع، ثم قائمة الخدمات كما كانت — وطبقة «الخدمات الرئيسية» أُوقف عرضها
+              (المكوّن وlures.ts باقيان)، والطُعم سطرٌ واحد داخل ثلاث بطاقات (luresLine) */}
           <MyFile />
-          <MainServices requested={serviceRequests} onOrder={orderMain} />
-          <details className="mb-7" open={Object.keys(serviceRequests).some((t) => !(MAIN_SERVICES as readonly string[]).includes(t))}>
-            <summary className="cursor-pointer text-center font-black text-[#1A3D34] py-3 rounded-full border border-[#E3EAE7] mb-5">خدمات إضافية</summary>
-          {CATALOG.map((cat) => ({ ...cat, items: cat.items.filter((t) => !CLIENT_HIDDEN.includes(t) && (!(MAIN_SERVICES as readonly string[]).includes(t) || !!serviceRequests[t])) })).filter((cat) => cat.items.length > 0).map((cat, ci) => (
+          {CATALOG.map((cat, ci) => (
             <div key={ci} className="mb-7">
               <div className="flex items-baseline gap-3 mb-4 border-b-2 border-[#EAF2EE] pb-2">
                 <span className="text-lg font-black text-[#1A3D34]">{cat.label}</span>
@@ -846,6 +878,14 @@ export default function GoalPage() {
                         </div>
                       );
                     })()}
+
+                    {/* ★ ٨ أكتوبر (المالك): سطر طُعمٍ واحد في ثلاث بطاقات بصندوق «ظهر في ملفك» — ولا يظهر إن لم تكفِ البيانات */}
+                    {luresLine(title) && (
+                      <div className="rounded-xl p-3 mb-4" style={{ background: '#FBF5E8', border: '1px solid #EAD9A8' }}>
+                        <div className="font-black text-[11px] mb-1" style={{ color: '#9A7B2E' }}>● ظهر في ملفك</div>
+                        <div className="text-[#3A4D47] text-xs font-bold leading-relaxed">{luresLine(title)}</div>
+                      </div>
+                    )}
 
                     {/* السعر والمدة — معلنان، فلا يحتاج العميل مكالمة ليعرفهما */}
                     <div className="flex items-baseline justify-between gap-2 mb-1 pb-3 border-b border-dashed border-[#EAF2EE]">
@@ -1047,7 +1087,6 @@ export default function GoalPage() {
               </div>
             </div>
           ))}
-          </details>
         </div>
         )}
 

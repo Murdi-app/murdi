@@ -229,10 +229,11 @@ export async function POST(req: Request) {
   if (fdError) return NextResponse.json({ error: 'فشل حفظ البيانات: ' + fdError.message }, { status: 500 });
 
   let valuationStr = '';
+  // التقدير مستقلٌّ عن التحليل العميق — فلا يضيع إن تعثّر ذاك
+  try { const v = await estimateValuationAI(rev, profit, body.revenue_growth || '', body.sector || ''); valuationStr = v ? JSON.stringify(v) : ''; } catch { valuationStr = ''; }
   try {
     const debtRatio = (Number(body.remaining_debt) > 0 && rev > 0) ? Math.round((Number(body.remaining_debt) / rev) * 100) : 0;
     const deep = await generateDeepAnalysis({ ...body, score, debt_to_revenue_pct: debtRatio }, score);
-    valuationStr = await (async () => { const v = await estimateValuationAI(rev, profit, body.revenue_growth || '', body.sector || ''); return v ? JSON.stringify(v) : ''; })();
     if (deep !== null) {
       if (deep.obstacles.length > 0) obstacles = deep.obstacles;
       if (deep.plan.length > 0) plan = deep.plan;
@@ -256,6 +257,8 @@ export async function POST(req: Request) {
     top_obstacles: obstacles,
     required_documents: docs,
     improvement_plan: plan,
+    // ★ ٨ أكتوبر: كان التقدير يُحسب ولا يُحفظ، فتعود صفحة النتيجة والملف الاحترافي للحساب البديل دائماً
+    valuation_estimate: valuationStr || null,
   });
   if (rrError) return NextResponse.json({ error: 'فشل حفظ النتيجة: ' + rrError.message }, { status: 500 });
 

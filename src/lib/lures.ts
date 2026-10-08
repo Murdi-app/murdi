@@ -110,7 +110,9 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
 
   // ٢) الاستثمار والاستحواذ: القيمة التقديرية بمضاعفات القطاع (أو تقدير التقييم المحفوظ إن وُجد)
   const { data: rr } = await sb.from('readiness_results').select('valuation_estimate').eq('company_id', companyId).not('valuation_estimate', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
-  const saved = rr?.valuation_estimate as { lo?: number; hi?: number } | null;
+  // العمود نصّ: JSON {lo,hi} من التقييم المطوّل (أو نصٌّ قديم لا يُقرأ رقماً فيُتجاهل)
+  let saved: { lo?: number; hi?: number } | null = null;
+  try { const v = typeof rr?.valuation_estimate === 'string' ? JSON.parse(rr.valuation_estimate) : rr?.valuation_estimate; if (v && typeof v === 'object') saved = v; } catch { saved = null; }
   const calc = valuationOf(fd, sector);
   const value: ValueLure = saved && num(saved.lo) && num(saved.hi) ? { lo: round(Number(saved.lo)), hi: round(Number(saved.hi)), basis: 'profit' } : calc.value;
   const contract = contractOf(fd);
