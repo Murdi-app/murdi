@@ -68,7 +68,13 @@ function byPattern(core: string, depth: number): string | null {
     let ok = true
     for (const raw of vals) {
       const v = (raw ?? '').trim()
-      const t = AR.test(v) ? (depth < 2 ? translateCore(v, depth + 1) : null) : latin(v)
+      let t = AR.test(v) ? (depth < 2 ? translateCore(v, depth + 1) : null) : latin(v)
+      // قيمةٌ تبدأ بحرف جرّ («من الهند») — يُترجم ما بعده ويُسبق بمقابله
+      if (t == null && depth < 2) {
+        const pm = v.match(/^(من|في|لدى|عند|إلى) (.+)$/)
+        const rest = pm ? translateCore(pm[2], depth + 1) : null
+        if (pm && rest != null) t = ({ 'من': 'from', 'في': 'in', 'لدى': 'with', 'عند': 'at', 'إلى': 'to' } as Record<string, string>)[pm[1]] + ' ' + rest
+      }
       if (t == null) { ok = false; break }
       tv.push(t)
     }
