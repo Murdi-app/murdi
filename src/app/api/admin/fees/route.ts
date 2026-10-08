@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { loadFeeSettings } from '@/lib/feeSettings';
+import { assertNotOnHold } from '@/lib/successFees';
 
 // أتعاب الاستكمال وفواتيرها — للمالك وحده: ما وافقت عليه الجهات، وما قُيِّد، والفاتورة المسوّدة واعتمادها.
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,13 @@ export async function POST(req: Request) {
   }
   const id = String(b.id || ''), action = String(b.action || '');
   if (!id || !['approve', 'cancel'].includes(action)) return NextResponse.json({ error: 'طلبٌ ناقص' }, { status: 400 });
+  if (action === 'approve') {
+    const { data: f } = await sb.from('success_fees').select('service_request_id').eq('id', id).maybeSingle();
+    if (f?.service_request_id) {
+      try { await assertNotOnHold(sb, String(f.service_request_id)); }
+      catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'الملف موقوف' }, { status: 409 }); }
+    }
+  }
   const patch = action === 'approve'
     ? { invoice_status: 'approved', invoice_approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }
     : { invoice_status: 'cancelled', updated_at: new Date().toISOString() };

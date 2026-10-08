@@ -58,6 +58,12 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
     fetch(luresUrl + (q ? (luresUrl.includes('?') ? '&' : '?') + q : '')).then(async (r) => { const d = await r.json().catch(() => ({})); if (r.ok) setLures(d.lures); else setErr(d.error || ''); }).catch(() => setErr('تعذّر الاتصال'));
   };
   useEffect(() => { load(); }, []);
+  // العقد القائم المسجّل يملأ بطاقة تمويل العقد تلقائياً — والعميل يعدّلها إن شاء
+  useEffect(() => {
+    const c = lures?.contract;
+    if (!c || cv) return;
+    setCv(String(c.value)); setCMonths(String(c.months)); if (c.collectDays) setCDays(String(c.collectDays));
+  }, [lures]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const contract = useMemo(() => {
     const value = Number(cv.replace(/\D/g, ''));
@@ -132,7 +138,9 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
         {!lures ? <div className="text-sm" style={{ color: '#6B8A80' }}>نحسب رقمك…</div>
           : inv?.value ? (
             <>
-              <div className="font-black" style={{ color: G }}>القيمة التقديرية لمنشأتك من <span style={{ color: GOLD }}>{sar(inv.value.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(inv.value.hi)}</span></div>
+              <div className="font-black" style={{ color: G }}>قيمتك اليوم: من <span style={{ color: GOLD }}>{sar(inv.value.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(inv.value.hi)}</span></div>
+              {inv.value.after ? <div className="font-black mt-1" style={{ color: G }}>قيمتك بعد تنفيذ عقودك: من <span style={{ color: GOLD }}>{sar(inv.value.after.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(inv.value.after.hi)}</span></div> : null}
+              {inv.value.after ? <div className="text-xs font-bold mt-1" style={{ color: '#6B8A80' }}>بإضافة ربح عقدك القائم (قرابة {sar(inv.value.after.contractProfit)} في السنة) إلى ربحك الفعلي.</div> : null}
               <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>بهذه القيمة، حصة ٢٠٪ تعادل قرابة <b style={{ color: G }}>{sar(inv.value.lo * 0.2)}</b> إلى <b style={{ color: G }}>{sar(inv.value.hi * 0.2)}</b> نقداً لنموّ منشأتك — دون قرضٍ ولا أقساط.</div>
               {inv.investors ? <div className="text-sm font-bold mt-1" style={{ color: '#5E7C73' }}>{inv.investors.toLocaleString('ar-SA')} مستثمر وصندوق يستهدف قطاعك</div> : null}
               <div className="text-xs font-bold mt-1" style={{ color: '#6B8A80' }}>والتجهيز الصحيح للعرض — الحوكمة والقوائم وخطة النمو — يرفع هذه القيمة عند التفاوض.</div>
@@ -149,7 +157,10 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
         </div>
         {!lures ? <div className="text-sm" style={{ color: '#6B8A80' }}>نحسب رقمك…</div>
           : acqSide === 'sell' ? (acq?.value
-            ? <div className="font-black" style={{ color: G }}>منشأتك تسوى لو بعتها من <span style={{ color: GOLD }}>{sar(acq.value.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(acq.value.hi)}</span></div>
+            ? <>
+              <div className="font-black" style={{ color: G }}>منشأتك تسوى لو بعتها اليوم من <span style={{ color: GOLD }}>{sar(acq.value.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(acq.value.hi)}</span></div>
+              {acq.value.after ? <div className="font-black mt-1" style={{ color: G }}>وبعد تنفيذ عقودك من <span style={{ color: GOLD }}>{sar(acq.value.after.lo)}</span> إلى <span style={{ color: GOLD }}>{sar(acq.value.after.hi)}</span></div> : null}
+            </>
             : <Missing fields={acq?.missing || ['الإيراد السنوي']} />)
           : acq?.buyOpportunities === null
             ? <div className="text-sm font-bold" style={{ color: '#9A7B2E' }}>نحتاج قطاعك — <a href="/assessment/funding" className="underline">أكمل بياناتك</a>.</div>

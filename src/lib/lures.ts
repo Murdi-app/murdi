@@ -9,12 +9,14 @@ import { buildFeasibilityScopes } from '@/lib/feasibilityScopes';
 //   بيانات حقيقية وراء العدد (n) يُعاد null فلا يُعرض.
 
 export type FundingLure = { lo: number; hi: number; n: number | null; chance: number; note?: string } | null;
-export type ValueLure = { lo: number; hi: number; basis: 'profit' | 'revenue' } | null;
+export type ValueLure = { lo: number; hi: number; basis: 'profit' | 'revenue'; after?: { lo: number; hi: number; contractProfit: number } } | null;
+export type ContractLure = { value: number; months: number; collectDays: number | null } | null;
 export type Lures = {
   funding: { lure: FundingLure; missing: string[] };
   investment: { value: ValueLure; investors: number | null; missing: string[] };
   acquisition: { value: ValueLure; buyOpportunities: number | null; missing: string[] };
   feasibility: { program: { name: string; max: string; requirement: string } | null; families: number | null; missing: string[] };
+  contract: ContractLure;
   sector: string | null;
 };
 
@@ -40,6 +42,27 @@ export function valuationOf(f: Record<string, unknown> | null, sector: string): 
   }
   if (rev !== null && rev > 0) return { value: { lo: round(rev * 0.8), hi: round(rev * 1.2), basis: 'revenue' }, missing: profit === null ? ['صافي الربح'] : [] };
   return { value: null, missing: ['الإيراد السنوي'] };
+}
+
+/** العقد القائم المسجّل في بيانات العميل — لا يُفترض عقدٌ لم يُسجَّل */
+function contractOf(f: Record<string, unknown> | null): ContractLure {
+  const v = num(f?.current_contract_value), m = num(f?.current_contract_months);
+  if (v === null || v <= 0 || m === null || m <= 0) return null;
+  const d = num(f?.current_contract_collect_days);
+  return { value: v, months: m, collectDays: d !== null && d > 0 ? d : null };
+}
+
+/** «قيمتك بعد تنفيذ عقودك» (٨ أكتوبر): ربح العقد السنوي = قيمته × هامش الربح ÷ مدته بالسنوات (لا تقلّ عن سنة)،
+ *  يُضاف إلى الربح الصافي الفعلي ويُضرب في مضاعف القطاع. الهامش: المسجّل للعقد، وإلا هامش القوائم.
+ *  ★ لا يُعرض إلا بربحٍ فعلي موجب وعقدٍ مسجّل. */
+function afterContract(f: Record<string, unknown> | null, sector: string, c: ContractLure): { lo: number; hi: number; contractProfit: number } | undefined {
+  const profit = num(f?.net_profit), rev = num(f?.annual_revenue);
+  if (!c || profit === null || profit <= 0) return undefined;
+  const margin = num(f?.current_contract_margin) ?? (rev && rev > 0 ? profit / rev : null);
+  if (margin === null || margin <= 0) return undefined;
+  const yearly = (c.value * margin) / Math.max(1, c.months / 12);
+  const [a, b] = multiples(sector);
+  return { lo: round((profit + yearly) * a), hi: round((profit + yearly) * b), contractProfit: round(yearly) };
 }
 
 export async function computeLures(sb: SupabaseClient, companyId: string, fz?: { investment?: number; ask?: number; isNew?: boolean }): Promise<Lures> {
@@ -90,6 +113,9 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
   const saved = rr?.valuation_estimate as { lo?: number; hi?: number } | null;
   const calc = valuationOf(fd, sector);
   const value: ValueLure = saved && num(saved.lo) && num(saved.hi) ? { lo: round(Number(saved.lo)), hi: round(Number(saved.hi)), basis: 'profit' } : calc.value;
+  const contract = contractOf(fd);
+  const after = value && value.basis === 'profit' ? afterContract(fd, sector, contract) : undefined;
+  if (value && after && after.hi > value.hi) value.after = after;
   const vMissing = value ? [] : calc.missing;
   // عدد المستثمرين: من مطابقات الاستثمار الحقيقية وحدها — ولا مطابقة استثمار بعد، فلا عدد
   const { data: inv } = await sb.from('match_results').select('provider, company_id').eq('track', 'investment').eq('status', 'new').gt('fit_score', 0);
@@ -105,7 +131,7 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
   // ٣) دراسة الجدوى: أنسب برنامجٍ حكومي مُتحقَّق منه لقطاعه + عدد عائلات الممولين التي تفتحها بوابة الجدوى
   const feasibility: Lures['feasibility'] = { program: null, families: null, missing: [] };
   const { data: progs } = await sb.from('gov_programs').select('name, sector_keywords, max_text, requirement, verified, sort, max_investment').eq('verified', true).order('sort');
-  const hit = (progs || []).find((p) => { if (fz?.investment && p.max_investment && fz.investment > Number(p.max_investment)) return false; try { return new RegExp(String(p.sector_keywords), 'i').test(sector); } catch { return false; } });
+  const hit = (progs || []).find((p) => { const cap = Number(p.max_investment) || 0; if (cap && ((fz?.investment && fz.investment > cap) || (!fz?.investment && rev !== null && rev > cap))) return false; try { return new RegExp(String(p.sector_keywords), 'i').test(sector); } catch { return false; } });
   if (hit) feasibility.program = { name: String(hit.name), max: String(hit.max_text), requirement: String(hit.requirement) };
   if (!sector) feasibility.missing.push('قطاع المشروع');
   if (fz?.investment && fz.investment > 0) {
@@ -122,6 +148,7 @@ export async function computeLures(sb: SupabaseClient, companyId: string, fz?: {
     investment: { value, investors, missing: vMissing },
     acquisition: { value, buyOpportunities, missing: vMissing },
     feasibility,
+    contract,
     sector: sector || null,
   };
 }

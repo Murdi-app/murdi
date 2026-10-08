@@ -12,6 +12,7 @@ export type FeeCalc = { pct: number; vatRate: number; inclusive: boolean; net: n
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export async function feeFromContract(sb: SupabaseClient, serviceRequestId: string, amount: number): Promise<FeeCalc> {
+  await assertNotOnHold(sb, serviceRequestId);
   const { data: c, error } = await sb.from('contracts')
     .select('id, fee_type, fee_percent, status')
     .eq('service_request_id', serviceRequestId).in('status', ['signed', 'completed'])
@@ -28,6 +29,13 @@ export async function feeFromContract(sb: SupabaseClient, serviceRequestId: stri
   const vat = inclusive ? r2(fee - net) : r2(fee * vatRate / 100);
   const total = inclusive ? fee : r2(fee + vat);
   return { pct, vatRate, inclusive, net, vat, total, contractId: String(c.id) };
+}
+
+// ★ الملف الموقوف (on_hold) لا تصدر له فاتورة أتعاب ولا تُعتمد — الهمام ٧ أكتوبر: رفضته الجهة لتعثّرٍ جديد.
+export async function assertNotOnHold(sb: SupabaseClient, serviceRequestId: string): Promise<void> {
+  const { data: sr, error } = await sb.from('service_requests').select('status').eq('id', serviceRequestId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (sr?.status === 'on_hold') throw new Error('هذا الملف موقوف — لا تصدر له فاتورة أتعاب');
 }
 
 export async function nextInvoiceNo(sb: SupabaseClient): Promise<string> {
