@@ -695,6 +695,19 @@ export default function GoalPage() {
           </div>
         )}
 
+        {/* ★ ٨ أكتوبر (المالك): التسجيل ثم الاختيار — تقييمٌ مجاني إن أحبّ، أو طلب خدمةٍ مباشرةً. لا شرط بينهما. */}
+        {doneScores.length === 0 && Object.keys(serviceRequests).length === 0 && (
+          <div className="bg-white rounded-2xl border border-[#E3EAE7] p-5 md:p-6 mb-8 text-center">
+            <div className="text-[#1A3D34] font-black text-lg mb-1">كيف تحب أن تبدأ؟</div>
+            <div className="text-[#6B8A80] text-sm font-bold mb-4">اختر ما يناسبك — لا يلزم أحدهما قبل الآخر.</div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <button onClick={() => document.querySelector('.murdi-client-goal')?.scrollIntoView({ behavior: 'smooth' })}
+                className="py-3 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">قيّم جاهزيتك مجاناً ←</button>
+              <button onClick={() => { tabChosen.current = true; setTab('services'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="py-3 rounded-full bg-[#1A3D34] text-white font-black text-sm">اطلب خدمة مباشرة ←</button>
+            </div>
+          </div>
+        )}
         <details className="murdi-client-goal" open={doneScores.length === 0}>
           <summary className="murdi-client-change-goal">تغيير الهدف</summary>
         {/* الترحيب والمسارات */}
@@ -862,7 +875,9 @@ export default function GoalPage() {
                       // ما يُطلب مباشرةً لا يُشترط له تقييم — والتقييم العادل
                       // كان محجوباً خلف مسارَي الاستثمار والطرح بلا داعٍ، وهو
                       // منتج قائم بذاته يشتريه من لا ينوي جولةً ولا إدراجاً.
-                      const neededTracks = needsDiagnosis(title) ? (TRACKS_OVERRIDE[title] || def?.tracks || []) : [];
+                      // ★ ٨ أكتوبر (المالك): كل خدمةٍ تُطلب مباشرةً من الحساب — التقييم اختيارٌ لا شرط.
+                      const neededTracks: (keyof typeof TRACK_LABEL)[] = [];
+                      void needsDiagnosis; void TRACKS_OVERRIDE; void def;
                       const hasTrack = neededTracks.length === 0 || neededTracks.some((tk) => scores[tk] !== undefined);
                       if (!req && !hasTrack) {
                         const missing = neededTracks.map((tk) => TRACK_LABEL[tk]).join(' أو ');
