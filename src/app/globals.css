@@ -64,3 +64,11 @@ input::placeholder, textarea::placeholder { color: #9DB3AB; -webkit-text-fill-co
 
 /* حاجز الانزلاق الأفقي على الجوال */
 html, body { max-width: 100%; overflow-x: hidden; }
+
+/* ═══ English mode (lib/i18n) — the platform is authored RTL; flip it for English ═══ */
+html.i18n-pending body { visibility: hidden; }
+html.i18n-en body, html.i18n-en body * { direction: ltr !important; }
+html.i18n-en [data-no-i18n], html.i18n-en [data-no-i18n] * { direction: rtl !important; }
+html.i18n-en .text-right { text-align: left !important; }
+html.i18n-en .text-left { text-align: right !important; }
+html.i18n-en [style*="text-align: right"], html.i18n-en [style*="text-align:right"] { text-align: left !important; }

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import MiniAssessment from '@/components/MiniAssessment'
 import ServicesBand from '@/components/ServicesBand'
+import LangToggle from '@/components/LangToggle'
 import { FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing'
 
 export default function Home() {
@@ -218,6 +219,7 @@ export default function Home() {
         <nav className="nav">
           <div className="logo">مُرضي <i>MURDI</i></div>
           <div className="nav-r">
+            <LangToggle />
             <a className="nav-link" href="/services">الخدمات</a>
             <a className="nav-tel" href={`tel:${PHONE}`}>{PHONE}</a>
             <button className="nav-btn" onClick={() => router.push('/auth/login')}>تسجيل الدخول</button>

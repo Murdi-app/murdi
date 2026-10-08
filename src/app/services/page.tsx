@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SignedInServicesStrip from '@/components/SignedInServicesStrip';
+import LangToggle from '@/components/LangToggle';
 import { CATALOG, DIRECT_ORDER, SERVICE_COUNT, displayName, commercialFor, needsDiagnosis, serviceAnchor, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
 import type { ServiceCommercial } from '@/lib/servicePricing';
 
@@ -232,6 +233,7 @@ export default function ServicesPage() {
         {/* نفس عناصر شريط الرئيسية وبنفس ترتيبها — المقرّ واحد، والانتقال
             بينهما لا يُشعر الزائر أنه خرج من الموقع إلى مكان آخر. */}
         <div className="sv-nav-r">
+          <LangToggle />
           <Link href="/" className="sv-link">الرئيسية</Link>
           <span className="sv-here">الخدمات</span>
           <a href="tel:0570749196" className="sv-link">0570749196</a>

@@ -4,6 +4,8 @@ import "./globals.css";
 import WhatsAppFab from "@/components/WhatsAppFab";
 import TrafficSourceCapture from "@/components/TrafficSourceCapture";
 import TikTokPixel from "@/components/TikTokPixel";
+import LangRuntime from "@/components/LangRuntime";
+import { PRE_PAINT } from "@/lib/i18n/lang";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -42,8 +44,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="ar" dir="rtl" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
+        {/* ★ اللغة: يقلب الاتجاه قبل الرسم لمن اختار English (انظر lib/i18n/lang.ts) */}
+        <script dangerouslySetInnerHTML={{ __html: PRE_PAINT }} />
         {/* Google tag (gtag.js) — Google Ads AW-17947401948.
             يُوضع أول ما يُفتح <head> ليُلتقط gclid قبل أي شيء آخر، ومرةً واحدة
             لا غير: هذا هو التخطيط الجذر، فيُصيّر في كل صفحة مرةً واحدة. */}
@@ -79,6 +83,7 @@ gtag('config', 'AW-17947401948');`,
       <body className="min-h-full flex flex-col">
         <TrafficSourceCapture />
         <TikTokPixel />
+        <LangRuntime />
         {children}
         <WhatsAppFab />
       </body>

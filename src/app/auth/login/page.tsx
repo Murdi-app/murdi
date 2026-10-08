@@ -1,4 +1,5 @@
 'use client'
+import LangToggle from '@/components/LangToggle'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -96,6 +97,7 @@ export default function Login() {
         <div className="au-top"><b>حلول المرضي للاستشارات المالية</b> · رخصة استشارة FL-457927015</div>
         <div className="au-mid">
           <div className="au-card">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}><LangToggle /></div>
             <div className="au-brand">مُرضي<i>MURDI</i></div>
             <div className="au-rule" />
             <div className="au-title">تسجيل الدخول</div>

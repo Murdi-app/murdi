@@ -1,4 +1,5 @@
 'use client'
+import LangToggle from '@/components/LangToggle'
 import { useState, useRef } from 'react'
 import { arError } from '@/lib/arError'
 import { createClient } from '@/lib/supabase'
@@ -137,6 +138,7 @@ export default function SignUp() {
         <div className="au-top"><b>حلول المرضي للاستشارات المالية</b> · رخصة استشارة FL-457927015</div>
         <div className="au-mid">
           <div className="au-card">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}><LangToggle /></div>
             <div className="au-brand">مُرضي<i>MURDI</i></div>
             <div className="au-rule" />
             <div className="au-title">افتح ملف شركتك</div>

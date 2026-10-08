@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { arError } from '@/lib/arError'
 import { contractHtml } from '@/lib/contractStamp'
 import ConsultationPanel from './ConsultationPanel';
+import LangToggle from '@/components/LangToggle';
 import './mobile-ui.css';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -401,6 +402,7 @@ export default function GoalPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <LangToggle />
             <button onClick={async () => {
               // كان رابطاً يُعيد التوجيه بلا إنهاء الجلسة — فمن يفتح الجهاز بعده يدخل على الملف المالي
               try {
