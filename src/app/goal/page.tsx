@@ -319,6 +319,24 @@ export default function GoalPage() {
     if (!st || ['rejected', 'cancelled'].includes(String(st))) orderMain(t);
   }, [reqsLoaded, companyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ★ ٨ أكتوبر: حاجةٌ اختارها من الرئيسية قبل التسجيل (murdi_need) — تُفتح مرةً واحدة بعد دخوله
+  const needFired = useRef(false);
+  useEffect(() => {
+    if (needFired.current || !reqsLoaded || !companyId) return;
+    let need: string | null = null;
+    try { need = sessionStorage.getItem('murdi_need'); sessionStorage.removeItem('murdi_need'); } catch {}
+    if (!need) return;
+    needFired.current = true;
+    const route: Record<string, string> = { cash: '/assessment/funding', investor: '/assessment/investment', deal: '/assessment/investment', ipo: '/assessment/ipo' };
+    const svc: Record<string, string> = { contract: 'تمويل العقد', feasibility: 'دراسة الجدوى الاقتصادية' };
+    if (route[need]) { router.push(route[need]); return; }
+    if (svc[need]) {
+      tabChosen.current = true; setTab('services'); setHighlightService(svc[need]);
+      const st = serviceRequests[svc[need]]?.status;
+      if (!st || ['rejected', 'cancelled'].includes(String(st))) orderMain(svc[need]);
+    }
+  }, [reqsLoaded, companyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const openOrder = (title: string) => {
     const c = commercialFor(title);
     setOrderFor(title);
@@ -364,6 +382,7 @@ export default function GoalPage() {
     alert('تم رفع العقد الموقّع بنجاح، شكراً لك');
   };
 
+  // «اختر هدفك» أُلغي من الواجهة (٨ أكتوبر) — وتبقى go لمن يستدعيها
   const go = () => {
     const t = TRACKS.find((x) => x.id === selected);
     if (t) router.push(t.href);
@@ -713,7 +732,7 @@ export default function GoalPage() {
           {[
             { id: 'overview', label: 'نظرة عامة' },
             { id: 'consult', label: 'الاستشارة والأسئلة' },
-            { id: 'services', label: 'الخدمات' },
+            { id: 'services', label: 'كل الخدمات' },
           ].map((t) => (
             <button key={t.id} onClick={() => { tabChosen.current = true; setTab(t.id as 'overview' | 'consult' | 'services'); }}
               className={'px-1 md:px-5 py-4 font-bold text-[12px] md:text-sm transition border-b-[3px] ' + (tab === t.id ? 'text-[#1A3D34] border-[#C9A84C]' : 'text-[#9DB3AB] border-transparent hover:text-[#6B8A80]')}>
@@ -751,48 +770,53 @@ export default function GoalPage() {
           </div>
         )}
 
-        {/* ★ ٨ أكتوبر (المالك): التسجيل ثم الاختيار — تقييمٌ مجاني إن أحبّ، أو طلب خدمةٍ مباشرةً. لا شرط بينهما. */}
-        {doneScores.length === 0 && Object.keys(serviceRequests).length === 0 && (
-          <div className="bg-white rounded-2xl border border-[#E3EAE7] p-5 md:p-6 mb-8 text-center">
-            <div className="text-[#1A3D34] font-black text-lg mb-1">كيف تحب أن تبدأ؟</div>
-            <div className="text-[#6B8A80] text-sm font-bold mb-4">اختر ما يناسبك — لا يلزم أحدهما قبل الآخر.</div>
+        {/* ★ ٨ أكتوبر (المالك): مدخلٌ واحد — «وش تحتاج لمنشأتك؟» — بدل «كيف تحب أن تبدأ» و«اختر هدفك».
+            كل حاجة تفتح تقييمها المفصّل الموجود (التمويل · الاستثمار · الطرح) أو نموذج خدمتها (العقد · الجدوى)،
+            ومنه تخرج الدرجة والعوائق والمطابقة كما كانت. لمن بدأ: تبقى مطويّة باسم «حاجة أخرى لمنشأتك؟». */}
+        {(() => {
+          const fresh = doneScores.length === 0 && Object.keys(serviceRequests).length === 0;
+          const orderNeed = (title: string) => {
+            tabChosen.current = true; setTab('services'); setHighlightService(title);
+            const st = serviceRequests[title]?.status;
+            if (!st || ['rejected', 'cancelled'].includes(String(st))) orderMain(title);
+          };
+          const NEEDS: { id: string; title: string; desc: string; go: () => void }[] = [
+            { id: 'cash', title: 'سيولة لمنشأتي', desc: 'رأس مال عامل أو توسعة — نقيس جاهزيتك ونطابقك مع الجهات التي تنطبق شروطها عليك', go: () => router.push('/assessment/funding') },
+            { id: 'contract', title: 'تمويل عقد رسا عليّ', desc: 'تعرف فجوة عقدك النقدية وأصعب شهر فيه، ونرتّب تمويلها', go: () => orderNeed('تمويل العقد') },
+            { id: 'feasibility', title: 'دراسة الجدوى الائتمانية والاقتصادية', desc: 'لمشروع جديد أو توسعة — دراسة تقبلها الجهات، وأنسب جهة تموّل مشروعك', go: () => orderNeed('دراسة الجدوى الاقتصادية') },
+            { id: 'investor', title: 'مستثمر أو شريك', desc: 'كم تساوي منشأتك اليوم وبعد عقودك، ومن المستثمرون الذين يستهدفون قطاعك', go: () => router.push('/assessment/investment') },
+            { id: 'deal', title: 'بيع منشأتي أو شراء منشأة', desc: 'كم تسوى منشأتك لو بعتها — وتجهيز الصفقة حتى الإغلاق', go: () => router.push('/assessment/investment') },
+            { id: 'ipo', title: 'إدراج منشأتي في السوق', desc: 'هل تنطبق عليك شروط «نمو» أو السوق الرئيسية، وما الفجوات حتى الإدراج', go: () => router.push('/assessment/ipo') },
+          ];
+          const grid = (
             <div className="grid md:grid-cols-2 gap-3">
-              <button onClick={() => document.querySelector('.murdi-client-goal')?.scrollIntoView({ behavior: 'smooth' })}
-                className="py-3 rounded-full bg-[#C9A84C] text-[#1A3D34] font-black text-sm">قيّم جاهزيتك مجاناً ←</button>
-              <button onClick={() => { tabChosen.current = true; setTab('services'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="py-3 rounded-full bg-[#1A3D34] text-white font-black text-sm">اطلب خدمة مباشرة ←</button>
+              {NEEDS.map((n) => (
+                <button key={n.id} onClick={n.go}
+                  className="text-right bg-white rounded-2xl p-4 md:p-5 border border-[#E3EAE7] hover:border-[#1A3D34] transition flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block font-black text-[#1A3D34] text-base mb-1">{n.title}</span>
+                    <span className="block text-[#6B8A80] text-sm font-bold leading-relaxed">{n.desc}</span>
+                  </span>
+                  <span className="text-[#C9A84C] font-black text-lg shrink-0">←</span>
+                </button>
+              ))}
             </div>
-          </div>
-        )}
-        <details className="murdi-client-goal" open={doneScores.length === 0}>
-          <summary className="murdi-client-change-goal">تغيير الهدف</summary>
-        {/* الترحيب والمسارات */}
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Cairo, sans-serif' }}>ما هدف شركتك القادم؟</h1>
-          <p className="text-[#6B8A80] font-bold">اختر هدفك، وسنوجّه التحليل والتقييم بناءً عليه</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-5 mb-8">
-          {TRACKS.map((t) => (
-            <button key={t.id} onClick={() => setSelected(t.id)}
-              className={'text-right bg-white rounded-2xl p-5 md:p-7 border transition relative ' + (selected === t.id ? 'border-[#1A3D34] shadow-md' : 'border-[#F0F5F3]')}>
-              {selected === t.id && (
-                <span className="absolute top-4 left-4 w-7 h-7 rounded-full bg-[#1A3D34] text-white flex items-center justify-center text-sm font-black">✓</span>
-              )}
-
-              <h3 className="font-black text-[#1A3D34] text-lg mb-1">{t.title}</h3>
-
-              <p className="text-[#6B8A80] text-sm font-bold leading-relaxed">{t.desc}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="text-center mb-16">
-          <button onClick={go} className="px-14 py-4 rounded-full bg-[#1A3D34] text-white font-black text-lg shadow-lg shadow-[#1A3D34]/25">
-            ابدأ التقييم
-          </button>
-        </div>
-        </details>
+          );
+          return fresh ? (
+            <div className="murdi-client-goal mb-10">
+              <div className="text-center mb-6">
+                <h1 className="text-3xl font-black text-[#1A3D34] mb-2" style={{ fontFamily: 'Cairo, sans-serif' }}>وش تحتاج لمنشأتك؟</h1>
+                <p className="text-[#6B8A80] font-bold">اختر حاجتك — ونفتح لك تقييمها، ودرجتك، والجهات التي تنطبق شروطها عليك</p>
+              </div>
+              {grid}
+            </div>
+          ) : (
+            <details className="murdi-client-goal mb-10">
+              <summary className="murdi-client-change-goal">حاجة أخرى لمنشأتك؟</summary>
+              <div className="mt-4">{grid}</div>
+            </details>
+          );
+        })()}
         </>)}
 
         <div style={{ display: tab === 'consult' ? 'block' : 'none' }}>

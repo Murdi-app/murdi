@@ -244,7 +244,12 @@ export default function Home() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 }}>
               <a href="/test" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج سيولة لمنشأتك؟ جهّز ملفك التمويلي ←</a>
               <a href="/uqud" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>عندك عقد مُرسى؟ موّل تنفيذه ←</a>
-              <a href="/jadwa" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>تحتاج دراسة جدوى تقبلها الجهات؟ ←</a>
+              <a href="/jadwa" style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>دراسة الجدوى الائتمانية والاقتصادية ←</a>
+              {/* ★ ٨ أكتوبر (المالك): الحاجات الست من أول خطوة — الثلاث الباقية تفتح حسابه ثم تقييمها مباشرة */}
+              {([['investor', 'تبحث عن مستثمر أو شريك؟ ←'], ['deal', 'تبيع منشأتك أو تشتري منشأة؟ ←'], ['ipo', 'تفكّر في إدراج منشأتك؟ ←']] as const).map(([k, label]) => (
+                <a key={k} href="/auth/signup" onClick={() => { try { sessionStorage.setItem('murdi_need', k) } catch {} }}
+                  style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>{label}</a>
+              ))}
             </div>
             <div className="cta-note">التقييم مجاناً. وبعده تختار: الحكم الائتماني لمنشأتك بـ {(FUNDING_QUICK() ?? 0).toLocaleString('en-US')} ر.س، أو تجهيز الملف والمخاطبة ابتداءً من {(FUNDING_FULL() ?? 0).toLocaleString('en-US')} ر.س ويُخصم منها الحكم. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
           </div>
