@@ -848,8 +848,11 @@ export default function GoalPage() {
                   //   والزرّ يقولان الرقم نفسه دائماً.
                   const reqNow = serviceRequests[title];
                   const quotedNow = reqNow && reqNow.price != null && Number(reqNow.price) > 0 ? Number(reqNow.price) : null;
+                  const optPrices = (c?.options || []).map((o) => o.price).filter((x): x is number => typeof x === 'number' && x > 0);
                   const headline = quotedNow != null
                     ? { amount: quotedNow, label: quotedNow.toLocaleString('ar-SA') + ' ر.س' }
+                    : optPrices.length > 1
+                    ? { amount: null, label: 'من ' + Math.min(...optPrices).toLocaleString('ar-SA') + ' ر.س' }
                     : pr;
                   return (
                   <div key={ii}
@@ -861,6 +864,20 @@ export default function GoalPage() {
 
                     {/* الألم أولاً: العميل يعرف نفسه في السطر قبل أن يعرف الخدمة */}
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">{c?.pain || ''}</p>
+
+                    {/* ★ ٨ أكتوبر (المالك): لغة الخدمة ذات البابين كما في الرئيسية — الحكم الائتماني أو التجهيز والمخاطبة —
+                        تظهر في البطاقة نفسها لا في نموذج الطلب وحده. ولا تظهر بعد تسعير طلبه (سعرٌ واحد في البطاقة). */}
+                    {quotedNow == null && c?.options && c.options.filter((o) => typeof o.price === 'number' && o.price > 0).length > 1 && (
+                      <div className="rounded-xl border border-[#EAF2EE] bg-[#F7FBF9] p-3 mb-4">
+                        {c.options.filter((o) => typeof o.price === 'number' && (o.price as number) > 0).map((o, oi) => (
+                          <div key={o.key} className={'flex items-baseline justify-between gap-3 text-xs font-black ' + (oi ? 'mt-2 pt-2 border-t border-dashed border-[#E3EAE7]' : '')}>
+                            <span className="text-[#1A3D34]">{o.label}</span>
+                            <span className="text-[#9A7B2E] whitespace-nowrap">{(o.price as number).toLocaleString('ar-SA')} ر.س</span>
+                          </div>
+                        ))}
+                        {c.options[0]?.note && <div className="text-[#6B8A80] text-[11px] font-bold leading-relaxed mt-2">{c.options[0].note}</div>}
+                      </div>
+                    )}
 
                     {/* الدليل: ما ظهر في ملفه هو — يبيع أكثر من أي وصف، لأنه قياس لا عرض */}
                     {reasons[title] && (() => {
