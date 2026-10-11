@@ -131,7 +131,10 @@ function DhaiBoard({ hot, files, me, reload }: { hot: Hot[]; files: File[]; me: 
   // ★ «جديد» يُقسم بالعمر: من وصل في آخر ٧ أيام يُكلَّم اليوم وأحدثُه أولاً (أدفأ ما
   //   يكون في ساعته الأولى)؛ والأقدم يُطوى تحت زرّ — كان يملأ الشاشة بمئة اسمٍ من يونيو.
   const FRESH = 7
-  const fresh = by.new.filter(r => (days(r.at) ?? 99) <= FRESH).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+  // ★ وداخل الجديد: من لم يُكلَّم أصلاً أولاً، ثم الأعلى درجةً — فقد بقي «turki» بدرجة ٩٨
+  //   يومين بلا اتصال وكُلِّم من تحته. والدرجة تُقرأ من سطر السبب «بدرجة N».
+  const score = (r: Hot) => Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0)
+  const fresh = by.new.filter(r => (days(r.at) ?? 99) <= FRESH).sort((a, b) => (Number(a.touches > 0) - Number(b.touches > 0)) || (score(b) - score(a)) || String(b.at || '').localeCompare(String(a.at || '')))
   const old = by.new.filter(r => (days(r.at) ?? 99) > FRESH)
   const followDue = by.follow.filter(r => r.state !== 'waiting')
   const followLater = by.follow.filter(r => r.state === 'waiting').sort((a, b) => String(a.next_action_at || '').localeCompare(String(b.next_action_at || '')))
@@ -208,7 +211,7 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
         <b style={{ fontSize: 15, fontWeight: 900 }}>{r.name || r.person || '—'}{r.person && r.name && r.person !== r.name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {r.person}</span> : null}</b>
         <span style={{ fontSize: 11.5, color: C.soft }}>{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : ago(r.at)}</span>
       </div>
-      <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{r.reason}</div>
+      <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{r.reason}{Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0) >= 85 && r.touches === 0 ? <span style={tag(C.red)}>🔥 درجة عالية — كلّميه أولاً</span> : null}</div>
       {r.last_outcome && (
         <div style={{ fontSize: 12, marginTop: 6, background: C.pale, borderRadius: 8, padding: '6px 10px' }}>
           آخر مكالمة ({r.touches}): <b>{r.last_outcome}</b>{r.last_note ? ' — ' + r.last_note : ''} <span style={{ color: C.soft }}>· {ago(r.last_at)}</span>
@@ -386,7 +389,7 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
               <input value={done} onChange={e => setDone(e.target.value)} placeholder="وش صار اليوم؟ (مثال: استلمت كشف الحساب)" style={input} />
               <input value={missing} onChange={e => setMissing(e.target.value)} placeholder="وش ينقص الملف؟ (اتركيه فاضي إذا ما ينقصه شي)" style={input} />
               <input value={next} onChange={e => setNext(e.target.value)} placeholder="الخطوة التالية" style={input} />
-              {f.outreach && <input value={presented} onChange={e => setPresented(e.target.value)} placeholder="عرضتِ الملف على جهة؟ اكتبي اسمها (اختياري)" style={input} />}
+              {f.outreach && <input value={presented} onChange={e => setPresented(e.target.value)} placeholder="اسم الجهة فقط إذا قدّمتِ لها الملف اليوم (مثال: منشآت) — التحديث يُكتب في الخانة الأولى" style={input} />}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button disabled={busy || (!done.trim() && !presented.trim())} onClick={save} style={btn(true)}>{busy ? '…' : 'حفظ'}</button>
                 {msg && <span style={{ color: '#B4453C', fontSize: 12, fontWeight: 800 }}>{msg}</span>}
