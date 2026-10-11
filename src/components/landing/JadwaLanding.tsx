@@ -229,7 +229,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
             {tiktok ? TIKTOK_H1 : 'دراسة جدوى تقنع الممول والمستثمر'}
           </h1>
           <p style={{ color: MUTED, fontSize: 14.5, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
-            {tiktok ? TIKTOK_LEAD : <>عندك فكرة أو توسعة؟ <b style={{ color: GREEN }}>الممول ما يموّل فكرتك… يموّل رقمك.</b> خمسة أسئلة سريعة، ونقول لك مَن يموّل مشروعاً مثل مشروعك — ونوصّلك له.</>}
+            {tiktok ? TIKTOK_LEAD : <>عندك فكرة أو توسعة؟ <b style={{ color: GREEN }}>الممول ما يموّل فكرتك… يموّل رقمك.</b> خمسة أسئلة سريعة، ونحدد الجهات المناسبة لمشروعك.</>}
           </p>
         </div>
 
