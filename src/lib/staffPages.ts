@@ -41,7 +41,13 @@ export const STAGE_OF: Record<StaffJob, string> = {
 };
 
 /** صفحات كل دور، بترتيب ظهورها — وأولها شاشته الأولى */
-export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon: string }[]> = {
+// ★ ١١ أكتوبر (المالك): «صفحة واحدة ترتّب ضي ووضعها مع عملائها، وصفحة ترتّب رغد».
+//   فصارت `/admin/journey` شاشةَ كلٍّ منهما الأولى والوحيدة في الشريط. والشاشات
+//   التفصيلية باقيةٌ مفتوحةً بالرابط من داخلها (`nav: false`) — فلا يسقط عملٌ بُني
+//   عليها، ولا يُشتَّت الشريط بها. والحارس يقرأ القائمة كاملة كما كان.
+export type StaffPage = { href: string; label: string; icon: string; nav?: boolean };
+
+export const PAGES_BY_JOB: Record<StaffJob, StaffPage[]> = {
   // ═══ ضي — من الباب إلى الدفع ═══
   //
   // ★ «الوارد» (٢٤ سبتمبر) شاشتها الأولى. والسبب عطبٌ قائم منذ فُتحت حملة
@@ -53,18 +59,19 @@ export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon:
   //   فالداخل الجديد يسقط إلى ذيل مئة صفّ. فهذه شاشةٌ تقول شيئاً واحداً:
   //   من طرق البابَ، ومتى، ورقمه. أحدثُ أولاً.
   followup: [
-    { href: '/admin/arrivals', label: 'الوارد', icon: '📥' },
-    { href: '/admin/leads', label: 'مكالمات اليوم', icon: '📋' },
+    { href: '/admin/journey', label: 'عملائي', icon: '🧭' },
+    { href: '/admin/arrivals', label: 'الوارد', icon: '📥', nav: false },
+    { href: '/admin/leads', label: 'مكالمات اليوم', icon: '📋', nav: false },
     // ★ أُعيدت إليها (٢٧ سبتمبر): «الفرص الساخنة» تجمع كل من طرق بابنا
     //   مرتَّباً بقربه من الدفع، وهو لبُّ عملها — وكانت في قائمة رغد وحدها.
-    { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },
+    { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥', nav: false },
     // مكتب الطلبات: تعتمد وترفض طلبات الخدمة وطلبات المطابقة، وتؤكّد
     // التحويل، وترى بيانات كل عميل كاملةً لتتصل به. ولم تُفتح لها
     // `/admin/services` ولا `/admin/approvals`: في الأولى أزرار التوليد
     // كلّها، وفي الثانية العقود والتسعير ومحادثة البحث. وإخفاء زرٍّ في
     // المتصفح ليس حماية؛ فالصواب بابٌ لا يمرّ به ما لا يلزم.
-    { href: '/admin/desk', label: 'الخدمات والاعتمادات', icon: '📑' },
-    { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬' },
+    { href: '/admin/desk', label: 'الخدمات والاعتمادات', icon: '📑', nav: false },
+    { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬', nav: false },
   ],
 
   // ═══ رغد — ما بعد الدفع وجهات التمويل ═══
@@ -78,13 +85,14 @@ export const PAGES_BY_JOB: Record<StaffJob, { href: string; label: string; icon:
   //   يعرفنا، ونسبة تحويله الأدنى في المنصة. والصفحة باقية بالرابط لمن
   //   أرادها، وليست في شريطها.
   assistant: [
+    { href: '/admin/journey', label: 'ملفّاتي', icon: '🧭' },
     // شاشتها الأولى: أبواب التمويل — من رُدّ عليه ومن تأخّر ومن لم يُعطِ
     // اسماً بعد. وعملها فيها: الاتصال، وجمع اسم مسؤول الائتمان ورقمه المباشر.
-    { href: '/admin/followup', label: 'متابعة الجهات', icon: '📞' },
+    { href: '/admin/followup', label: 'متابعة الجهات', icon: '📞', nav: false },
     // ومكتب الطلبات **قراءةً لا قراراً**: منه ترى الملفّات المدفوعة وأرقام
     // أصحابها لتجمع مستنداتها. والقرارُ فيه لضي وحدها — مفروضٌ في الخادم
     // (`/api/staff/desk`) لا في إخفاء زرّ.
-    { href: '/admin/desk', label: 'ملفّات العملاء والطلبات', icon: '📑' },
+    { href: '/admin/desk', label: 'ملفّات العملاء والطلبات', icon: '📑', nav: false },
   ],
 };
 

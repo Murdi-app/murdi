@@ -38,6 +38,7 @@ const LINKS: Link[] = [
   { href: '/admin/fees', label: 'أتعاب الاستكمال', icon: '🧾' },
   { href: '/admin/entities', label: 'سجلّ الجهات', icon: '🏦' },
   { href: '/admin/approvals', label: 'الاعتمادات', icon: '📑' },
+  { href: '/admin/journey', label: 'شاشتا الموظفتين', icon: '🧭' },
   { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥' },
   { href: '/admin/hunt', label: 'صيد اليوم', icon: '🎯' },
   { href: '/admin/followup', label: 'المتابعة', icon: '📞' },
@@ -101,7 +102,7 @@ export default function AdminNav() {
   //   فالمتابِعة كانت ترى خمسة تبويبات أربعةٌ منها ليست عملها، والمساعدة
   //   ترى تبويب المتابعة وهي لا تتابع. والتشتيت وحده يكفي سبباً.
   const visible: Link[] = role === 'staff'
-    ? (PAGES_BY_JOB[asJob(job)] || []).map(p => ({ href: p.href, label: p.label, icon: p.icon }))
+    ? (PAGES_BY_JOB[asJob(job)] || []).filter(p => p.nav !== false).map(p => ({ href: p.href, label: p.label, icon: p.icon }))
     : LINKS
 
   // قبل أن يُعرف الدور لا تُرسم تبويبة واحدة — يُحجز مكان الشريط فقط
