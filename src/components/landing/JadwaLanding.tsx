@@ -42,8 +42,8 @@ type Need = 'funder' | 'investor' | 'both';
 type Sector = 'industry' | 'agri' | 'tourism' | 'tech' | 'health' | 'trade';
 
 const KINDS: { key: Kind; label: string; hint: string }[] = [
-  { key: 'new', label: 'فكرة أو مشروع جديد', hint: 'لم يبدأ بعد، أو تحت التأسيس' },
-  { key: 'expand', label: 'توسعة لمنشأة قائمة', hint: 'فرع · خط إنتاج · معدات · موقع جديد' },
+  { key: 'new', label: 'فكرة أو مشروع جديد', hint: 'مشروع لم يبدأ بعد أو تحت التأسيس — ما عنده إيرادات حتى الآن' },
+  { key: 'expand', label: 'توسعة لمنشأة قائمة', hint: 'منشأة تعمل وتبي تكبر: فرع جديد · خط إنتاج · معدات · موقع إضافي' },
   { key: 'working', label: 'سيولة تشغيل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
 ];
 
@@ -63,18 +63,21 @@ const SECTORS: { key: Sector; label: string }[] = [
   { key: 'trade', label: 'تجاري أو خدمي' },
 ];
 
-const NEEDS: { key: Need; label: string; t: string }[] = [
-  { key: 'funder', label: 'جهة تمويل', t: 'جهة داعمة' },
-  { key: 'investor', label: 'مستثمر أو شريك', t: 'شريك يدخل معك' },
-  { key: 'both', label: 'الاثنين — نشوف الأنسب', t: 'الاثنين — نشوف الأنسب' },
+// ★ ١١ أكتوبر (المالك): «أوضح وفيها تعريف» — الفرق بين الممول والمستثمر يُقال للزائر بجملة.
+const NEEDS: { key: Need; label: string; hint: string; t: string; th: string }[] = [
+  { key: 'funder', label: 'ممول', hint: 'جهة تموّلك وتسدّد لها على أقساط — وتبقى المالك وحدك', t: 'جهة داعمة', th: 'تدعمك بمبلغ يُسدَّد على أقساط — وتبقى المالك وحدك' },
+  { key: 'investor', label: 'مستثمر', hint: 'شريك يدفع مقابل حصة من المشروع — بلا أقساط، ويشاركك الربح', t: 'شريك يدخل معك', th: 'يدفع مقابل حصة من المشروع — بلا أقساط، ويشاركك الربح' },
+  { key: 'both', label: 'الاثنين', hint: 'ما أدري أيهما أنسب — رتّبوها لي', t: 'الاثنين', th: 'ما أدري أيهما أنسب — رتّبوها لي' },
 ];
 
 // مساهمة صاحب المشروع — أصدق سؤال عن الجدّية
-const SHARES: { label: string; score: number }[] = [
-  { label: 'ما عندي مساهمة بعد', score: 0 },
-  { label: 'أقل من 20٪ من الكلفة', score: 1 },
-  { label: 'من 20٪ إلى 30٪', score: 2 },
-  { label: 'أكثر من 30٪', score: 3 },
+// ★ ١١ أكتوبر (المالك): من لا يساهم في المشروع قد يقدر على ثمن الدراسة — فلا يُعامَل
+//   كغير جادّ، بل يُقال له إن طريقه المستثمر. والجدّية تُقرأ من الحجم لا من المساهمة وحدها.
+const SHARES: { label: string; hint: string; score: number }[] = [
+  { label: 'لن أساهم في المشروع', hint: 'أبحث عمّن يغطّي كلفته كاملة', score: 0 },
+  { label: 'أقل من 20٪', hint: 'من كلفة المشروع', score: 1 },
+  { label: 'من 20٪ إلى 30٪', hint: 'من كلفة المشروع', score: 2 },
+  { label: 'أكثر من 30٪', hint: 'من كلفة المشروع', score: 3 },
 ];
 
 // الأبواب التي تموّل مشروعاً مثل مشروعه — جهاتٌ حكومية وخاصة معروفة بالاسم.
@@ -163,7 +166,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
   const doors = sector ? DOORS[sector] : [];
   const showInvestors = need === 'investor' || need === 'both';
   // الجدّية: الحجم والمساهمة — تُكتب في الطلب، ويُرسل وزنها للإعلان فيتعلّم من يجلب
-  const serious = (sizeIdx ?? 0) >= 1 && (share?.score ?? 0) >= 2;
+  const serious = (sizeIdx ?? 0) >= 1;
 
   const submit = async () => {
     if (sent.current) return;
@@ -187,7 +190,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
       if (!sent.current && !d?.already) {
         sent.current = true;
-        const w = studyWeight(sizeIdx ?? 0) * (share?.score === 0 ? 0.5 : share?.score === 3 ? 1.5 : 1);
+        const w = studyWeight(sizeIdx ?? 0) * (share?.score === 3 ? 1.5 : 1);
         fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('Contact');
       }
       setDone(true);
@@ -246,7 +249,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         ) : (
           <div style={{ background: '#fff', border: '1.5px solid ' + LINE, borderRadius: 18, padding: '26px 24px' }}>
 
-            <Q n="١" title="مشروعك أيّ هذه؟">
+            <Q n="١" title="مشروعك أيّ هذه؟" hint="نسأل لأن الدراسة لمشروعٍ يُبنى أو يكبر — لا لتشغيلٍ يومي.">
               {KINDS.map((k) => (
                 <button key={k.key} type="button" onClick={() => setKind(k.key)} style={choiceStyle(kind === k.key)}>
                   <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{(tiktok && T_KIND[k.key]?.label) || k.label}</div>
@@ -269,7 +272,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
             )}
 
             {project && (
-              <Q n="٢" title={tiktok ? 'كلفة المشروع التقريبية' : 'حجم الاستثمار التقريبي'} hint="تقديرٌ يكفي — كامل ما سيُصرف على المشروع.">
+              <Q n="٢" title={tiktok ? 'كلفة المشروع التقريبية' : 'حجم الاستثمار التقريبي'} hint="تقديرٌ يكفي — كامل ما سيُصرف على المشروع: المعدات والتجهيز والموقع ورأس مال التشغيل للسنة الأولى.">
                 <div style={grid2}>
                   {SIZES.map((s, i) => (
                     <button key={s.label} type="button" onClick={() => setSizeIdx(i)} style={choiceStyle(sizeIdx === i, true)}>
@@ -281,7 +284,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
             )}
 
             {project && size && (
-              <Q n="٣" title="قطاع المشروع">
+              <Q n="٣" title="قطاع المشروع" hint="لكل قطاع جهاتٌ حكومية متخصصة تموّله — نحددها لك.">
                 <div style={grid2}>
                   {SECTORS.map((x) => (
                     <button key={x.key} type="button" onClick={() => setSector(x.key)} style={choiceStyle(sector === x.key, true)}>
@@ -293,23 +296,23 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
             )}
 
             {project && size && sector && (
-              <Q n="٤" title="مَن تبحث عنه؟">
-                <div style={grid2}>
-                  {NEEDS.map((x) => (
-                    <button key={x.key} type="button" onClick={() => setNeed(x.key)} style={choiceStyle(need === x.key, true)}>
-                      <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{tiktok ? x.t : x.label}</div>
-                    </button>
-                  ))}
-                </div>
+              <Q n="٤" title={tiktok ? 'مَن تبحث عنه؟' : 'تبحث عن ممول أو مستثمر أو الاثنين؟'}>
+                {NEEDS.map((x) => (
+                  <button key={x.key} type="button" onClick={() => setNeed(x.key)} style={choiceStyle(need === x.key)}>
+                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{tiktok ? x.t : x.label}</div>
+                    <div style={{ color: '#9DB3AB', fontWeight: 700, fontSize: 12.5, marginTop: 3 }}>{tiktok ? x.th : x.hint}</div>
+                  </button>
+                ))}
               </Q>
             )}
 
             {project && size && sector && need && (
-              <Q n="٥" title="كم تساهم من جيبك في المشروع؟" hint={tiktok ? 'نسبة تقريبية من كلفة المشروع.' : 'أغلب الممولين يطلبون مساهمةً من صاحب المشروع — فهذا أول ما يُسأل عنه.'}>
+              <Q n="٥" title="كم تقدر تساهم في كلفة المشروع من مالك؟" hint={tiktok ? 'نسبة تقريبية — ولا بأس إن لم تساهم بشيء.' : 'الممول يطلب عادةً مساهمةً من صاحب المشروع، والمستثمر لا يشترطها — فالجواب يحدد طريقك، ولا بأس إن لم تساهم بشيء.'}>
                 <div style={grid2}>
                   {SHARES.map((x, i) => (
                     <button key={x.label} type="button" onClick={() => setShareIdx(i)} style={choiceStyle(shareIdx === i, true)}>
                       <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{x.label}</div>
+                      <div style={{ color: '#9DB3AB', fontWeight: 700, fontSize: 11.5, marginTop: 2 }}>{x.hint}</div>
                     </button>
                   ))}
                 </div>
