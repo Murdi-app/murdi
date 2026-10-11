@@ -36,19 +36,19 @@ const fmtDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('ar-SA
 
 // مراحل ضي — كل صفٍّ من «الفرص الساخنة» يقع في مرحلةٍ واحدة
 const DHAI_STEPS = [
-  { key: 'new', label: 'جديد — ما انكلّم', hint: 'رفع يده وما أحد كلّمه. ابدئي بهم.' },
-  { key: 'follow', label: 'تحت المتابعة', hint: 'كلّمتِه وينتظر خطوة — المعاودة في موعدها.' },
-  { key: 'ordered', label: 'طلب ولم يدفع', hint: 'اقتنع وطلب — باقي التحويل.' },
-  { key: 'transfer', label: 'حوّل — أكّدي الاستلام', hint: 'العميل دفع، والانتظار علينا لا عليه.' },
-  { key: 'paid', label: 'دفع — عند رغد', hint: 'سلّمتِه. هنا ترين أين وصل.' },
+  { key: 'new', short: 'جديد', label: 'جديد — ما انكلّم', hint: 'رفع يده وما أحد كلّمه. ابدئي بهم.' },
+  { key: 'follow', short: 'متابعة', label: 'تحت المتابعة', hint: 'كلّمتِه وينتظر خطوة — المعاودة في موعدها.' },
+  { key: 'ordered', short: 'طلب ولم يدفع', label: 'طلب ولم يدفع', hint: 'اقتنع وطلب — باقي التحويل.' },
+  { key: 'transfer', short: 'حوّل', label: 'حوّل — أكّدي الاستلام', hint: 'العميل دفع، والانتظار علينا لا عليه.' },
+  { key: 'paid', short: 'عند رغد', label: 'دفع — عند رغد', hint: 'سلّمتِه. هنا ترين أين وصل.' },
 ] as const
 
 const RAGHAD_STEPS = [
-  { key: 'received', label: 'استلام جديد', hint: 'دفع وما بدأ عليه شي — اتصلي بالعميل اليوم.' },
-  { key: 'docs', label: 'جمع المستندات', hint: 'اجمعي الناقص وجهّزي الملف.' },
-  { key: 'funders', label: 'عند الجهات', hint: 'الملف عند جهات التمويل — تابعي بالاتصال.' },
-  { key: 'approved', label: 'وافقت جهة', hint: 'باقي الصرف — تابعي موعده.' },
-  { key: 'funded', label: 'نزل التمويل', hint: 'اكتمل ✓' },
+  { key: 'received', short: 'استلام', label: 'استلام جديد', hint: 'دفع وما بدأ عليه شي — اتصلي بالعميل اليوم.' },
+  { key: 'docs', short: 'المستندات', label: 'جمع المستندات', hint: 'اجمعي الناقص وجهّزي الملف.' },
+  { key: 'funders', short: 'عند الجهات', label: 'عند الجهات', hint: 'الملف عند جهات التمويل — تابعي بالاتصال.' },
+  { key: 'approved', short: 'وافقت جهة', label: 'وافقت جهة', hint: 'باقي الصرف — تابعي موعده.' },
+  { key: 'funded', short: 'نزل التمويل', label: 'نزل التمويل', hint: 'اكتمل ✓' },
 ] as const
 // خدمات لا مخاطبة فيها (الجدوى، الحكم الائتماني…) مرحلتها أقصر
 const RAGHAD_OTHER = [
@@ -128,30 +128,52 @@ function DhaiBoard({ hot, files, me, reload }: { hot: Hot[]; files: File[]; me: 
   // منشأةٌ لها خدمتان (ملف تمويل + قوائم) تُعرض مرةً واحدة عند ضي — بخدمة التمويل
   const oneEach = Array.from(files.reduce((m, f) => { const o = m.get(f.company_id); if (!o || (!o.outreach && f.outreach)) m.set(f.company_id, f); return m }, new Map<string, File>()).values())
   const paid = [...oneEach].sort((a, b) => (Number(mine(b)) - Number(mine(a))) || (Number(a.done) - Number(b.done)) || String(b.paid_at || '').localeCompare(String(a.paid_at || '')))
+  // ★ «جديد» يُقسم بالعمر: من وصل في آخر ٧ أيام يُكلَّم اليوم وأحدثُه أولاً (أدفأ ما
+  //   يكون في ساعته الأولى)؛ والأقدم يُطوى تحت زرّ — كان يملأ الشاشة بمئة اسمٍ من يونيو.
+  const FRESH = 7
+  const fresh = by.new.filter(r => (days(r.at) ?? 99) <= FRESH).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+  const old = by.new.filter(r => (days(r.at) ?? 99) > FRESH)
+  const followDue = by.follow.filter(r => r.state !== 'waiting')
+  const followLater = by.follow.filter(r => r.state === 'waiting').sort((a, b) => String(a.next_action_at || '').localeCompare(String(b.next_action_at || '')))
   const counts: Record<string, number> = {
-    new: by.new.length, follow: by.follow.filter(r => r.state !== 'waiting').length,
+    new: by.new.length, follow: by.follow.length,
     ordered: by.ordered.length, transfer: by.transfer.length, paid: oneEach.filter(f => !f.done).length,
   }
-  const today = by.new.length + by.follow.filter(r => r.state !== 'waiting').length + by.ordered.filter(r => r.state !== 'waiting').length + by.transfer.length
-  const shown = step ? DHAI_STEPS.filter(s => s.key === step) : DHAI_STEPS
+  const today = by.transfer.length + by.ordered.filter(r => r.state !== 'waiting').length + followDue.length + fresh.length
+  const [showOld, setShowOld] = useState(false)
+  const [showLater, setShowLater] = useState(false)
+  const list = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
+  // الأقسام تُعرض بترتيب الأولوية — الأقرب للمال أولاً — والشريط فوقها بترتيب الرحلة
+  const ORDER = ['transfer', 'ordered', 'follow', 'new', 'paid']
+  const shown = (step ? DHAI_STEPS.filter(s => s.key === step) : [...DHAI_STEPS]).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
 
   return (
     <>
       <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>عملائي — من الباب إلى الدفع</h1>
       <p style={{ fontSize: 13, color: C.soft, margin: '0 0 14px', lineHeight: 1.8 }}>
-        عندك اليوم <b style={{ color: C.ink }}>{today}</b> عميل يحتاج منك خطوة. ابدئي من اليمين: الأقرب للدفع ينتظر أكثر.
+        عندك اليوم <b style={{ color: C.ink }}>{today}</b> عميل يحتاج منك خطوة — رتّبتهم لك من الأقرب للدفع، فابدئي من الأعلى.
       </p>
-      <Pipeline steps={DHAI_STEPS.map(s => ({ key: s.key, label: s.label, n: counts[s.key] }))} active={step} onPick={setStep} />
+      <Pipeline steps={DHAI_STEPS.map(s => ({ key: s.key, label: s.short, n: counts[s.key] }))} active={step} onPick={setStep} />
 
-      {shown.map(s => (
+      {shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
         <section key={s.key} style={{ marginTop: 22 }}>
           <SectionHead label={s.label} hint={s.hint} n={counts[s.key]} />
-          {s.key === 'new' && accounts > 0 && <div style={{ fontSize: 12, color: C.soft, marginBottom: 8 }}>و{accounts} حساباً بلا جوال (بريد فقط) — في القائمة الكاملة أسفل الصفحة.</div>}
           {s.key === 'paid' ? (
             paid.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{paid.map(f => <PaidCard key={f.request_id} f={f} readOnly mine={mine(f)} />)}</div>
-          ) : (by[s.key] || []).length === 0 ? <Empty /> : (
-            <div style={{ display: 'grid', gap: 9 }}>{by[s.key].slice(0, 60).map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
-          )}
+          ) : s.key === 'new' ? (
+            <>
+              {fresh.length > 0 ? list(fresh) : <p style={{ fontSize: 12.5, color: C.soft, margin: 0 }}>ما وصل أحد جديد في آخر أسبوع.</p>}
+              {old.length > 0 && <Toggle open={showOld} onClick={() => setShowOld(!showOld)} label={'أقدم من أسبوع ولم يُكلَّموا (' + old.length + ')'} />}
+              {showOld && list(old.slice(0, 80))}
+              {accounts > 0 && <div style={{ fontSize: 12, color: C.soft, marginTop: 8 }}>و{accounts} حساباً بلا جوال (بريد فقط) — في القائمة الكاملة أسفل الصفحة.</div>}
+            </>
+          ) : s.key === 'follow' ? (
+            <>
+              {followDue.length > 0 ? list(followDue) : <p style={{ fontSize: 12.5, color: C.soft, margin: 0 }}>لا معاودة مستحقة اليوم.</p>}
+              {followLater.length > 0 && <Toggle open={showLater} onClick={() => setShowLater(!showLater)} label={'مواعيد قادمة (' + followLater.length + ')'} />}
+              {showLater && list(followLater)}
+            </>
+          ) : list(by[s.key] || [])}
         </section>
       ))}
 
@@ -236,10 +258,11 @@ function RaghadBoard({ files, reload }: { files: File[]; reload: () => void }) {
       <p style={{ fontSize: 13, color: C.soft, margin: '0 0 14px', lineHeight: 1.8 }}>
         عندك <b style={{ color: C.ink }}>{files.filter(f => !f.done).length}</b> ملف مفتوح، منها <b style={{ color: C.red }}>{needToday}</b> يحتاج منك خطوة اليوم (جديد، أو واقف يومين فأكثر).
       </p>
-      <Pipeline steps={RAGHAD_STEPS.map(s => ({ key: s.key, label: s.label, n: counts[s.key] }))} active={step} onPick={setStep} />
+      <Pipeline steps={RAGHAD_STEPS.map(s => ({ key: s.key, label: s.short, n: counts[s.key] }))} active={step} onPick={setStep} />
 
       {shown.map(s => {
         const list = sortIdle(fin.filter(f => f.stage === s.key))
+        if (!step && list.length === 0) return null
         return (
           <section key={s.key} style={{ marginTop: 22 }}>
             <SectionHead label={s.label} hint={s.hint} n={list.length} />
@@ -268,9 +291,26 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
   const [presented, setPresented] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
-  const steps = f.outreach ? RAGHAD_STEPS.map(s => ({ key: s.key, label: s.label })) : RAGHAD_OTHER
+  const steps = f.outreach ? RAGHAD_STEPS.map(s => ({ key: s.key, label: s.short })) : RAGHAD_OTHER
   const at = Math.max(0, steps.findIndex(s => s.key === f.stage))
   const late = !f.done && !f.paused && f.idle_days >= 3
+  // ★ «وافقت جهة» و«نزل التمويل» من البطاقة نفسها — كانا في مكتب الطلبات وحده، فبقي
+  //   ملفٌّ وافق عليه الأهلي في خانة «عند الجهات» لأن الموافقة كُتبت ملاحظةً لا مرحلة.
+  const [ms, setMs] = useState<'' | 'approved' | 'booked'>('')
+  const [funder, setFunder] = useState('')
+  const [amount, setAmount] = useState('')
+  const [expected, setExpected] = useState('')
+  const saveMilestone = async () => {
+    setBusy(true); setMsg('')
+    const body = ms === 'approved'
+      ? { kind: 'log', id: f.request_id, milestone: 'approved', funder, amount, expected, done: 'وافقت ' + funder, status: 'in_follow_up' }
+      : { kind: 'log', id: f.request_id, milestone: 'booked', amount: amount || undefined, done: 'نزل التمويل', status: 'in_follow_up' }
+    const res = await fetch('/api/staff/desk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const j = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) { setMsg(j.error || 'لم يُسجَّل'); return }
+    setMs(''); setFunder(''); setAmount(''); setExpected(''); reload?.()
+  }
 
   const save = async () => {
     setBusy(true); setMsg('')
@@ -320,8 +360,27 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
         <>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
             {f.phone && <a href={'tel:' + f.phone} style={btn(false)}>📞 {f.owner || 'العميل'} — {f.phone}</a>}
-            <button onClick={() => setOpen(!open)} style={btn(true)}>سجّلي ما تم</button>
+            <button onClick={() => { setOpen(!open); setMs('') }} style={btn(true)}>سجّلي ما تم</button>
+            {f.outreach && (f.stage === 'funders' || f.stage === 'docs') && <button onClick={() => { setMs(ms === 'approved' ? '' : 'approved'); setOpen(false) }} style={btn(false)}>✅ وافقت جهة</button>}
+            {f.outreach && f.stage === 'approved' && <button onClick={() => { setMs(ms === 'booked' ? '' : 'booked'); setOpen(false) }} style={btn(false)}>🎉 نزل التمويل</button>}
           </div>
+          {ms && (
+            <div style={{ marginTop: 10, display: 'grid', gap: 7, background: '#F1F8F4', border: '1px solid #CFE6DA', borderRadius: 10, padding: 10 }}>
+              {ms === 'approved' ? (
+                <>
+                  <input value={funder} onChange={e => setFunder(e.target.value)} placeholder="اسم الجهة اللي وافقت" style={input} />
+                  <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ المعتمد (ريال)" style={input} />
+                  <label style={{ fontSize: 12, color: C.soft }}>موعد الصرف المتوقع: <input type="date" value={expected} onChange={e => setExpected(e.target.value)} style={{ ...input, width: 'auto', display: 'inline-block' }} /></label>
+                </>
+              ) : (
+                <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ اللي نزل (اتركيه فاضي إذا نفس المعتمد)" style={input} />
+              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button disabled={busy || (ms === 'approved' && (!funder.trim() || !amount.trim() || !expected))} onClick={saveMilestone} style={btn(true)}>{busy ? '…' : 'تأكيد'}</button>
+                {msg && <span style={{ color: '#B4453C', fontSize: 12, fontWeight: 800 }}>{msg}</span>}
+              </div>
+            </div>
+          )}
           {open && (
             <div style={{ marginTop: 10, display: 'grid', gap: 7, background: C.bg, borderRadius: 10, padding: 10 }}>
               <input value={done} onChange={e => setDone(e.target.value)} placeholder="وش صار اليوم؟ (مثال: استلمت كشف الحساب)" style={input} />
@@ -343,15 +402,15 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
 // ═══════════════════════════ مشترك ═══════════════════════════
 function Pipeline({ steps, active, onPick }: { steps: { key: string; label: string; n: number }[]; active: string; onPick: (k: string) => void }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
       {steps.map((s, i) => {
         const on = active === s.key
         return (
           <button key={s.key} onClick={() => onPick(on ? '' : s.key)}
-            style={{ textAlign: 'right', border: '1.5px solid ' + (on ? C.ink : C.line), background: on ? C.ink : '#fff', color: on ? '#fff' : C.ink, borderRadius: 12, padding: '10px 12px', cursor: 'pointer', fontFamily: 'Cairo' }}>
-            <div style={{ fontSize: 10.5, opacity: 0.7, fontWeight: 700 }}>{i + 1}</div>
-            <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.2 }}>{s.n}</div>
-            <div style={{ fontSize: 12, fontWeight: 800 }}>{s.label}</div>
+            style={{ textAlign: 'right', border: '1.5px solid ' + (on ? C.ink : C.line), background: on ? C.ink : '#fff', color: on ? '#fff' : C.ink, borderRadius: 12, padding: '9px 8px', cursor: 'pointer', fontFamily: 'Cairo', minWidth: 0 }}>
+            <div style={{ fontSize: 10, opacity: 0.6, fontWeight: 700 }}>{i + 1}</div>
+            <div style={{ fontSize: 21, fontWeight: 900, lineHeight: 1.2 }}>{s.n}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.4 }}>{s.label}</div>
           </button>
         )
       })}
@@ -365,6 +424,9 @@ function SectionHead({ label, hint, n }: { label: string; hint: string; n: numbe
       <div style={{ fontSize: 12, color: C.soft }}>{hint}</div>
     </div>
   )
+}
+function Toggle({ open, onClick, label }: { open: boolean; onClick: () => void; label: string }) {
+  return <button onClick={onClick} style={{ marginTop: 10, background: 'transparent', border: '1px dashed ' + C.line, color: C.soft, borderRadius: 999, padding: '7px 16px', fontFamily: 'Cairo', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{open ? '▲ إخفاء' : '▼'} {label}</button>
 }
 const Empty = () => <p style={{ fontSize: 12.5, color: C.soft, margin: 0 }}>لا أحد هنا الآن.</p>
 function MoreLinks({ links }: { links: [string, string][] }) {
