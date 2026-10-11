@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { priceFor } from '@/lib/servicePricing';
-import { FEASIBILITY_QUICK } from '@/lib/servicePricing';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { studyWeight } from '@/lib/leadWeight';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
@@ -11,6 +9,13 @@ import { tiktokEvent } from '@/lib/tiktokPixel';
 
 // مدخل دراسة الجدوى — الصفحة التي ينزل عليها إعلان «دراسة جدوى».
 //
+// ★ ١١ أكتوبر (المالك): لا سعر ولا ٩٩٠ في هذه الصفحة. «أبي العميل يدخل وهو يشوف
+//   الملايين، ويدفع لو أقول له ٣٠ ألف». فالصفحة تسأل أربعة أسئلة، وتُريه الأبواب
+//   التي تموّل مشروعاً مثل مشروعه، وتأخذ اسمه وجواله — والسعر في العرض بعد المكالمة.
+//   وسؤال «كم تساهم من جيبك» يكشف الجادّ: الممول يطلب مساهمةً من صاحب المشروع.
+//   والملخّص يُكتب سطراً أول في الطلب يبدأ بـ«⭐» فيظهر لضي في صفّها قبل أن تتصل.
+//
+// (ما تحته تاريخ الصفحة قبل ١١ أكتوبر:)
 // كان الإعلان ينزل على صفحة الأسعار: صاحب فكرةٍ يُقابَل بقائمةٍ فيها ٩٩٠
 // و٦٬٥٠٠ و١٢٬٠٠٠ و٢٢٬٠٠٠ ولا يعرف أيُّها رقمُه. سعرٌ قبل تشخيص، فينصرف.
 // وهذه الصفحة تسأل سؤالين يقدر عليهما صاحب الفكرة — ولا تسأله عن قوائم
@@ -33,23 +38,55 @@ const LINE = '#EAF2EE';
 const SERVICE = 'دراسة الجدوى الاقتصادية';   // المفتاح المخزَّن — المعروض «الاقتصادية والائتمانية»
 
 type Kind = 'new' | 'expand' | 'working';
+type Need = 'funder' | 'investor' | 'both';
+type Sector = 'industry' | 'agri' | 'tourism' | 'tech' | 'health' | 'trade';
 
 const KINDS: { key: Kind; label: string; hint: string }[] = [
-  { key: 'new', label: 'مشروع جديد لم يبدأ', hint: 'فكرة أو مشروع تحت التأسيس' },
+  { key: 'new', label: 'فكرة أو مشروع جديد', hint: 'لم يبدأ بعد، أو تحت التأسيس' },
   { key: 'expand', label: 'توسعة لمنشأة قائمة', hint: 'فرع · خط إنتاج · معدات · موقع جديد' },
-  { key: 'working', label: 'رأس مال عامل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
+  { key: 'working', label: 'سيولة تشغيل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
 ];
 
-// الشرائح هي شرائح التسعير نفسها. والقيمة الممثِّلة تقع داخل شريحتها
-// فتُرجع priceFor سعرها بلا أن يكتب الزائر رقماً دقيقاً لا يعرفه بعد.
-// الأرقام بالخانات اللاتينية كما تُعرض الأسعار في المنصة كلها — ولا يصحّ أن
-// يقرأ الزائر «٢ مليون» ثم يرى تحتها «6,500 ريال» بخطٍّ آخر.
-const SIZES: { label: string; value: number }[] = [
-  { label: 'أقل من 2 مليون ريال', value: 1_000_000 },
-  { label: '2 إلى 10 مليون', value: 5_000_000 },
-  { label: '10 إلى 50 مليون', value: 25_000_000 },
-  { label: 'أكثر من 50 مليون', value: 100_000_000 },
+const SIZES: { label: string; short: string; value: number }[] = [
+  { label: 'أقل من 2 مليون ريال', short: 'أقل من 2 مليون', value: 1_000_000 },
+  { label: '2 إلى 10 مليون', short: '2–10 مليون', value: 5_000_000 },
+  { label: '10 إلى 50 مليون', short: '10–50 مليون', value: 25_000_000 },
+  { label: 'أكثر من 50 مليون', short: 'أكثر من 50 مليون', value: 100_000_000 },
 ];
+
+const SECTORS: { key: Sector; label: string }[] = [
+  { key: 'industry', label: 'صناعي أو مصنع' },
+  { key: 'agri', label: 'زراعي أو غذائي' },
+  { key: 'tourism', label: 'سياحة وضيافة وترفيه' },
+  { key: 'tech', label: 'تقنية أو منصة رقمية' },
+  { key: 'health', label: 'صحي أو تعليمي' },
+  { key: 'trade', label: 'تجاري أو خدمي' },
+];
+
+const NEEDS: { key: Need; label: string; t: string }[] = [
+  { key: 'funder', label: 'جهة تمويل', t: 'جهة داعمة' },
+  { key: 'investor', label: 'مستثمر أو شريك', t: 'شريك يدخل معك' },
+  { key: 'both', label: 'الاثنين — نشوف الأنسب', t: 'الاثنين — نشوف الأنسب' },
+];
+
+// مساهمة صاحب المشروع — أصدق سؤال عن الجدّية
+const SHARES: { label: string; score: number }[] = [
+  { label: 'ما عندي مساهمة بعد', score: 0 },
+  { label: 'أقل من 20٪ من الكلفة', score: 1 },
+  { label: 'من 20٪ إلى 30٪', score: 2 },
+  { label: 'أكثر من 30٪', score: 3 },
+];
+
+// الأبواب التي تموّل مشروعاً مثل مشروعه — جهاتٌ حكومية وخاصة معروفة بالاسم.
+// لا أرقام ولا وعود: الاسم وما يموّله، والقرار لها.
+const DOORS: Record<Sector, string[]> = {
+  industry: ['صندوق التنمية الصناعية السعودي', 'برنامج كفالة لتمويل المنشآت', 'شركات التمويل المرخّصة والبنوك'],
+  agri: ['صندوق التنمية الزراعية', 'برنامج كفالة لتمويل المنشآت', 'شركات التمويل المرخّصة والبنوك'],
+  tourism: ['صندوق التنمية السياحي', 'برنامج كفالة لتمويل المنشآت', 'شركات التمويل المرخّصة والبنوك'],
+  tech: ['برامج منشآت للمنشآت الناشئة', 'المستثمرون الجريئون وصناديق رأس المال الجريء', 'شركات التمويل المرخّصة'],
+  health: ['بنك التنمية الاجتماعية', 'برنامج كفالة لتمويل المنشآت', 'شركات التمويل المرخّصة والبنوك'],
+  trade: ['بنك التنمية الاجتماعية', 'برنامج كفالة لتمويل المنشآت', 'شركات التمويل المرخّصة والبنوك'],
+};
 
 // إخفاء المصيدة بالقصّ لا بـleft:-9999px: الثانية في صفحةٍ RTL تمدّ عرض
 // الصفحة آلاف البكسلات فتُسحب جانباً إلى فراغ على الجوّال.
@@ -65,29 +102,44 @@ const inputCls: React.CSSProperties = {
   background: '#fff', boxSizing: 'border-box',
 };
 
-function choiceStyle(active: boolean): React.CSSProperties {
+function choiceStyle(active: boolean, compact = false): React.CSSProperties {
   return {
     width: '100%', textAlign: 'right', cursor: 'pointer',
     background: active ? '#F2F8F5' : '#fff',
     border: '1.5px solid ' + (active ? GREEN : '#D9E5DF'),
-    borderRadius: 13, padding: '13px 16px', marginBottom: 10,
+    borderRadius: 13, padding: compact ? '11px 14px' : '13px 16px', marginBottom: compact ? 0 : 10,
     fontFamily: 'Tajawal, Cairo, sans-serif',
   };
 }
 
+const grid2: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(128px,1fr))', gap: 8 };
+
 // ★ نسخة تيك توك (`/t/jadwa`): رفضت المنصة الصفحة «فرصةً مالية مضلّلة»، فالنصّ
 //   المرئي بإطار «استشارات أعمال — دراسة جدوى احترافية» وبلا مفردات المال
-//   الممنوعة، ولا رقم ولا رابط يخرج من الصفحة. والنموذج والحفظ والتسعير واحد.
+//   الممنوعة، ولا رقم ولا رابط يخرج من الصفحة. والنموذج والحفظ واحد.
 export const TIKTOK_H1 = 'دراسة جدوى احترافية لمشروعك';
-const TIKTOK_LEAD = 'مكتب استشارات أعمال. سؤالان عن مشروعك، ويظهر سعر دراستك أنت — لا قائمة أسعار.';
+const TIKTOK_LEAD = 'مكتب استشارات أعمال. خمسة أسئلة سريعة عن مشروعك، ويتصل بك فريقنا اليوم.';
 export const TIKTOK_FOOTER = 'مكتب استشارات أعمال؛ لا نقدّم تمويلاً ولا نعد بنتيجة';
 const T_KIND: Record<string, { label: string; hint: string }> = {
   working: { label: 'سيولة تشغيل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
 };
 
+function Q({ n, title, hint, children }: { n: string; title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 15, marginBottom: hint ? 4 : 10 }}>{n} · {title}</label>
+      {hint && <div style={{ color: '#9DB3AB', fontWeight: 700, fontSize: 12.5, marginBottom: 10 }}>{hint}</div>}
+      {children}
+    </div>
+  );
+}
+
 export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
   const [kind, setKind] = useState<Kind | null>(null);
   const [sizeIdx, setSizeIdx] = useState<number | null>(null);
+  const [sector, setSector] = useState<Sector | null>(null);
+  const [need, setNeed] = useState<Need | null>(null);
+  const [shareIdx, setShareIdx] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
@@ -104,19 +156,25 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
     setSrc(currentSource());
   }, []);
 
+  const project = kind !== null && kind !== 'working';
   const size = sizeIdx === null ? null : SIZES[sizeIdx];
-  const full = size ? priceFor(SERVICE, size.value) : null;
-  const priced = kind !== null && kind !== 'working' && size !== null;
+  const share = shareIdx === null ? null : SHARES[shareIdx];
+  const answered = project && size !== null && sector !== null && need !== null && share !== null;
+  const doors = sector ? DOORS[sector] : [];
+  const showInvestors = need === 'investor' || need === 'both';
+  // الجدّية: الحجم والمساهمة — تُكتب في الطلب، ويُرسل وزنها للإعلان فيتعلّم من يجلب
+  const serious = (sizeIdx ?? 0) >= 1 && (share?.score ?? 0) >= 2;
 
   const submit = async () => {
     if (sent.current) return;
     setErr(''); setBusy(true);
     const kindLabel = KINDS.find(k => k.key === kind)?.label || '';
-    const note =
-      'من مدخل دراسة الجدوى.\n'
-      + 'نوع المشروع: ' + kindLabel + '\n'
-      + 'حجم الاستثمار التقريبي: ' + (size?.label || '') + '\n'
-      + 'الشريحة المعروضة له: ' + (full?.label || '');
+    const summary = '⭐ ' + (serious ? 'جادّ · ' : '') + kindLabel + ' · ' + (size?.short || '') + ' · '
+      + (SECTORS.find(x => x.key === sector)?.label || '') + ' · يبحث عن ' + (NEEDS.find(x => x.key === need)?.label || '')
+      + ' · مساهمته: ' + (share?.label || '');
+    const note = summary + '\n'
+      + 'من مدخل دراسة الجدوى.\n'
+      + 'الأبواب المعروضة له: ' + doors.join('، ') + (showInvestors ? '، ومستثمرون في قطاعه' : '');
     try {
       const r = await fetch('/api/services/inquiry', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -127,7 +185,11 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
-      if (!sent.current && !d?.already) { sent.current = true; fireConversion(LEAD_SUBMITTED, { phone }, { value: studyWeight(sizeIdx ?? 0) }); tiktokEvent('Contact'); }
+      if (!sent.current && !d?.already) {
+        sent.current = true;
+        const w = studyWeight(sizeIdx ?? 0) * (share?.score === 0 ? 0.5 : share?.score === 3 ? 1.5 : 1);
+        fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('Contact');
+      }
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');
@@ -154,26 +216,26 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '38px 20px 70px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '34px 20px 70px' }}>
 
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ color: GOLD, fontWeight: 900, fontSize: 12, letterSpacing: '.12em', marginBottom: 8 }}>
             {tiktok ? 'الدكتور عبدالحكيم المرضي · استشارات أعمال' : <>الدكتور عبدالحكيم المرضي · مستشار مالي معتمد — <span style={{ whiteSpace: 'nowrap' }}>ترخيص رقم FL-457927015</span></>}
           </div>
-          <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px' }}>
-            {tiktok ? TIKTOK_H1 : 'دراسة جدوى تُقرأ عند جهة التمويل'}
+          <h1 style={{ color: GREEN, fontSize: 27, fontWeight: 900, margin: '0 0 8px', lineHeight: 1.5 }}>
+            {tiktok ? TIKTOK_H1 : 'دراسة جدوى تقنع الممول والمستثمر'}
           </h1>
-          <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
-            {tiktok ? TIKTOK_LEAD : 'سؤالان، ويظهر سعرك أنت — لا قائمة أسعار.'}
+          <p style={{ color: MUTED, fontSize: 14.5, fontWeight: 700, lineHeight: 1.95, margin: 0 }}>
+            {tiktok ? TIKTOK_LEAD : <>عندك فكرة أو توسعة؟ <b style={{ color: GREEN }}>الممول ما يموّل فكرتك… يموّل رقمك.</b> خمسة أسئلة سريعة، ونقول لك مَن يموّل مشروعاً مثل مشروعك — ونوصّلك له.</>}
           </p>
         </div>
 
         {done ? (
           <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
-            <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>وصلنا طلبك</div>
+            <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>وصلنا مشروعك</div>
             <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: '0 0 20px' }}>
-              نتواصل معك على <b style={{ color: GREEN }}>{phone}</b> اليوم أو صباح الغد على أبعد تقدير،
-              ومعنا قراءةٌ أولية لمشروعك.{tiktok ? '' : ' وإن كان الأمر عاجلاً فاتصل على 0570749196.'}
+              يتصل بك فريقنا على <b style={{ color: GREEN }}>{phone}</b> اليوم — أو صباح يوم العمل التالي إن وصلنا بعد الدوام —
+              ومعنا قراءةٌ أولية لمشروعك والأبواب المناسبة له.{tiktok ? '' : ' وإن كان الأمر عاجلاً فاتصل على 0570749196.'}
             </p>
             {!tiktok && (
             <Link href="/services" style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '12px 30px', borderRadius: 999, fontWeight: 900, fontSize: 14, textDecoration: 'none' }}>
@@ -184,114 +246,102 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         ) : (
           <div style={{ background: '#fff', border: '1.5px solid ' + LINE, borderRadius: 18, padding: '26px 24px' }}>
 
-            {/* ١ — نوع المشروع */}
-            <div style={{ marginBottom: 22 }}>
-              <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 15, marginBottom: 10 }}>
-                ١ · مشروعك أيّ هذه؟
-              </label>
+            <Q n="١" title="مشروعك أيّ هذه؟">
               {KINDS.map((k) => (
                 <button key={k.key} type="button" onClick={() => setKind(k.key)} style={choiceStyle(kind === k.key)}>
                   <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{(tiktok && T_KIND[k.key]?.label) || k.label}</div>
                   <div style={{ color: '#9DB3AB', fontWeight: 700, fontSize: 12.5, marginTop: 3 }}>{(tiktok && T_KIND[k.key]?.hint) || k.hint}</div>
                 </button>
               ))}
-            </div>
+            </Q>
 
             {/* الصرف الصادق: من لا مشروع له لا يُباع دراسة */}
-            {kind === 'working' && tiktok && (
+            {kind === 'working' && (
               <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '16px 18px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 700, lineHeight: 1.95 }}>
-                هنا نقول لك الحقيقة بدل أن نبيعك: <b>دراسة الجدوى ليست مسارك.</b> سيولة التشغيل وسداد
+                هنا نقول لك الحقيقة بدل أن نبيعك: <b>دراسة الجدوى ليست مسارك.</b> {tiktok ? 'سيولة التشغيل' : 'رأس المال العامل'} وسداد
                 الالتزامات لا مشروع فيهما يُدرس — والأنفع لك أن تبدأ بتقييم جاهزية منشأتك وملفها.
                 <div style={{ marginTop: 14 }}>
-                  <Link href="/t/test" style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '11px 24px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
-                    ابدأ بالتقييم المجاني — 60 ثانية
-                  </Link>
-                </div>
-              </div>
-            )}
-            {kind === 'working' && !tiktok && (
-              <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '16px 18px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 700, lineHeight: 1.95 }}>
-                هنا نقول لك الحقيقة بدل أن نبيعك: <b>دراسة الجدوى ليست مسارك.</b> رأس المال العامل
-                وسداد الالتزامات لا مشروع فيهما يُدرس — والدراسة هنا تأخذ من وقتك شهراً ومن مالك
-                مبلغاً، وأنت أقرب إلى التمويل بدونها.
-                <div style={{ marginTop: 14 }}>
-                  <Link href="/test" style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '11px 24px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
+                  <Link href={tiktok ? '/t/test' : '/test'} style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '11px 24px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
                     ابدأ بالتقييم المجاني — 60 ثانية
                   </Link>
                 </div>
               </div>
             )}
 
-            {/* ٢ — حجم الاستثمار */}
-            {kind !== null && kind !== 'working' && (
-              <div style={{ marginBottom: 22 }}>
-                <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 15, marginBottom: 4 }}>
-                  {tiktok ? '٢ · كلفة المشروع التقريبية' : '٢ · حجم الاستثمار التقريبي'}
-                </label>
-                <div style={{ color: '#9DB3AB', fontWeight: 700, fontSize: 12.5, marginBottom: 10 }}>
-                  {tiktok ? 'تقديرٌ يكفي — كامل ما سيُصرف على المشروع.' : 'تقديرٌ يكفي — كامل ما سيُصرف على المشروع، لا المبلغ المطلوب تمويله وحده.'}
+            {project && (
+              <Q n="٢" title={tiktok ? 'كلفة المشروع التقريبية' : 'حجم الاستثمار التقريبي'} hint="تقديرٌ يكفي — كامل ما سيُصرف على المشروع.">
+                <div style={grid2}>
+                  {SIZES.map((s, i) => (
+                    <button key={s.label} type="button" onClick={() => setSizeIdx(i)} style={choiceStyle(sizeIdx === i, true)}>
+                      <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{s.label}</div>
+                    </button>
+                  ))}
                 </div>
-                {SIZES.map((s, i) => (
-                  <button key={s.label} type="button" onClick={() => setSizeIdx(i)} style={choiceStyle(sizeIdx === i)}>
-                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{s.label}</div>
-                  </button>
-                ))}
+              </Q>
+            )}
+
+            {project && size && (
+              <Q n="٣" title="قطاع المشروع">
+                <div style={grid2}>
+                  {SECTORS.map((x) => (
+                    <button key={x.key} type="button" onClick={() => setSector(x.key)} style={choiceStyle(sector === x.key, true)}>
+                      <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{x.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </Q>
+            )}
+
+            {project && size && sector && (
+              <Q n="٤" title="مَن تبحث عنه؟">
+                <div style={grid2}>
+                  {NEEDS.map((x) => (
+                    <button key={x.key} type="button" onClick={() => setNeed(x.key)} style={choiceStyle(need === x.key, true)}>
+                      <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{tiktok ? x.t : x.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </Q>
+            )}
+
+            {project && size && sector && need && (
+              <Q n="٥" title="كم تساهم من جيبك في المشروع؟" hint={tiktok ? 'نسبة تقريبية من كلفة المشروع.' : 'أغلب الممولين يطلبون مساهمةً من صاحب المشروع — فهذا أول ما يُسأل عنه.'}>
+                <div style={grid2}>
+                  {SHARES.map((x, i) => (
+                    <button key={x.label} type="button" onClick={() => setShareIdx(i)} style={choiceStyle(shareIdx === i, true)}>
+                      <div style={{ color: GREEN, fontWeight: 900, fontSize: 14 }}>{x.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </Q>
+            )}
+
+            {/* الطُّعم: الأبواب بأسمائها — يرى الملايين قبل أن يُسأل عن شيء */}
+            {answered && (
+              <div style={{ border: '1.5px solid ' + GOLD, background: '#FFFCF3', borderRadius: 14, padding: '18px 20px', marginBottom: 22 }}>
+                <div style={{ color: GREEN, fontWeight: 900, fontSize: 15.5, marginBottom: 4 }}>
+                  {tiktok ? 'جهاتٌ تدعم مشروعاً مثل مشروعك' : 'مشروعٌ بحجم ' + size?.short + ' في قطاعك — هذه أبوابه:'}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  {doors.map((d) => (
+                    <div key={d} style={{ color: GREEN, fontWeight: 800, fontSize: 14, lineHeight: 2.1 }}>✦ {d}</div>
+                  ))}
+                  {showInvestors && <div style={{ color: GREEN, fontWeight: 800, fontSize: 14, lineHeight: 2.1 }}>✦ مستثمرون وشركاء يدخلون في قطاعك</div>}
+                </div>
+                <div style={{ color: MUTED, fontWeight: 700, fontSize: 13, lineHeight: 1.95, marginTop: 10, borderTop: '1px solid #EFE6CC', paddingTop: 10 }}>
+                  {tiktok
+                    ? 'وكلها تسأل السؤال نفسه: هل الأرقام مقنعة؟ دراستك هي الجواب — ونحن نكتبها ونعرضها عليهم.'
+                    : <>وكلّها تسأل السؤال نفسه قبل أي شيء: <b style={{ color: GREEN }}>من وين بترجع الفلوس؟ ومتى؟</b> دراسة الجدوى الائتمانية والاقتصادية هي الجواب — نكتبها بلغتهم، ونحدد الأنسب لك منهم، ونعرض مشروعك عليهم.</>}
+                </div>
+                {share?.score === 0 && (
+                  <div style={{ color: '#8A6D1F', fontWeight: 800, fontSize: 12.5, lineHeight: 1.9, marginTop: 10 }}>
+                    {tiktok ? 'وبلا مساهمة منك، الشريك الذي يدخل معك هو الطريق الأقرب.' : 'وبلا مساهمة منك، المستثمر أو الشريك هو الطريق الأقرب — والدراسة هي ما يقنعه.'}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* السعر — يظهر فور الإجابتين */}
-            {priced && (
-              <div style={{ border: '1.5px solid #BFE0D3', background: '#F4FAF7', borderRadius: 14, padding: '18px 20px', marginBottom: 22 }}>
-                <div style={{ color: GREEN, fontWeight: 900, fontSize: 15, marginBottom: 12 }}>سعرك أنت</div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', marginBottom: 6 }}>
-                  <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{tiktok ? 'القراءة السريعة للمشروع' : 'الفحص الائتماني للمشروع'}</div>
-                  <div style={{ color: GOLD, fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap' }}>{(FEASIBILITY_QUICK() ?? 0).toLocaleString('en-US')} ريال</div>
-                </div>
-                {tiktok ? (
-                <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9, marginBottom: 14 }}>
-                  خلال ساعات: صفحة القرار والمؤشرات، قائمة الدخل والتدفق النقدي لخمس سنوات، سيناريوهات
-                  الضغط، وحدود الأمان. اعرف أين يقف مشروعك قبل أن تدفع ثمن دراسة كاملة —
-                  <b style={{ color: GREEN }}> وقيمتها تُخصم منها بالكامل خلال شهر.</b>
-                </div>
-                ) : (
-                <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9, marginBottom: 14 }}>
-                  خلال ساعات: صفحة القرار والمؤشرات، قائمة الدخل والتدفق لخمس سنوات، تغطية خدمة الدين،
-                  سيناريوهات الضغط، وحدود الأمان. اعرف هل مشروعك قابل للتمويل قبل أن تدفع ثمن دراسة كاملة —
-                  <b style={{ color: GREEN }}> وقيمته تُخصم منها بالكامل خلال شهر.</b>
-                </div>
-                )}
-
-                <div style={{ borderTop: '1px solid #DCEDE5', paddingTop: 13 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', marginBottom: 6 }}>
-                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{tiktok ? 'دراسة الجدوى الكاملة' : 'الدراسة الاقتصادية والائتمانية الكاملة'}</div>
-                    <div style={{ color: GREEN, fontWeight: 900, fontSize: 16, whiteSpace: 'nowrap' }}>{full?.label}</div>
-                  </div>
-                  {tiktok ? (
-                  <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9 }}>
-                    ٣ إلى ٧ أيام عمل: كل ما في القراءة السريعة، ومعه دراسة السوق والمنافسة بمصادرها،
-                    والدراسة الفنية والمخاطر، والنموذج المالي الكامل.
-                  </div>
-                  ) : (
-                  <div style={{ color: MUTED, fontWeight: 700, fontSize: 12.8, lineHeight: 1.9 }}>
-                    ٣ إلى ٧ أيام عمل: كل ما في الفحص، ومعه دراسة السوق والمنافسة بمصادرها، والدراسة الفنية
-                    والمخاطر، وجدول الجهات المرشّحة بفجواتها وطرق التقديم، وأسئلة لجنة الائتمان بإجاباتها.
-                  </div>
-                  )}
-                </div>
-
-                {/* من تجاوز خمسين مليوناً لا رقم معلن له — والصدق أولى من رقمٍ مخترع */}
-                {full?.amount === null && (
-                  <div style={{ color: '#8A6D1F', fontWeight: 700, fontSize: 12.5, lineHeight: 1.9, marginTop: 12 }}>
-                    مشروعٌ بهذا الحجم يُسعَّر بعد جلسة تحديد نطاق مجانية — لأن الفرق بين مشروعٍ بستين
-                    مليوناً وآخر بثلاثمئة ليس فرق صفحات.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ٣ — الاسم والجوال */}
-            {priced && (
+            {answered && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 14, marginBottom: 14 }}>
                   <div>
@@ -330,11 +380,11 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
                     fontFamily: 'Tajawal, Cairo, sans-serif',
                     opacity: (busy || name.trim().length < 2 || phone.trim().length < 9) ? 0.5 : 1,
                   }}>
-                  {busy ? 'لحظة…' : tiktok ? 'اطلب القراءة السريعة للمشروع' : 'اطلب الفحص الائتماني للمشروع'}
+                  {busy ? 'لحظة…' : 'سجّل مشروعك — ونتصل بك اليوم'}
                 </button>
 
                 <p style={{ color: '#9DB3AB', fontSize: 11.8, fontWeight: 700, lineHeight: 1.9, textAlign: 'center', margin: '14px 0 0' }}>
-                  لا نطلب منك ريالاً قبل أن نتكلّم معك ونتأكد أن الخدمة تخصّك — وإن لم تكن تخصّك
+                  لا نطلب منك ريالاً قبل أن نتكلّم معك ونتأكد أن الدراسة تخصّك — وإن لم تكن تخصّك
                   قلنا لك ذلك ولم نبعك إياها.
                 </p>
               </>

@@ -10,8 +10,8 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SERVICES, TRACK_LABEL } from '@/lib/serviceSuggestion';
 import { COMMISSION_SERVICES, needsSignedContract } from '@/lib/contracts';
-import { priceFor } from '@/lib/servicePricing';
-import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
+import { priceFor, liveOptions, isSplitFee, BALANCE_KEY } from '@/lib/servicePricing';
+import { arNum, FUNDING_FULL } from '@/lib/servicePricing';
 import { CATALOG, SERVICE_COUNT, displayName, canonicalTitle, commercialFor, TRACKS_OVERRIDE, needsDiagnosis } from '@/lib/serviceCatalog';
 import { MAIN_SERVICES } from '@/components/MainServices';
 import type { Lures } from '@/lib/lures';
@@ -59,6 +59,7 @@ export default function GoalPage() {
   // وثائق يُسلّمها المكتب خارج الخدمات المدفوعة — قراءة أولية أو ملاحظة.
   // تُعرض أعلى الشاشة لأنها الشيء الوحيد الذي كُتب له هو بيده.
   const [docs, setDocs] = useState<{ id: string; title: string; created_at: string }[]>([]);
+  const [balanceDue, setBalanceDue] = useState<Record<string, { id: string; price: number }>>({});
   const [serviceRequests, setServiceRequests] = useState<Record<string, { id: string; status: string; price: number | null; deliverable: string | null; optionKey?: string | null; deliveredAt?: string | null }>>({});
   const [clientContracts, setClientContracts] = useState<Record<string, { id: string; status: string; body: string; signedUrl: string | null }>>({});
   // وثيقة كل طلبٍ بعينه (عقد أو سند خدمة) — بها يُفتح الدفع أو يُقفل
@@ -194,7 +195,11 @@ export default function GoalPage() {
       const reqMap: Record<string, { id: string; status: string; price: number | null; deliverable: string | null; optionKey?: string | null; deliveredAt?: string | null }> = {};
       // العناوين القديمة تُردّ إلى عنوانها الحالي حتى يظل طلب العميل ظاهراً بعد دمج الخدمات
       // المحتوى المُسلَّم لا يُقرأ هنا — يُطلب من الخادم عند الطباعة، بعد التحقق من الحالة
-      for (const r of (reqs || [])) { const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null, optionKey: r.option_key ?? null, deliveredAt: r.delivered_at ?? null }; }
+      // ★ الدفعة الثانية (خيار balance) لا تحلّ محلّ طلب الخدمة في بطاقتها — تُعرض شريطاً فوقها
+      const due: Record<string, { id: string; price: number }> = {};
+      for (const r of (reqs || [])) if (r.option_key === BALANCE_KEY && r.status === 'priced' && Number(r.price) > 0) { const k = canonicalTitle(r.service_title); if (!due[k]) due[k] = { id: r.id, price: Number(r.price) }; }
+      setBalanceDue(due);
+      for (const r of (reqs || [])) { if (r.option_key === BALANCE_KEY) continue; const key = canonicalTitle(r.service_title); if (!reqMap[key]) reqMap[key] = { id: r.id, status: r.status, price: r.price, deliverable: null, optionKey: r.option_key ?? null, deliveredAt: r.delivered_at ?? null }; }
       setServiceRequests(reqMap);
       setReqsLoaded(true);
       const { data: ctrs } = await supabase
@@ -342,7 +347,7 @@ export default function GoalPage() {
     setOrderFor(title);
     setOrderInvest('');
     setOrderKind('new');
-    setOrderOption(c?.options?.[0]?.key || '');
+    setOrderOption(liveOptions(c)[0]?.key || '');
   };
 
   const confirmOrder = async (category: string) => {
@@ -544,45 +549,20 @@ export default function GoalPage() {
                   <div style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14.5, marginBottom: 6 }}>
                     ويبقى سؤالان: مَن هم؟ وكيف تدخل عليهم؟
                   </div>
+                  {/* ★ ١١ أكتوبر (المالك): مدخل الـ٩٩٠ أُوقف — «يرخّص الخدمة ويجعل العميل يدفع مرتين».
+                      فالباب واحد: الملف بقيمته، والأسماء والشروط داخله. */}
                   <p style={{ color: '#3A4D47', fontSize: 12.8, lineHeight: 1.9, margin: '0 0 12px' }}>
-                    أسماء هذه الجهات وشروط كل واحدة وما ينقصك عندها — يكشفها
-                    <b> الحكم الائتماني لمنشأتك</b>. أما بناء الملف وعرضه عليها بتكليف منك
-                    والتفاوض حتى القرار، فهو <b>تجهيز ملف التمويل</b>.
+                    أسماء هذه الجهات وشروط كل واحدة وما ينقصك عندها، وبناء ملفك وعرضه عليها بتكليفٍ منك
+                    والتفاوض حتى القرار — كلها في <b>تجهيز الملف التمويلي والمخاطبة</b>.
                   </p>
 
-                  <div style={{ display: 'grid', gap: 10 }}>
-                    <div style={{ border: '1px solid #E4EFEA', borderRadius: 12, padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>الحكم الائتماني لمنشأتك</span>
-                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>{arNum(FUNDING_QUICK())} ر.س</span>
-                      </div>
-                      <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
-                        الجهات بأسمائها · شروط كل واحدة · ما ينقصك عندها · طريقة التقديم — خلال ساعات
-                      </div>
+                  <div style={{ border: '1.5px solid #C9A84C', background: '#FFFDF5', borderRadius: 12, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                      <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>تجهيز الملف التمويلي والمخاطبة</span>
+                      <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>{arNum(FUNDING_FULL())} ر.س</span>
                     </div>
-
-                    <div style={{ border: '1.5px solid #C9A84C', background: '#FFFDF5', borderRadius: 12, padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-                        <span style={{ color: '#1A3D34', fontWeight: 900, fontSize: 13.5 }}>تجهيز ملف التمويل والمخاطبة</span>
-                        <span style={{ color: '#1A7A5A', fontWeight: 900, fontSize: 14 }}>{arNum(FUNDING_FULL())} ر.س</span>
-                      </div>
-                      <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
-                        نبني ملفك بالعربية والإنجليزية، ونعرضه على الجهات بتكليف خطّي منك، ونتابع ونشرح الشروط حتى قرار نهائي.
-                        <b style={{ color: '#8A6D1F' }}> ويُخصم منها الحكم الائتماني إن كنت دفعته خلال ٣٠ يوماً.</b>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* الترجيح الصادق: من يبدأ صغيراً ثم يكمل يدفع نفس المبلغ.
-                      فالسؤال لم يعد «كم أدفع؟» بل «هل أكتفي بأن أعرف؟». */}
-                  <div style={{ background: '#F1F8F5', borderInlineStart: '3px solid #1A6B55', borderRadius: '0 10px 10px 0', padding: '10px 13px', marginTop: 12 }}>
-                    <div style={{ color: '#1A6B55', fontWeight: 900, fontSize: 12.5, marginBottom: 3 }}>
-                      وأيّهما تختار؟
-                    </div>
-                    <div style={{ color: '#3A4D47', fontSize: 12, lineHeight: 1.9 }}>
-                      إن بدأت بالحكم الائتماني ثم أكملت خلال ٣٠ يوماً، <b>دفعتَ {arNum(FUNDING_FULL())} لا أكثر</b> — الحكم لا يكلّفك شيئاً إضافياً.
-                      والفرق الوحيد أنك عرفت قبل أن تلتزم.
-                      <br />أمّا إن اكتفيتَ بالحكم، فستعرف أبوابك ولن يُطرق منها باب — <b>لأن الطرق يحتاج ملفاً</b>.
+                    <div style={{ color: '#5E7C73', fontSize: 12, lineHeight: 1.85, marginTop: 4 }}>
+                      الجهات بأسمائها وشروطها · ملفك بالعربية والإنجليزية · عرضه على الجهات بتكليف خطّي منك · المتابعة والتفاوض حتى قرار نهائي.
                     </div>
                   </div>
 
@@ -887,15 +867,22 @@ export default function GoalPage() {
                     style={{ border: isHighlighted ? '2.5px solid #C9A84C' : '2px solid #EAF2EE', boxShadow: isHighlighted ? '0 0 0 4px rgba(201,168,76,0.15)' : undefined }}>
                     {isHighlighted && <div style={{ background: '#C9A84C', color: '#fff', fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 999, alignSelf: 'flex-start', marginBottom: 10 }}>⭐ الخدمة المقترحة لك</div>}
                     <h4 className="font-black text-[#1A3D34] text-base mb-2 leading-snug">{label}</h4>
+                    {balanceDue[canonicalTitle(title)] && (
+                      <div style={{ background: '#FFF7E6', border: '1.5px solid #E8C877', borderRadius: 12, padding: '10px 12px', marginBottom: 12 }}>
+                        <div style={{ color: '#8A6D1F', fontSize: 12.5, fontWeight: 900, lineHeight: 1.8 }}>دراستك جاهزة — بقيت الدفعة الثانية لتستلمها: {balanceDue[canonicalTitle(title)].price.toLocaleString('ar-SA')} ر.س</div>
+                        <button onClick={() => router.push('/pay/transfer?amount=' + balanceDue[canonicalTitle(title)].price + '&kind=service&company_id=' + companyId + '&sr=' + balanceDue[canonicalTitle(title)].id)}
+                          className="mt-2 w-full text-center py-2 rounded-full bg-[#1A3D34] text-white font-black text-sm">إتمام الدفعة الثانية</button>
+                      </div>
+                    )}
 
                     {/* الألم أولاً: العميل يعرف نفسه في السطر قبل أن يعرف الخدمة */}
                     <p className="text-[#6B8A80] text-sm font-bold leading-relaxed mb-4">{c?.pain || ''}</p>
 
                     {/* ★ ٨ أكتوبر (المالك): لغة الخدمة ذات البابين كما في الرئيسية — الحكم الائتماني أو التجهيز والمخاطبة —
                         تظهر في البطاقة نفسها لا في نموذج الطلب وحده. ولا تظهر بعد تسعير طلبه (سعرٌ واحد في البطاقة). */}
-                    {quotedNow == null && c?.options && c.options.filter((o) => typeof o.price === 'number' && o.price > 0).length > 1 && (
+                    {quotedNow == null && liveOptions(c).filter((o) => typeof o.price === 'number' && o.price > 0).length > 1 && c?.options && (
                       <div className="rounded-xl border border-[#EAF2EE] bg-[#F7FBF9] p-3 mb-4">
-                        {c.options.filter((o) => typeof o.price === 'number' && (o.price as number) > 0).map((o, oi) => (
+                        {liveOptions(c).filter((o) => typeof o.price === 'number' && (o.price as number) > 0).map((o, oi) => (
                           <div key={o.key} className={'flex items-baseline justify-between gap-3 text-xs font-black ' + (oi ? 'mt-2 pt-2 border-t border-dashed border-[#E3EAE7]' : '')}>
                             <span className="text-[#1A3D34]">{o.label}</span>
                             <span className="text-[#9A7B2E] whitespace-nowrap">{(o.price as number).toLocaleString('ar-SA')} ر.س</span>
@@ -1172,10 +1159,10 @@ export default function GoalPage() {
             <h2 style={{ color: '#1A3D34', fontSize: 19, fontWeight: 900, margin: '0 0 4px' }}>{displayName(orderFor)}</h2>
             <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, margin: '0 0 18px' }}>سؤالان فقط، ويظهر سعرك فوراً.</p>
 
-            {c?.options && c.options.length > 0 && (
+            {liveOptions(c).length > 1 && (
               <div style={{ marginBottom: 18 }}>
                 <div style={{ color: '#1A3D34', fontSize: 13, fontWeight: 900, marginBottom: 8 }}>١ · ما الذي تريده الآن؟</div>
-                {c.options.map((o) => (
+                {liveOptions(c).map((o) => (
                   <button key={o.key} onClick={() => setOrderOption(o.key)}
                     style={{ display: 'block', width: '100%', textAlign: 'right', marginBottom: 8, padding: '12px 14px', borderRadius: 14, cursor: 'pointer', fontFamily: 'Cairo',
                       background: orderOption === o.key ? '#F2FAF6' : '#fff',
@@ -1199,7 +1186,7 @@ export default function GoalPage() {
 
             {tiered && (
               <div style={{ marginBottom: 18 }}>
-                <div style={{ color: '#1A3D34', fontSize: 13, fontWeight: 900, marginBottom: 8 }}>٢ · مشروعك</div>
+                <div style={{ color: '#1A3D34', fontSize: 13, fontWeight: 900, marginBottom: 8 }}>{liveOptions(c).length > 1 ? '٢ · ' : ''}مشروعك</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   {([['new', 'مشروع جديد'], ['expansion', 'توسعة نشاط قائم']] as const).map(([k, lb]) => (
                     <button key={k} onClick={() => setOrderKind(k)}
@@ -1215,6 +1202,11 @@ export default function GoalPage() {
               </div>
             )}
 
+            {isSplitFee(canonicalTitle(orderFor), orderOption) && (
+              <div style={{ color: '#8A6D1F', background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '9px 12px', fontSize: 11.8, fontWeight: 800, lineHeight: 1.8, marginBottom: 12 }}>
+                يُسدَّد على دفعتين: نصفه عند التعاقد، ونصفه عند جاهزية الدراسة قبل استلامها.
+              </div>
+            )}
             <div style={{ background: '#F7FBF9', border: '1px solid #EAF2EE', borderRadius: 16, padding: '14px 16px', marginBottom: 16, textAlign: 'center' }}>
               {/* ★ «سعرك» كانت تَعِد برقمٍ نهائي على خدمةٍ تُسعَّر بالشرائح،
                   ثم يُرسَل الطلب بلا سعر (بقرارٍ مقصود: حجم الاستثمار مُدخَلٌ

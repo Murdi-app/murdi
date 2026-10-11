@@ -48,7 +48,7 @@ export async function GET() {
       .in('status', [...PAID_STATUSES])
       .order('paid_at', { ascending: false, nullsFirst: false });
     if (rErr) throw rErr;
-    const live = (reqs || []).filter((r) => r.status !== 'completed' || String(r.updated_at || '') >= since);
+    const live = (reqs || []).filter((r) => r.option_key !== 'balance' && (r.status !== 'completed' || String(r.updated_at || '') >= since));
 
     const coIds = Array.from(new Set(live.map((r) => String(r.company_id)).filter(Boolean)));
     const reqIds = live.map((r) => String(r.id));

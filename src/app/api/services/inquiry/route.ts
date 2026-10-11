@@ -107,7 +107,8 @@ export async function POST(req: Request) {
     ],
     url: '/admin/arrivals',
     pushTitle: '🧾 طلب خدمة من الموقع',
-    pushBody: displayName(title) + ' — ' + name + (company ? ' · ' + company : '') + ' · ' + prettyPhone(phone),
+    // ★ ١١ أكتوبر: ملخّص مدخل الجدوى («⭐ جادّ · حجمه · مساهمته») يصل في الإشعار نفسه
+    pushBody: (String(note || '').startsWith('⭐') ? String(note).split('\n')[0] + ' — ' : '') + displayName(title) + ' — ' + name + (company ? ' · ' + company : '') + ' · ' + prettyPhone(phone),
     tag: 'inq-' + phone,
   }).catch(() => {});
 

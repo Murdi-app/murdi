@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { DIRECT_ORDER, displayName, commercialFor, CLIENT_HIDDEN } from '@/lib/serviceCatalog';
 import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { tiktokEvent } from '@/lib/tiktokPixel';
-import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
+import { arNum, FUNDING_FULL } from '@/lib/servicePricing';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
 
 // شاشة واحدة يطلب بها الزائر خدمةً يعرف حاجته إليها — بلا حساب ولا تقييم.
@@ -148,7 +148,7 @@ function RequestForm() {
             نراجع قدرة السداد والمتطلبات، ونحدد الجهات المناسبة، ثم نجهز ملف التقديم والمخاطبة بحسب وضع منشأتك.
           </p>
           <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
-            الفحص الائتماني {arNum(FUNDING_QUICK())} ريال، وتجهيز الملف والمخاطبة {arNum(FUNDING_FULL())} ريال. نحدد معك الخيار المناسب قبل أي دفع.
+            تجهيز الملف والمخاطبة {arNum(FUNDING_FULL())} ريال. يتواصل معك فريقنا ونحدد معك ما يناسب منشأتك قبل أي دفع.
           </div>
         </div>
       )}

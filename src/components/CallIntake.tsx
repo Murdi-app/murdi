@@ -69,11 +69,12 @@ const resolveTitle = (v?: string) => {
 
 export default function CallIntake({ seed, service: seedService, onDone }: { seed?: Partial<Who>; service?: string; onDone?: () => void }) {
   const [title, setTitle] = useState<string>(resolveTitle(seedService || 'feasibility'))
-  const [option, setOption] = useState<string>('quick')
+  const [option, setOption] = useState<string>('full')
   const [value, setValue] = useState('')
   const [units, setUnits] = useState('1')
   const service = title === FEAS ? 'feasibility' : 'other'
-  const opts = COMMERCIAL[title]?.options || []
+  // ★ ١١ أكتوبر: مدخل الـ٩٩٠ موقوف — لا يُعرض للموظفة ولا يُفتح به ملف
+  const opts = (COMMERCIAL[title]?.options || []).filter((o) => !o.retired)
   const [who, setWho] = useState<Who>({
     full_name: seed?.full_name || '', phone: seed?.phone || '', email: seed?.email || '',
     company_name: seed?.company_name || '', city: '', sector: '',
@@ -233,14 +234,14 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
           <>
             {card('ماذا يطلب', (
               <>
-                <select value={title} onChange={(e) => { setTitle(e.target.value); setOption('quick'); setValue('') }} style={IN}>
+                <select value={title} onChange={(e) => { setTitle(e.target.value); setOption('full'); setValue('') }} style={IN}>
                   {CATALOG.map((cat) => (
                     <optgroup key={cat.label} label={cat.label}>
                       {cat.items.map((t) => <option key={t} value={t}>{displayName(t)}</option>)}
                     </optgroup>
                   ))}
                 </select>
-                {opts.length > 0 && (
+                {opts.length > 1 && (
                   <div style={{ ...grid('200px'), marginTop: 12 }}>
                     {opts.map((o) => (
                       <button key={o.key} type="button" onClick={() => setOption(o.key)}
@@ -389,7 +390,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
                   {tier && (
                     <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 10, padding: '12px 15px', marginTop: 12, color: '#8A6D1F', fontSize: 13, fontWeight: 800, lineHeight: 1.9 }}>
                       سعر الدراسة الكاملة على هذا الحجم: <b>{tier.amount != null ? money(tier.amount) + ' ر.س' : 'بعرض خاص — حوّليه للدكتور'}</b>
-                      {' · '}و{quick?.label || 'الفحص'} بـ<b>٩٩٠</b> يُخصم منها بالكامل خلال ٣٠ يوماً.
+                      {' · '}تُسدَّد على دفعتين: نصفها عند التعاقد ونصفها عند جاهزية الدراسة.
                     </div>
                   )}
                 </>

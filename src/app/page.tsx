@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import MiniAssessment from '@/components/MiniAssessment'
 import ServicesBand from '@/components/ServicesBand'
 import LangToggle from '@/components/LangToggle'
-import { FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing'
+import { FUNDING_FULL } from '@/lib/servicePricing'
 
 export default function Home() {
   const router = useRouter()
@@ -251,7 +251,7 @@ export default function Home() {
                   style={{ color: '#1A3D34', fontWeight: 900, fontSize: 14, textDecoration: 'none', border: '1.5px solid #1A3D34', borderRadius: 999, padding: '9px 18px', background: '#fff' }}>{label}</a>
               ))}
             </div>
-            <div className="cta-note">التقييم مجاناً. وبعده تختار: الحكم الائتماني لمنشأتك بـ {(FUNDING_QUICK() ?? 0).toLocaleString('en-US')} ر.س، أو تجهيز الملف والمخاطبة ابتداءً من {(FUNDING_FULL() ?? 0).toLocaleString('en-US')} ر.س ويُخصم منها الحكم. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
+            <div className="cta-note">التقييم مجاناً، ويتواصل معك فريقنا. ثم تجهيز الملف التمويلي والمخاطبة ابتداءً من {(FUNDING_FULL() ?? 0).toLocaleString('en-US')} ر.س. وتُحدَّد قبل التعاقد أتعاب الخدمة الممتدة — من المتابعة والتفاوض حتى استكمال شروط الصرف — بحسب نطاق ملفك.</div>
           </div>
         </section>
 

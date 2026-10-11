@@ -813,6 +813,16 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
                   <button onClick={() => matchFeasibility(r.company_id)} disabled={busy === 'mfz' + r.company_id} title="تبحث عن الجهات التي تنطبق شروطها على هذه الدراسة، وتُحفظ فتظهر داخلها" style={{ background:'#5C4A16', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>{busy === 'mfz' + r.company_id ? 'جارٍ البحث عن الجهات...' : '🏦 طابق الجهات لهذه الدراسة'}</button>
                   <button onClick={() => { const ci = (r.client_inputs || {}) as { option?: string }; const q = String(r.option_key || ci.option || '') === 'quick'; if (q && !confirm('هذا العميل دفع ثمن الفحص الائتماني للمشروع (٩٩٠) لا الدراسة الكاملة.\n\nتوليد الدراسة الكاملة يعني تسليم عمل لم يُدفع ثمنه. متابعة؟')) return; genFeasibility(r.company_id, false, r.id) }} disabled={busy === 'gfz' + r.company_id} style={{ background:'#1A3D34', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer' }}>{busy === 'gfz' + r.company_id ? 'جارٍ التوليد...' : '📐 ولّد دراسة الجدوى'}</button>
                   <button onClick={() => genFeasibilityQuick(r.company_id, r.id)} disabled={busy === 'gfz' + r.company_id} title="الأرقام المحسوبة وحدها — بلا بحث سوق وبلا جهات، يخرج في ثوانٍ" style={{ background:'#9A7B2E', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginRight:8 }}>⚡ الفحص الائتماني للمشروع</button>
+                  {/* ★ ١١ أكتوبر: الجدوى على دفعتين — حين تجهز الدراسة يُصدر الباقي، ولا تُسلَّم قبل وصوله */}
+                  {r.paid_at && r.option_key !== 'balance' && Number(r.quoted_price || 0) > Number(r.price || 0) && (
+                    <button onClick={async () => {
+                      if (!confirm('إصدار الدفعة الثانية (' + (Number(r.quoted_price) - Number(r.price)).toLocaleString('en-US') + ' ريال) لهذا العميل؟\nيظهر له زرّ الدفع في حسابه، وتُسلَّم الدراسة بعد وصولها.')) return
+                      const res = await fetch('/api/admin/service-requests', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, action: 'balance' }) })
+                      const d = await res.json().catch(() => ({}))
+                      alert(res.ok ? (d.already ? 'الدفعة الثانية صادرة من قبل' : 'صدرت الدفعة الثانية: ' + Number(d.amount).toLocaleString('en-US') + ' ريال' + (d.warn ? '\n' + d.warn : '')) : (d.error || 'تعذّر الإصدار'))
+                      load()
+                    }} style={{ background:'#B4622A', color:'#fff', border:'none', padding:'8px 18px', borderRadius:24, fontFamily:'Cairo', fontWeight:900, fontSize:12.5, cursor:'pointer', marginTop:8 }}>💳 أصدر الدفعة الثانية — قبل التسليم</button>
+                  )}
                   {fzMatch[r.company_id] && (<div style={{ fontSize:12, color:'#5C4A16', marginTop:6, fontWeight:700 }}>{fzMatch[r.company_id]}</div>)}
                 </div>
               )}
@@ -1012,6 +1022,9 @@ const PITCH_FIELDS = [{k:'branch_revenue',t:'متوسط إيراد الفرع (�
 
               <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
                 <input value={e.price} onChange={(ev) => setEdits(p => ({ ...p, [r.id]: { ...e, price: ev.target.value } }))} placeholder="السعر (ر.س)" type="number" style={{ width:140, border:'1.5px solid #EAF2EE', borderRadius:30, padding:'9px 16px', fontFamily:'Cairo', fontSize:13 }} />
+                {r.service_title === 'دراسة الجدوى الاقتصادية' && r.option_key !== 'quick' && r.option_key !== 'balance' && !r.paid_at && (
+                  <span style={{ fontSize:11.5, color:'#9A7B2E', fontWeight:800 }}>{Number(r.quoted_price || 0) > Number(r.price || 0) ? 'الأتعاب كاملة ' + Number(r.quoted_price).toLocaleString('en-US') + ' — والمعروض الدفعة الأولى' : 'اكتب الأتعاب كاملة — يُحصَّل نصفها الآن والنصف عند جاهزية الدراسة'}</span>
+                )}
                 <button onClick={() => save(r.id, e.deliverable, e.price)} disabled={busy === r.id} style={{ background:'transparent', color:'#6B8A80', border:'1.5px solid #E8F5EF', padding:'9px 20px', borderRadius:30, fontFamily:'Cairo', fontWeight:700, fontSize:13, cursor:'pointer' }}>حفظ مسودّة</button>
                 {r.service_title === 'تجهيز ملف عرض المستثمر والتفاوض' && (
                   <button onClick={() => showDeck(r.id, e.deliverable)} disabled={busy === r.id}

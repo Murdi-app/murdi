@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { phoneEmail } from '@/lib/phoneEmail';
 import { waNumber } from '@/lib/phone';
-import { COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing';
+import { COMMERCIAL, FUNDING_TITLE, intakeQuote, isSplitFee, firstInstallment } from '@/lib/servicePricing';
 import { loadFeeSettings, CONTRACT_FINANCE } from '@/lib/feeSettings';
 import { ensureDocument, issuedMessage } from '@/lib/contractFirst';
 import { sendPush } from '@/lib/push';
@@ -191,6 +191,9 @@ export async function POST(req: Request) {
   } else if (paid.length > 0) {
     return NextResponse.json({ error: 'لهذا العميل طلبٌ مدفوع لهذه الخدمة — ملفّه بعد الدفع عند رغد، لا يُفتح له طلبٌ جديد من هنا' }, { status: 409 });
   }
+  // ★ الجدوى على دفعتين (١١ أكتوبر): الأتعاب كاملةً في quoted_price، والمستحق الآن نصفها
+  const total = amount;
+  if (isSplitFee(title, optionKey)) amount = firstInstallment(total);
   const { data: pricedRows } = await sb.from('service_requests')
     .select('id, option_key').eq('company_id', companyId).eq('service_title', title).eq('status', 'priced')
     .order('created_at', { ascending: false });
@@ -199,14 +202,14 @@ export async function POST(req: Request) {
   const stale = (pricedRows || []).filter((r) => r.id !== open?.id).map((r) => r.id);
   if (stale.length > 0) await sb.from('service_requests').update({ status: 'cancelled' }).in('id', stale);
   // المسعَّر للخيار نفسه يُعاد بسعره الجديد (سنواتٌ أكثر أو قيمة عقدٍ أخرى)
-  if (open) await sb.from('service_requests').update({ price: amount, quoted_price: amount, priced_at: new Date().toISOString(), ...(isCF && value > 0 ? { contract_value: value } : {}) }).eq('id', open.id);
+  if (open) await sb.from('service_requests').update({ price: amount, quoted_price: total, priced_at: new Date().toISOString(), ...(isCF && value > 0 ? { contract_value: value } : {}) }).eq('id', open.id);
 
   let requestId = open?.id as string | undefined;
   if (!requestId) {
     const { data: sr, error: srErr } = await sb.from('service_requests').insert({
       company_id: companyId, service_title: title,
       service_category: CATALOG.find((cat) => cat.items.includes(title))?.label || null,
-      status: 'priced', price: amount, quoted_price: amount, priced_at: new Date().toISOString(),
+      status: 'priced', price: amount, quoted_price: total, priced_at: new Date().toISOString(),
       option_key: optionKey, credited_from: creditedFrom,
       ...(isCF && value > 0 ? { contract_value: value } : {}),
       client_inputs: kind === 'feasibility'

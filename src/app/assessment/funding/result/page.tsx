@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import TrackLure from '@/components/TrackLure';
 import { canonicalTitle } from '@/lib/serviceCatalog';
-import { arNum, FUNDING_QUICK, FUNDING_FULL } from '@/lib/servicePricing';
+import { arNum, FUNDING_FULL } from '@/lib/servicePricing';
 import { suggestService, suggestAllServices } from '@/lib/serviceSuggestion';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -412,30 +412,16 @@ export default function FundingResult() {
               </p>
             </div>
 
-            {/* الخطوة الثانية: الباب الرخيص. يُعرض بما يشتريه لا بما ينقصه. */}
-            <div className="rounded-2xl p-5 mb-3" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)' }}>
-              <div className="flex items-baseline justify-between gap-3 mb-1">
-                <span className="text-white font-black text-[15px]">٢) الحكم الائتماني لمنشأتك</span>
-                <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>{arNum(FUNDING_QUICK())} ر.س</span>
-              </div>
-              <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
-                الجهات <span style={{ color: '#C9A84C' }}>بأسمائها</span> · شروط كل واحدة وحدود مبالغها ·
-                ما ينقصك عند كل جهة تحديداً · وطريقة التقديم إليها. خلال ساعات.
-                <br />تعرف موقفك الحقيقي قبل أن تلتزم بشيء أكبر.
-              </p>
-            </div>
-
             {/* الخطوة الثالثة: التنفيذ. والخصم يُذكر هنا لأنه يزيل الخوف من البدء صغيراً. */}
             <div className="rounded-2xl p-5 mb-4" style={{ background: 'rgba(201,168,76,0.16)', border: '1.5px solid rgba(201,168,76,0.5)' }}>
               <div className="flex items-baseline justify-between gap-3 mb-1">
-                <span className="text-white font-black text-[15px]">٣) تجهيز الملف والمخاطبة والتفاوض</span>
+                <span className="text-white font-black text-[15px]">٢) تجهيز الملف والمخاطبة والتفاوض</span>
                 <span className="font-black text-[15px]" style={{ color: '#C9A84C' }}>{arNum(FUNDING_FULL())} ر.س</span>
               </div>
               <p className="text-[#CFE0DA] text-xs font-bold leading-relaxed m-0">
                 نبني ملفك بالعربية والإنجليزية بلغة محلل الائتمان، ونخاطب الجهات
                 <span style={{ color: '#C9A84C' }}> بتكليف خطّي منك</span>، ونتابع الردود ونشرح الشروط حتى قرار نهائي.
                 أنت لا تدور على أحد — نحن ندور عنك.
-                <br /><span style={{ color: '#C9A84C' }}>ويُخصم منها الحكم الائتماني بالكامل إن أكملته خلال ٣٠ يوماً.</span>
               </p>
             </div>
 

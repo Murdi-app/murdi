@@ -106,7 +106,8 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
         notes.push('المحوَّل ' + amt.toLocaleString('en-US') + ' والسعر الحالي ' + due.toLocaleString('en-US') + ' — راجع الفرق مع العميل.');
       }
       const { data: stamped, error: stErr } = await sb.from('service_requests')
-        .update(stamp).eq('id', target.id).not('status', 'in', PAST_PAYMENT).select('id');
+        // ★ الدفعة الثانية للجدوى ليست ملفاً جديداً — تُختم «مكتملة» فلا تظهر ملفاً مدفوعاً عند الموظفات
+        .update(target.option_key === 'balance' ? { ...stamp, status: 'completed', completed_at: stamp.paid_at } : stamp).eq('id', target.id).not('status', 'in', PAST_PAYMENT).select('id');
       if (stErr) notes.push('قُيّد المبلغ ولم يُختم الطلب مدفوعاً (' + stErr.message + ') — اختمه يدوياً.');
       else if (stamped?.length) {
         const title = target.service_title;

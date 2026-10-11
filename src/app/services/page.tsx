@@ -12,7 +12,7 @@ import type { ServiceCommercial } from '@/lib/servicePricing';
 // فالمعروض هنا: أدنى شريحة مسبوقة بـ«من»، وأرخص خيارٍ إن وُجد.
 function publicPrice(c: ServiceCommercial | undefined): { main: string; hint?: string } {
   if (!c) return { main: 'بعرض خاص' };
-  const cheapest = (c.options || []).reduce<number | null>(
+  const cheapest = (c.options || []).filter((o) => !o.retired).reduce<number | null>(
     (m, o) => (typeof o.price === 'number' && (m === null || o.price < m) ? o.price : m), null);
   const hint = cheapest !== null ? 'ويبدأ بـ ' + cheapest.toLocaleString('en-US') + ' ر.س — ويُخصم منها بالكامل' : undefined;
   if (c.tiers && c.tiers.length) return { main: 'من ' + c.tiers[0].price.toLocaleString('en-US') + ' ر.س', hint };

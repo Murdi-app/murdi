@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { COMMERCIAL } from '@/lib/servicePricing';
+import { COMMERCIAL, BALANCE_KEY } from '@/lib/servicePricing';
 import { COMMISSION_SERVICES, renderContract, needsSignedContract } from '@/lib/contracts';
 import { loadFeeSettings, completionPctFor, fillMessage, type FeeSettings } from '@/lib/feeSettings';
 import { shortLink, SITE } from '@/lib/shortLinks';
@@ -16,11 +16,11 @@ export type DocKind = 'contract' | 'voucher';
 export { needsSignedContract };
 export const docKindFor = (title: string, optionKey?: string | null): DocKind => (needsSignedContract(title, optionKey) ? 'contract' : 'voucher');
 
-type SR = { id: string; company_id: string; service_title: string; option_key: string | null; price: number | null; contract_value: number | null; status: string };
+type SR = { id: string; company_id: string; service_title: string; option_key: string | null; price: number | null; quoted_price: number | null; contract_value: number | null; status: string };
 
 async function loadSR(sb: SupabaseClient, srId: string): Promise<SR> {
   const { data, error } = await sb.from('service_requests')
-    .select('id, company_id, service_title, option_key, price, contract_value, status').eq('id', srId).maybeSingle();
+    .select('id, company_id, service_title, option_key, price, quoted_price, contract_value, status').eq('id', srId).maybeSingle();
   if (error || !data) throw new Error('الطلب غير موجود' + (error ? ' — ' + error.message : ''));
   return data as SR;
 }
@@ -28,10 +28,14 @@ async function loadSR(sb: SupabaseClient, srId: string): Promise<SR> {
 const money = (n: number) => Math.round(n).toLocaleString('en-US');
 
 /** نصّ سند الخدمة — من سجلّ الأسعار نفسه، فلا يَعِد السند بغير ما في الصفحة */
-export function voucherBody(title: string, optionKey: string | null, price: number, s: FeeSettings, company: { name: string; cr: string | null }): string {
+export function voucherBody(title: string, optionKey: string | null, price: number, s: FeeSettings, company: { name: string; cr: string | null }, total?: number | null): string {
   const c = COMMERCIAL[title];
-  const opt = optionKey ? c?.options?.find((o) => o.key === optionKey) : undefined;
-  const label = opt?.label || title;
+  const balance = optionKey === BALANCE_KEY;
+  const full = balance ? c?.options?.find((o) => o.key === 'full') : undefined;
+  const opt = optionKey ? c?.options?.find((o) => o.key === optionKey) || full : undefined;
+  const label = balance ? 'الدفعة الثانية — ' + (full?.label || title) : (opt?.label || title);
+  // ★ الدفع على دفعتين: الأتعاب كاملةً في السند، والمستحق الآن نصفها
+  const split = !balance && typeof total === 'number' && total > price;
   const includes = (opt?.includes?.length ? opt.includes : c?.deliverables?.length ? c.deliverables : c?.whatWeDo) || [];
   const excludes = [
     ...(opt?.excludes || []),
@@ -57,7 +61,11 @@ ${excludes.map((x) => '- ' + x).join('\n')}
 مدة التسليم: ${days}، تبدأ من تأكيد السداد واستلام ما يلزم من بيانات.
 
 ${vat}
-ويُسدَّد كاملاً قبل بدء العمل، ولا يرتبط بحصول العميل على تمويل ولا بمقداره. ولا يتقاضى الطرف المُصدِر أي عمولة من أي جهة.
+${balance
+  ? 'وهو الدفعة الثانية والأخيرة من أتعاب الدراسة، يُسدَّد عند جاهزيتها وقبل تسليمها، ولا يرتبط بحصول العميل على تمويل ولا بمقداره.'
+  : split
+    ? 'إجمالي أتعاب الخدمة (' + money(total as number) + ') ريال، تُسدَّد على دفعتين: الأولى — وهي المستحقة بهذا السند — عند التعاقد وقبل بدء العمل، والثانية (' + money((total as number) - price) + ') ريال عند جاهزية الدراسة وقبل تسليمها. ولا ترتبط بحصول العميل على تمويل ولا بمقداره.'
+    : 'ويُسدَّد كاملاً قبل بدء العمل، ولا يرتبط بحصول العميل على تمويل ولا بمقداره.'} ولا يتقاضى الطرف المُصدِر أي عمولة من أي جهة.
 
 الطرف الأول: المستشار/ عبدالحكيم — حلول المرضي للاستشارات المالية
 التوقيع: عبدالحكيم`;
@@ -84,7 +92,7 @@ export async function ensureDocument(sb: SupabaseClient, srId: string): Promise<
       company_id: sr.company_id, service_request_id: sr.id, contract_type: 'voucher', status: 'issued',
       issued_at: new Date().toISOString(), fee_type: 'fixed', fixed_amount: price,
       establishment_name: company.name || null, establishment_cr: company.cr,
-      contract_body: voucherBody(sr.service_title, sr.option_key, price, s, company),
+      contract_body: voucherBody(sr.service_title, sr.option_key, price, s, company, sr.quoted_price),
     }).select('id').single();
     if (error || !data) throw new Error('تعذّر إصدار سند الخدمة — ' + (error?.message || ''));
     return { kind, id: String(data.id), status: 'issued', created: true };

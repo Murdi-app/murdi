@@ -87,6 +87,8 @@ export async function POST(req: Request) {
   if (optionKey && c?.options?.length) {
     const opt = c.options.find((o) => o.key === optionKey);
     if (!opt) return NextResponse.json({ error: 'خيار غير معروف لهذه الخدمة' }, { status: 400 });
+    // ★ ١١ أكتوبر: مدخل الـ٩٩٠ أُوقف عن الطلب الجديد — يبقى لما سبق من صفوفه وحدها
+    if (opt.retired) return NextResponse.json({ error: 'هذا الخيار لم يعد متاحاً — اطلب الخدمة الكاملة، ويتواصل معك فريقنا' }, { status: 400 });
     amount = typeof opt.price === 'number' ? opt.price : null;
   } else {
     // الشرائح تحتاج حجم الاستثمار، وهو مُدخَل يُراجعه المكتب — فلا يُسعَّر آلياً

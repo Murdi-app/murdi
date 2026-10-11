@@ -87,7 +87,7 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
       </div>
       {err && <div className="text-sm text-center mb-3" style={{ color: '#C0564B' }}>{err}</div>}
 
-      <Card title="تجهيز الملف التمويلي" sub="٩٩٠ ريال: ترى جهاتك بأسمائها وتتقدّم بنفسك · ٧٬٩٠٠ ريال: نخاطب الجهات عنك + نسبة نجاح عند الصرف"
+      <Card title="تجهيز الملف التمويلي" sub="٧٬٩٠٠ ريال: نبني ملفك ونخاطب الجهات عنك حتى القرار + نسبة نجاح عند الصرف"
         cta="خلّنا نشتغلها عنك" onCta={() => onOrder(MAIN_SERVICES[0])} pending={pend(MAIN_SERVICES[0])}>
         {!lures ? <div className="text-sm" style={{ color: '#6B8A80' }}>نحسب رقمك…</div>
           : f?.lure && f.lure.hi > 0 ? (
@@ -97,7 +97,7 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
                 <div className="font-black text-sm" style={{ color: G }}>فرصتك في الحصول على التمويل: <span style={{ color: GOLD, fontSize: 18 }}>{f.lure.chance.toLocaleString('ar-SA')}٪</span></div>
                 <div className="text-xs font-bold" style={{ color: '#6B8A80' }}>وقد ترتفع أو تنخفض بحسب خطوات المستشار والفريق في تجهيز ملفك وعرضه على الجهة المناسبة.</div>
               </div>
-              {f.lure.n ? <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>{f.lure.n.toLocaleString('ar-SA')} جهة تموّل منشآت بحجمك — أسماؤها تظهر بعد الحكم الائتماني (٩٩٠)</div> : null}
+              {f.lure.n ? <div className="text-sm font-bold mt-2" style={{ color: '#5E7C73' }}>{f.lure.n.toLocaleString('ar-SA')} جهة تموّل منشآت بحجمك — أسماؤها وشروطها تظهر في ملفك التمويلي</div> : null}
               <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>تقديرٌ من سعة سدادك (ربحك بعد أقساطك) — والقرار للجهة الممولة.</div>
             </>
           ) : f?.lure?.note ? <div className="text-sm font-bold" style={{ color: '#9A7B2E' }}>{f.lure.note}</div>

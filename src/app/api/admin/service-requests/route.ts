@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { loadFeeSettings, contractFinanceUpfront, CONTRACT_FINANCE } from '@/lib/feeSettings';
 import { ensureDocument, refreshDraft } from '@/lib/contractFirst';
+import { isSplitFee, firstInstallment, BALANCE_KEY } from '@/lib/servicePricing';
 
 const ADMIN_EMAIL = 'hololalmurdi.fs@gmail.com';
 
@@ -76,6 +77,27 @@ export async function PATCH(req: Request) {
     if (hErr) return NextResponse.json({ error: hErr.message }, { status: 500 });
     return NextResponse.json({ ok: true, status: patch.status });
   }
+  // ★ الدفعة الثانية لدراسة الجدوى (١١ أكتوبر): حين تجهز الدراسة يُصدر المالك بزرٍّ واحد
+  //   طلبَ الباقي — سنده ورابط دفعه — ولا تُسلَّم الدراسة قبل وصوله.
+  if (body.action === 'balance') {
+    const { data: m } = await admin.from('service_requests').select('id, company_id, service_title, service_category, option_key, price, quoted_price, paid_at').eq('id', body.id).maybeSingle();
+    if (!m) return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
+    if (!m.paid_at) return NextResponse.json({ error: 'الدفعة الأولى لم تُدفع بعد' }, { status: 409 });
+    const rest = Number(m.quoted_price || 0) - Number(m.price || 0);
+    if (!(rest > 0)) return NextResponse.json({ error: 'لا باقي على هذا الطلب — دُفعت أتعابه كاملة' }, { status: 409 });
+    const { data: ex } = await admin.from('service_requests').select('id, status').eq('credited_from', m.id).eq('option_key', BALANCE_KEY).not('status', 'in', '("cancelled","rejected")').maybeSingle();
+    if (ex) return NextResponse.json({ ok: true, already: true, id: ex.id, status: ex.status });
+    const now = new Date().toISOString();
+    const { data: b, error: bErr } = await admin.from('service_requests').insert({
+      company_id: m.company_id, service_title: m.service_title, service_category: m.service_category,
+      status: 'priced', price: rest, quoted_price: rest, priced_at: now, option_key: BALANCE_KEY, credited_from: m.id,
+      client_inputs: { balance_of: m.id },
+    }).select('id').single();
+    if (bErr || !b) return NextResponse.json({ error: 'تعذّر إصدار الدفعة الثانية — ' + (bErr?.message || '') }, { status: 500 });
+    let warn: string | null = null;
+    try { await ensureDocument(admin, String(b.id)); } catch (e) { warn = 'صدرت الدفعة وتعذّر سندها — ' + (e instanceof Error ? e.message : ''); }
+    return NextResponse.json({ ok: true, id: b.id, amount: rest, warn });
+  }
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.status) updates.status = body.status;
   if (body.admin_deliverable !== undefined) updates.admin_deliverable = body.admin_deliverable;
@@ -88,7 +110,15 @@ export async function PATCH(req: Request) {
 
   // ★ قيمة العقد (١ أكتوبر): تُكتب على الطلب، ومقدَّم «تمويل العقد» يُعاد من إعدادات
   //   المالك ما دام الطلب لم يُدفع — ومسودّة عقده تتبعها.
-  const { data: cur } = await admin.from('service_requests').select('service_title, status, paid_at').eq('id', body.id).maybeSingle();
+  const { data: cur } = await admin.from('service_requests').select('service_title, status, paid_at, option_key, price, quoted_price').eq('id', body.id).maybeSingle();
+  // ★ الجدوى على دفعتين: ما يكتبه المالك هو الأتعاب كاملة، والمستحق الآن نصفها.
+  //   والحفظ الذي يعيد السعر الحالي نفسه (نصفاً قُسم من قبل) لا يقسمه ثانيةً.
+  const alreadySplit = Number(cur?.quoted_price || 0) > Number(cur?.price || 0) && Number(body.price) === Number(cur?.price);
+  if (alreadySplit) delete updates.price;
+  else if (body.price !== undefined && body.price !== null && Number(body.price) > 0 && !cur?.paid_at && isSplitFee(cur?.service_title, cur?.option_key)) {
+    updates.quoted_price = Number(body.price);
+    updates.price = firstInstallment(Number(body.price));
+  }
   if (body.contract_value !== undefined) {
     const v = Number(String(body.contract_value).replace(/[,٬\s]/g, ''));
     updates.contract_value = Number.isFinite(v) && v > 0 ? v : null;
