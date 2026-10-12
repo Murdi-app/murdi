@@ -191,7 +191,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
       if (!sent.current && !d?.already) {
         sent.current = true;
         const w = studyWeight(sizeIdx ?? 0) * (share?.score === 3 ? 1.5 : 1);
-        fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('Contact');
+        fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('SubmitForm'); tiktokEvent('Contact');
       }
       setDone(true);
     } catch {

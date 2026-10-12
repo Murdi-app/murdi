@@ -97,7 +97,7 @@ function RequestForm() {
       if (!converted.current && !d?.already) {
         converted.current = true;
         fireConversion(LEAD_SUBMITTED, { phone, email });
-        tiktokEvent('Contact');
+        tiktokEvent('SubmitForm'); tiktokEvent('Contact');
       }
       setDone(true);
     } catch {
