@@ -252,3 +252,55 @@ export async function runInquiryConsults(sb: SupabaseClient): Promise<string[]> 
   for (const r of (data || []) as InquiryRow[]) out.push(await generateInquiryConsult(sb, r));
   return out;
 }
+
+// ═══ أسئلة الاستشارة لكل وافدٍ جديد ═══
+// الأربعة والعشرون الأوائل كُتبت أسئلتهم باليد (١٢ أكتوبر). ومن يصل بعدهم تُكتب أسئلته
+// في النبض نفسه — أربعة أسئلة بسيطة على وضعه — فتجدها ضي في بطاقته جاهزة للإرسال.
+const N = '١٢٣٤٥';
+
+function askPrompt(r: InquiryRow): string {
+  return `عميلٌ سجّل في منصة مُرضي طلب «${r.service_title || 'دراسة الجدوى'}». هذه إجاباته في نموذج التسجيل:
+${(r.note || '').replace(/\n+/g, ' | ')}
+${r.contact_note ? 'وما سجّله فريقنا من المكالمة: ' + r.contact_note : ''}
+
+اكتب **أربعة أسئلة** قصيرة جداً بلهجة سعودية مهذبة (واتساب)، تسأله عن الناقص في وضعه فقط حتى نكتب له استشارة مختصرة: مثل نوع المشروع بالضبط، الموقع، الإيراد إن كان قائماً، التكلفة التقريبية، الخبرة، التمويل القائم، وين وصل (فكرة/تراخيص). لا تسأل عن شيء أجاب عنه. لا سعر. سؤال لكل سطر بلا ترقيم.
+أعد JSON فقط: {"plural": true|false, "questions": ["...","...","...","..."]}  — plural=true إن كانت شركة أو منشأة قائمة.`;
+}
+
+export function askMessage(r: InquiryRow, qs: string[], plural: boolean): string {
+  const first = String(r.full_name || '').trim().split(/\s+/)[0];
+  const greet = first && !/^(شركة|مؤسسة|مصنع)$/.test(first) ? ' أ. ' + first : '';
+  let m = `السلام عليكم${greet}
+معك ضي من منصة مُرضي.
+الدكتور عبدالحكيم اطّلع على طلبك، ويجهّز لك استشارة مختصرة على وضعك — بدون أي التزام.
+يحتاج منك إجابات سريعة (سطر لكل سؤال يكفي):
+
+${qs.slice(0, 4).map((q, i) => N[i] + '- ' + q.replace(/^[\d١-٩\-.)\s]+/, '').trim()).join('\n')}
+
+وأول ما توصلنا إجاباتك نرسل لك الاستشارة بإذن الله 🌿`;
+  if (plural) for (const [a, b] of [['طلبك', 'طلبكم'], ['ويجهّز لك', 'ويجهّز لكم'], ['على وضعك', 'على وضعكم'], ['يحتاج منك', 'يحتاج منكم'], ['إجاباتك', 'إجاباتكم'], ['نرسل لك', 'نرسل لكم']]) m = m.replace(a, b);
+  return m;
+}
+
+export async function runInquiryAsks(sb: SupabaseClient): Promise<string[]> {
+  const since = new Date(Date.now() - 14 * 86400_000).toISOString();
+  const { data, error } = await sb.from('service_inquiries').select(SELECT)
+    .is('ask_message', null).gte('created_at', since)
+    .in('service_title', ['دراسة الجدوى الاقتصادية', 'تمويل العقد'])
+    .not('full_name', 'ilike', 'اختبار%')
+    .or('outcome.is.null,outcome.neq."غير مهتم"')
+    .order('created_at').limit(5);
+  if (error) throw new Error(error.message);
+  const out: string[] = [];
+  for (const r of (data || []) as InquiryRow[]) {
+    const text = await callModel(askPrompt(r));
+    const m = text ? /\{[\s\S]*\}/.exec(text) : null;
+    let j: { plural?: boolean; questions?: string[] } | null = null;
+    try { j = m ? JSON.parse(m[0]) : null; } catch { j = null; }
+    const qs = (j?.questions || []).filter((q) => typeof q === 'string' && q.trim().length > 3);
+    if (qs.length < 3 || BANNED.some(([re]) => re.test(qs.join(' ')))) { out.push('تعذّرت أسئلة: ' + (r.company_name || r.full_name)); continue; }
+    await sb.from('service_inquiries').update({ ask_message: askMessage(r, qs, !!j?.plural) }).eq('id', r.id).is('ask_message', null);
+    out.push('أسئلة: ' + (r.company_name || r.full_name));
+  }
+  return out;
+}
