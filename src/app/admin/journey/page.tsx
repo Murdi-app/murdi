@@ -157,6 +157,7 @@ function DhaiBoard({ hot, files, me, reload }: { hot: Hot[]; files: File[]; me: 
         عندك اليوم <b style={{ color: C.ink }}>{today}</b> عميل يحتاج منك خطوة — رتّبتهم لك من الأقرب للدفع، فابدئي من الأعلى.
       </p>
       <Pipeline steps={DHAI_STEPS.map(s => ({ key: s.key, label: s.short, n: counts[s.key] }))} active={step} onPick={setStep} />
+      <AsksPanel />
 
       {shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
         <section key={s.key} style={{ marginTop: 22 }}>
@@ -182,6 +183,81 @@ function DhaiBoard({ hot, files, me, reload }: { hot: Hot[]; files: File[]; me: 
 
       <MoreLinks links={[['/admin/hot', '🔥 القائمة الكاملة — ومنها «عميل اتصل وليس في القائمة»'], ['/admin/desk', '📑 مكتب الطلبات — تأكيد التحويل والاعتماد'], ['/admin/message', '💬 مراسلة العملاء']]} />
     </>
+  )
+}
+
+// ═══ أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك) ═══
+// لكل من سجّل رسالةُ أسئلةٍ على وضعه: ترسلها ضي واتساب بضغطة، ثم تلصق ردّ العميل
+// فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
+type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null }
+
+function AsksPanel() {
+  const [asks, setAsks] = useState<Ask[]>([])
+  const [showDone, setShowDone] = useState(false)
+  const load = useCallback(async () => {
+    const j = await fetch('/api/staff/asks', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
+    if (j?.asks) setAsks(j.asks)
+  }, [])
+  useEffect(() => { load() }, [load])
+  if (asks.length === 0) return null
+  const toSend = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
+  const waitReply = asks.filter(a => a.ask_sent_at && !a.ask_reply)
+  const done = asks.filter(a => a.ask_reply)
+  return (
+    <section style={{ marginTop: 18, background: '#FFFBEF', border: '1.5px solid #F1E3B5', borderRadius: 14, padding: '14px 14px 12px' }}>
+      <SectionHead label="📝 أسئلة الاستشارة — أرسليها لكل عميل" hint="لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وعليه تُكتب استشارته." n={toSend.length + waitReply.length} />
+      {toSend.length > 0 && <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>}
+      {waitReply.length > 0 && <>
+        <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, margin: '14px 0 7px' }}>أُرسلت — ننتظر رده ({waitReply.length})</div>
+        <div style={{ display: 'grid', gap: 9 }}>{waitReply.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
+      </>}
+      {done.length > 0 && <Toggle open={showDone} onClick={() => setShowDone(!showDone)} label={'ردّوا ✓ (' + done.length + ')'} />}
+      {showDone && <div style={{ display: 'grid', gap: 9 }}>{done.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>}
+    </section>
+  )
+}
+
+function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [reply, setReply] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const wa = waNumber(a.phone)
+  const patch = async (body: Record<string, unknown>) => {
+    setBusy(true); setMsg('')
+    const res = await fetch('/api/staff/asks', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, ...body }) })
+    const j = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) { setMsg(j.error || 'لم يُحفظ'); return false }
+    reload(); return true
+  }
+  const send = () => {
+    if (wa) window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(a.ask_message), '_blank', 'noopener')
+    if (!a.ask_sent_at) patch({ sent: true })
+  }
+  const copy = async () => { try { await navigator.clipboard.writeText(a.ask_message); setMsg('نُسخت ✓') } catch { setMsg('انسخيها يدوياً') } }
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <b style={{ fontSize: 14.5, fontWeight: 900 }}>{a.company_name || a.full_name || '—'}{a.company_name && a.full_name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {a.full_name}</span> : null}</b>
+        <span style={{ fontSize: 11.5, color: C.soft }}>{a.ask_reply ? '✓ ردّ ' + ago(a.ask_reply_at) : a.ask_sent_at ? 'أُرسلت ' + ago(a.ask_sent_at) : 'لم تُرسل بعد'}</span>
+      </div>
+      <button onClick={() => setOpen(!open)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{open ? 'إخفاء الرسالة' : 'عرض الرسالة'}</button>
+      {open && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.9, background: C.bg, borderRadius: 8, padding: '8px 12px', marginTop: 6 }}>{a.ask_message}</div>}
+      {a.ask_reply && <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 7, background: C.pale, borderRadius: 8, padding: '7px 11px' }}><b>رده:</b> {a.ask_reply}</div>}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
+        {!a.ask_reply && wa && <button disabled={busy} onClick={send} style={btn(true)}>{a.ask_sent_at ? 'أعيدي فتحها في واتساب' : 'أرسلي واتساب'}</button>}
+        <button onClick={copy} style={btn(false)}>نسخ الرسالة</button>
+        {a.ask_sent_at && !a.ask_reply && <span style={{ fontSize: 12, color: C.soft, alignSelf: 'center' }}>لما يرد الصقي رده تحت ↓</span>}
+      </div>
+      {a.ask_sent_at && !a.ask_reply && (
+        <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+          <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="الصقي رد العميل كما هو" rows={3} style={{ ...input, resize: 'vertical' }} />
+          <div><button disabled={busy || !reply.trim()} onClick={async () => { if (await patch({ reply })) setReply('') }} style={btn(true)}>{busy ? '…' : 'حفظ الرد'}</button></div>
+        </div>
+      )}
+      {msg && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: msg.includes('✓') ? C.green : '#B4453C' }}>{msg}</div>}
+    </div>
   )
 }
 
