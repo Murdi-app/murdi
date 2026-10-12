@@ -76,8 +76,9 @@ export default function JourneyPage() {
     const j = await fetch('/api/staff/journey', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
     if (!j || j.error) { setErr(j?.error || 'تعذّر التحميل — حدّثي الصفحة'); setLoading(false); return }
     setRole(j.role); setJob(j.job); setMe(j.me || ''); setFiles(j.files || [])
-    const isDhai = j.role === 'admin' || j.job === 'followup'
-    if (isDhai) {
+    // رغد تقوم مقام ضي أيضاً (١٢ أكتوبر) — فتُحمَّل لها قائمة ما قبل الدفع
+    const seesDhai = j.role === 'admin' || j.job === 'followup' || j.job === 'assistant'
+    if (seesDhai) {
       const h = await fetch('/api/admin/hot', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
       if (h && !h.error) setHot(h.rows || [])
       else setErr(h?.error || 'تعذّر تحميل قائمة العملاء')
@@ -88,15 +89,18 @@ export default function JourneyPage() {
   useEffect(() => { load() }, [load])
 
   const isAdmin = role === 'admin'
-  const showDhai = isAdmin ? view === 'dhai' : job === 'followup'
+  const isRaghad = !isAdmin && job === 'assistant'
+  const showDhai = isAdmin || isRaghad ? view === 'dhai' : job === 'followup'
 
   return (
     <div dir="rtl" style={{ fontFamily: 'Cairo,sans-serif', color: C.ink, background: C.bg, minHeight: '100vh' }}>
       <AdminNav />
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '18px 16px 60px' }}>
-        {isAdmin && (
+        {(isAdmin || isRaghad) && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-            {([['dhai', 'شاشة ضي — حتى الدفع'], ['raghad', 'شاشة رغد — بعد الدفع']] as const).map(([k, t]) => (
+            {(isRaghad
+              ? [['raghad', 'ملفّاتي — بعد الدفع'], ['dhai', 'العملاء قبل الدفع']] as const
+              : [['dhai', 'شاشة ضي — حتى الدفع'], ['raghad', 'شاشة رغد — بعد الدفع']] as const).map(([k, t]) => (
               <button key={k} onClick={() => setView(k)} style={pill(view === k)}>{t}</button>
             ))}
           </div>

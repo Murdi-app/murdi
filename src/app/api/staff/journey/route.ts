@@ -168,7 +168,15 @@ export async function GET() {
     });
 
     const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
-    return NextResponse.json({ ok: true, role: who.role, job: who.role === 'admin' ? 'admin' : who.job, me: me?.name || '', files });
+    // ★ رغد تقوم مقام ضي مع العملاء (١٢ أكتوبر، المالك) «بدون ما تعرف ضي» — فاسمها لا
+    //   يصل شاشة ضي: يُحذف من «تواصل معه قبل الدفع» إذا كانت القارئةُ متابِعة.
+    let out = files;
+    if (isStaff && who.job === 'followup') {
+      const { data: hidden } = await sb.from('staff').select('name').eq('job', 'assistant');
+      const hide = new Set((hidden || []).map((h) => String(h.name || '').trim()).filter(Boolean));
+      if (hide.size) out = files.map((f) => ({ ...f, handled_by: f.handled_by.filter((n) => !hide.has(n)) }));
+    }
+    return NextResponse.json({ ok: true, role: who.role, job: who.role === 'admin' ? 'admin' : who.job, me: me?.name || '', files: out });
   } catch (e) {
     await logError('staff.journey', e, {});
     return NextResponse.json({ error: 'تعذّر تحميل رحلة الملفات' }, { status: 500 });
