@@ -13,7 +13,7 @@ export const JOB_LABEL: Record<string, string> = {
   'briefs-send': 'إرسال توجيه الموظفتين', 'awards-import': 'استيراد الترسيات', 'awards-pipeline': 'خط الترسيات',
   'staff-noon': 'فحص الموظفتين', 'notify-owner': 'إشعار المالك', 'check-links': 'فحص روابط الجهات',
   'ops-sweep': 'تمشيط التشغيل', 'mail-watch': 'مراقبة البريد', 'decision-timeouts': 'مهلات القرار',
-  watchdog: 'حارس المهام', 'etimad-alerts': 'تنبيهات اعتماد',
+  watchdog: 'حارس المهام', 'etimad-alerts': 'تنبيهات اعتماد', 'inquiry-consults': 'الاستشارات المختصرة',
 };
 
 /** يسجّل تشغيلاً ويُنبّه عند فشلين متتاليين */

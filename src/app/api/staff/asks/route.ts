@@ -18,7 +18,7 @@ export async function GET() {
   const { who, error, status } = await requirePage('/admin/journey');
   if (!who) return NextResponse.json({ error: error || 'غير مصرح' }, { status });
   const { data, error: qErr } = await sbAdmin().from('service_inquiries')
-    .select('id, full_name, company_name, phone, ask_message, ask_sent_at, ask_reply, ask_reply_at, created_at')
+    .select('id, full_name, company_name, phone, ask_message, ask_sent_at, ask_reply, ask_reply_at, created_at, consult_status, consult_code, consult_sent_at, consult_opened_at')
     .not('ask_message', 'is', null)
     .order('created_at', { ascending: false })
     .limit(200);
@@ -34,6 +34,7 @@ export async function PATCH(req: Request) {
   if (!id) return NextResponse.json({ error: 'الطلب غير محدد' }, { status: 400 });
   const patch: Record<string, unknown> = {};
   if (b.sent === true) patch.ask_sent_at = new Date().toISOString();
+  if (b.consultSent === true) patch.consult_sent_at = new Date().toISOString();
   if (typeof b.reply === 'string') {
     const r = b.reply.trim().slice(0, 4000);
     if (!r) return NextResponse.json({ error: 'الصقي رد العميل أولاً' }, { status: 400 });

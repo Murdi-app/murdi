@@ -193,7 +193,7 @@ function DhaiBoard({ hot, files, me, reload }: { hot: Hot[]; files: File[]; me: 
 // ═══ أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك) ═══
 // لكل من سجّل رسالةُ أسئلةٍ على وضعه: ترسلها ضي واتساب بضغطة، ثم تلصق ردّ العميل
 // فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
-type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null }
+type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null }
 
 function AsksPanel() {
   const [asks, setAsks] = useState<Ask[]>([])
@@ -206,10 +206,16 @@ function AsksPanel() {
   if (asks.length === 0) return null
   const toSend = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
   const waitReply = asks.filter(a => a.ask_sent_at && !a.ask_reply)
-  const done = asks.filter(a => a.ask_reply)
+  // ردّ العميل → بعد نصف ساعة تُكتب استشارته آلياً → ترسلها هي → تمّت
+  const ready = asks.filter(a => a.ask_reply && a.consult_status === 'ready' && !a.consult_sent_at)
+  const done = asks.filter(a => a.ask_reply && !(a.consult_status === 'ready' && !a.consult_sent_at))
   return (
     <section style={{ marginTop: 18, background: '#FFFBEF', border: '1.5px solid #F1E3B5', borderRadius: 14, padding: '14px 14px 12px' }}>
-      <SectionHead label="📝 أسئلة الاستشارة — أرسليها لكل عميل" hint="لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وعليه تُكتب استشارته." n={toSend.length + waitReply.length} />
+      <SectionHead label="📝 أسئلة الاستشارة — أرسليها لكل عميل" hint="لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له." n={ready.length + toSend.length + waitReply.length} />
+      {ready.length > 0 && <>
+        <div style={{ fontSize: 12.5, fontWeight: 900, color: C.green, margin: '4px 0 7px' }}>✨ استشارات جاهزة — أرسليها الآن ({ready.length})</div>
+        <div style={{ display: 'grid', gap: 9, marginBottom: 12 }}>{ready.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
+      </>}
       {toSend.length > 0 && <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>}
       {waitReply.length > 0 && <>
         <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, margin: '14px 0 7px' }}>أُرسلت — ننتظر رده ({waitReply.length})</div>
@@ -239,6 +245,15 @@ function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
     if (wa) window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(a.ask_message), '_blank', 'noopener')
     if (!a.ask_sent_at) patch({ sent: true })
   }
+  const sendConsult = (code: string) => {
+    const first = String(a.full_name || '').trim().split(/\s+/)[0]
+    const text = 'السلام عليكم' + (first && a.company_name !== a.full_name ? ' أ. ' + first : '') + '\n'
+      + 'شكراً على إجاباتك. هذه استشارتك المبدئية من الدكتور عبدالحكيم، مكتوبة على وضعك:\n'
+      + 'https://murdi.sa/r/' + code + '\n\n'
+      + 'وإذا حاب نبدأ، أنا معك هنا 🌿'
+    if (wa) window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(text), '_blank', 'noopener')
+    if (!a.consult_sent_at) patch({ consultSent: true })
+  }
   const copy = async () => { try { await navigator.clipboard.writeText(a.ask_message); setMsg('نُسخت ✓') } catch { setMsg('انسخيها يدوياً') } }
   return (
     <div style={card}>
@@ -249,6 +264,16 @@ function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
       <button onClick={() => setOpen(!open)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{open ? 'إخفاء الرسالة' : 'عرض الرسالة'}</button>
       {open && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.9, background: C.bg, borderRadius: 8, padding: '8px 12px', marginTop: 6 }}>{a.ask_message}</div>}
       {a.ask_reply && <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 7, background: C.pale, borderRadius: 8, padding: '7px 11px' }}><b>رده:</b> {a.ask_reply}</div>}
+      {a.ask_reply && a.consult_status !== 'ready' && <div style={{ fontSize: 12, color: C.soft, marginTop: 6 }}>⏳ الاستشارة تُجهَّز — تظهر هنا خلال ساعة من لصق الرد</div>}
+      {a.consult_status === 'ready' && a.consult_code && (
+        <div style={{ marginTop: 8, background: '#EFF9F4', border: '1px solid #BFE3D3', borderRadius: 10, padding: '9px 12px' }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: C.ink }}>✨ استشارته جاهزة{a.consult_sent_at ? ' · أُرسلت ' + ago(a.consult_sent_at) : ''}{a.consult_opened_at ? ' · فتحها ✓' : ''}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+            {wa && <button disabled={busy} onClick={() => sendConsult(a.consult_code as string)} style={btn(true)}>{a.consult_sent_at ? 'أعيدي إرسالها' : 'أرسلي الاستشارة واتساب'}</button>}
+            <a href={'/r/' + a.consult_code} target="_blank" rel="noreferrer" style={btn(false)}>اطّلعي عليها</a>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
         {!a.ask_reply && wa && <button disabled={busy} onClick={send} style={btn(true)}>{a.ask_sent_at ? 'أعيدي فتحها في واتساب' : 'أرسلي واتساب'}</button>}
         <button onClick={copy} style={btn(false)}>نسخ الرسالة</button>
