@@ -1,3 +1,4 @@
+import { displayName } from '@/lib/serviceCatalog';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { COMMERCIAL, BALANCE_KEY } from '@/lib/servicePricing';
 import { COMMISSION_SERVICES, renderContract, needsSignedContract } from '@/lib/contracts';
@@ -155,7 +156,7 @@ export async function issuedMessage(sb: SupabaseClient, srId: string, by?: strin
   const link = await shortLink(sb, 'c', { contractId: String(doc.id), srId: sr.id, companyId: sr.company_id, by });
   const text = fillMessage(s.msgIssued, {
     // اسم ما يدفع له العميل: الخيار إن كان (الحكم الائتماني ٩٩٠) لا اسم الخدمة الأم
-    'الاسم': p.name || 'عميلنا الكريم', 'الخدمة': (sr.option_key && COMMERCIAL[sr.service_title]?.options?.find((o) => o.key === sr.option_key)?.label) || sr.service_title,
+    'الاسم': p.name || 'عميلنا الكريم', 'الخدمة': (sr.option_key && COMMERCIAL[sr.service_title]?.options?.find((o) => o.key === sr.option_key)?.label) || displayName(sr.service_title),
     'الوثيقة': doc.contract_type === 'voucher' ? 'سند' : 'عقد', 'رابط العقد': link, 'رابط قصير': link,
   });
   return { text: doc.contract_type === 'voucher' ? text.replace('وبعد التوقيع يصلكم رابط السداد.', 'ورابط السداد في الصفحة نفسها.').replace('للاطلاع عليه وتوقيعه', 'للاطلاع عليه') : text, link };
@@ -170,7 +171,7 @@ export async function signedMessage(sb: SupabaseClient, srId: string, by?: strin
   const siteLink = p.email ? await shortLink(sb, 's', { email: p.email, companyId: sr.company_id, by }) : SITE + '/auth/login';
   const first = s.firstDelivery[sr.service_title] || '';
   const text = fillMessage(s.msgSigned, {
-    'الاسم': p.name, 'الخدمة': sr.service_title, 'المبلغ': money(Number(sr.price || 0)),
+    'الاسم': p.name, 'الخدمة': displayName(sr.service_title), 'المبلغ': money(Number(sr.price || 0)),
     'رابط الدفع': payLink, 'رابط المنصة': siteLink, 'ما يصلكم': first ? '، ' + first : '',
   });
   return { text, payLink, siteLink };
