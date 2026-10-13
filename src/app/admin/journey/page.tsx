@@ -226,7 +226,7 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
 // فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
 type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null; owner?: string }
 
-function AsksPanel() {
+function AsksPanel({ forHelper }: { forHelper?: boolean } = {}) {
   const [asks, setAsks] = useState<Ask[]>([])
   const [showDone, setShowDone] = useState(false)
   const load = useCallback(async () => {
@@ -242,12 +242,15 @@ function AsksPanel() {
   const done = asks.filter(a => a.ask_reply && !(a.consult_status === 'ready' && !a.consult_sent_at))
   return (
     <section style={{ marginTop: 18, background: '#FFFBEF', border: '1.5px solid #F1E3B5', borderRadius: 14, padding: '14px 14px 12px' }}>
-      <SectionHead label="📝 أسئلة الاستشارة — أرسليها لكل عميل" hint="لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له." n={ready.length + toSend.length + waitReply.length} />
+      <SectionHead label={forHelper ? '📨 مهمّتك: الأسئلة والاستشارات' : '📝 أسئلة الاستشارة — أرسليها لكل عميل'} hint={forHelper ? 'ابدئي بالاستشارات الجاهزة (الأخضر) ثم الأسئلة التي لم تُرسل. كل رسالة بضغطة واتساب، ولما يرد العميل الصقي رده — وتجهز استشارته هنا تلقائياً.' : 'لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له.'} n={ready.length + toSend.length + waitReply.length} />
       {ready.length > 0 && <>
         <div style={{ fontSize: 12.5, fontWeight: 900, color: C.green, margin: '4px 0 7px' }}>✨ استشارات جاهزة — أرسليها الآن ({ready.length})</div>
         <div style={{ display: 'grid', gap: 9, marginBottom: 12 }}>{ready.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
       </>}
-      {toSend.length > 0 && <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>}
+      {toSend.length > 0 && <>
+        {forHelper && <div style={{ fontSize: 12.5, fontWeight: 900, color: '#8A6D1F', margin: '4px 0 7px' }}>📝 أسئلة لم تُرسل بعد ({toSend.length})</div>}
+        <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
+      </>}
       {waitReply.length > 0 && <>
         <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, margin: '14px 0 7px' }}>أُرسلت — ننتظر رده ({waitReply.length})</div>
         <div style={{ display: 'grid', gap: 9 }}>{waitReply.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
@@ -355,9 +358,11 @@ function HelperBoard({ hot, reload }: { hot: Hot[]; reload: () => void }) {
     <>
       <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>عملاء ضي — قبل الدفع</h1>
       <p style={{ fontSize: 13, color: C.soft, margin: '0 0 12px', lineHeight: 1.8 }}>
-        ساعدي ضي: ابدئي بمن لم يُكلَّم بعد، أحدثُهم أولاً. وكل نتيجة تكتبينها تظهر لضي باسمك.
+        مهمّتك هنا: إرسال الأسئلة والاستشارات الجاهزة (أول قسم). والمكالمات عند ضي — وإن كلّمتِ أحداً فنتيجتك تظهر لها باسمك.
       </p>
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔎 ابحثي — بالاسم أو المنشأة أو الجوال" style={{ ...input, marginBottom: 6 }} />
+      {/* ★ ١٤ أكتوبر (المالك): القسمة — رغد تمسك إرسال الأسئلة والاستشارات، وضي تتفرغ للمكالمات وفتح الملفات */}
+      <AsksPanel forHelper />
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔎 ابحثي — بالاسم أو المنشأة أو الجوال" style={{ ...input, margin: '16px 0 6px' }} />
       <section style={{ marginTop: 16 }}>
         <SectionHead label="لم يُكلَّموا بعد" hint="آخر ٧ أيام — أحدثهم أولاً." n={recent.length} />
         {cards(recent)}
