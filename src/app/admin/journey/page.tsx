@@ -260,6 +260,8 @@ function AsksPanel() {
 
 function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: boolean }) {
   const [open, setOpen] = useState(false)
+  // داخل بطاقة العميل تُطوى في سطرٍ واحد (١٣ أكتوبر، المالك) — والاستشارة الجاهزة تُنبَّه في السطر نفسه
+  const [expanded, setExpanded] = useState(false)
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -286,10 +288,19 @@ function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: b
     if (!a.consult_sent_at) patch({ consultSent: true })
   }
   const copy = async () => { try { await navigator.clipboard.writeText(a.ask_message); setMsg('نُسخت ✓') } catch { setMsg('انسخيها يدوياً') } }
+  const status = a.consult_status === 'ready' && !a.consult_sent_at ? '✨ استشارته جاهزة — أرسليها'
+    : a.consult_sent_at ? '✓ أُرسلت استشارته' + (a.consult_opened_at ? ' وفتحها' : '')
+    : a.ask_reply ? '⏳ ردّ — الاستشارة تُجهَّز' : a.ask_sent_at ? 'أُرسلت — ننتظر رده' : 'لم تُرسل بعد'
+  if (inline && !expanded) return (
+    <button onClick={() => setExpanded(true)} style={{ marginTop: 9, width: '100%', textAlign: 'right', background: a.consult_status === 'ready' && !a.consult_sent_at ? '#EFF9F4' : '#FFFBEF', border: '1px solid ' + (a.consult_status === 'ready' && !a.consult_sent_at ? '#BFE3D3' : '#F1E3B5'), borderRadius: 10, padding: '7px 12px', fontFamily: 'Cairo', fontSize: 12.5, fontWeight: 800, color: C.ink, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      <span>📝 أسئلة الاستشارة · <span style={{ color: C.soft }}>{status}</span></span><span style={{ color: C.green }}>فتح ▾</span>
+    </button>
+  )
   return (
     <div style={inline ? { marginTop: 9, background: '#FFFBEF', border: '1px solid #F1E3B5', borderRadius: 10, padding: '9px 12px' } : card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <b style={{ fontSize: inline ? 13 : 14.5, fontWeight: 900 }}>{inline ? '📝 أسئلة الاستشارة' : (a.company_name || a.full_name || '—')}{!inline && a.company_name && a.full_name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {a.full_name}</span> : null}</b>
+        {inline && <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12, cursor: 'pointer', padding: 0 }}>طيّ ▴</button>}
         <span style={{ fontSize: 11.5, color: C.soft }}>{a.ask_reply ? '✓ ردّ ' + ago(a.ask_reply_at) : a.ask_sent_at ? 'أُرسلت ' + ago(a.ask_sent_at) : 'لم تُرسل بعد'}</span>
       </div>
       <button onClick={() => setOpen(!open)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{open ? 'إخفاء الرسالة' : 'عرض الرسالة'}</button>
