@@ -283,14 +283,17 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
     await sb.from('service_inquiries').update({ consult_status: 'held', consult_draft_html: html, consult_error: 'نسخة مصحّحة لاستشارة وصلت العميل — اعتمادها يستبدل ما في رابطه', consult_at: new Date().toISOString() }).eq('id', r.id);
     return 'تصحيح ينتظر الاعتماد: ' + (r.company_name || r.full_name);
   }
+  // ★ ١٣ أكتوبر (المالك): «ما ترسله وأنا ما راجعتها» — حتى تستقرّ الجودة، كل استشارة تمرّ باعتماده
+  //   في «استشارات تنتظرك» قبل أن تظهر للموظفة. يُرفع هذا الشرط بكلمته.
+  const OWNER_APPROVAL = true;
   const { error } = await sb.from('service_inquiries').update({
-    consult_status: 'ready', consult_html: html, consult_code: code, consult_at: new Date().toISOString(), consult_error: null,
+    consult_status: OWNER_APPROVAL ? 'held' : 'ready', ...(OWNER_APPROVAL ? { consult_error: 'جاهزة — تنتظر اعتمادك' } : {}), consult_html: html, consult_code: code, consult_at: new Date().toISOString(), consult_error: null,
   }).eq('id', r.id);
   if (error) return fail('لم تُحفظ — ' + error.message);
   if (!r.consult_sent_at) await sendPush({
-    title: 'استشارة جاهزة — ' + (r.company_name || r.full_name || ''),
-    body: c.title + ' · نزلت في بطاقة العميل عند ضي للإرسال',
-    url: '/r/' + code, tag: 'iq-consult-' + r.id,
+    title: 'استشارة تنتظر اعتمادك — ' + (r.company_name || r.full_name || ''),
+    body: c.title + ' · افتحها واعتمدها لتظهر للموظفة',
+    url: '/admin/consults', important: true, tag: 'iq-consult-' + r.id,
   }, OWNER_EMAIL).catch(() => null);
   return 'جاهزة: ' + (r.company_name || r.full_name);
 }
