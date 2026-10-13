@@ -154,11 +154,19 @@ export async function POST(req: Request) {
   const isCF = title === CONTRACT_FINANCE;
   const quote = intakeQuote(title, optionKey, kind === 'feasibility' && inputs.capex + inputs.workingCapital > 0
     ? inputs.capex + inputs.workingCapital : value, units, isCF ? fees?.cfUpfront : null);
-  if (quote.amount === null || quote.amount <= 0) {
-    return NextResponse.json({ error: quote.error || 'لا سعر معلن — حوّليه للدكتور' }, { status: 400 });
+  // ★ ١٤ أكتوبر (بأمر المالك): الموظفة تحدّد المبلغ بنفسها — للملفات «بعرض خاص»
+  //   (فوق ٥٠ مليون) أو حين يُتّفق مع العميل على سعرٍ غير المدرَّج. وهو الأتعاب كاملة،
+  //   ويُقسم على دفعتين في الجدوى كالمعتاد.
+  const customRaw = numOf(b?.custom_price);
+  if (b?.custom_price != null && b?.custom_price !== '' && (customRaw < 1000 || customRaw > 2_000_000)) {
+    return NextResponse.json({ error: 'المبلغ الذي حدّدتِه غير منطقي — بين ١٬٠٠٠ و٢٬٠٠٠٬٠٠٠ ريال' }, { status: 400 });
   }
-  const opt = { label: quote.label };
-  let amount: number = quote.amount;
+  const custom = customRaw >= 1000 && customRaw <= 2_000_000 ? Math.round(customRaw) : 0;
+  if (!custom && (quote.amount === null || quote.amount <= 0)) {
+    return NextResponse.json({ error: quote.error || 'لا سعر معلن — اكتبي المبلغ المتفق عليه في خانة «حدّدي المبلغ»' }, { status: 400 });
+  }
+  const opt = { label: quote.label || title };
+  let amount: number = custom || Number(quote.amount);
 
   // ★ كان يُلتقط أيُّ طلبٍ «غير مغلق» — ومنه المدفوع والمرفوض — فتُكتب أرقام
   //   المكالمة فوق مدخلات طلبٍ مدفوع، ويُبلَّغ العميل «جاهز للدفع» عمّا دفعه.
@@ -213,8 +221,8 @@ export async function POST(req: Request) {
       option_key: optionKey, credited_from: creditedFrom,
       ...(isCF && value > 0 ? { contract_value: value } : {}),
       client_inputs: kind === 'feasibility'
-        ? { option: optionKey, totalInvestment: inputs.capex + inputs.workingCapital, projectKind: 'new' }
-        : { option: optionKey, ...(value > 0 ? { totalInvestment: value } : {}), ...(units > 0 ? { years: units } : {}) },
+        ? { option: optionKey, totalInvestment: inputs.capex + inputs.workingCapital || value || 0, projectKind: 'new', ...(custom ? { customPrice: custom, pricedBy: who.email } : {}) }
+        : { option: optionKey, ...(value > 0 ? { totalInvestment: value } : {}), ...(units > 0 ? { years: units } : {}), ...(custom ? { customPrice: custom, pricedBy: who.email } : {}) },
     }).select('id').single();
     if (srErr || !sr) return NextResponse.json({ error: 'تعذّر إنشاء الطلب: ' + (srErr?.message || '') }, { status: 500 });
     requestId = sr.id;

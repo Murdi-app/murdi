@@ -87,6 +87,8 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
   const [option, setOption] = useState<string>('full')
   const [value, setValue] = useState('')
   const [units, setUnits] = useState('1')
+  // ★ ١٤ أكتوبر: الموظفة تحدّد المبلغ بنفسها (عرض خاص أو سعر متفق عليه) — الأتعاب كاملة
+  const [custom, setCustom] = useState('')
   const service = title === FEAS ? 'feasibility' : 'other'
   // ★ ١١ أكتوبر: مدخل الـ٩٩٠ موقوف — لا يُعرض للموظفة ولا يُفتح به ملف
   const opts = (COMMERCIAL[title]?.options || []).filter((o) => !o.retired)
@@ -168,15 +170,18 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
   const needNumbers = service === 'feasibility' && optKey === 'quick'
   // ★ ٧ أكتوبر (بأمر المالك — «مسار العميل واحد»): الاسم والجوال يكفيان لفتح الملف. البريد إن وُجد،
   //   وإلا فُتح على الجوال ورسائله واتساب منك. وأرقام المشروع تُستكمل بعد الفتح لا قبله.
+  const customVal = Math.round(num(custom.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[,٬\s]/g, '')))
+  const customOk = customVal >= 1000 && customVal <= 2_000_000
   const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== ''
-    && typeof quote.amount === 'number' && quote.amount > 0
+    && ((typeof quote.amount === 'number' && quote.amount > 0) || customOk)
+    && (custom.trim() === '' || customOk)
 
   const openFile = async () => {
     setErr(''); setBusy(true)
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: quick && service === 'feasibility' ? sizeVal : num(value), units: num(units), inputs: service === 'feasibility' && !quick ? { ...inputs } : {}, spoken: service === 'feasibility' && !quick ? spoken : '' }),
+        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: quick && service === 'feasibility' ? sizeVal : num(value), units: num(units), custom_price: customOk ? customVal : null, inputs: service === 'feasibility' && !quick ? { ...inputs } : {}, spoken: service === 'feasibility' && !quick ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
@@ -286,7 +291,20 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
                   background: quote.amount ? '#EAF7F0' : '#FBF3EC', color: quote.amount ? '#1A5C46' : '#8A5A2E' }}>
                   {quote.amount
                     ? quote.label + ': ' + quote.amount.toLocaleString('ar-SA') + ' ر.س'
-                    : (quote.error || 'لا سعر معلن — حوّليه للدكتور')}
+                    : 'لا سعر مدرَّج لهذا الحجم — حدّدي المبلغ المتفق عليه أدناه'}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>
+                    {quote.amount ? 'سعر متفق عليه غير المدرَّج؟ اكتبيه هنا (اختياري)' : 'حدّدي المبلغ — الأتعاب كاملة بالريال *'}
+                  </label>
+                  <input inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="مثال: 35000" style={IN} />
+                  {custom.trim() !== '' && (
+                    <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 800, color: customOk ? '#1A5C46' : '#B03A2E' }}>
+                      {customOk
+                        ? '= ' + customVal.toLocaleString('ar-SA') + ' ريال' + (service === 'feasibility' ? ' — على دفعتين: الأولى ' + Math.round(customVal / 2).toLocaleString('ar-SA') + ' ريال' : '')
+                        : 'المبلغ بين ١٬٠٠٠ و٢٬٠٠٠٬٠٠٠ ريال'}
+                    </div>
+                  )}
                 </div>
               </>
             ))}
@@ -432,7 +450,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
             </button>
             {!canOpen && (
               <p style={{ color: '#9DB3AB', fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.85 }}>
-                يلزم الاسم والجوال{!quote.amount ? ' ومبلغٌ معلن للخدمة' : ''}. والبريد إن وُجد — وبلا بريد تُرسلين له الرابط واتساب.{needNumbers && !enough ? ' وأرقام المشروع تُستكمل بعد الفتح.' : ''}
+                يلزم الاسم والجوال{!quote.amount && !customOk ? ' ومبلغ الخدمة' : ''}. والبريد إن وُجد — وبلا بريد تُرسلين له الرابط واتساب.{needNumbers && !enough ? ' وأرقام المشروع تُستكمل بعد الفتح.' : ''}
               </p>
             )}
             <p style={{ color: MUTED, fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '14px 0 0', lineHeight: 1.9 }}>
