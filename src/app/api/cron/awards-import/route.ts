@@ -7,7 +7,7 @@ import { withJobRun } from '@/lib/jobRun';
 
 // مستورد الترسيات اليومي — يوقظه `pg_cron` (المهمة `awards-import`) ٦:٠٠ الرياض،
 // قبل جرد الصباح فيُحسب ما دخل في سطر الترسيات.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 async function handle(req: Request) {
   if (!(await cronAuthorized(req))) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });

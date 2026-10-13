@@ -6,7 +6,7 @@ import { recordRun } from '@/lib/jobRun';
 //   إشعار الفشلين المتتاليين من `recordRun` نفسه.
 const MAX_GAP_H: Record<string, number> = {
   'awards-pipeline': 1, 'check-links': 1, 'mail-watch': 1.5, 'awards-import': 26, digest: 14, followups: 26,
-  briefs: 74, 'briefs-send': 74, 'staff-noon': 74, 'ops-sweep': 14, 'decision-timeouts': 2,
+  briefs: 74, 'briefs-send': 74, 'staff-noon': 74, 'ops-sweep': 17, 'decision-timeouts': 2,
 };
 
 export async function watchdog(sb: SupabaseClient): Promise<{ sql_failed: string[]; missed: string[] }> {
