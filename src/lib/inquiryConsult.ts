@@ -65,7 +65,14 @@ ${r.ask_reply || ''}
 ٢) لا سعر ولا أتعاب ولا خصم ولا كلمة «مجاني» — إطلاقاً.
 ٣) لا تسمِّ أي جهة تمويل بعينها إلا ما ورد في «الأبواب المعروضة له» في المعطيات، ولا تسمِّ أي جهة رقابية. ويجوز الحديث عن «البنوك وشركات التمويل المرخّصة» و«المستثمرين في قطاعه» عموماً.
 ٤) لا تذكر أي موظف ولا أداة ولا ذكاء اصطناعي. اكتب بصوت المكتب: «راجعنا»، «نرى»، «قراءتنا».
-٥) الخلاصة صادقة وإيجابية: مشروعه قابل للتمويل و/أو الاستثمار — واذكر السبب الحقيقي من معطياته. وإن كان في وضعه عائق ظاهر (مساهمة قليلة، لا قوائم مالية، تمويل قائم، فكرة لم تبدأ، نطاق واسع) فسمِّه بهدوء واجعل حلّه **الهيكلة والدراسة** — هذا ما يجعله يحتاجنا. لا وعد بموافقة.
+٥) الحكم صادق ومعايَر — لا مجاملة (★ تدقيق ١٣ أكتوبر: كُتب «قابل للتمويل» لفكرةٍ بلا أرض ولا مساهمة، ولبنكٍ رقمي، ولمن عليه تعثّرات):
+   · قل «قابل للتمويل/للاستثمار» **فقط** إن كان عنده نشاط قائم بإيراد ذكره، أو مساهمة من ماله ذكرها، أو أصل يملكه صرّح بملكيته.
+   · وإلا فالعنوان عن **الطريق**: «ما الذي يجعل مشروعك قابلاً للتمويل» — وسمِّ الناقص بهدوء (مساهمة، أرض، ترخيص، خبرة، رقم محدد) واجعل حلّه الهيكلة والدراسة. هذا ما يجعله يحتاجنا، وهو صادق.
+   · إن ذكر تعثّراً أو ديوناً أو قضية فلا تقل «ملف نظيف» ولا «قابل للتمويل» — قل إن معالجة الالتزامات وترتيبها تسبق أي طلب.
+   · إن كان المشروع يحتاج ترخيصاً خاصاً أو رأس مالٍ نظامياً ضخماً (بنك، تأمين، صرافة…) فقل ذلك صراحةً واقترح خطوة أولى واقعية.
+   · لا وعد بموافقة ولا عبارات مثل «يقرؤون ملفك بارتياح» عن مشروعٍ لم يبدأ.
+٥ب) لا تفترض ما لم يُقل: لا ملكية أرض إن قال إيجاراً أو «مستهدف»، ولا دخل من أصلٍ لم يذكر دخله، ولا «سجل ائتماني نظيف» من مجرد «لا يوجد تمويل». واسم الشخص ليس اسم مشروع.
+٥ج) إن فهم من كلامه أننا الجهة الممولة أو أنه سيلتزم معنا بالسداد، فصحّح بلطف: نحن مكتب استشاري يجهّز ملفه ويخاطب الجهات الممولة نيابةً عنه، والتمويل من الجهة.
 ٦) لهجة مهنية سعودية راقية، عربية فصيحة سهلة، جُمل قصيرة. خاطبه بـ«كم» إن كانت شركة/منشأة قائمة، وبالمفرد إن كان فرداً بفكرة.
 ٧) الاختصار: كل حقلٍ جملة أو جملتان. الوثيقة كلها تُقرأ في دقيقتين.
 ٨) استعمل **نجمتين** لإبراز كلمات قليلة فقط.
@@ -128,6 +135,25 @@ export function check(c: Content, r: InquiryRow): string[] {
   const stray = numsOf(all.replace(/"(stats)":\[[^\]]*\]/, '')).filter((n) => Number(n) > 30 && !source.includes(n));
   if (stray.length) bad.push('أرقام لا أصل لها: ' + Array.from(new Set(stray)).slice(0, 4).join('، '));
   return bad;
+}
+
+/** مراجعٌ ثانٍ مستقل: يقارن الاستشارة بالمصادر ويعيد المخالفات (★ تدقيق ١٣ أكتوبر) */
+async function review(c: Content, r: InquiryRow): Promise<string[]> {
+  const text = await callModel(`أنت مدقّق صارم. أمامك مصادر عن عميل، واستشارة مكتوبة له. اذكر فقط المخالفات الحقيقية:
+(أ) أي معلومة أو رقم أو ملكية أو دخل أو حالة في الاستشارة ليست في المصادر.
+(ب) حكم «قابل للتمويل/للاستثمار» بلا نشاط قائم بإيراد ولا مساهمة ولا أصل مملوك مذكور في المصادر، أو مع تعثّر/ديون/قضية مذكورة.
+(ج) فهمٌ خاطئ لكلام العميل، أو جعل اسم شخص اسماً لمشروع، أو تأكيد فهمه الخاطئ أننا الممول.
+(د) وعد بموافقة أو مبالغة واضحة.
+المصادر:
+النموذج: ${(r.note || '').replace(/\n+/g, ' | ')}
+ملاحظة الفريق: ${r.contact_note || '—'}
+رسالة الأسئلة: ${r.ask_message || ''}
+ردّ العميل: ${r.ask_reply || ''}
+الاستشارة: ${JSON.stringify(c)}
+أعد JSON فقط: {"issues":["…"]} — مصفوفة فارغة إن كانت سليمة.`);
+  if (!text) return [];
+  const m = /\{[\s\S]*\}/.exec(text);
+  try { const j = m ? JSON.parse(m[0]) as { issues?: string[] } : null; return (j?.issues || []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 5); } catch { return []; }
 }
 
 const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -214,16 +240,33 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
     return 'فشل: ' + why;
   };
 
+  // استشارة واحدة لكل عميل — من سجّل طلبين بالجوال نفسه لا يصله نصّان متناقضان
+  const p9 = String(r.phone || '').replace(/\D/g, '').slice(-9);
+  if (p9.length === 9) {
+    const { data: twins } = await sb.from('service_inquiries').select('id, phone, consult_status').neq('id', r.id).in('consult_status', ['ready', 'held']);
+    if ((twins || []).some((t) => String(t.phone || '').replace(/\D/g, '').slice(-9) === p9)) {
+      await sb.from('service_inquiries').update({ consult_status: 'duplicate', consult_error: 'للعميل استشارة من طلبٍ آخر' }).eq('id', r.id);
+      return 'مكرّر: ' + (r.company_name || r.full_name);
+    }
+  }
+
   let c: Content | null = null, bad: string[] = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 3; i++) {
     const text = await callModel(prompt(r, bad.length ? '\n\nتنبيه: مسودةٌ سابقة رُفضت لأنها خالفت: ' + bad.join('، ') + '. تجنّب ذلك تماماً.' : ''));
     if (!text) return fail('النموذج لم يردّ');
     c = parse(text);
     if (!c) { bad = ['الصيغة ليست JSON المطلوب']; continue; }
     bad = check(c, r);
+    if (!bad.length) bad = await review(c, r);
     if (!bad.length) break;
   }
-  if (!c || bad.length) return fail('خالفت القواعد: ' + bad.join('، '));
+  // ما لم يجتز المراجعة لا يُعرض للموظفة — يُحجز وينبَّه المالك
+  if (c && bad.length) {
+    await sb.from('service_inquiries').update({ consult_status: 'held', consult_error: bad.join('، ').slice(0, 500), consult_html: consultHtml(c, r), consult_code: r.consult_code || randomBytes(6).toString('base64url'), consult_at: new Date().toISOString() }).eq('id', r.id);
+    await sendPush({ title: 'استشارة تحتاج مراجعتك — ' + (r.company_name || r.full_name || ''), body: bad.join('، ').slice(0, 160), url: '/r/' + (r.consult_code || ''), important: true, tag: 'iq-consult-' + r.id }, OWNER_EMAIL).catch(() => null);
+    return 'محجوزة للمراجعة: ' + (r.company_name || r.full_name);
+  }
+  if (!c) return fail('خالفت القواعد: ' + bad.join('، '));
 
   const code = r.consult_code || randomBytes(6).toString('base64url');
   const html = consultHtml(c, r);
