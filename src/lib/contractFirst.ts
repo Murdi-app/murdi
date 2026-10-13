@@ -154,7 +154,8 @@ export async function issuedMessage(sb: SupabaseClient, srId: string, by?: strin
   const s = await loadFeeSettings(sb);
   const p = await party(sb, sr.company_id);
   const link = await shortLink(sb, 'c', { contractId: String(doc.id), srId: sr.id, companyId: sr.company_id, by });
-  const text = fillMessage(s.msgIssued, {
+  const feas = doc.contract_type === 'voucher' && sr.service_title === 'دراسة الجدوى الاقتصادية';
+  const text = fillMessage(feas ? s.msgIssuedFeasibility : s.msgIssued, {
     // اسم ما يدفع له العميل: الخيار إن كان (الحكم الائتماني ٩٩٠) لا اسم الخدمة الأم
     'الاسم': p.name || 'عميلنا الكريم', 'الخدمة': (sr.option_key && COMMERCIAL[sr.service_title]?.options?.find((o) => o.key === sr.option_key)?.label) || displayName(sr.service_title),
     'الوثيقة': doc.contract_type === 'voucher' ? 'سند' : 'عقد', 'رابط العقد': link, 'رابط قصير': link,

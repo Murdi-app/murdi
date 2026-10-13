@@ -44,7 +44,9 @@ type Sector = 'industry' | 'agri' | 'tourism' | 'tech' | 'health' | 'trade';
 const KINDS: { key: Kind; label: string; hint: string }[] = [
   { key: 'new', label: 'فكرة أو مشروع جديد', hint: 'مشروع لم يبدأ بعد أو تحت التأسيس — ما عنده إيرادات حتى الآن' },
   { key: 'expand', label: 'توسعة لمنشأة قائمة', hint: 'منشأة تعمل وتبي تكبر: فرع جديد · خط إنتاج · معدات · موقع إضافي' },
-  { key: 'working', label: 'سيولة تشغيل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
+  // ★ ١٣ أكتوبر (المالك): «ما أبي العميل يقيّم — حتى لو منشأته قائمة يدخل يطلب الدراسة». فلا يُحوَّل
+  //   صاحب المنشأة القائمة إلى تقييم الجاهزية بعد اليوم؛ يكمل الأسئلة ويُرسل طلبه كغيره.
+  { key: 'working', label: 'منشأة قائمة تحتاج سيولة أو تمويل', hint: 'تشغيل · مشتريات · رواتب · جدولة التزامات' },
 ];
 
 const SIZES: { label: string; short: string; value: number }[] = [
@@ -124,7 +126,7 @@ export const TIKTOK_H1 = 'دراسة جدوى احترافية لمشروعك';
 const TIKTOK_LEAD = 'مكتب استشارات أعمال. خمسة أسئلة سريعة عن مشروعك، ويتصل بك فريقنا اليوم.';
 export const TIKTOK_FOOTER = 'مكتب استشارات أعمال؛ لا نقدّم تمويلاً ولا نعد بنتيجة';
 const T_KIND: Record<string, { label: string; hint: string }> = {
-  working: { label: 'سيولة تشغيل أو سداد التزام', hint: 'تشغيل · مشتريات · رواتب · جدولة' },
+  working: { label: 'منشأة قائمة تحتاج سيولة', hint: 'تشغيل · مشتريات · رواتب · جدولة التزامات' },
 };
 
 function Q({ n, title, hint, children }: { n: string; title: string; hint?: string; children: React.ReactNode }) {
@@ -159,7 +161,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
     setSrc(currentSource());
   }, []);
 
-  const project = kind !== null && kind !== 'working';
+  const project = kind !== null;
   const size = sizeIdx === null ? null : SIZES[sizeIdx];
   const share = shareIdx === null ? null : SHARES[shareIdx];
   const answered = project && size !== null && sector !== null && need !== null && share !== null;
@@ -249,7 +251,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         ) : (
           <div style={{ background: '#fff', border: '1.5px solid ' + LINE, borderRadius: 18, padding: '26px 24px' }}>
 
-            <Q n="١" title="مشروعك أيّ هذه؟" hint="نسأل لأن الدراسة لمشروعٍ يُبنى أو يكبر — لا لتشغيلٍ يومي.">
+            <Q n="١" title="مشروعك أيّ هذه؟" hint="لنجهّز لك القراءة المناسبة لوضعك.">
               {KINDS.map((k) => (
                 <button key={k.key} type="button" onClick={() => setKind(k.key)} style={choiceStyle(kind === k.key)}>
                   <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5 }}>{(tiktok && T_KIND[k.key]?.label) || k.label}</div>
@@ -257,19 +259,6 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
                 </button>
               ))}
             </Q>
-
-            {/* الصرف الصادق: من لا مشروع له لا يُباع دراسة */}
-            {kind === 'working' && (
-              <div style={{ background: '#FBF5E8', border: '1px solid #E8D9A8', borderRadius: 12, padding: '16px 18px', color: '#8A6D1F', fontSize: 13.5, fontWeight: 700, lineHeight: 1.95 }}>
-                هنا نقول لك الحقيقة بدل أن نبيعك: <b>دراسة الجدوى ليست مسارك.</b> {tiktok ? 'سيولة التشغيل' : 'رأس المال العامل'} وسداد
-                الالتزامات لا مشروع فيهما يُدرس — والأنفع لك أن تبدأ بتقييم جاهزية منشأتك وملفها.
-                <div style={{ marginTop: 14 }}>
-                  <Link href={tiktok ? '/t/test' : '/test'} style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '11px 24px', borderRadius: 999, fontWeight: 900, fontSize: 13.5, textDecoration: 'none' }}>
-                    ابدأ بالتقييم المجاني — 60 ثانية
-                  </Link>
-                </div>
-              </div>
-            )}
 
             {project && (
               <Q n="٢" title={tiktok ? 'كلفة المشروع التقريبية' : 'حجم الاستثمار التقريبي'} hint="تقديرٌ يكفي — كامل ما سيُصرف على المشروع: المعدات والتجهيز والموقع ورأس مال التشغيل للسنة الأولى.">
