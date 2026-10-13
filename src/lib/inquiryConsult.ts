@@ -24,6 +24,7 @@ export type InquiryRow = {
   service_title: string | null; note: string | null; contact_note: string | null; outcome: string | null;
   ask_message: string | null; ask_reply: string | null; ask_reply_at: string | null;
   consult_status: string | null; consult_tries: number | null; consult_at: string | null; consult_code: string | null;
+  consult_sent_at?: string | null; consult_owner_note?: string | null;
 };
 
 type Content = {
@@ -60,14 +61,15 @@ ${r.ask_message || ''}
 - ردّه بنصّه:
 ${r.ask_reply || ''}
 
-## القواعد — كلها ملزمة
+${r.consult_owner_note ? '## ملاحظة الدكتور على المسودة السابقة — التزم بها حرفياً\n' + r.consult_owner_note + '\n\n' : ''}## القواعد — كلها ملزمة
 ١) لا تذكر أي معلومة أو رقم غير موجود في المعطيات أعلاه. لا تخترع إيراداً ولا تكلفةً ولا نسبة ولا جهة. إن لم يذكر رقماً فلا رقم.
 ٢) لا سعر ولا أتعاب ولا خصم ولا كلمة «مجاني» — إطلاقاً.
 ٣) لا تسمِّ أي جهة تمويل بعينها إلا ما ورد في «الأبواب المعروضة له» في المعطيات، ولا تسمِّ أي جهة رقابية. ويجوز الحديث عن «البنوك وشركات التمويل المرخّصة» و«المستثمرين في قطاعه» عموماً.
 ٤) لا تذكر أي موظف ولا أداة ولا ذكاء اصطناعي. اكتب بصوت المكتب: «راجعنا»، «نرى»، «قراءتنا».
 ٥) الحكم صادق ومعايَر — لا مجاملة (★ تدقيق ١٣ أكتوبر: كُتب «قابل للتمويل» لفكرةٍ بلا أرض ولا مساهمة، ولبنكٍ رقمي، ولمن عليه تعثّرات):
    · قل «قابل للتمويل/للاستثمار» **فقط** إن كان عنده نشاط قائم بإيراد ذكره، أو مساهمة من ماله ذكرها، أو أصل يملكه صرّح بملكيته.
-   · وإلا فالعنوان عن **الطريق**: «ما الذي يجعل مشروعك قابلاً للتمويل» — وسمِّ الناقص بهدوء (مساهمة، أرض، ترخيص، خبرة، رقم محدد) واجعل حلّه الهيكلة والدراسة. هذا ما يجعله يحتاجنا، وهو صادق.
+   · وإلا فلا تغلق الباب — **حوّل المسار**: إن لم يكن ملفه جاهزاً للتمويل (لا مساهمة، لا نشاط، لا أصل)، فطريقه **الاستثمار والشراكة**: مستثمر أو شريك يدخل بماله مقابل حصة، والمستثمر لا يدخل إلا على دراسة جدوى مقنعة برقمٍ واضح وعائد. فالعنوان عن الطريق: «مشروعك: طريقه الشراكة والاستثمار قبل التمويل» أو «ما الذي يجعل مشروعك جاذباً للمستثمر». وسمِّ الناقص بهدوء، واجعل **دراسة الجدوى** هي ما يفتح هذا الباب.
+   · ★ المالك (١٣ أكتوبر): «ما يمشي معه تمويل يمشي استثمار» — فكل استشارة تنتهي بمسارٍ واقعي تقود إليه الدراسة: تمويل لمن ملفه جاهز، واستثمار أو شراكة لمن ليس جاهزاً، أو الاثنان معاً بالهيكلة. لا استشارة تقول «لا طريق».
    · إن ذكر تعثّراً أو ديوناً أو قضية فلا تقل «ملف نظيف» ولا «قابل للتمويل» — قل إن معالجة الالتزامات وترتيبها تسبق أي طلب.
    · إن كان المشروع يحتاج ترخيصاً خاصاً أو رأس مالٍ نظامياً ضخماً (بنك، تأمين، صرافة…) فقل ذلك صراحةً واقترح خطوة أولى واقعية.
    · لا وعد بموافقة ولا عبارات مثل «يقرؤون ملفك بارتياح» عن مشروعٍ لم يبدأ.
@@ -229,7 +231,7 @@ ${c.note ? `<div class="note">${rich(c.note)}</div>` : ''}
 </div></body></html>`;
 }
 
-const SELECT = 'id, full_name, company_name, phone, service_title, note, contact_note, outcome, ask_message, ask_reply, ask_reply_at, consult_status, consult_tries, consult_at, consult_code';
+const SELECT = 'id, full_name, company_name, phone, service_title, note, contact_note, outcome, ask_message, ask_reply, ask_reply_at, consult_status, consult_tries, consult_at, consult_code, consult_sent_at, consult_owner_note';
 
 /** يولّد استشارة طلبٍ واحد — يُستدعى من النبض */
 export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow): Promise<string> {
@@ -263,8 +265,13 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
   }
   // ما لم يجتز المراجعة لا يُعرض للموظفة — يُحجز وينبَّه المالك
   if (c && bad.length) {
-    await sb.from('service_inquiries').update({ consult_status: 'held', consult_error: bad.join('، ').slice(0, 500), consult_html: consultHtml(c, r), consult_code: r.consult_code || randomBytes(6).toString('base64url'), consult_at: new Date().toISOString() }).eq('id', r.id);
-    await sendPush({ title: 'استشارة تحتاج مراجعتك — ' + (r.company_name || r.full_name || ''), body: bad.join('، ').slice(0, 160), url: '/r/' + (r.consult_code || ''), important: true, tag: 'iq-consult-' + r.id }, OWNER_EMAIL).catch(() => null);
+    // استشارةٌ وصلت العميل من قبل لا يُستبدل رابطها بمسودةٍ لم تُعتمد — تبقى كما هي وتُعرض على المالك
+    const code = r.consult_code || randomBytes(6).toString('base64url');
+    await sb.from('service_inquiries').update({
+      consult_status: 'held', consult_error: bad.join('، ').slice(0, 500), consult_code: code, consult_at: new Date().toISOString(),
+      ...(r.consult_sent_at ? { consult_draft_html: consultHtml(c, r) } : { consult_html: consultHtml(c, r) }),
+    }).eq('id', r.id);
+    await sendPush({ title: 'استشارة تنتظر اعتمادك — ' + (r.company_name || r.full_name || ''), body: 'لم تصل الموظفة بعد. افتحها واعتمدها، أو اكتب ملاحظتك فتُعاد كتابتها.', url: '/admin/consults', important: true, tag: 'iq-consult-' + r.id }, OWNER_EMAIL).catch(() => null);
     return 'محجوزة للمراجعة: ' + (r.company_name || r.full_name);
   }
   if (!c) return fail('خالفت القواعد: ' + bad.join('، '));
@@ -275,7 +282,7 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
     consult_status: 'ready', consult_html: html, consult_code: code, consult_at: new Date().toISOString(), consult_error: null,
   }).eq('id', r.id);
   if (error) return fail('لم تُحفظ — ' + error.message);
-  await sendPush({
+  if (!r.consult_sent_at) await sendPush({
     title: 'استشارة جاهزة — ' + (r.company_name || r.full_name || ''),
     body: c.title + ' · نزلت في بطاقة العميل عند ضي للإرسال',
     url: '/r/' + code, tag: 'iq-consult-' + r.id,

@@ -307,7 +307,7 @@ function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: b
       {open && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.9, background: C.bg, borderRadius: 8, padding: '8px 12px', marginTop: 6 }}>{a.ask_message}</div>}
       {a.ask_reply && <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 7, background: C.pale, borderRadius: 8, padding: '7px 11px' }}><b>رده:</b> {a.ask_reply}</div>}
       {a.ask_reply && a.consult_status !== 'ready' && a.consult_status !== 'held' && <div style={{ fontSize: 12, color: C.soft, marginTop: 6 }}>⏳ الاستشارة تُجهَّز — تظهر هنا خلال ساعة من لصق الرد</div>}
-      {a.consult_status === 'held' && <div style={{ fontSize: 12, color: '#8A6D1F', marginTop: 6, fontWeight: 800 }}>⏳ الاستشارة عند الدكتور للمراجعة{a.consult_code ? <> · <a href={'/r/' + a.consult_code} target="_blank" rel="noreferrer" style={{ color: C.green }}>اطّلاع</a> · <button onClick={() => patch({ approve: true })} style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 900, cursor: 'pointer', padding: 0 }}>اعتماد (للدكتور)</button></> : null}</div>}
+      {a.consult_status === 'held' && <div style={{ fontSize: 12, color: '#8A6D1F', marginTop: 6, fontWeight: 800 }}>⏳ الاستشارة عند الدكتور للمراجعة — تظهر هنا بعد اعتمادها</div>}
       {a.consult_status === 'ready' && a.consult_code && (
         <div style={{ marginTop: 8, background: '#EFF9F4', border: '1px solid #BFE3D3', borderRadius: 10, padding: '9px 12px' }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: C.ink }}>✨ استشارته جاهزة{a.consult_sent_at ? ' · أُرسلت ' + ago(a.consult_sent_at) : ''}{a.consult_opened_at ? ' · فتحها ✓' : ''}</div>

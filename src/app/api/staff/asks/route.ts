@@ -35,8 +35,6 @@ export async function PATCH(req: Request) {
   const patch: Record<string, unknown> = {};
   if (b.sent === true) patch.ask_sent_at = new Date().toISOString();
   if (b.consultSent === true) patch.consult_sent_at = new Date().toISOString();
-  // اعتماد استشارةٍ حجزها المراجع — للمالك وحده
-  if (b.approve === true && who.role === 'admin') { patch.consult_status = 'ready'; patch.consult_error = null; }
   if (typeof b.reply === 'string') {
     const r = b.reply.trim().slice(0, 4000);
     if (!r) return NextResponse.json({ error: 'الصقي رد العميل أولاً' }, { status: 400 });
