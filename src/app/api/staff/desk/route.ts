@@ -227,6 +227,11 @@ export async function PATCH(req: Request) {
         if (!funder || !(amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
           return NextResponse.json({ error: '«وافقت الجهة» يحتاج: اسم الجهة، والمبلغ المعتمد، وموعد الصرف المتوقع' }, { status: 400 });
         }
+        // ★ ١٣ أكتوبر: سُجّلت «وافقت funding souq» بمبلغ 300 وموعد صرف 0006-02-20 — والأتعاب
+        //   تُحسب من هذا المبلغ. فالمبلغ بالريال كاملاً (لا «٣٠٠ ألف»)، والموعد سنةٌ معقولة.
+        if (amount < 10000) return NextResponse.json({ error: 'اكتبي المبلغ بالريال كاملاً — مثلاً 300000 لا 300' }, { status: 400 });
+        const t = Date.parse(date);
+        if (!(t > Date.now() - 60 * 86400_000 && t < Date.now() + 730 * 86400_000)) return NextResponse.json({ error: 'تاريخ الصرف غير صحيح — تأكدي من السنة' }, { status: 400 });
         const { error: fErr } = await sb.from('success_fees').upsert({
           service_request_id: id, company_id: r.company_id, funder_name: funder, approved_amount: amount,
           expected_disbursement: date, approved_logged_at: new Date().toISOString(), approved_logged_by: name, updated_at: new Date().toISOString(),

@@ -477,7 +477,7 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
               {ms === 'approved' ? (
                 <>
                   <input value={funder} onChange={e => setFunder(e.target.value)} placeholder="اسم الجهة اللي وافقت" style={input} />
-                  <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ المعتمد (ريال)" style={input} />
+                  <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ المعتمد بالريال كاملاً — مثلاً 300000" style={input} />
                   <label style={{ fontSize: 12, color: C.soft }}>موعد الصرف المتوقع: <input type="date" value={expected} onChange={e => setExpected(e.target.value)} style={{ ...input, width: 'auto', display: 'inline-block' }} /></label>
                 </>
               ) : (
