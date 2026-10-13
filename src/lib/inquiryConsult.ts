@@ -259,7 +259,8 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
   }
 
   let c: Content | null = null, bad: string[] = [];
-  for (let i = 0; i < 4; i++) {
+  // ثلاث جولات كتابة ومراجعة تكفي — والنبض ٣٠٠ ثانية؛ أربع جولات لثلاث استشارات كانت تُقطع فتعلق «تُكتب»
+  for (let i = 0; i < 3; i++) {
     const text = await callModel(prompt(r, bad.length ? '\n\nتنبيه: مسودةٌ سابقة رُفضت لأنها خالفت: ' + bad.join('، ') + '. تجنّب ذلك تماماً.' : ''));
     if (!text) return fail('النموذج لم يردّ');
     c = parse(text);
@@ -304,11 +305,11 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
 /** النبض: كل من لُصق ردّه قبل نصف ساعة ولم تُكتب استشارته */
 export async function runInquiryConsults(sb: SupabaseClient): Promise<string[]> {
   const before = new Date(Date.now() - WAIT_MIN * 60_000).toISOString();
-  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+  const hourAgo = new Date(Date.now() - 20 * 60_000).toISOString();   // ما علق «تُكتب» يُعاد بعد ٢٠ دقيقة
   const { data, error } = await sb.from('service_inquiries').select(SELECT)
     .not('ask_reply', 'is', null).lte('ask_reply_at', before)
     .or('consult_status.is.null,and(consult_status.eq.retry,consult_at.lte.' + hourAgo + '),and(consult_status.eq.generating,consult_at.lte.' + hourAgo + ')')
-    .order('ask_reply_at').limit(3);
+    .order('ask_reply_at').limit(1);
   if (error) throw new Error(error.message);
   const out: string[] = [];
   for (const r of (data || []) as InquiryRow[]) out.push(await generateInquiryConsult(sb, r));
