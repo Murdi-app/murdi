@@ -245,7 +245,7 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
 
   // استشارة واحدة لكل عميل — من سجّل طلبين بالجوال نفسه لا يصله نصّان متناقضان
   const p9 = String(r.phone || '').replace(/\D/g, '').slice(-9);
-  if (p9.length === 9) {
+  if (p9.length === 9 && !r.consult_sent_at) {
     const { data: twins } = await sb.from('service_inquiries').select('id, phone, consult_status').neq('id', r.id).in('consult_status', ['ready', 'held']);
     if ((twins || []).some((t) => String(t.phone || '').replace(/\D/g, '').slice(-9) === p9)) {
       await sb.from('service_inquiries').update({ consult_status: 'duplicate', consult_error: 'للعميل استشارة من طلبٍ آخر' }).eq('id', r.id);
@@ -278,6 +278,11 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
 
   const code = r.consult_code || randomBytes(6).toString('base64url');
   const html = consultHtml(c, r);
+  // تصحيحُ استشارةٍ وصلت العميل لا يُستبدل في رابطه إلا باعتماد المالك («ونا ما راجعتها» — ١٣ أكتوبر)
+  if (r.consult_sent_at) {
+    await sb.from('service_inquiries').update({ consult_status: 'held', consult_draft_html: html, consult_error: 'نسخة مصحّحة لاستشارة وصلت العميل — اعتمادها يستبدل ما في رابطه', consult_at: new Date().toISOString() }).eq('id', r.id);
+    return 'تصحيح ينتظر الاعتماد: ' + (r.company_name || r.full_name);
+  }
   const { error } = await sb.from('service_inquiries').update({
     consult_status: 'ready', consult_html: html, consult_code: code, consult_at: new Date().toISOString(), consult_error: null,
   }).eq('id', r.id);
