@@ -150,10 +150,11 @@ async function review(c: Content, r: InquiryRow): Promise<string[]> {
 رسالة الأسئلة: ${r.ask_message || ''}
 ردّ العميل: ${r.ask_reply || ''}
 الاستشارة: ${JSON.stringify(c)}
+لا تذكر ملاحظات أسلوبية (صيغة الجمع، الصياغة) ولا ما راجعته فوجدته سليماً — المخالفات الجوهرية وحدها.
 أعد JSON فقط: {"issues":["…"]} — مصفوفة فارغة إن كانت سليمة.`);
   if (!text) return [];
   const m = /\{[\s\S]*\}/.exec(text);
-  try { const j = m ? JSON.parse(m[0]) as { issues?: string[] } : null; return (j?.issues || []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 5); } catch { return []; }
+  try { const j = m ? JSON.parse(m[0]) as { issues?: string[] } : null; return (j?.issues || []).filter((x) => typeof x === 'string' && x.trim() && !/لا مخالفة|سليمة|أسلوب/.test(x)).slice(0, 5); } catch { return []; }
 }
 
 const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -207,7 +208,7 @@ strong{font-weight:900}
 <p class="lede">${rich(c.lede)}</p>
 ${c.stats.length ? '<div class="stats">' + c.stats.map((s) => `<div class="stat"><div class="sv">${esc(s.v)}</div><div class="sl2">${esc(s.l)}</div></div>`).join('') + '</div>' : ''}
 <div class="verdict"><div class="t">${rich(c.verdict_title)}</div><p style="margin:6px 0 0">${rich(c.verdict_body)}</p></div>
-<h2>لماذا نراه قابلاً للتمويل والاستثمار</h2>
+<h2>نقاط القوة في ملفك</h2>
 <ul>${c.reasons.slice(0, 3).map((x) => `<li><strong>${esc(x.h)}.</strong> ${rich(x.t)}</li>`).join('')}</ul>
 <h2>${rich(c.crux_title)}</h2>
 <p>${rich(c.crux_body)}</p>
