@@ -1,6 +1,7 @@
 'use client'
 import AdminNav from '@/components/AdminNav'
 import CallIntake from '@/components/CallIntake'
+import StaffBrief from '@/components/StaffBrief'
 import { OUTCOMES } from '@/lib/outcomes'
 import { waNumber } from '@/lib/phone'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -22,6 +23,7 @@ type Hot = {
   email: string | null; company_id: string | null; tier: number; reason: string; at: string | null
   next_step: string; opener: string | null; touches: number; last_outcome: string | null; last_note: string | null
   last_at: string | null; next_action_at: string | null; state: string; follow?: boolean; last_actor?: string | null
+  ask?: { id: string; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null } | null
 }
 type File = {
   request_id: string; company_id: string; name: string; owner: string; phone: string; service: string
@@ -106,6 +108,8 @@ export default function JourneyPage() {
             ))}
           </div>
         )}
+        {/* توجيه اليوم — كان في الشاشات القديمة وحدها، فلم تره رغد بعد أن صارت هذه شاشتها (١٣ أكتوبر) */}
+        {!isAdmin && !loading && <StaffBrief />}
         {err && <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800 }}>{err}</div>}
         {loading ? <p style={{ color: C.soft }}>جارٍ التحميل…</p>
           : showDhai && isRaghad ? <HelperBoard hot={hot} reload={load} />
@@ -186,7 +190,6 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
           <div style={{ display: 'grid', gap: 9 }}>{found.map(r => <LeadCard key={'s' + r.source + r.ref_id} r={r} reload={reload} />)}</div>
         </section>
       )}
-      <AsksPanel />
 
       {shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
         <section key={s.key} style={{ marginTop: 22 }}>
@@ -255,7 +258,7 @@ function AsksPanel() {
   )
 }
 
-function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
+function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: boolean }) {
   const [open, setOpen] = useState(false)
   const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
@@ -284,9 +287,9 @@ function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
   }
   const copy = async () => { try { await navigator.clipboard.writeText(a.ask_message); setMsg('نُسخت ✓') } catch { setMsg('انسخيها يدوياً') } }
   return (
-    <div style={card}>
+    <div style={inline ? { marginTop: 9, background: '#FFFBEF', border: '1px solid #F1E3B5', borderRadius: 10, padding: '9px 12px' } : card}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-        <b style={{ fontSize: 14.5, fontWeight: 900 }}>{a.company_name || a.full_name || '—'}{a.company_name && a.full_name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {a.full_name}</span> : null}</b>
+        <b style={{ fontSize: inline ? 13 : 14.5, fontWeight: 900 }}>{inline ? '📝 أسئلة الاستشارة' : (a.company_name || a.full_name || '—')}{!inline && a.company_name && a.full_name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {a.full_name}</span> : null}</b>
         <span style={{ fontSize: 11.5, color: C.soft }}>{a.ask_reply ? '✓ ردّ ' + ago(a.ask_reply_at) : a.ask_sent_at ? 'أُرسلت ' + ago(a.ask_sent_at) : 'لم تُرسل بعد'}</span>
       </div>
       <button onClick={() => setOpen(!open)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{open ? 'إخفاء الرسالة' : 'عرض الرسالة'}</button>
@@ -334,7 +337,7 @@ function HelperBoard({ hot, reload }: { hot: Hot[]; reload: () => void }) {
   const rows = live.filter(match)
   const fresh = rows.filter(r => r.touches === 0).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
   const recent = fresh.filter(r => (days(r.at) ?? 99) <= 7), older = fresh.filter(r => (days(r.at) ?? 99) > 7)
-  const talked = rows.filter(r => r.touches > 0).sort((a, b) => String(b.last_at || '').localeCompare(String(a.last_at || '')))
+  const talked = rows.filter(r => r.touches > 0).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
   const cards = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
   return (
     <>
@@ -350,11 +353,20 @@ function HelperBoard({ hot, reload }: { hot: Hot[]; reload: () => void }) {
         {showOld && cards(older.slice(0, 80))}
       </section>
       <section style={{ marginTop: 22 }}>
-        <SectionHead label="كُلِّموا — آخر نتيجة" hint="ما كتبته ضي أو أنتِ أو الدكتور، الأحدث أولاً. «لم يرد» يُعاود الاتصال به." n={talked.length} />
+        <SectionHead label="كُلِّموا — آخر نتيجة" hint="آخر نتيجة ومن كتبها — الأحدث وصولاً أولاً. «لم يرد» يُعاود الاتصال به." n={talked.length} />
         {cards(talked.slice(0, 120))}
       </section>
     </>
   )
+}
+
+// «طلب «…» من الموقع — ⭐ جادّ · توسعة · 10–50 مليون · …» ← سطرٌ رئيسي ورقائق تُقرأ بنظرة
+function splitReason(reason: string): { main: string; chips: string[] } {
+  const i = reason.indexOf('⭐')
+  if (i < 0) return { main: reason, chips: [] }
+  const main = reason.slice(0, i).replace(/[\s—-]+$/, '')
+  const chips = reason.slice(i + 1).split('·').map(x => x.trim()).filter(Boolean)
+  return { main, chips }
 }
 
 function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
@@ -381,16 +393,22 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
     <div style={{ ...card, opacity: waiting ? 0.7 : 1, borderColor: r.source === 'transfer' ? '#E8C4B2' : C.line }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <b style={{ fontSize: 15, fontWeight: 900 }}>{r.name || r.person || '—'}{r.person && r.name && r.person !== r.name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {r.person}</span> : null}</b>
-        <span style={{ fontSize: 11.5, color: C.soft }}>{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : ago(r.at)}</span>
+        <span style={{ fontSize: 11.5, color: C.soft }}>{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : r.at ? 'وصل ' + ago(r.at) : ''}</span>
       </div>
-      <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{r.reason}{Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0) >= 85 && r.touches === 0 ? <span style={tag(C.red)}>🔥 درجة عالية — كلّميه أولاً</span> : null}</div>
+      <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{splitReason(r.reason).main}{Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0) >= 85 && r.touches === 0 ? <span style={tag(C.red)}>🔥 درجة عالية — كلّميه أولاً</span> : null}</div>
       {r.last_outcome && (
         <div style={{ fontSize: 12, marginTop: 6, background: C.pale, borderRadius: 8, padding: '6px 10px' }}>
           آخر مكالمة ({r.touches}): <b>{r.last_outcome}</b>{r.last_note ? ' — ' + r.last_note : ''} <span style={{ color: C.soft }}>· {ago(r.last_at)}</span>
           {r.last_actor ? <span style={{ ...tag(r.last_actor.includes('رغد') ? '#6B5BA8' : r.last_actor.includes('عبدالحكيم') ? C.gold : C.green) }}>{r.last_actor.includes('عبدالحكيم') ? 'الدكتور' : r.last_actor}</span> : null}
         </div>
       )}
+      {splitReason(r.reason).chips.length > 0 && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+          {splitReason(r.reason).chips.map(c => <span key={c} style={{ fontSize: 11.5, fontWeight: 800, color: c === 'جادّ' ? '#fff' : C.ink, background: c === 'جادّ' ? C.red : C.pale, borderRadius: 999, padding: '2px 10px' }}>{c}</span>)}
+        </div>
+      )}
       <div style={{ fontSize: 12.5, marginTop: 6, color: C.green, fontWeight: 700 }}>← {r.next_step}</div>
+      {r.ask && <AskCard inline reload={reload} a={{ ...r.ask, full_name: r.person, company_name: r.name, phone: r.phone }} />}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
         {r.phone && <a href={'tel:' + r.phone} style={btn(true)}>📞 {r.phone}</a>}
         {wa && <a href={'https://wa.me/' + wa} target="_blank" rel="noreferrer" style={btn(false)}>واتساب</a>}

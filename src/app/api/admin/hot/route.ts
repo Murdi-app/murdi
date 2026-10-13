@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
+import { DISPLAY } from '@/lib/serviceCatalog';
 import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
@@ -107,6 +108,22 @@ export async function GET() {
     seen.add(k + '@' + t.created_at); countOf.set(k, (countOf.get(k) || 0) + 1);
   }
 
+  // ★ ١٣ أكتوبر (المالك): كل ما يخصّ العميل في بطاقته — ومنه أسئلة الاستشارة وردّه واستشارته،
+  //   فلا تبحث الموظفة عنها في قسمٍ آخر. وأسماء الخدمات بأسمائها المعروضة («الائتمانية والاقتصادية»).
+  const inqIds = Array.from(new Set(rows.filter((r) => r.source === 'inquiry').map((r) => r.ref_id)));
+  const askBy = new Map<string, Record<string, unknown>>();
+  for (let i = 0; i < inqIds.length; i += 200) {
+    const { data: aq } = await sb.from('service_inquiries')
+      .select('id, ask_message, ask_sent_at, ask_reply, ask_reply_at, consult_status, consult_code, consult_sent_at, consult_opened_at')
+      .in('id', inqIds.slice(i, i + 200)).not('ask_message', 'is', null);
+    for (const a of aq || []) askBy.set(String(a.id), a);
+  }
+  const shown = (t: string | null) => {
+    let x = String(t || '');
+    for (const [k, v] of Object.entries(DISPLAY)) if (!x.includes(v)) x = x.split('«' + k + '»').join('«' + v + '»').split('لـ' + k).join('لـ' + v);
+    return x;
+  };
+
   const today = new Date().toISOString().slice(0, 10);
   const merged = rows.map((r) => {
     const t = last.get(r.source + '|' + r.ref_id) || null;
@@ -116,6 +133,9 @@ export async function GET() {
     const waiting = !!t?.next_action_at && t.next_action_at > today;
     return {
       ...r,
+      reason: shown(r.reason),
+      opener: shown((r as Row & { opener?: string | null }).opener || null) || null,
+      ask: r.source === 'inquiry' ? askBy.get(r.ref_id) || null : null,
       // ★ ١٣ أكتوبر (المالك): العملاء كلهم عند ضي، ورغد تدخل وتكلّم وتكتب النتيجة —
       //   فتُعرف من كتبت آخر نتيجة (ضي · رغد · الدكتور) على البطاقة نفسها.
       last_actor: t?.actor_name || null,
