@@ -1,6 +1,6 @@
 'use client'
 import AdminNav from '@/components/AdminNav'
-import CallIntake from '@/components/CallIntake'
+import CallIntake, { sizeFromText } from '@/components/CallIntake'
 import StaffBrief from '@/components/StaffBrief'
 import { OUTCOMES } from '@/lib/outcomes'
 import { waNumber } from '@/lib/phone'
@@ -439,6 +439,7 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
             service={(r.reason || '').match(/طلب «(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
             seed={{ full_name: r.person || r.name || '', phone: r.phone || '', email: r.email || '', company_name: r.name && r.name !== r.person ? r.name : '' }}
             from={{ source: r.source, ref_id: r.ref_id }}
+            quick size={sizeFromText(r.reason || '')}
             onDone={() => { setIntake(false); reload() }}
           />
         </div>

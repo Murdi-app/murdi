@@ -69,7 +69,20 @@ const resolveTitle = (v?: string) => {
   return CATALOG.some((c) => c.items.includes(t)) ? t : FUNDING_TITLE
 }
 
-export default function CallIntake({ seed, service: seedService, onDone, from }: { seed?: Partial<Who>; service?: string; onDone?: () => void; from?: { source: string; ref_id: string } }) {
+// ★ ١٣ أكتوبر (المالك): «ليش حجم استثماره تسأل عنه وهو مقدّم وحاطّ الحجم؟» — من بطاقة عميلٍ قدّم طلبه
+//   (`quick`) يُفتح ملفه بلا أسئلة: الخدمة والحجم من طلبه، والاسم والجوال منه. أرقام المشروع والملكية
+//   تُستكمل بعد الدفع عند رغد، لا قبل الفاتورة.
+const SIZES_QUICK: { label: string; value: number }[] = [
+  { label: 'أقل من 2 مليون', value: 1_000_000 }, { label: '2–10 مليون', value: 5_000_000 },
+  { label: '10–50 مليون', value: 25_000_000 }, { label: 'أكثر من 50 مليون', value: 100_000_000 },
+]
+export function sizeFromText(t: string): number | null {
+  const x = SIZES_QUICK.find((s) => String(t || '').includes(s.label))
+  return x ? x.value : null
+}
+
+export default function CallIntake({ seed, service: seedService, onDone, from, quick, size }: { seed?: Partial<Who>; service?: string; onDone?: () => void; from?: { source: string; ref_id: string }; quick?: boolean; size?: number | null }) {
+  const [sizeVal, setSizeVal] = useState<number>(size || 0)
   const [title, setTitle] = useState<string>(resolveTitle(seedService || 'feasibility'))
   const [option, setOption] = useState<string>('full')
   const [value, setValue] = useState('')
@@ -118,7 +131,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
 
   const totalInvestment = num(f.capex) + num(f.workingCapital)
   const tier = totalInvestment > 0 ? priceFor('دراسة الجدوى الاقتصادية', totalInvestment) : null
-  const quick = COMMERCIAL['دراسة الجدوى الاقتصادية']?.options?.find((o) => o.key === 'quick')
+  const quickOpt = COMMERCIAL['دراسة الجدوى الاقتصادية']?.options?.find((o) => o.key === 'quick')
 
   const dscr1 = calc?.c.years?.[0]?.dscr ?? null
   const payback = calc?.r.paybackYears ?? null
@@ -151,7 +164,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
 
   const optKey = opts.length ? option : null
   const quote = intakeQuote(title, optKey,
-    service === 'feasibility' && totalInvestment > 0 ? totalInvestment : num(value), num(units))
+    quick && service === 'feasibility' ? sizeVal : service === 'feasibility' && totalInvestment > 0 ? totalInvestment : num(value), num(units))
   const needNumbers = service === 'feasibility' && optKey === 'quick'
   // ★ ٧ أكتوبر (بأمر المالك — «مسار العميل واحد»): الاسم والجوال يكفيان لفتح الملف. البريد إن وُجد،
   //   وإلا فُتح على الجوال ورسائله واتساب منك. وأرقام المشروع تُستكمل بعد الفتح لا قبله.
@@ -163,7 +176,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: num(value), units: num(units), inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
+        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: quick && service === 'feasibility' ? sizeVal : num(value), units: num(units), inputs: service === 'feasibility' && !quick ? { ...inputs } : {}, spoken: service === 'feasibility' && !quick ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
@@ -204,7 +217,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
           <div style={{ background: '#fff', border: '2px solid #BFE0D3', borderRadius: 16, padding: '24px 22px' }}>
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 19, marginBottom: 8 }}>فُتح ملف {out.company}</div>
             <p style={{ color: MUTED, fontSize: 13.5, fontWeight: 700, lineHeight: 1.95, margin: '0 0 16px' }}>
-              أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{out.label || quick?.label || 'الفحص الائتماني للمشروع'}</b> بـ{out.amount.toLocaleString('ar-SA')} ريال.
+              أُنشئ حسابه ومنشأته وطلب <b style={{ color: GREEN }}>{out.label || quickOpt?.label || 'الفحص الائتماني للمشروع'}</b> بـ{out.amount.toLocaleString('ar-SA')} ريال.
               {out.hold
                 ? ' وعقد هذه الخدمة يراجعه الدكتور ويُصدره أولاً — لا تُرسلي للعميل شيئاً الآن.'
                 : ' أرسلي له الرسالة أدناه — فيها رابط سند الخدمة، ومنه يرى ما تشمله ويدفع.'}
@@ -278,6 +291,14 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
               </>
             ))}
 
+            {quick && service === 'feasibility' && card('حجم مشروعه — من طلبه', (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {SIZES_QUICK.map((x) => (
+                  <button key={x.label} type="button" onClick={() => setSizeVal(x.value)} style={{ padding: '8px 14px', borderRadius: 999, border: '1.5px solid ' + (sizeVal === x.value ? GREEN : '#E4EFEA'), background: sizeVal === x.value ? GREEN : '#fff', color: sizeVal === x.value ? '#fff' : GREEN, fontFamily: 'Cairo', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{x.label}</button>
+                ))}
+              </div>
+            ))}
+
             {card('من هو', (
               <div style={grid()}>
                 {([
@@ -297,7 +318,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
                 ملفٍ بلا معرفتها هو أن تَعِد رجلاً بباب مقفل عليه. والسؤال
                 الثاني أهمّها: من يحمل ترخيصاً استثمارياً أو إقامة مميزة
                 تقرؤه الجهات «مستثمراً مرخّصاً» لا «مقيماً» — وهما وضعان. */}
-            {card('ملكيته — سؤالان يغيّران أبوابه', (
+            {!quick && card('ملكيته — سؤالان يغيّران أبوابه', (
               <>
                 <div style={grid()}>
                   <div>
@@ -335,7 +356,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
               </>
             ))}
 
-            {service === 'feasibility' && card(needNumbers ? 'أرقام مشروعه — يعرفها كلها' : 'حجم استثماره — يكفي التجهيز ورأس المال العامل', (
+            {!quick && service === 'feasibility' && card(needNumbers ? 'أرقام مشروعه — يعرفها كلها' : 'حجم استثماره — يكفي التجهيز ورأس المال العامل', (
               <>
                 <div style={grid()}>
                   {ASK.map((x) => (
@@ -363,7 +384,7 @@ export default function CallIntake({ seed, service: seedService, onDone, from }:
             ))}
 
             {/* الحساب — يظهر لها وحدها، ويتحدّث مع كل رقم تكتبه */}
-            {service === 'feasibility' && <div style={{ background: calc ? '#fff' : '#F2F6F5', border: '1.5px solid ' + (calc ? '#BFE0D3' : '#E4EFEA'), borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+            {!quick && service === 'feasibility' && <div style={{ background: calc ? '#fff' : '#F2F6F5', border: '1.5px solid ' + (calc ? '#BFE0D3' : '#E4EFEA'), borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
               <div style={{ color: GREEN, fontWeight: 900, fontSize: 14.5, marginBottom: 4 }}>الحساب — لكِ أنتِ</div>
               <div style={{ color: '#9DB3AB', fontSize: 11.5, fontWeight: 700, marginBottom: 14 }}>
                 لا تُرسلي هذه الأرقام مكتوبةً. تُقال في المكالمة فقط.

@@ -255,7 +255,7 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
   }
 
   let c: Content | null = null, bad: string[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const text = await callModel(prompt(r, bad.length ? '\n\nتنبيه: مسودةٌ سابقة رُفضت لأنها خالفت: ' + bad.join('، ') + '. تجنّب ذلك تماماً.' : ''));
     if (!text) return fail('النموذج لم يردّ');
     c = parse(text);
@@ -272,7 +272,6 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
       consult_status: 'held', consult_error: bad.join('، ').slice(0, 500), consult_code: code, consult_at: new Date().toISOString(),
       ...(r.consult_sent_at ? { consult_draft_html: consultHtml(c, r) } : { consult_html: consultHtml(c, r) }),
     }).eq('id', r.id);
-    await sendPush({ title: 'استشارة تنتظر اعتمادك — ' + (r.company_name || r.full_name || ''), body: 'لم تصل الموظفة بعد. افتحها واعتمدها، أو اكتب ملاحظتك فتُعاد كتابتها.', url: '/admin/consults', important: true, tag: 'iq-consult-' + r.id }, OWNER_EMAIL).catch(() => null);
     return 'محجوزة للمراجعة: ' + (r.company_name || r.full_name);
   }
   if (!c) return fail('خالفت القواعد: ' + bad.join('، '));
@@ -281,21 +280,20 @@ export async function generateInquiryConsult(sb: SupabaseClient, r: InquiryRow):
   const html = consultHtml(c, r);
   // تصحيحُ استشارةٍ وصلت العميل لا يُستبدل في رابطه إلا باعتماد المالك («ونا ما راجعتها» — ١٣ أكتوبر)
   if (r.consult_sent_at) {
-    await sb.from('service_inquiries').update({ consult_status: 'held', consult_draft_html: html, consult_error: 'نسخة مصحّحة لاستشارة وصلت العميل — اعتمادها يستبدل ما في رابطه', consult_at: new Date().toISOString() }).eq('id', r.id);
-    return 'تصحيح ينتظر الاعتماد: ' + (r.company_name || r.full_name);
+    // تصحيحٌ اجتاز المراجعة يحلّ في الرابط نفسه بصمت
+    await sb.from('service_inquiries').update({ consult_status: 'ready', consult_html: html, consult_draft_html: null, consult_error: null, consult_at: new Date().toISOString() }).eq('id', r.id);
+    return 'صُحّحت: ' + (r.company_name || r.full_name);
   }
   // ★ ١٣ أكتوبر (المالك): «ما ترسله وأنا ما راجعتها» — حتى تستقرّ الجودة، كل استشارة تمرّ باعتماده
   //   في «استشارات تنتظرك» قبل أن تظهر للموظفة. يُرفع هذا الشرط بكلمته.
-  const OWNER_APPROVAL = true;
+  // ★ وبعدها بساعة (المالك): «مو عملي كل شوي أدخل — أنت المفترض تراجع وتعتمد». فالمراجعة آلية:
+  //   كاتبٌ ثم مراجعٌ مستقل، وما لم يجتز يُعاد بمخالفاته حتى أربع مرات، والمحجوز النادر يراجعه كلود.
+  const OWNER_APPROVAL = false;
   const { error } = await sb.from('service_inquiries').update({
     consult_status: OWNER_APPROVAL ? 'held' : 'ready', ...(OWNER_APPROVAL ? { consult_error: 'جاهزة — تنتظر اعتمادك' } : {}), consult_html: html, consult_code: code, consult_at: new Date().toISOString(), consult_error: null,
   }).eq('id', r.id);
   if (error) return fail('لم تُحفظ — ' + error.message);
-  if (!r.consult_sent_at) await sendPush({
-    title: 'استشارة تنتظر اعتمادك — ' + (r.company_name || r.full_name || ''),
-    body: c.title + ' · افتحها واعتمدها لتظهر للموظفة',
-    url: '/admin/consults', important: true, tag: 'iq-consult-' + r.id,
-  }, OWNER_EMAIL).catch(() => null);
+  // لا إشعار لكل استشارة — المالك لا يريد أن يُستدعى؛ تظهر في ملخّصه
   return 'جاهزة: ' + (r.company_name || r.full_name);
 }
 
