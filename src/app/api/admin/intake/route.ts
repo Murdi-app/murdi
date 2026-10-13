@@ -260,6 +260,11 @@ export async function POST(req: Request) {
     actor: who.role === 'admin' ? 'owner' : 'staff', needs_owner: false,
   });
 
+  // ★ من فتحت الملف هي صاحبته (المناصفة بين ضي ورغد، ١٣ أكتوبر) — لمسةٌ باسمها
+  if (who.role === 'staff') {
+    const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
+    if (me?.name) await sb.from('hot_touches').insert({ source: 'ordered', ref_id: companyId, outcome: 'مهتم', note: 'فُتح ملفه من مكالمة', actor_name: me.name });
+  }
   await logStaff(who, 'intake', { table: 'service_requests', id: String(requestId), note: companyName });
   return NextResponse.json({
     ok: true, link, hold, message, company_name: companyName, request_id: requestId, existing: !isNew,
