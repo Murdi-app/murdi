@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
-import { loadStaffers, ownerOf } from '@/lib/leadOwner';
 
 // أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك).
 //
@@ -24,16 +23,7 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(200);
   if (qErr) { await logError('staff.asks.get', qErr, {}); return NextResponse.json({ error: 'تعذّر تحميل الأسئلة' }, { status: 500 }); }
-  // صاحبة كل عميل — بالقاعدة نفسها التي تقسم «عملائي» (`@/lib/leadOwner`)
-  const sb = sbAdmin();
-  const staffers = await loadStaffers(sb);
-  const ids = (data || []).map((a) => String(a.id));
-  const first = new Map<string, string>();
-  if (ids.length) {
-    const { data: ts } = await sb.from('hot_touches').select('ref_id, actor_name, created_at').eq('source', 'inquiry').in('ref_id', ids).order('created_at');
-    for (const t of ts || []) { const n = String(t.actor_name || '').trim(); if (!first.has(String(t.ref_id)) && staffers.names.has(n)) first.set(String(t.ref_id), n); }
-  }
-  return NextResponse.json({ ok: true, asks: (data || []).map((a) => ({ ...a, owner: ownerOf('inquiry|' + a.id, first.get(String(a.id)), staffers) })) });
+  return NextResponse.json({ ok: true, asks: data || [] });
 }
 
 export async function PATCH(req: Request) {

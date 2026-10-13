@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { loadStaffers, ownerOf } from '@/lib/leadOwner';
 import { requirePage } from '@/lib/requireStaff';
 import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
@@ -105,14 +104,6 @@ export async function GET() {
     seen.add(k + '@' + t.created_at); countOf.set(k, (countOf.get(k) || 0) + 1);
   }
 
-  // أول من لمس كل عميل — منه تُعرف صاحبته (المناصفة بين ضي ورغد، ١٣ أكتوبر)
-  const staffers = await loadStaffers(sb);
-  const firstBy = new Map<string, string>();
-  for (const t of [...all, ...((recent || []) as Touch[])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))) {
-    const k = t.source + '|' + t.ref_id;
-    if (!firstBy.has(k) && t.actor_name && staffers.names.has(String(t.actor_name).trim())) firstBy.set(k, String(t.actor_name).trim());
-  }
-
   const today = new Date().toISOString().slice(0, 10);
   const merged = rows.map((r) => {
     const t = last.get(r.source + '|' + r.ref_id) || null;
@@ -122,7 +113,9 @@ export async function GET() {
     const waiting = !!t?.next_action_at && t.next_action_at > today;
     return {
       ...r,
-      owner: ownerOf(r.source + '|' + r.ref_id, firstBy.get(r.source + '|' + r.ref_id), staffers),
+      // ★ ١٣ أكتوبر (المالك): العملاء كلهم عند ضي، ورغد تدخل وتكلّم وتكتب النتيجة —
+      //   فتُعرف من كتبت آخر نتيجة (ضي · رغد · الدكتور) على البطاقة نفسها.
+      last_actor: t?.actor_name || null,
       follow: !closed && FOLLOW_OUTCOMES.includes(String(t?.outcome || '')),
       touches: countOf.get(r.source + '|' + r.ref_id) || 0,
       last_outcome: t?.outcome || null,

@@ -21,7 +21,7 @@ type Hot = {
   source: string; ref_id: string; name: string | null; person: string | null; phone: string | null
   email: string | null; company_id: string | null; tier: number; reason: string; at: string | null
   next_step: string; opener: string | null; touches: number; last_outcome: string | null; last_note: string | null
-  last_at: string | null; next_action_at: string | null; state: string; follow?: boolean; owner?: string
+  last_at: string | null; next_action_at: string | null; state: string; follow?: boolean; last_actor?: string | null
 }
 type File = {
   request_id: string; company_id: string; name: string; owner: string; phone: string; service: string
@@ -118,9 +118,11 @@ export default function JourneyPage() {
 // ═══════════════════════════ ضي ═══════════════════════════
 function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; files: File[]; me: string; isAdmin: boolean; reload: () => void }) {
   const [step, setStep] = useState<string>('')
-  // ★ المناصفة (١٣ أكتوبر، المالك): لكل موظفةٍ نصفها — من لمسته أولاً، والجديد بالتناوب.
-  //   والمالك يرى الكل وصاحبةَ كلٍّ منهم. والبحث يمرّ على الجميع.
-  const hot = isAdmin || !me ? allHot : allHot.filter(r => !r.owner || r.owner === me)
+  // ★ ١٣ أكتوبر (المالك): العملاء كلهم هنا — لضي — ورغد تدخل وتكلّم وتكتب النتيجة،
+  //   ومن كتب آخر نتيجة يظهر على البطاقة. والبحث يمرّ على الجميع.
+  const hot = allHot
+  const [showAcc, setShowAcc] = useState(false)
+  const accRows = allHot.filter(r => r.source === 'account' && r.state !== 'closed').sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
   const norm = (s: string) => String(s || '').replace(/\D/g, '').slice(-9)
@@ -160,7 +162,7 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
   const today = by.transfer.length + by.ordered.filter(r => r.state !== 'waiting').length + followDue.length + fresh.length
   const [showOld, setShowOld] = useState(false)
   const [showLater, setShowLater] = useState(false)
-  const list = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} who={isAdmin ? r.owner : undefined} />)}</div>
+  const list = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
   // الأقسام تُعرض بترتيب الأولوية — الأقرب للمال أولاً — والشريط فوقها بترتيب الرحلة
   const ORDER = ['transfer', 'ordered', 'follow', 'new', 'paid']
   const shown = (step ? DHAI_STEPS.filter(s => s.key === step) : [...DHAI_STEPS]).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
@@ -180,10 +182,10 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
       {q.trim().length >= 2 && (
         <section style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, marginBottom: 7 }}>نتائج البحث ({found.length}){found.length === 0 ? ' — غير موجود في المنصة؟ أضيفيه من «عميل ليس في القائمة»' : ''}</div>
-          <div style={{ display: 'grid', gap: 9 }}>{found.map(r => <LeadCard key={'s' + r.source + r.ref_id} r={r} reload={reload} who={isAdmin || r.owner !== me ? r.owner : undefined} />)}</div>
+          <div style={{ display: 'grid', gap: 9 }}>{found.map(r => <LeadCard key={'s' + r.source + r.ref_id} r={r} reload={reload} />)}</div>
         </section>
       )}
-      <AsksPanel me={isAdmin ? '' : me} />
+      <AsksPanel />
 
       {shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
         <section key={s.key} style={{ marginTop: 22 }}>
@@ -195,7 +197,10 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
               {fresh.length > 0 ? list(fresh) : <p style={{ fontSize: 12.5, color: C.soft, margin: 0 }}>ما وصل أحد جديد في آخر أسبوع.</p>}
               {old.length > 0 && <Toggle open={showOld} onClick={() => setShowOld(!showOld)} label={'أقدم من أسبوع ولم يُكلَّموا (' + old.length + ')'} />}
               {showOld && list(old.slice(0, 80))}
-              {accounts > 0 && <div style={{ fontSize: 12, color: C.soft, marginTop: 8 }}>و{accounts} حساباً بلا جوال (بريد فقط) — في القائمة الكاملة أسفل الصفحة.</div>}
+              {/* ★ ١٣ أكتوبر: «في ناس بالإيميل ما يطلعون لي» — من سجّل حساباً ببريده ولم يُكمل
+                  منشأته لا جوال له، فكان يُعدّ هنا رقماً فقط ويُحال إلى صفحةٍ أخرى. فصار هنا بأسمائه وبريده. */}
+              {accounts > 0 && <Toggle open={showAcc} onClick={() => setShowAcc(!showAcc)} label={'📧 سجّلوا بالبريد فقط ولم يُكملوا (' + accounts + ')'} />}
+              {showAcc && list(accRows.slice(0, 80))}
             </>
           ) : s.key === 'follow' ? (
             <>
@@ -217,13 +222,13 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
 // فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
 type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null; owner?: string }
 
-function AsksPanel({ me }: { me: string }) {
+function AsksPanel() {
   const [asks, setAsks] = useState<Ask[]>([])
   const [showDone, setShowDone] = useState(false)
   const load = useCallback(async () => {
     const j = await fetch('/api/staff/asks', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
-    if (j?.asks) setAsks(me ? j.asks.filter((a: Ask) => !a.owner || a.owner === me) : j.asks)
-  }, [me])
+    if (j?.asks) setAsks(j.asks)
+  }, [])
   useEffect(() => { load() }, [load])
   if (asks.length === 0) return null
   const toSend = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
@@ -312,7 +317,7 @@ function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
   )
 }
 
-function LeadCard({ r, reload, who }: { r: Hot; reload: () => void; who?: string }) {
+function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
   const [open, setOpen] = useState(false)
   const [showOpener, setShowOpener] = useState(false)
   const [outcome, setOutcome] = useState<string>(OUTCOMES[1])
@@ -336,12 +341,13 @@ function LeadCard({ r, reload, who }: { r: Hot; reload: () => void; who?: string
     <div style={{ ...card, opacity: waiting ? 0.7 : 1, borderColor: r.source === 'transfer' ? '#E8C4B2' : C.line }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <b style={{ fontSize: 15, fontWeight: 900 }}>{r.name || r.person || '—'}{r.person && r.name && r.person !== r.name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {r.person}</span> : null}</b>
-        <span style={{ fontSize: 11.5, color: C.soft }}>{who ? <span style={{ ...tag(who === 'رغد' ? '#6B5BA8' : C.green), marginInlineStart: 0, marginInlineEnd: 6 }}>عند {who}</span> : null}{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : ago(r.at)}</span>
+        <span style={{ fontSize: 11.5, color: C.soft }}>{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : ago(r.at)}</span>
       </div>
       <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{r.reason}{Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0) >= 85 && r.touches === 0 ? <span style={tag(C.red)}>🔥 درجة عالية — كلّميه أولاً</span> : null}</div>
       {r.last_outcome && (
         <div style={{ fontSize: 12, marginTop: 6, background: C.pale, borderRadius: 8, padding: '6px 10px' }}>
           آخر مكالمة ({r.touches}): <b>{r.last_outcome}</b>{r.last_note ? ' — ' + r.last_note : ''} <span style={{ color: C.soft }}>· {ago(r.last_at)}</span>
+          {r.last_actor ? <span style={{ ...tag(r.last_actor.includes('رغد') ? '#6B5BA8' : r.last_actor.includes('عبدالحكيم') ? C.gold : C.green) }}>{r.last_actor.includes('عبدالحكيم') ? 'الدكتور' : r.last_actor}</span> : null}
         </div>
       )}
       <div style={{ fontSize: 12.5, marginTop: 6, color: C.green, fontWeight: 700 }}>← {r.next_step}</div>
@@ -429,12 +435,20 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
   const [ms, setMs] = useState<'' | 'approved' | 'booked'>('')
   const [funder, setFunder] = useState('')
   const [amount, setAmount] = useState('')
-  const [expected, setExpected] = useState('')
+  // ★ ١٣ أكتوبر: كتبت رغد «300» تقصد ٣٠٠ ألف، وعلق معها حقل التاريخ فخرجت السنة 0006.
+  //   فالمبلغ رقمٌ ووحدة (ريال · ألف · مليون) ومعه ترجمته بالريال، والتاريخ يوم وشهر وسنة من قوائم.
+  const [unit, setUnit] = useState(1000)
+  const now = new Date()
+  const [dd, setDd] = useState(''); const [mm, setMm] = useState(''); const [yy, setYy] = useState(String(now.getFullYear()))
+  const expected = dd && mm && yy ? yy + '-' + mm.padStart(2, '0') + '-' + dd.padStart(2, '0') : ''
+  const setExpected = (_: string) => { setDd(''); setMm('') }
+  const toLatin = (v: string) => v.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^\d.]/g, '')
+  const riyal = Math.round(Number(toLatin(amount) || 0) * unit)
   const saveMilestone = async () => {
     setBusy(true); setMsg('')
     const body = ms === 'approved'
-      ? { kind: 'log', id: f.request_id, milestone: 'approved', funder, amount, expected, done: 'وافقت ' + funder, status: 'in_follow_up' }
-      : { kind: 'log', id: f.request_id, milestone: 'booked', amount: amount || undefined, done: 'نزل التمويل', status: 'in_follow_up' }
+      ? { kind: 'log', id: f.request_id, milestone: 'approved', funder, amount: String(riyal), expected, done: 'وافقت ' + funder, status: 'in_follow_up' }
+      : { kind: 'log', id: f.request_id, milestone: 'booked', amount: amount ? String(riyal) : undefined, done: 'نزل التمويل', status: 'in_follow_up' }
     const res = await fetch('/api/staff/desk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const j = await res.json().catch(() => ({}))
     setBusy(false)
@@ -491,7 +505,7 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9 }}>
             {f.phone && <a href={'tel:' + f.phone} style={btn(false)}>📞 {f.owner || 'العميل'} — {f.phone}</a>}
             <button onClick={() => { setOpen(!open); setMs('') }} style={btn(true)}>سجّلي ما تم</button>
-            {f.outreach && (f.stage === 'funders' || f.stage === 'docs') && <button onClick={() => { setMs(ms === 'approved' ? '' : 'approved'); setOpen(false) }} style={btn(false)}>✅ وافقت جهة</button>}
+            {f.outreach && (f.stage === 'funders' || f.stage === 'docs' || f.stage === 'approved') && <button onClick={() => { setMs(ms === 'approved' ? '' : 'approved'); setOpen(false); if (f.funder) setFunder(f.funder) }} style={btn(false)}>{f.stage === 'approved' ? '✏️ تعديل الموافقة' : '✅ وافقت جهة'}</button>}
             {f.outreach && f.stage === 'approved' && <button onClick={() => { setMs(ms === 'booked' ? '' : 'booked'); setOpen(false) }} style={btn(false)}>🎉 نزل التمويل</button>}
           </div>
           {ms && (
@@ -499,11 +513,28 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
               {ms === 'approved' ? (
                 <>
                   <input value={funder} onChange={e => setFunder(e.target.value)} placeholder="اسم الجهة اللي وافقت" style={input} />
-                  <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ المعتمد بالريال كاملاً — مثلاً 300000" style={input} />
-                  <label style={{ fontSize: 12, color: C.soft }}>موعد الصرف المتوقع: <input type="date" value={expected} onChange={e => setExpected(e.target.value)} style={{ ...input, width: 'auto', display: 'inline-block' }} /></label>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="المبلغ المعتمد — مثلاً 300" style={{ ...input, flex: '1 1 140px', width: 'auto' }} />
+                    <select value={unit} onChange={e => setUnit(Number(e.target.value))} style={{ ...input, width: 'auto' }}>
+                      <option value={1}>ريال</option><option value={1000}>ألف ريال</option><option value={1000000}>مليون ريال</option>
+                    </select>
+                    {riyal > 0 && <span style={{ fontSize: 12.5, fontWeight: 900, color: C.green }}>= {riyal.toLocaleString('en-US')} ريال</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.soft }}>
+                    موعد الصرف المتوقع:
+                    <select value={dd} onChange={e => setDd(e.target.value)} style={{ ...input, width: 'auto' }}><option value="">اليوم</option>{Array.from({ length: 31 }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}</select>
+                    <select value={mm} onChange={e => setMm(e.target.value)} style={{ ...input, width: 'auto' }}><option value="">الشهر</option>{['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select>
+                    <select value={yy} onChange={e => setYy(e.target.value)} style={{ ...input, width: 'auto' }}>{[now.getFullYear(), now.getFullYear() + 1].map(y => <option key={y} value={String(y)}>{y}</option>)}</select>
+                  </div>
                 </>
               ) : (
-                <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" placeholder="المبلغ اللي نزل (اتركيه فاضي إذا نفس المعتمد)" style={input} />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="المبلغ اللي نزل (اتركيه فاضي إذا نفس المعتمد)" style={{ ...input, flex: '1 1 160px', width: 'auto' }} />
+                  <select value={unit} onChange={e => setUnit(Number(e.target.value))} style={{ ...input, width: 'auto' }}>
+                    <option value={1}>ريال</option><option value={1000}>ألف ريال</option><option value={1000000}>مليون ريال</option>
+                  </select>
+                  {amount && riyal > 0 && <span style={{ fontSize: 12.5, fontWeight: 900, color: C.green }}>= {riyal.toLocaleString('en-US')} ريال</span>}
+                </div>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button disabled={busy || (ms === 'approved' && (!funder.trim() || !amount.trim() || !expected))} onClick={saveMilestone} style={btn(true)}>{busy ? '…' : 'تأكيد'}</button>
