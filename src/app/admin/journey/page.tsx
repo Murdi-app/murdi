@@ -382,6 +382,8 @@ function splitReason(reason: string): { main: string; chips: string[] } {
 
 function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
   const [open, setOpen] = useState(false)
+  // «العميل وافق — وش نقول له؟» (١٣ أكتوبر): يُفتح ملفه من البطاقة نفسها، فيظهر السعر ويصدر السند ورابط الدفع
+  const [intake, setIntake] = useState(false)
   const [showOpener, setShowOpener] = useState(false)
   const [outcome, setOutcome] = useState<string>(OUTCOMES[1])
   const [note, setNote] = useState('')
@@ -428,7 +430,17 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
         {r.source === 'transfer'
           ? <a href="/admin/desk" style={btn(true)}>أكّدي الاستلام من مكتب الطلبات ←</a>
           : <button onClick={() => setOpen(!open)} style={btn(true)}>سجّلي نتيجة المكالمة</button>}
+        {r.source !== 'transfer' && r.source !== 'ordered' && r.source !== 'contract' && <button onClick={() => setIntake(!intake)} style={{ ...btn(false), borderColor: C.gold, color: '#8A6D1F' }}>{intake ? 'إغلاق' : '✅ وافق على الخدمة — افتحي ملفه'}</button>}
       </div>
+      {intake && (
+        <div style={{ marginTop: 10, border: '1.5px solid ' + C.gold, borderRadius: 12, padding: 12, background: '#fff' }}>
+          <CallIntake
+            service={(r.reason || '').match(/«(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
+            seed={{ full_name: r.person || r.name || '', phone: r.phone || '', email: r.email || '', company_name: r.name && r.name !== r.person ? r.name : '' }}
+            onDone={() => { setIntake(false); reload() }}
+          />
+        </div>
+      )}
       {showOpener && r.opener && <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.9, background: '#FFFBEF', border: '1px solid #F1E3B5', borderRadius: 8, padding: '8px 12px' }}>{r.opener}</div>}
       {open && (
         <div style={{ marginTop: 10, display: 'grid', gap: 7, background: C.bg, borderRadius: 10, padding: 10 }}>

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { computeFeasibility, computeCredit, computeBreakPoints, type FeasibilityInputs } from '@/lib/feasibilityCompute'
 import { priceFor, COMMERCIAL, FUNDING_TITLE, intakeQuote } from '@/lib/servicePricing'
-import { CATALOG, displayName, canonicalTitle } from '@/lib/serviceCatalog'
+import { CATALOG, displayName, canonicalTitle, DISPLAY } from '@/lib/serviceCatalog'
 
 // عميل من مكالمة — من البيع إلى الملف بلا أن يُغلق الخط.
 //
@@ -63,7 +63,9 @@ const FEAS = 'دراسة الجدوى الاقتصادية'
 const resolveTitle = (v?: string) => {
   if (!v || v === 'feasibility') return v ? FEAS : FUNDING_TITLE
   if (v === 'funding') return FUNDING_TITLE
-  const t = canonicalTitle(v)
+  // الاسم المعروض («الائتمانية والاقتصادية») يُردّ إلى مفتاحه المخزَّن
+  const fromDisplay = Object.keys(DISPLAY).find((k) => DISPLAY[k] === v)
+  const t = canonicalTitle(fromDisplay || v)
   return CATALOG.some((c) => c.items.includes(t)) ? t : FUNDING_TITLE
 }
 

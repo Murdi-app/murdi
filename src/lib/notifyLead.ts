@@ -193,10 +193,14 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
   let sent = 0;
   try {
     const p = await sendPush({
-      title: lead.completed ? '🔥 أكمل التقييم · ' + verdict : 'عميل محتمل جديد',
+      // ★ ١٣ أكتوبر (المالك): «يوصلني إشعار ما فهمت حق أي خدمة» — كان المصدر رمزاً تقنياً
+      //   (tiktok_jadwa_dr2). فصار الإشعار يقول بلغةٍ مفهومة: من أين جاء وماذا يريد.
+      title: /jadwa/i.test(String(lead.src || ''))
+        ? '📊 طالب دراسة جدوى (منشأته قائمة) أكمل التقييم'
+        : lead.completed ? '🔥 أكمل التقييم · ' + verdict : 'عميل محتمل جديد',
       body: who + ' — ' + phone
         + (lead.score === null ? ' · بدأ التقييم' : ' · الدرجة ' + lead.score + '/100')
-        + (lead.src ? ' · من ' + lead.src : ''),
+        + (lead.src ? ' · ' + srcLabel(String(lead.src)) : ''),
       url: '/admin/followup',
       important: true,
       tag: 'mini-' + lead.id,
@@ -205,4 +209,12 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
   } catch { /* إشعار الجوال سقط — البريد وصل */ }
 
   return { mail: mailOk, push: sent };
+}
+
+/** مصدر العميل بلغةٍ يفهمها المالك بدل الرمز التقني */
+function srcLabel(src: string): string {
+  const s = src.toLowerCase();
+  const ad = /tiktok/.test(s) ? 'إعلان تيك توك' : /google/.test(s) ? 'إعلان قوقل' : /chatgpt/.test(s) ? 'من ChatGPT' : /ads/.test(s) ? 'إعلان' : '';
+  const what = /jadwa/.test(s) ? 'الجدوى' : /bab/.test(s) ? '«قبل ما تطرق الباب»' : /daraja|test/.test(s) ? 'درجة الجاهزية' : /uqud/.test(s) ? 'تمويل العقود' : /masar/.test(s) ? 'السيولة' : '';
+  return ad || what ? 'من ' + [ad, what].filter(Boolean).join(' — ') : 'من ' + src;
 }
