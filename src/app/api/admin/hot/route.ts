@@ -37,7 +37,10 @@ export async function GET() {
   const sb = admin();
   const list = await sb.from('hot_list').select('*').order('tier').order('at', { ascending: false }).limit(400);
   if (list.error) return NextResponse.json({ error: 'تعذّرت قراءة القائمة — ' + list.error.message }, { status: 500 });
-  const rows = (list.data || []) as Row[];
+  // ★ ١٣ أكتوبر (المالك): حسابات البريد فقط (٨٣ حساباً قديماً من يونيو–أغسطس، بلا جوال ولا منشأة)
+  //   تُرفع عن شاشات الموظفات «حالياً ما أبيها تلخبطهم». وتبقى للمالك.
+  const isStaffViewer = who.role === 'staff';
+  const rows = ((list.data || []) as Row[]).filter((r) => !(isStaffViewer && r.source === 'account'));
 
   // ★ اللمسات تُقرأ لصفوف القائمة نفسها لا «آخر ألف في المنصة»: بعد الألف
   //   كانت الفرصة المغلقة («غير مهتم») تفقد لمستها فتعود «لم تُلمس بعد».

@@ -100,7 +100,7 @@ export default function JourneyPage() {
         {(isAdmin || isRaghad) && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {(isRaghad
-              ? [['raghad', 'ملفّاتي — بعد الدفع'], ['dhai', 'عملائي قبل الدفع']] as const
+              ? [['raghad', 'ملفّاتي — بعد الدفع'], ['dhai', 'عملاء ضي — قبل الدفع']] as const
               : [['dhai', 'شاشة ضي — حتى الدفع'], ['raghad', 'شاشة رغد — بعد الدفع']] as const).map(([k, t]) => (
               <button key={k} onClick={() => setView(k)} style={pill(view === k)}>{t}</button>
             ))}
@@ -108,6 +108,7 @@ export default function JourneyPage() {
         )}
         {err && <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800 }}>{err}</div>}
         {loading ? <p style={{ color: C.soft }}>جارٍ التحميل…</p>
+          : showDhai && isRaghad ? <HelperBoard hot={hot} reload={load} />
           : showDhai ? <DhaiBoard hot={hot} files={files} me={me} isAdmin={isAdmin} reload={load} />
           : <RaghadBoard files={files} reload={load} />}
       </div>
@@ -199,8 +200,8 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
               {showOld && list(old.slice(0, 80))}
               {/* ★ ١٣ أكتوبر: «في ناس بالإيميل ما يطلعون لي» — من سجّل حساباً ببريده ولم يُكمل
                   منشأته لا جوال له، فكان يُعدّ هنا رقماً فقط ويُحال إلى صفحةٍ أخرى. فصار هنا بأسمائه وبريده. */}
-              {accounts > 0 && <Toggle open={showAcc} onClick={() => setShowAcc(!showAcc)} label={'📧 سجّلوا بالبريد فقط ولم يُكملوا (' + accounts + ')'} />}
-              {showAcc && list(accRows.slice(0, 80))}
+              {isAdmin && accounts > 0 && <Toggle open={showAcc} onClick={() => setShowAcc(!showAcc)} label={'📧 سجّلوا بالبريد فقط ولم يُكملوا (' + accounts + ')'} />}
+              {isAdmin && showAcc && list(accRows.slice(0, 80))}
             </>
           ) : s.key === 'follow' ? (
             <>
@@ -314,6 +315,45 @@ function AskCard({ a, reload }: { a: Ask; reload: () => void }) {
       )}
       {msg && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: msg.includes('✓') ? C.green : '#B4453C' }}>{msg}</div>}
     </div>
+  )
+}
+
+// ═══ تبويب رغد «عملاء ضي — قبل الدفع» (١٣ أكتوبر، المالك) ═══
+// «النتيجة اللي أدخلتها ضي ما لقيتها عند رغد… أحس فيها لخبطة». كانت رغد ترى شاشة ضي كاملةً
+// بمراحلها، ومن كلّمته ضي و«لم يرد» يُطوى تحت «مواعيد قادمة» فلا تُرى نتيجته. فلها شاشةٌ
+// بقائمتين فقط: من لم يُكلَّم بعد، ومن كُلِّم مع آخر نتيجةٍ ومن كتبها. وكل ما تكتبه يظهر لضي باسمها.
+function HelperBoard({ hot, reload }: { hot: Hot[]; reload: () => void }) {
+  const [q, setQ] = useState('')
+  const [showOld, setShowOld] = useState(false)
+  const live = hot.filter(r => r.state !== 'closed' && r.source !== 'account')
+  const norm = (s: string) => String(s || '').replace(/\D/g, '').slice(-9)
+  const match = (r: Hot) => {
+    const t = q.trim(); if (t.length < 2) return true
+    return [r.name, r.person].some(x => String(x || '').includes(t)) || (norm(t).length >= 4 && norm(String(r.phone || '')).includes(norm(t)))
+  }
+  const rows = live.filter(match)
+  const fresh = rows.filter(r => r.touches === 0).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+  const recent = fresh.filter(r => (days(r.at) ?? 99) <= 7), older = fresh.filter(r => (days(r.at) ?? 99) > 7)
+  const talked = rows.filter(r => r.touches > 0).sort((a, b) => String(b.last_at || '').localeCompare(String(a.last_at || '')))
+  const cards = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
+  return (
+    <>
+      <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>عملاء ضي — قبل الدفع</h1>
+      <p style={{ fontSize: 13, color: C.soft, margin: '0 0 12px', lineHeight: 1.8 }}>
+        ساعدي ضي: ابدئي بمن لم يُكلَّم بعد، أحدثُهم أولاً. وكل نتيجة تكتبينها تظهر لضي باسمك.
+      </p>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔎 ابحثي — بالاسم أو المنشأة أو الجوال" style={{ ...input, marginBottom: 6 }} />
+      <section style={{ marginTop: 16 }}>
+        <SectionHead label="لم يُكلَّموا بعد" hint="آخر ٧ أيام — أحدثهم أولاً." n={recent.length} />
+        {cards(recent)}
+        {older.length > 0 && <Toggle open={showOld} onClick={() => setShowOld(!showOld)} label={'أقدم من أسبوع (' + older.length + ')'} />}
+        {showOld && cards(older.slice(0, 80))}
+      </section>
+      <section style={{ marginTop: 22 }}>
+        <SectionHead label="كُلِّموا — آخر نتيجة" hint="ما كتبته ضي أو أنتِ أو الدكتور، الأحدث أولاً. «لم يرد» يُعاود الاتصال به." n={talked.length} />
+        {cards(talked.slice(0, 120))}
+      </section>
+    </>
   )
 }
 
