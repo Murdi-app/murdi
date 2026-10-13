@@ -229,9 +229,9 @@ export async function PATCH(req: Request) {
         }
         // ★ ١٣ أكتوبر: سُجّلت «وافقت funding souq» بمبلغ 300 وموعد صرف 0006-02-20 — والأتعاب
         //   تُحسب من هذا المبلغ. فالمبلغ بالريال كاملاً (لا «٣٠٠ ألف»)، والموعد سنةٌ معقولة.
-        if (amount < 10000) return NextResponse.json({ error: 'اكتبي المبلغ بالريال كاملاً — مثلاً 300000 لا 300' }, { status: 400 });
+        if (amount < 10000 || amount > 500_000_000) return NextResponse.json({ error: 'المبلغ غير معقول — تأكدي من الرقم والوحدة (ريال · ألف · مليون)' }, { status: 400 });
         const t = Date.parse(date);
-        if (!(t > Date.now() - 60 * 86400_000 && t < Date.now() + 730 * 86400_000)) return NextResponse.json({ error: 'تاريخ الصرف غير صحيح — تأكدي من السنة' }, { status: 400 });
+        if (!(t > Date.now() - 60 * 86400_000 && t < Date.now() + 730 * 86400_000) || new Date(t).toISOString().slice(0, 10) !== date) return NextResponse.json({ error: 'تاريخ الصرف غير صحيح — تأكدي من اليوم والشهر والسنة' }, { status: 400 });
         const { error: fErr } = await sb.from('success_fees').upsert({
           service_request_id: id, company_id: r.company_id, funder_name: funder, approved_amount: amount,
           expected_disbursement: date, approved_logged_at: new Date().toISOString(), approved_logged_by: name, updated_at: new Date().toISOString(),
@@ -243,6 +243,7 @@ export async function PATCH(req: Request) {
         if (!f) return NextResponse.json({ error: 'سجّلي «وافقت الجهة» أولاً (الجهة والمبلغ وموعد الصرف)' }, { status: 400 });
         if (f.invoice_status === 'draft' || f.invoice_status === 'approved') return NextResponse.json({ error: 'قُيِّد هذا التمويل من قبل وصدرت فاتورته' }, { status: 409 });
         const booked = Number(String(b0.amount || '').replace(/[^\d.]/g, '')) || Number(f.approved_amount);
+        if (booked < 10000 || booked > 500_000_000) return NextResponse.json({ error: 'مبلغ التمويل غير معقول — تأكدي من الرقم والوحدة (ريال · ألف · مليون)' }, { status: 400 });
         let calc;
         try { calc = await feeFromContract(sb, id, booked); }
         catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : 'تعذّر حساب الأتعاب' }, { status: 400 }); }

@@ -195,7 +195,7 @@ export async function notifyLead(lead: LeadNotice): Promise<{ mail: boolean; pus
     const p = await sendPush({
       // ★ ١٣ أكتوبر (المالك): «يوصلني إشعار ما فهمت حق أي خدمة» — كان المصدر رمزاً تقنياً
       //   (tiktok_jadwa_dr2). فصار الإشعار يقول بلغةٍ مفهومة: من أين جاء وماذا يريد.
-      title: /jadwa/i.test(String(lead.src || ''))
+      title: lead.completed && /jadwa/i.test(String(lead.src || ''))
         ? '📊 طالب دراسة جدوى (منشأته قائمة) أكمل التقييم'
         : lead.completed ? '🔥 أكمل التقييم · ' + verdict : 'عميل محتمل جديد',
       body: who + ' — ' + phone

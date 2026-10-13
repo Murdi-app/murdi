@@ -21,6 +21,7 @@ begin
   return new;
 end $$;
 
+drop trigger if exists trg_jadwa_assessment_to_inquiry on public.mini_assessments;
 create trigger trg_jadwa_assessment_to_inquiry after insert or update of completed on public.mini_assessments
   for each row execute function public.jadwa_assessment_to_inquiry();
 

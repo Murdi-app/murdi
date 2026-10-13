@@ -265,6 +265,13 @@ export async function POST(req: Request) {
     const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
     if (me?.name) await sb.from('hot_touches').insert({ source: 'ordered', ref_id: companyId, outcome: 'مهتم', note: 'فُتح ملفه من مكالمة', actor_name: me.name });
   }
+  // ★ فُتح الملف من بطاقة عميلٍ في القائمة: تُغلق بطاقته الأصلية «تحوّل عميلاً» فلا يظهر مرتين ولا يُتصل به ثانيةً
+  const from = b?.from as { source?: string; ref_id?: string } | null;
+  if (from?.source && from?.ref_id && from.source !== 'ordered') {
+    const { data: me2 } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
+    await sb.from('hot_touches').insert({ source: String(from.source), ref_id: String(from.ref_id), outcome: 'تحوّل عميلاً', note: 'فُتح ملفه وصدر سنده', actor_name: who.role === 'admin' ? 'د. عبدالحكيم' : (me2?.name || 'الفريق') });
+    if (from.source === 'inquiry') await sb.from('service_inquiries').update({ contacted: true, outcome: 'تحوّل عميلاً', contacted_at: new Date().toISOString() }).eq('id', String(from.ref_id));
+  }
   await logStaff(who, 'intake', { table: 'service_requests', id: String(requestId), note: companyName });
   return NextResponse.json({
     ok: true, link, hold, message, company_name: companyName, request_id: requestId, existing: !isNew,

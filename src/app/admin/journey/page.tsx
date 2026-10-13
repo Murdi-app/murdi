@@ -435,8 +435,9 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
       {intake && (
         <div style={{ marginTop: 10, border: '1.5px solid ' + C.gold, borderRadius: 12, padding: 12, background: '#fff' }}>
           <CallIntake
-            service={(r.reason || '').match(/«(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
+            service={(r.reason || '').match(/طلب «(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
             seed={{ full_name: r.person || r.name || '', phone: r.phone || '', email: r.email || '', company_name: r.name && r.name !== r.person ? r.name : '' }}
+            from={{ source: r.source, ref_id: r.ref_id }}
             onDone={() => { setIntake(false); reload() }}
           />
         </div>
@@ -523,7 +524,7 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
   const [dd, setDd] = useState(''); const [mm, setMm] = useState(''); const [yy, setYy] = useState(String(now.getFullYear()))
   const expected = dd && mm && yy ? yy + '-' + mm.padStart(2, '0') + '-' + dd.padStart(2, '0') : ''
   const setExpected = (_: string) => { setDd(''); setMm('') }
-  const toLatin = (v: string) => v.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^\d.]/g, '')
+  const toLatin = (v: string) => v.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[٫,]/g, m => (m === '٫' ? '.' : '')).replace(/[^\d.]/g, '')
   const riyal = Math.round(Number(toLatin(amount) || 0) * unit)
   const saveMilestone = async () => {
     setBusy(true); setMsg('')
@@ -603,7 +604,7 @@ function PaidCard({ f, readOnly, mine, reload }: { f: File; readOnly?: boolean; 
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: C.soft }}>
                     موعد الصرف المتوقع:
-                    <select value={dd} onChange={e => setDd(e.target.value)} style={{ ...input, width: 'auto' }}><option value="">اليوم</option>{Array.from({ length: 31 }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}</select>
+                    <select value={dd} onChange={e => setDd(e.target.value)} style={{ ...input, width: 'auto' }}><option value="">اليوم</option>{Array.from({ length: mm ? new Date(Number(yy), Number(mm), 0).getDate() : 31 }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}</select>
                     <select value={mm} onChange={e => setMm(e.target.value)} style={{ ...input, width: 'auto' }}><option value="">الشهر</option>{['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'].map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}</select>
                     <select value={yy} onChange={e => setYy(e.target.value)} style={{ ...input, width: 'auto' }}>{[now.getFullYear(), now.getFullYear() + 1].map(y => <option key={y} value={String(y)}>{y}</option>)}</select>
                   </div>

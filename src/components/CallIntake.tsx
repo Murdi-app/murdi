@@ -69,7 +69,7 @@ const resolveTitle = (v?: string) => {
   return CATALOG.some((c) => c.items.includes(t)) ? t : FUNDING_TITLE
 }
 
-export default function CallIntake({ seed, service: seedService, onDone }: { seed?: Partial<Who>; service?: string; onDone?: () => void }) {
+export default function CallIntake({ seed, service: seedService, onDone, from }: { seed?: Partial<Who>; service?: string; onDone?: () => void; from?: { source: string; ref_id: string } }) {
   const [title, setTitle] = useState<string>(resolveTitle(seedService || 'feasibility'))
   const [option, setOption] = useState<string>('full')
   const [value, setValue] = useState('')
@@ -163,7 +163,7 @@ export default function CallIntake({ seed, service: seedService, onDone }: { see
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, service_title: title, option: optKey, value: num(value), units: num(units), inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
+        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: num(value), units: num(units), inputs: service === 'feasibility' ? { ...inputs } : {}, spoken: service === 'feasibility' ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
