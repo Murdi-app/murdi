@@ -336,7 +336,7 @@ export const CONTRACT_CSS = `
 *{box-sizing:border-box}
 body{margin:0;background:#F4F7F6;font-family:Cairo,system-ui,sans-serif;color:#12302A;line-height:1.95;padding:20px 14px 50px}
 .doc{max-width:860px;margin:0 auto;background:#fff;border:1px solid #E1EDE8;border-radius:16px;padding:28px 26px}
-.eyebrow{font-size:11px;letter-spacing:.10em;color:#9DB3AB;font-weight:900}
+.eyebrow{font-size:11px;letter-spacing:0;color:#9DB3AB;font-weight:900}
 h1{font-size:25px;margin:6px 0 4px;line-height:1.5}
 h2{font-size:17px;margin:30px 0 10px;padding-bottom:7px;border-bottom:2px solid #EDF4F1}
 p{font-size:13.8px;margin:0 0 11px}

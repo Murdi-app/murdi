@@ -418,7 +418,7 @@ export function buildFeasibilityHTML(ctx: FeasibilityContext, s: FeasibilitySect
     + 'body{font-family:Cairo,system-ui,sans-serif;color:#12302A;background:#F4F7F6;line-height:1.95;margin:0;padding:22px 14px 50px}'
     + '.pg{max-width:900px;margin:0 auto;background:#fff;border:1px solid #E1EDE8;border-radius:16px;padding:0 0 30px;overflow:hidden}'
     + '.hd{background:#1A3D34;color:#fff;padding:30px 30px 26px}'
-    + '.hd .eb{font-size:11px;letter-spacing:.14em;color:#C9A84C;font-weight:900;margin-bottom:10px}'
+    + '.hd .eb{font-size:12.5px;letter-spacing:0;color:#C9A84C;font-weight:700;margin-bottom:10px}'
     + '.hd h1{font-family:Amiri,serif;font-size:29px;line-height:1.5;margin:0 0 8px;color:#fff}'
     + '.hd .co{font-size:15px;font-weight:900;color:#E4CE93}'
     + '.hd .meta{font-size:12.5px;color:#BFD4CD;font-weight:400;margin-top:3px}'
