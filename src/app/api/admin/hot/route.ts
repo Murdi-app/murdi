@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { DISPLAY } from '@/lib/serviceCatalog';
+import { assignOwners, ownerOf, claim } from '@/lib/leadOwners';
 import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
@@ -149,6 +150,23 @@ export async function GET() {
     };
   });
 
+  // ═══ قسمة العملاء (١٤ أكتوبر، المالك): كل عميل لصاحبةٍ واحدة بالمناصفة ═══
+  //   والموظفة ترى عملاء زميلتها **اسماً فقط** — يُحذف الباقي هنا في الخادم لا في المتصفّح.
+  const { owners, pool } = await assignOwners(sb, merged.filter((m) => m.source !== 'account').map((m) => ({ source: m.source, ref_id: m.ref_id, phone: m.phone, at: m.at })));
+  const nameOf = new Map(pool.map((p) => [p.id, p.name]));
+  const withOwner = merged.map((m) => {
+    const o = owners.get(m.source + '|' + m.ref_id) || null;
+    return { ...m, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
+  });
+  const visible = isStaffViewer
+    ? withOwner.map((m) => m.mine ? m : {
+        source: m.source, ref_id: m.ref_id, name: m.name, person: null, phone: null, email: null, company_id: null,
+        tier: m.tier, reason: '', money: null, at: m.at, next_step: '', opener: null, ask: null, last_actor: null,
+        follow: false, touches: m.touches, last_outcome: null, last_note: null, last_at: null, next_action_at: null,
+        state: m.state, owner: m.owner, owner_name: m.owner_name, mine: false,
+      })
+    : withOwner;
+
   const due = merged.filter((m) => m.state === 'due');
   // ★ `money` هو أتعاب المكتب المعلَّقة على كل صفّ — أي ما يدخل جيبه من هذا
   //   العميل. والموظفة تُقاس بعدد مكالماتها وتحويلاتها، لا بمال المكتب.
@@ -159,7 +177,9 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     role: who.role,
-    rows: isStaff ? merged.map((m) => ({ ...m, money: null })) : merged,
+    me: who.userId,
+    team: pool,
+    rows: isStaff ? visible.map((m) => ({ ...m, money: null })) : visible,
     stats: {
       due: due.length,
       untouched: due.filter((m) => m.touches === 0).length,
@@ -190,6 +210,12 @@ export async function POST(req: Request) {
 
   const sb = admin();
   const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
+  // ★ القسمة (١٤ أكتوبر): الموظفة تسجّل على عملائها هي — وعميل زميلتها يبقى لزميلتها
+  if (who.role === 'staff') {
+    const o = await ownerOf(sb, source, refId);
+    if (o && o !== who.userId) return NextResponse.json({ error: 'هذا العميل عند زميلتك — ما يُسجَّل عليه من صفحتك' }, { status: 403 });
+    if (!o) await claim(sb, source, refId, who.userId, null);
+  }
 
   const note = b?.note ? String(b.note).slice(0, 2000) : null;
   let when = b?.next_action_at ? String(b.next_action_at).slice(0, 10) : null;

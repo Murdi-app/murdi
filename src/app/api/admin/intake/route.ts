@@ -1,3 +1,4 @@
+import { claim } from '@/lib/leadOwners';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
@@ -272,6 +273,8 @@ export async function POST(req: Request) {
   if (who.role === 'staff') {
     const { data: me } = await sb.from('staff').select('name').eq('user_id', who.userId).maybeSingle();
     if (me?.name) await sb.from('hot_touches').insert({ source: 'ordered', ref_id: companyId, outcome: 'مهتم', note: 'فُتح ملفه من مكالمة', actor_name: me.name });
+    // ★ القسمة (١٤ أكتوبر): الملف المسعَّر يبقى عند من فتحته — حتى الدفع
+    await claim(sb, 'ordered', String(companyId), who.userId, phone);
   }
   // ★ فُتح الملف من بطاقة عميلٍ في القائمة: تُغلق بطاقته الأصلية «تحوّل عميلاً» فلا يظهر مرتين ولا يُتصل به ثانيةً
   const from = b?.from as { source?: string; ref_id?: string } | null;

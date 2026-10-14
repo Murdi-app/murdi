@@ -23,6 +23,7 @@ type Hot = {
   email: string | null; company_id: string | null; tier: number; reason: string; at: string | null
   next_step: string; opener: string | null; touches: number; last_outcome: string | null; last_note: string | null
   last_at: string | null; next_action_at: string | null; state: string; follow?: boolean; last_actor?: string | null
+  owner?: string | null; owner_name?: string | null; mine?: boolean
   ask?: { id: string; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null } | null
 }
 type File = {
@@ -86,7 +87,6 @@ export default function JourneyPage() {
       if (h && !h.error) setHot(h.rows || [])
       else setErr(h?.error || 'تعذّر تحميل قائمة العملاء')
     }
-    if (j.job === 'assistant' && j.role !== 'admin') setView('raghad')
     setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])
@@ -102,7 +102,7 @@ export default function JourneyPage() {
         {(isAdmin || isRaghad) && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {(isRaghad
-              ? [['raghad', 'ملفّاتي — بعد الدفع'], ['dhai', 'عملاء ضي — قبل الدفع']] as const
+              ? [['dhai', 'عملائي — قبل الدفع'], ['raghad', 'ملفّاتي — بعد الدفع']] as const
               : [['dhai', 'شاشة ضي — حتى الدفع'], ['raghad', 'شاشة رغد — بعد الدفع']] as const).map(([k, t]) => (
               <button key={k} onClick={() => setView(k)} style={pill(view === k)}>{t}</button>
             ))}
@@ -112,7 +112,6 @@ export default function JourneyPage() {
         {!isAdmin && !loading && <StaffBrief />}
         {err && <div style={{ background: '#FDF1EC', border: '1.5px solid #F0D6D2', color: '#B4453C', borderRadius: 12, padding: '11px 15px', marginBottom: 14, fontSize: 13, fontWeight: 800 }}>{err}</div>}
         {loading ? <p style={{ color: C.soft }}>جارٍ التحميل…</p>
-          : showDhai && isRaghad ? <HelperBoard hot={hot} reload={load} />
           : showDhai ? <DhaiBoard hot={hot} files={files} me={me} isAdmin={isAdmin} reload={load} />
           : <RaghadBoard files={files} reload={load} />}
       </div>
@@ -125,16 +124,24 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
   const [step, setStep] = useState<string>('')
   // ★ ١٣ أكتوبر (المالك): العملاء كلهم هنا — لضي — ورغد تدخل وتكلّم وتكتب النتيجة،
   //   ومن كتب آخر نتيجة يظهر على البطاقة. والبحث يمرّ على الجميع.
-  const hot = allHot
+  // ★ ١٤ أكتوبر (المالك): العملاء مقسومون بالمناصفة — كلٌّ تمسك عملاءها من الاتصال إلى فتح الملف،
+  //   وترى عملاء زميلتها اسماً فقط (الخادم يحذف بياناتهم أصلاً). والمالك يرى الجميع ويصفّي بالموظفة.
+  const [ownerF, setOwnerF] = useState<string>('')
+  const hot = allHot.filter(r => r.mine !== false && (!ownerF || r.owner === ownerF))
+  const others = allHot.filter(r => r.mine === false && r.source !== 'account')
+  const [showOthers, setShowOthers] = useState(false)
+  const [focus, setFocus] = useState<string>('')
   const [showAcc, setShowAcc] = useState(false)
   const accRows = allHot.filter(r => r.source === 'account' && r.state !== 'closed').sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
   const norm = (s: string) => String(s || '').replace(/\D/g, '').slice(-9)
-  const found = q.trim().length < 2 ? [] : allHot.filter(r => {
+  const hit = (r: Hot) => {
     const t = q.trim()
     return [r.name, r.person, r.email].some(x => String(x || '').includes(t)) || (norm(t).length >= 4 && norm(String(r.phone || '')).includes(norm(t)))
-  }).slice(0, 20)
+  }
+  const found = q.trim().length < 2 ? [] : hot.filter(hit).slice(0, 20)
+  const foundOthers = q.trim().length < 2 ? [] : others.filter(hit).slice(0, 10)
   // حسابات بلا جوال (بريدٌ فقط) تبقى في القائمة الكاملة — لا تُزاحم من يُتّصل به
   const accounts = hot.filter(r => r.state !== 'closed' && r.source === 'account').length
   const live = hot.filter(r => r.state !== 'closed' && r.source !== 'account')
@@ -167,7 +174,23 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
   const today = by.transfer.length + by.ordered.filter(r => r.state !== 'waiting').length + followDue.length + fresh.length
   const [showOld, setShowOld] = useState(false)
   const [showLater, setShowLater] = useState(false)
-  const list = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
+  const list = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} showOwner={isAdmin} />)}</div>
+  // ═══ لا عميل معلّق (١٤ أكتوبر): كل ما ينتظر منها خطوة، بعدده — وبضغطة يُعرض وحده ═══
+  const mineLive = live
+  const PEND: { key: string; label: string; rows: Hot[] }[] = [
+    { key: 'call', label: '📞 لم يُكلَّموا', rows: mineLive.filter(r => r.touches === 0 && r.source !== 'ordered' && r.source !== 'transfer' && r.source !== 'contract' && (days(r.at) ?? 99) <= 7) },
+    { key: 'ask', label: '📝 أسئلة لم تُرسل', rows: mineLive.filter(r => r.ask && !r.ask.ask_sent_at && !r.ask.ask_reply) },
+    { key: 'consult', label: '✨ استشارات جاهزة لم تُرسل', rows: mineLive.filter(r => r.ask && r.ask.consult_status === 'ready' && !r.ask.consult_sent_at) },
+    { key: 'reply', label: '⏳ ننتظر ردّهم على الأسئلة', rows: mineLive.filter(r => r.ask && r.ask.ask_sent_at && !r.ask.ask_reply) },
+    { key: 'invoice', label: '🧾 فواتير لم تُدفع', rows: mineLive.filter(r => r.source === 'ordered' || r.source === 'contract') },
+    { key: 'transfer', label: '💰 حوّل — أكّدي الاستلام', rows: mineLive.filter(r => r.source === 'transfer') },
+  ]
+  const focused = PEND.find(x => x.key === focus)
+  const todayKey = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' })
+  const isToday = (d: string | null) => !!d && new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' }) === todayKey
+  const allLive = allHot.filter(r => r.source !== 'account')
+  const arrivedToday = allLive.filter(r => isToday(r.at) && r.source !== 'ordered' && r.source !== 'transfer')
+  const team = Array.from(new Set(allLive.map(r => r.owner_name).filter(Boolean))) as string[]
   // الأقسام تُعرض بترتيب الأولوية — الأقرب للمال أولاً — والشريط فوقها بترتيب الرحلة
   const ORDER = ['transfer', 'ordered', 'follow', 'new', 'paid']
   const shown = (step ? DHAI_STEPS.filter(s => s.key === step) : [...DHAI_STEPS]).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
@@ -178,7 +201,31 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
       <p style={{ fontSize: 13, color: C.soft, margin: '0 0 14px', lineHeight: 1.8 }}>
         عندك اليوم <b style={{ color: C.ink }}>{today}</b> عميل يحتاج منك خطوة — رتّبتهم لك من الأقرب للدفع، فابدئي من الأعلى.
       </p>
-      <Pipeline steps={DHAI_STEPS.map(s => ({ key: s.key, label: s.short, n: counts[s.key] }))} active={step} onPick={setStep} />
+      <div style={{ ...card, marginBottom: 12, padding: '10px 14px' }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, fontWeight: 800 }}>
+          <span>وصل المنصة اليوم: <b style={{ color: C.green }}>{arrivedToday.length}</b></span>
+          {team.map(n => <span key={n} style={{ color: C.soft }}>{n}: <b style={{ color: C.ink }}>{arrivedToday.filter(r => r.owner_name === n).length}</b></span>)}
+        </div>
+        {isAdmin && team.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setOwnerF('')} style={pill(!ownerF)}>الكل</button>
+            {Array.from(new Map(allLive.filter(r => r.owner).map(r => [r.owner as string, r.owner_name || ''])).entries()).map(([id, n]) => <button key={id} onClick={() => setOwnerF(id)} style={pill(ownerF === id)}>{n}</button>)}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+        {PEND.filter(x => x.rows.length > 0).map(x => (
+          <button key={x.key} onClick={() => setFocus(focus === x.key ? '' : x.key)} style={{ ...pill(focus === x.key), fontSize: 12.5 }}>{x.label} <b>({x.rows.length})</b></button>
+        ))}
+        {PEND.every(x => x.rows.length === 0) && <span style={{ fontSize: 12.5, color: C.green, fontWeight: 800 }}>✓ لا عميل معلّق عندك</span>}
+      </div>
+      {focused && (
+        <section style={{ marginBottom: 18 }}>
+          <SectionHead label={focused.label} hint="اضغطي الزر مرة ثانية للرجوع للقائمة كاملة." n={focused.rows.length} />
+          {list(focused.rows)}
+        </section>
+      )}
+      {!focused && <Pipeline steps={DHAI_STEPS.map(s => ({ key: s.key, label: s.short, n: counts[s.key] }))} active={step} onPick={setStep} />}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔎 ابحثي عن عميل — بالاسم أو المنشأة أو الجوال" style={{ ...input, flex: '1 1 260px', width: 'auto' }} />
         <button onClick={() => setAdding(!adding)} style={{ ...btn(false), borderStyle: 'dashed' }}>{adding ? 'إغلاق' : '➕ عميل ليس في القائمة (إيميل أو مكالمة)'}</button>
@@ -187,11 +234,12 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
       {q.trim().length >= 2 && (
         <section style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, marginBottom: 7 }}>نتائج البحث ({found.length}){found.length === 0 ? ' — غير موجود في المنصة؟ أضيفيه من «عميل ليس في القائمة»' : ''}</div>
-          <div style={{ display: 'grid', gap: 9 }}>{found.map(r => <LeadCard key={'s' + r.source + r.ref_id} r={r} reload={reload} />)}</div>
+          <div style={{ display: 'grid', gap: 9 }}>{found.map(r => <LeadCard key={'s' + r.source + r.ref_id} r={r} reload={reload} showOwner={isAdmin} />)}</div>
+          {foundOthers.length > 0 && <div style={{ fontSize: 12.5, color: C.soft, marginTop: 8 }}>{foundOthers.map(r => (r.name || '—') + ' — عند ' + (r.owner_name || 'زميلتك')).join(' · ')}</div>}
         </section>
       )}
 
-      {shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
+      {!focused && shown.filter(s => step || counts[s.key] > 0 || s.key === 'new').map(s => (
         <section key={s.key} style={{ marginTop: 22 }}>
           <SectionHead label={s.label} hint={s.hint} n={counts[s.key]} />
           {s.key === 'paid' ? (
@@ -216,6 +264,14 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
         </section>
       ))}
 
+      {!isAdmin && others.length > 0 && (
+        <section style={{ marginTop: 22 }}>
+          <Toggle open={showOthers} onClick={() => setShowOthers(!showOthers)} label={'عملاء زميلتك (' + others.filter(r => r.state !== 'closed').length + ') — للعلم فقط'} />
+          {showOthers && <div style={{ ...card, fontSize: 12.5, lineHeight: 2, color: C.soft }}>
+            {others.filter(r => r.state !== 'closed').sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).slice(0, 150).map(r => <span key={r.source + r.ref_id} style={{ display: 'inline-block', marginLeft: 14 }}>{r.name || '—'} <span style={{ fontSize: 11 }}>· {ago(r.at)}</span></span>)}
+          </div>}
+        </section>
+      )}
       <MoreLinks links={[['/admin/hot', '🔥 القائمة الكاملة — ومنها «عميل اتصل وليس في القائمة»'], ['/admin/desk', '📑 مكتب الطلبات — تأكيد التحويل والاعتماد'], ['/admin/message', '💬 مراسلة العملاء']]} />
     </>
   )
@@ -225,47 +281,6 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
 // لكل من سجّل رسالةُ أسئلةٍ على وضعه: ترسلها ضي واتساب بضغطة، ثم تلصق ردّ العميل
 // فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
 type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null; owner?: string; call?: { outcome: string | null; note: string | null; actor: string | null; at: string } | null }
-
-function AsksPanel({ forHelper }: { forHelper?: boolean } = {}) {
-  const [asks, setAsks] = useState<Ask[]>([])
-  const [showDone, setShowDone] = useState(false)
-  const load = useCallback(async () => {
-    const j = await fetch('/api/staff/asks', { cache: 'no-store' }).then(r => r.json()).catch(() => null)
-    if (j?.asks) setAsks(j.asks)
-  }, [])
-  useEffect(() => { load() }, [load])
-  if (asks.length === 0) return null
-  // ★ ١٤ أكتوبر: المكالمة أولاً (ضي)، ثم الأسئلة (رغد). من لم يُكلَّم بعد لا تُرسل له الأسئلة،
-  //   ومن قال «غير مهتم» لا تُرسل له. ومن لم يرد تُرسل له — فالرسالة تصله وإن لم يرد على الاتصال.
-  const called = (a: Ask) => !!a.call && a.call.outcome !== 'غير مهتم'
-  const pending = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
-  const toSend = forHelper ? pending.filter(called) : pending
-  const waitCall = forHelper ? pending.filter(a => !a.call) : []
-  const waitReply = asks.filter(a => a.ask_sent_at && !a.ask_reply)
-  // ردّ العميل → بعد نصف ساعة تُكتب استشارته آلياً → ترسلها هي → تمّت
-  const ready = asks.filter(a => a.ask_reply && a.consult_status === 'ready' && !a.consult_sent_at)
-  const done = asks.filter(a => a.ask_reply && !(a.consult_status === 'ready' && !a.consult_sent_at))
-  return (
-    <section style={{ marginTop: 18, background: '#FFFBEF', border: '1.5px solid #F1E3B5', borderRadius: 14, padding: '14px 14px 12px' }}>
-      <SectionHead label={forHelper ? '📨 مهمّتك: الأسئلة والاستشارات' : '📝 أسئلة الاستشارة — أرسليها لكل عميل'} hint={forHelper ? 'ابدئي بالاستشارات الجاهزة (الأخضر) ثم الأسئلة — وتظهر الأسئلة فقط لمن كلّمته ضي. أرسلي من واتساب المكتب 0570749196 المربوط على جهازك، لا من رقمك الشخصي. ولما يرد العميل الصقي رده — وتجهز استشارته هنا تلقائياً.' : 'لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له.'} n={ready.length + toSend.length + waitReply.length} />
-      {ready.length > 0 && <>
-        <div style={{ fontSize: 12.5, fontWeight: 900, color: C.green, margin: '4px 0 7px' }}>✨ استشارات جاهزة — أرسليها الآن ({ready.length})</div>
-        <div style={{ display: 'grid', gap: 9, marginBottom: 12 }}>{ready.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
-      </>}
-      {toSend.length > 0 && <>
-        {forHelper && <div style={{ fontSize: 12.5, fontWeight: 900, color: '#8A6D1F', margin: '4px 0 7px' }}>📝 أسئلة لم تُرسل بعد ({toSend.length})</div>}
-        <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
-      </>}
-      {forHelper && waitCall.length > 0 && <div style={{ fontSize: 12, color: C.soft, margin: '12px 0 4px', fontWeight: 800 }}>⏳ {waitCall.length} عميل لم تكلّمهم ضي بعد — تظهر أسئلتهم هنا تلقائياً بعد ما تكتب نتيجة مكالمتهم.</div>}
-      {waitReply.length > 0 && <>
-        <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, margin: '14px 0 7px' }}>أُرسلت — ننتظر رده ({waitReply.length})</div>
-        <div style={{ display: 'grid', gap: 9 }}>{waitReply.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
-      </>}
-      {done.length > 0 && <Toggle open={showDone} onClick={() => setShowDone(!showDone)} label={'ردّوا ✓ (' + done.length + ')'} />}
-      {showDone && <div style={{ display: 'grid', gap: 9 }}>{done.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>}
-    </section>
-  )
-}
 
 function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -345,47 +360,6 @@ function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: b
   )
 }
 
-// ═══ تبويب رغد «عملاء ضي — قبل الدفع» (١٣ أكتوبر، المالك) ═══
-// «النتيجة اللي أدخلتها ضي ما لقيتها عند رغد… أحس فيها لخبطة». كانت رغد ترى شاشة ضي كاملةً
-// بمراحلها، ومن كلّمته ضي و«لم يرد» يُطوى تحت «مواعيد قادمة» فلا تُرى نتيجته. فلها شاشةٌ
-// بقائمتين فقط: من لم يُكلَّم بعد، ومن كُلِّم مع آخر نتيجةٍ ومن كتبها. وكل ما تكتبه يظهر لضي باسمها.
-function HelperBoard({ hot, reload }: { hot: Hot[]; reload: () => void }) {
-  const [q, setQ] = useState('')
-  const [showOld, setShowOld] = useState(false)
-  const live = hot.filter(r => r.state !== 'closed' && r.source !== 'account')
-  const norm = (s: string) => String(s || '').replace(/\D/g, '').slice(-9)
-  const match = (r: Hot) => {
-    const t = q.trim(); if (t.length < 2) return true
-    return [r.name, r.person].some(x => String(x || '').includes(t)) || (norm(t).length >= 4 && norm(String(r.phone || '')).includes(norm(t)))
-  }
-  const rows = live.filter(match)
-  const fresh = rows.filter(r => r.touches === 0).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
-  const recent = fresh.filter(r => (days(r.at) ?? 99) <= 7), older = fresh.filter(r => (days(r.at) ?? 99) > 7)
-  const talked = rows.filter(r => r.touches > 0).sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
-  const cards = (l: Hot[]) => l.length === 0 ? <Empty /> : <div style={{ display: 'grid', gap: 9 }}>{l.map(r => <LeadCard key={r.source + r.ref_id} r={r} reload={reload} />)}</div>
-  return (
-    <>
-      <h1 style={{ fontSize: 21, fontWeight: 900, margin: '0 0 4px' }}>عملاء ضي — قبل الدفع</h1>
-      <p style={{ fontSize: 13, color: C.soft, margin: '0 0 12px', lineHeight: 1.8 }}>
-        مهمّتك هنا: إرسال الأسئلة والاستشارات الجاهزة (أول قسم). والمكالمات عند ضي — وإن كلّمتِ أحداً فنتيجتك تظهر لها باسمك.
-      </p>
-      {/* ★ ١٤ أكتوبر (المالك): القسمة — رغد تمسك إرسال الأسئلة والاستشارات، وضي تتفرغ للمكالمات وفتح الملفات */}
-      <AsksPanel forHelper />
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔎 ابحثي — بالاسم أو المنشأة أو الجوال" style={{ ...input, margin: '16px 0 6px' }} />
-      <section style={{ marginTop: 16 }}>
-        <SectionHead label="لم يُكلَّموا بعد" hint="آخر ٧ أيام — أحدثهم أولاً." n={recent.length} />
-        {cards(recent)}
-        {older.length > 0 && <Toggle open={showOld} onClick={() => setShowOld(!showOld)} label={'أقدم من أسبوع (' + older.length + ')'} />}
-        {showOld && cards(older.slice(0, 80))}
-      </section>
-      <section style={{ marginTop: 22 }}>
-        <SectionHead label="كُلِّموا — آخر نتيجة" hint="آخر نتيجة ومن كتبها — الأحدث وصولاً أولاً. «لم يرد» يُعاود الاتصال به." n={talked.length} />
-        {cards(talked.slice(0, 120))}
-      </section>
-    </>
-  )
-}
-
 // «طلب «…» من الموقع — ⭐ جادّ · توسعة · 10–50 مليون · …» ← سطرٌ رئيسي ورقائق تُقرأ بنظرة
 function splitReason(reason: string): { main: string; chips: string[] } {
   const i = reason.indexOf('⭐')
@@ -395,7 +369,7 @@ function splitReason(reason: string): { main: string; chips: string[] } {
   return { main, chips }
 }
 
-function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
+function LeadCard({ r, reload, showOwner }: { r: Hot; reload: () => void; showOwner?: boolean }) {
   const [open, setOpen] = useState(false)
   // «العميل وافق — وش نقول له؟» (١٣ أكتوبر): يُفتح ملفه من البطاقة نفسها، فيظهر السعر ويصدر السند ورابط الدفع
   const [intake, setIntake] = useState(false)
@@ -421,7 +395,7 @@ function LeadCard({ r, reload }: { r: Hot; reload: () => void }) {
     <div style={{ ...card, opacity: waiting ? 0.7 : 1, borderColor: r.source === 'transfer' ? '#E8C4B2' : C.line }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <b style={{ fontSize: 15, fontWeight: 900 }}>{r.name || r.person || '—'}{r.person && r.name && r.person !== r.name ? <span style={{ fontWeight: 700, color: C.soft, fontSize: 12.5 }}> · {r.person}</span> : null}</b>
-        <span style={{ fontSize: 11.5, color: C.soft }}>{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : r.at ? 'وصل ' + ago(r.at) : ''}</span>
+        <span style={{ fontSize: 11.5, color: C.soft }}>{showOwner && r.owner_name ? <span style={tag(r.owner_name.includes('رغد') ? '#6B5BA8' : C.green)}>{r.owner_name}</span> : null}{waiting ? '⏳ موعده ' + fmtDate(r.next_action_at) : r.at ? 'وصل ' + ago(r.at) : ''}</span>
       </div>
       <div style={{ fontSize: 12.5, color: C.soft, marginTop: 3 }}>{splitReason(r.reason).main}{Number((r.reason.match(/بدرجة\s*(\d+)/) || [])[1] || 0) >= 85 && r.touches === 0 ? <span style={tag(C.red)}>🔥 درجة عالية — كلّميه أولاً</span> : null}</div>
       {r.last_outcome && (

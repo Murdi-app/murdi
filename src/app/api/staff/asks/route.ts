@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
+import { ownerOf } from '@/lib/leadOwners';
 
 // أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك).
 //
@@ -35,7 +36,17 @@ export async function GET() {
       if (!last[k] && x.outcome !== 'تحوّل عميلاً') last[k] = { outcome: x.outcome, note: x.note, actor: x.actor_name, at: String(x.created_at) };
     }
   }
-  const asks = (data || []).map((r) => ({ ...r, call: last[String(r.id)] || null }));
+  let rows = data || [];
+  // ★ القسمة (١٤ أكتوبر): الموظفة ترى أسئلة عملائها هي فقط
+  if (who.role === 'staff' && ids.length) {
+    const mine = new Set<string>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: o } = await sbAdmin().from('lead_owners').select('ref_id').eq('source', 'inquiry').eq('owner', who.userId).in('ref_id', ids.slice(i, i + 200));
+      for (const x of o || []) mine.add(String(x.ref_id));
+    }
+    rows = rows.filter((r) => mine.has(String(r.id)));
+  }
+  const asks = rows.map((r) => ({ ...r, call: last[String(r.id)] || null }));
   return NextResponse.json({ ok: true, asks });
 }
 
@@ -54,6 +65,10 @@ export async function PATCH(req: Request) {
     patch.ask_reply = r; patch.ask_reply_at = new Date().toISOString();
   }
   if (!Object.keys(patch).length) return NextResponse.json({ error: 'لا شيء للحفظ' }, { status: 400 });
+  if (who.role === 'staff') {
+    const o = await ownerOf(sbAdmin(), 'inquiry', id);
+    if (o && o !== who.userId) return NextResponse.json({ error: 'هذا العميل عند زميلتك' }, { status: 403 });
+  }
   const { error: uErr } = await sbAdmin().from('service_inquiries').update(patch).eq('id', id).not('ask_message', 'is', null);
   if (uErr) { await logError('staff.asks.patch', uErr, { id }); return NextResponse.json({ error: 'لم يُحفظ — حاولي مرة ثانية' }, { status: 500 }); }
   return NextResponse.json({ ok: true });
