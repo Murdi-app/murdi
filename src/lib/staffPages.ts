@@ -71,7 +71,6 @@ export const PAGES_BY_JOB: Record<StaffJob, StaffPage[]> = {
     // كلّها، وفي الثانية العقود والتسعير ومحادثة البحث. وإخفاء زرٍّ في
     // المتصفح ليس حماية؛ فالصواب بابٌ لا يمرّ به ما لا يلزم.
     { href: '/admin/desk', label: 'الخدمات والاعتمادات', icon: '📑', nav: false },
-    { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬', nav: false },
   ],
 
   // ═══ رغد — ما بعد الدفع وجهات التمويل ═══
@@ -85,7 +84,7 @@ export const PAGES_BY_JOB: Record<StaffJob, StaffPage[]> = {
   //   يعرفنا، ونسبة تحويله الأدنى في المنصة. والصفحة باقية بالرابط لمن
   //   أرادها، وليست في شريطها.
   assistant: [
-    { href: '/admin/journey', label: 'ملفّاتي', icon: '🧭' },
+    { href: '/admin/journey', label: 'عملائي وملفّاتي', icon: '🧭' },
     // شاشتها الأولى: أبواب التمويل — من رُدّ عليه ومن تأخّر ومن لم يُعطِ
     // اسماً بعد. وعملها فيها: الاتصال، وجمع اسم مسؤول الائتمان ورقمه المباشر.
     { href: '/admin/followup', label: 'متابعة الجهات', icon: '📞', nav: false },
@@ -98,7 +97,6 @@ export const PAGES_BY_JOB: Record<StaffJob, StaffPage[]> = {
     //   بتبويب «العملاء قبل الدفع»). والقسمة لا تنعكس: ضي لا ترى شيئاً من هذا، ولا
     //   يظهر اسم رغد في أي شاشةٍ لضي (يُحذف من «تواصل معه قبل الدفع» في الخادم).
     { href: '/admin/hot', label: 'الفرص الساخنة', icon: '🔥', nav: false },
-    { href: '/admin/message', label: 'مراسلة العملاء', icon: '💬', nav: false },
   ],
 };
 
