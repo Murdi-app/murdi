@@ -174,14 +174,14 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
   const customOk = customVal >= 1000 && customVal <= 2_000_000
   const canOpen = who.full_name.trim() !== '' && who.phone.trim() !== ''
     && ((typeof quote.amount === 'number' && quote.amount > 0) || customOk)
-    && (custom.trim() === '' || customOk)
+    && (!!quote.amount || custom.trim() === '' || customOk)
 
   const openFile = async () => {
     setErr(''); setBusy(true)
     try {
       const res = await fetch('/api/admin/intake', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: quick && service === 'feasibility' ? sizeVal : num(value), units: num(units), custom_price: customOk ? customVal : null, inputs: service === 'feasibility' && !quick ? { ...inputs } : {}, spoken: service === 'feasibility' && !quick ? spoken : '' }),
+        body: JSON.stringify({ ...who, from: from || null, service_title: title, option: optKey, value: quick && service === 'feasibility' ? sizeVal : num(value), units: num(units), custom_price: customOk && !quote.amount ? customVal : null, inputs: service === 'feasibility' && !quick ? { ...inputs } : {}, spoken: service === 'feasibility' && !quick ? spoken : '' }),
       })
       const d = await res.json()
       if (!res.ok || d?.error) { setErr(d?.error || 'تعذّر فتح الملف'); setBusy(false); return }
@@ -293,9 +293,11 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
                     ? quote.label + ': ' + quote.amount.toLocaleString('ar-SA') + ' ر.س'
                     : 'لا سعر مدرَّج لهذا الحجم — حدّدي المبلغ المتفق عليه أدناه'}
                 </div>
+                {/* ★ ١٤ أكتوبر (المالك): المبلغ يُكتب فقط لما فوق ٥٠ مليون (لا سعر مدرَّج) — والباقي سعره من الشريحة */}
+                {!quote.amount && (
                 <div style={{ marginTop: 10 }}>
                   <label style={{ display: 'block', color: GREEN, fontWeight: 800, fontSize: 12.5, marginBottom: 5 }}>
-                    {quote.amount ? 'سعر متفق عليه غير المدرَّج؟ اكتبيه هنا (اختياري)' : 'حدّدي المبلغ — الأتعاب كاملة بالريال *'}
+                    حدّدي المبلغ — الأتعاب كاملة بالريال *
                   </label>
                   <input inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="مثال: 35000" style={IN} />
                   {custom.trim() !== '' && (
@@ -306,10 +308,16 @@ export default function CallIntake({ seed, service: seedService, onDone, from, q
                     </div>
                   )}
                 </div>
+                )}
               </>
             ))}
 
-            {quick && service === 'feasibility' && card('حجم مشروعه — من طلبه', (
+            {/* ★ ١٤ أكتوبر (المالك): الحجم مُدخَل من طلب العميل — يُعرض ولا يُختار. والاختيار فقط إن لم يُعرف من طلبه */}
+            {quick && service === 'feasibility' && size ? (
+              <div style={{ background: '#F7FBF9', border: '1.5px solid #E4EFEA', borderRadius: 12, padding: '10px 14px', marginBottom: 16, fontSize: 13.5, fontWeight: 800, color: GREEN }}>
+                حجم مشروعه من طلبه: {SIZES_QUICK.find((x) => x.value === size)?.label || '—'}
+              </div>
+            ) : quick && service === 'feasibility' && card('حجم مشروعه — لم يحدده في طلبه، اسأليه', (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {SIZES_QUICK.map((x) => (
                   <button key={x.label} type="button" onClick={() => setSizeVal(x.value)} style={{ padding: '8px 14px', borderRadius: 999, border: '1.5px solid ' + (sizeVal === x.value ? GREEN : '#E4EFEA'), background: sizeVal === x.value ? GREEN : '#fff', color: sizeVal === x.value ? '#fff' : GREEN, fontFamily: 'Cairo', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{x.label}</button>
