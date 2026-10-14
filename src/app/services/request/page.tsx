@@ -47,6 +47,8 @@ function RequestForm() {
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
   const [note, setNote] = useState('');
+  // ★ ١٤ أكتوبر (المالك): حجم المشروع إلزامي في طلب الجدوى — منه يُسعَّر الملف، فلا تسأله الموظفة
+  const [size, setSize] = useState('');
   const [website, setWebsite] = useState('');   // المصيدة
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -77,13 +79,15 @@ function RequestForm() {
   const isContract = service === 'تمويل العقد';
   const isFunding = service === FUNDING_SERVICE;
   const isStatements = service === 'إعداد القوائم المالية المعتمدة';
+  const isFeas = service === 'دراسة الجدوى الاقتصادية';
+  const SIZES = ['أقل من 2 مليون', '2–10 مليون', '10–50 مليون', 'أكثر من 50 مليون'];
 
   const submit = async () => {
     setErr(''); setBusy(true);
     try {
       const r = await fetch('/api/services/inquiry', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_title: service, full_name: name, phone, email, company_name: company, note, website, src: src || undefined }),
+        body: JSON.stringify({ service_title: service, full_name: name, phone, email, company_name: company, note: isFeas && size ? '⭐ ' + size + (note.trim() ? '\n' + note : '') : note, website, src: src || undefined }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) { setErr(d?.error || 'تعذّر الإرسال'); setBusy(false); return; }
@@ -106,7 +110,7 @@ function RequestForm() {
     setBusy(false);
   };
 
-  const valid = service !== '' && name.trim() !== '' && phone.trim() !== '';
+  const valid = service !== '' && name.trim() !== '' && phone.trim() !== '' && (!isFeas || size !== '');
   const whatsappText = encodeURIComponent(
     `السلام عليكم، أنا ${name.trim()} من ${company.trim() || 'منشأة'}، أرسلت طلب خدمة «${displayName(service)}» عبر منصة مُرضي وأرغب ببدء التجهيز.`
   );
@@ -201,6 +205,17 @@ function RequestForm() {
         </div>
       </div>
 
+      {isFeas && (
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>حجم المشروع التقريبي (إجمالي التكلفة) *</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {SIZES.map((x) => (
+              <button key={x} type="button" onClick={() => setSize(x)}
+                style={{ padding: '10px 16px', borderRadius: 999, border: '1.5px solid ' + (size === x ? GREEN : '#D9E5DF'), background: size === x ? GREEN : '#fff', color: size === x ? '#fff' : GREEN, fontFamily: 'Tajawal, Cairo, sans-serif', fontWeight: 900, fontSize: 13.5, cursor: 'pointer' }}>{x}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: 18 }}>
         <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>
           {isContract ? 'عن العقد — الجهة، القيمة، مرحلة الترسية واحتياج السيولة'

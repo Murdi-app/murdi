@@ -74,19 +74,20 @@ export async function GET() {
   const ids = (src: string[]) => lost.filter((t) => src.includes(t.source)).map((t) => t.ref_id);
   const [ma, si, co] = await Promise.all([
     ids(['assessment']).length ? sb.from('mini_assessments').select('id, full_name, company_name, phone').in('id', ids(['assessment'])) : Promise.resolve({ data: [] }),
-    ids(['inquiry']).length ? sb.from('service_inquiries').select('id, full_name, company_name, phone, email, service_title').in('id', ids(['inquiry'])) : Promise.resolve({ data: [] }),
+    ids(['inquiry']).length ? sb.from('service_inquiries').select('id, full_name, company_name, phone, email, service_title, note').in('id', ids(['inquiry'])) : Promise.resolve({ data: [] }),
     ids(['signup', 'file', 'ordered']).length ? sb.from('companies').select('id, company_name, phone').in('id', ids(['signup', 'file', 'ordered'])) : Promise.resolve({ data: [] }),
   ]);
-  const det = new Map<string, { name: string | null; phone: string | null; email?: string | null; company_id?: string | null; what?: string }>();
+  const det = new Map<string, { name: string | null; phone: string | null; email?: string | null; company_id?: string | null; what?: string; star?: string }>();
   for (const m of (ma.data || []) as Record<string, string | null>[]) det.set('assessment|' + m.id, { name: m.company_name || m.full_name, phone: m.phone });
-  for (const m of (si.data || []) as Record<string, string | null>[]) det.set('inquiry|' + m.id, { name: m.company_name || m.full_name, phone: m.phone, email: m.email, what: m.service_title || '' });
+  // ★ ١٤ أكتوبر: سطر الطلب (الحجم والنوع) يبقى مع العميل بعد أول مكالمة — كان يُسقط فيُسأل حجمه من جديد
+  for (const m of (si.data || []) as Record<string, string | null>[]) det.set('inquiry|' + m.id, { name: m.company_name || m.full_name, phone: m.phone, email: m.email, what: m.service_title || '', star: String(m.note || '').startsWith('⭐') ? String(m.note).split('\n')[0] : '' });
   for (const m of (co.data || []) as Record<string, string | null>[]) for (const src of ['signup', 'file', 'ordered']) det.set(src + '|' + m.id, { name: m.company_name, phone: m.phone, company_id: String(m.id) });
   const extra: Row[] = lost.flatMap((t) => {
     const d = det.get(t.source + '|' + t.ref_id);
     if (!d) return [];
     return [{
       source: t.source, ref_id: t.ref_id, name: d.name, phone: d.phone, email: d.email || null, company_id: d.company_id || null,
-      tier: 3, reason: 'متابعة — آخر نتيجة «' + t.outcome + '»' + (d.what ? ' · طلب «' + d.what + '»' : ''), money: 0, at: t.created_at,
+      tier: 3, reason: 'متابعة — آخر نتيجة «' + t.outcome + '»' + (d.what ? ' · طلب «' + d.what + '»' : '') + (d.star ? ' — ' + d.star : ''), money: 0, at: t.created_at,
       next_step: 'تابعي حسب ما اتُّفق عليه في آخر مكالمة' + (t.note ? ': ' + t.note.slice(0, 160) : ''),
     }];
   });
