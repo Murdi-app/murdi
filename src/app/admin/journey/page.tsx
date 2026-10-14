@@ -224,7 +224,7 @@ function DhaiBoard({ hot: allHot, files, me, isAdmin, reload }: { hot: Hot[]; fi
 // ═══ أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك) ═══
 // لكل من سجّل رسالةُ أسئلةٍ على وضعه: ترسلها ضي واتساب بضغطة، ثم تلصق ردّ العميل
 // فتُبنى عليه استشارته. ولا يُعدَّل نصّ الأسئلة من هنا.
-type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null; owner?: string }
+type Ask = { id: string; full_name: string | null; company_name: string | null; phone: string | null; ask_message: string; ask_sent_at: string | null; ask_reply: string | null; ask_reply_at: string | null; consult_status: string | null; consult_code: string | null; consult_sent_at: string | null; consult_opened_at: string | null; owner?: string; call?: { outcome: string | null; note: string | null; actor: string | null; at: string } | null }
 
 function AsksPanel({ forHelper }: { forHelper?: boolean } = {}) {
   const [asks, setAsks] = useState<Ask[]>([])
@@ -235,14 +235,19 @@ function AsksPanel({ forHelper }: { forHelper?: boolean } = {}) {
   }, [])
   useEffect(() => { load() }, [load])
   if (asks.length === 0) return null
-  const toSend = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
+  // ★ ١٤ أكتوبر: المكالمة أولاً (ضي)، ثم الأسئلة (رغد). من لم يُكلَّم بعد لا تُرسل له الأسئلة،
+  //   ومن قال «غير مهتم» لا تُرسل له. ومن لم يرد تُرسل له — فالرسالة تصله وإن لم يرد على الاتصال.
+  const called = (a: Ask) => !!a.call && a.call.outcome !== 'غير مهتم'
+  const pending = asks.filter(a => !a.ask_sent_at && !a.ask_reply)
+  const toSend = forHelper ? pending.filter(called) : pending
+  const waitCall = forHelper ? pending.filter(a => !a.call) : []
   const waitReply = asks.filter(a => a.ask_sent_at && !a.ask_reply)
   // ردّ العميل → بعد نصف ساعة تُكتب استشارته آلياً → ترسلها هي → تمّت
   const ready = asks.filter(a => a.ask_reply && a.consult_status === 'ready' && !a.consult_sent_at)
   const done = asks.filter(a => a.ask_reply && !(a.consult_status === 'ready' && !a.consult_sent_at))
   return (
     <section style={{ marginTop: 18, background: '#FFFBEF', border: '1.5px solid #F1E3B5', borderRadius: 14, padding: '14px 14px 12px' }}>
-      <SectionHead label={forHelper ? '📨 مهمّتك: الأسئلة والاستشارات' : '📝 أسئلة الاستشارة — أرسليها لكل عميل'} hint={forHelper ? 'ابدئي بالاستشارات الجاهزة (الأخضر) ثم الأسئلة التي لم تُرسل. كل رسالة بضغطة واتساب، ولما يرد العميل الصقي رده — وتجهز استشارته هنا تلقائياً.' : 'لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له.'} n={ready.length + toSend.length + waitReply.length} />
+      <SectionHead label={forHelper ? '📨 مهمّتك: الأسئلة والاستشارات' : '📝 أسئلة الاستشارة — أرسليها لكل عميل'} hint={forHelper ? 'ابدئي بالاستشارات الجاهزة (الأخضر) ثم الأسئلة — وتظهر الأسئلة فقط لمن كلّمته ضي. أرسلي من واتساب المكتب 0570749196 المربوط على جهازك، لا من رقمك الشخصي. ولما يرد العميل الصقي رده — وتجهز استشارته هنا تلقائياً.' : 'لكل عميل أسئلته على وضعه. أرسليها واتساب، ولما يرد الصقي رده هنا — وتجهز استشارته هنا بعد نصف ساعة لترسليها له.'} n={ready.length + toSend.length + waitReply.length} />
       {ready.length > 0 && <>
         <div style={{ fontSize: 12.5, fontWeight: 900, color: C.green, margin: '4px 0 7px' }}>✨ استشارات جاهزة — أرسليها الآن ({ready.length})</div>
         <div style={{ display: 'grid', gap: 9, marginBottom: 12 }}>{ready.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
@@ -251,6 +256,7 @@ function AsksPanel({ forHelper }: { forHelper?: boolean } = {}) {
         {forHelper && <div style={{ fontSize: 12.5, fontWeight: 900, color: '#8A6D1F', margin: '4px 0 7px' }}>📝 أسئلة لم تُرسل بعد ({toSend.length})</div>}
         <div style={{ display: 'grid', gap: 9 }}>{toSend.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
       </>}
+      {forHelper && waitCall.length > 0 && <div style={{ fontSize: 12, color: C.soft, margin: '12px 0 4px', fontWeight: 800 }}>⏳ {waitCall.length} عميل لم تكلّمهم ضي بعد — تظهر أسئلتهم هنا تلقائياً بعد ما تكتب نتيجة مكالمتهم.</div>}
       {waitReply.length > 0 && <>
         <div style={{ fontSize: 12.5, fontWeight: 900, color: C.soft, margin: '14px 0 7px' }}>أُرسلت — ننتظر رده ({waitReply.length})</div>
         <div style={{ display: 'grid', gap: 9 }}>{waitReply.map(a => <AskCard key={a.id} a={a} reload={load} />)}</div>
@@ -306,6 +312,9 @@ function AskCard({ a, reload, inline }: { a: Ask; reload: () => void; inline?: b
         {inline && <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12, cursor: 'pointer', padding: 0 }}>طيّ ▴</button>}
         <span style={{ fontSize: 11.5, color: C.soft }}>{a.ask_reply ? '✓ ردّ ' + ago(a.ask_reply_at) : a.ask_sent_at ? 'أُرسلت ' + ago(a.ask_sent_at) : 'لم تُرسل بعد'}</span>
       </div>
+      {!inline && <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: a.call ? C.green : '#8A6D1F' }}>
+        {a.call ? '📞 ' + (a.call.actor || 'الفريق') + ': ' + (a.call.outcome || '') + (a.call.note ? ' — ' + a.call.note : '') + ' · ' + ago(a.call.at) : '📞 لم يُكلَّم بعد'}
+      </div>}
       <button onClick={() => setOpen(!open)} style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, color: C.green, fontFamily: 'Cairo', fontWeight: 800, fontSize: 12.5, cursor: 'pointer' }}>{open ? 'إخفاء الرسالة' : 'عرض الرسالة'}</button>
       {open && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.9, background: C.bg, borderRadius: 8, padding: '8px 12px', marginTop: 6 }}>{a.ask_message}</div>}
       {a.ask_reply && <div style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, marginTop: 7, background: C.pale, borderRadius: 8, padding: '7px 11px' }}><b>رده:</b> {a.ask_reply}</div>}

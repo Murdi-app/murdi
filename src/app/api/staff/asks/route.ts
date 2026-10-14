@@ -23,7 +23,20 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(200);
   if (qErr) { await logError('staff.asks.get', qErr, {}); return NextResponse.json({ error: 'تعذّر تحميل الأسئلة' }, { status: 500 }); }
-  return NextResponse.json({ ok: true, asks: data || [] });
+  // ★ ١٤ أكتوبر (المالك): «رغد تخاف ترسل أسئلة وضي ما كلّمتهم» — فلكل طلبٍ آخرُ نتيجة مكالمة
+  //   ومن كتبها. ورغد لا ترسل الأسئلة إلا لمن كُلِّم (أو اتُّصل به ولم يرد) — والمكالمة لضي أولاً.
+  const ids = (data || []).map((r) => String(r.id));
+  const last: Record<string, { outcome: string | null; note: string | null; actor: string | null; at: string }> = {};
+  if (ids.length) {
+    const { data: t } = await sbAdmin().from('hot_touches').select('ref_id, outcome, note, actor_name, created_at')
+      .in('ref_id', ids).order('created_at', { ascending: false }).limit(1000);
+    for (const x of t || []) {
+      const k = String(x.ref_id);
+      if (!last[k] && x.outcome !== 'تحوّل عميلاً') last[k] = { outcome: x.outcome, note: x.note, actor: x.actor_name, at: String(x.created_at) };
+    }
+  }
+  const asks = (data || []).map((r) => ({ ...r, call: last[String(r.id)] || null }));
+  return NextResponse.json({ ok: true, asks });
 }
 
 export async function PATCH(req: Request) {
