@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendMail } from '@/lib/sendMail';
 import { prettyPhone } from '@/lib/phone';
 import { sendPush } from '@/lib/push';
+import { displayName } from '@/lib/serviceCatalog';
 import { teamEmails } from '@/lib/notifyLead';
 
 // إخطار فوري بما لا يحتمل الانتظار.
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   const sb = admin();
   const { data: c } = await sb
     .from('companies')
-    .select('id, company_name, owner_name, phone, city, sector, cr_number')
+    .select('id, company_name, owner_name, phone, city, sector, cr_number, admin_note')
     .eq('id', companyId)
     .maybeSingle();
   if (!c) return NextResponse.json({ error: 'لا توجد منشأة' }, { status: 404 });
@@ -121,12 +122,17 @@ export async function POST(req: Request) {
     const { data: s } = await sb.from('service_requests')
       .select('service_title, status, price, quoted_price, option_key')
       .eq('id', ref).maybeSingle();
-    const amount = money(s?.price ?? s?.quoted_price);
+    // ★ ١٤ أكتوبر (المالك): «٤٬٥٠٠!!» — كان الإشعار يعرض الدفعة الأولى وحدها كأنها السعر.
+    //   فصار يعرض الأتعاب كاملةً، والدفعة الأولى بجانبها حين تُقسم.
+    const total = Number(s?.quoted_price || 0), first = Number(s?.price || 0);
+    const split = total > 0 && first > 0 && first < total;
+    const amount = split ? money(total) + ' (الدفعة الأولى ' + money(first) + ')' : money(s?.price ?? s?.quoted_price);
     const priced = Boolean(amount);
-    subject = 'طلب خدمة: ' + name + ' — ' + String(s?.service_title || '');
-    head = priced ? 'طلب خدمة مسعَّرة — بانتظار دفعه' : 'طلب خدمة بلا سعر — ينتظر رقماً منك';
-    pushTitle = priced ? '💼 طلب خدمة' : '⏳ خدمة تنتظر تسعيرك';
-    pushBody = name + ' — ' + String(s?.service_title || '') + (amount ? ' · ' + amount : ' · تحتاج تسعيرك');
+    const byStaff = String((c as { admin_note?: string | null }).admin_note || '').startsWith('فُتح من مكالمة');
+    subject = 'طلب خدمة: ' + name + ' — ' + displayName(String(s?.service_title || ''));
+    head = priced ? (byStaff ? 'فتحت الموظفة ملفه من مكالمة — بانتظار دفعه' : 'طلب خدمة مسعَّرة — بانتظار دفعه') : 'طلب خدمة بلا سعر — ينتظر رقماً منك';
+    pushTitle = priced ? (byStaff ? '📂 فُتح ملف من مكالمة' : '💼 طلب خدمة') : '⏳ خدمة تنتظر تسعيرك';
+    pushBody = name + ' — ' + displayName(String(s?.service_title || '')) + (amount ? ' · ' + amount : ' · تحتاج تسعيرك');
     url = '/admin/services';
     extra = row('الخدمة', s?.service_title || '—') + row('السعر', amount || 'لم تُسعَّر بعد');
 
@@ -164,6 +170,9 @@ export async function POST(req: Request) {
       row('أتعاب النجاح', k?.fee_percent ? k.fee_percent + '٪' : '—');
 
   } else {
+    // ★ الحساب الذي تفتحه الموظفة من مكالمة ليس «تسجيلاً جديداً» — كان يصل إشعاران لعميلٍ واحد
+    const byStaff = String((c as { admin_note?: string | null }).admin_note || '').startsWith('فُتح من مكالمة');
+    if (byStaff) return NextResponse.json({ ok: true, skipped: 'opened-by-staff' });
     subject = 'تسجيل جديد: ' + name;
     head = 'سجّل منشأته الآن';
     pushTitle = '🆕 تسجيل جديد';
