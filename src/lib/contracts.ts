@@ -636,9 +636,10 @@ export const CONTRACT_LABEL: Record<ContractType, string> = {
 // ★ ١٥ أكتوبر (المالك): «طريقة أسرع بدون عقد للي يبي تجهيز ملف تمويلي — يدفع وبعدين يوقّع العقد».
 //   فهذه الخدمات يصدر لها سند بالمقدَّم فوراً ويُدفع، ثم يُنشأ عقد أتعاب النجاح بعد السداد
 //   (`ensureCommissionDraft`) فيُصدره المالك ويوقّعه العميل قبل مخاطبة الجهات.
-export const PAY_FIRST = new Set<string>(['تجهيز ملف التمويل والتفاوض']);
+//   وبعدها بدقائق (المالك): «اجعله كلهم دفع أول» — فكل خدمات أتعاب النسبة تدفع ثم توقّع.
+//   (ما مقدَّمه صفر لا سند له، فيبقى عقداً قبل كل شيء — `ensureDocument`.)
 export const payFirst = (title: string, optionKey?: string | null): boolean =>
-  PAY_FIRST.has(String(title || '')) && optionKey !== 'quick' && optionKey !== 'balance';
+  Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || '')) && optionKey !== 'quick' && optionKey !== 'balance';
 /** عقدٌ موقَّع **قبل الدفع** — وما كان «يدفع ثم يوقّع» ليس منه */
 export const needsSignedContract = (title: string, optionKey?: string | null): boolean =>
   Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || '')) && optionKey !== 'quick' && !payFirst(title, optionKey);

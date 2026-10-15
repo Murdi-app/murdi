@@ -81,7 +81,9 @@ ${balance
  */
 export async function ensureDocument(sb: SupabaseClient, srId: string): Promise<{ kind: DocKind; id: string; status: string; created: boolean }> {
   const sr = await loadSR(sb, srId);
-  const kind = docKindFor(sr.service_title, sr.option_key);
+  // ★ «يدفع ثم يوقّع» يحتاج مقدَّماً يُدفع — وما مقدَّمه صفر يبقى عقداً أولاً
+  const kind: DocKind = docKindFor(sr.service_title, sr.option_key) === 'voucher' && !(Number(sr.price || 0) > 0) && payFirst(sr.service_title, sr.option_key)
+    ? 'contract' : docKindFor(sr.service_title, sr.option_key);
   const { data: ex } = await sb.from('contracts').select('id, status, contract_type')
     .eq('service_request_id', sr.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (ex) return { kind, id: String(ex.id), status: String(ex.status), created: false };
