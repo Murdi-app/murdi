@@ -85,7 +85,8 @@ export async function staffContacts(sb: SupabaseClient): Promise<Map<string, Con
     sb.from('staff').select('user_id, name').eq('active', true),
     sb.from('app_config').select('value').eq('key', 'staff_wa').maybeSingle(),
   ]);
-  const wa = (cfg?.value && typeof cfg.value === 'object' ? cfg.value : {}) as Record<string, string>;
+  let wa: Record<string, string> = {};
+  try { const v = typeof cfg?.value === 'string' ? JSON.parse(cfg.value) : cfg?.value; if (v && typeof v === 'object') wa = v; } catch { wa = {}; }
   return new Map((st || []).map((s) => [String(s.user_id), {
     name: String(s.name || '').trim().split(/\s+/)[0] || 'ضي',
     wa: /^9665\d{8}$/.test(String(wa[String(s.user_id)] || '')) ? String(wa[String(s.user_id)]) : null,
