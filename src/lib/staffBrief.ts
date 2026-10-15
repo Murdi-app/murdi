@@ -3,7 +3,7 @@ import { closesOpportunity } from './outcomes';
 import { OPEN_PAID_STATUSES } from './serviceStatus';
 import { involvesOutreach } from './serviceCatalog';
 import { isFrozen } from './frozen';
-import { needsSignedContract } from './contracts';
+import { needsSignedContract, payFirst } from './contracts';
 import { redactTimeline } from './staffRedact';
 import { dueReminders, type Reminder } from './signReminders';
 
@@ -153,7 +153,14 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
 
   // ملفٌّ دفع صاحبه ولم يُخاطَب له بابٌ واحد — أخطر حالة
   const touched = new Set([...(msgs || []), ...(logged || [])].map((m) => String(m.company_id)));
-  const untouched = [...live.entries()].filter(([id]) => !touched.has(id)).map(([, n]) => n);
+  // ★ ١٥ أكتوبر: «يدفع ثم يوقّع» — ملفٌّ دُفع مقدَّمه ولم يُوقَّع عقد أتعابه لا يُخاطَب له باب بعد
+  const pfIds = rows.filter((r) => payFirst(r.service_title, r.option_key)).map((r) => String(r.company_id)).filter((id) => live.has(id));
+  const { data: pfSigned } = pfIds.length
+    ? await sb.from('contracts').select('company_id').in('company_id', pfIds).neq('contract_type', 'voucher').in('status', ['signed', 'completed'])
+    : { data: [] as { company_id: string }[] };
+  const signedSet = new Set((pfSigned || []).map((c) => String(c.company_id)));
+  const waitSign = new Set(pfIds.filter((id) => !signedSet.has(id)));
+  const untouched = [...live.entries()].filter(([id]) => !touched.has(id) && !waitSign.has(id)).map(([, n]) => n);
 
   // ★ لا قسم «أبواب ساكتة» هنا: الباب الساكت يُذكَّر مرةً ثم يُترك، والمتابعة
   //   الهاتفية لمن ردّ ومتى قرّر المالك (قاعدته). فلا يُكلَّف بها آلياً.
@@ -173,6 +180,7 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
   const parts: string[] = [];
   if (untouched.length) parts.push(ORD[parts.length] + ' — ملفٌّ دفع صاحبه ولم يُخاطَب له بابٌ واحد (بلّغيني بها اليوم):\n' + untouched.map((x) => '· ' + x).join('\n'));
   if (stale.length) parts.push(ORD[parts.length] + ' — «ملفّات تنتظرك» الأقدم سكوناً: اكتبي عند كلٍّ منها أين وقف وما ينقصه:\n' + stale.map((x) => '· ' + x).join('\n'));
+  if (waitSign.size) parts.push(ORD[parts.length] + ' — دفع مقدَّمه وعقد أتعابه لم يُوقَّع بعد — لا تخاطبي له جهة حتى يُوقَّع:\n' + [...waitSign].map((id) => '· ' + live.get(id)).join('\n'));
   parts.push(ORD[parts.length] + ' — المكالمات المُسندة إليك في شاشة «المتابعة»: سجّلي بعد كل مكالمة اسم المسؤول ورقمه وملاحظتك.');
 
   const body = 'صباح الخير يا رغد،\n\nعملك اليوم في جهات التمويل وملفّات من دفع، وكل نتيجة تُكتب في شاشة «المتابعة»:\n\n'

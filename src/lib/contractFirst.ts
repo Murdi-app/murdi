@@ -1,7 +1,7 @@
 import { displayName } from '@/lib/serviceCatalog';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { COMMERCIAL, BALANCE_KEY } from '@/lib/servicePricing';
-import { COMMISSION_SERVICES, renderContract, needsSignedContract } from '@/lib/contracts';
+import { COMMISSION_SERVICES, renderContract, needsSignedContract, payFirst } from '@/lib/contracts';
 import { loadFeeSettings, completionPctFor, fillMessage, type FeeSettings } from '@/lib/feeSettings';
 import { shortLink, SITE } from '@/lib/shortLinks';
 import { isPhoneEmail } from '@/lib/phoneEmail';
@@ -66,7 +66,9 @@ ${balance
   ? 'وهو الدفعة الثانية والأخيرة من أتعاب الدراسة، يُسدَّد عند جاهزيتها وقبل تسليمها، ولا يرتبط بحصول العميل على تمويل ولا بمقداره.'
   : split
     ? 'إجمالي أتعاب الخدمة (' + money(total as number) + ') ريال، تُسدَّد على دفعتين: الأولى — وهي المستحقة بهذا السند — عند التعاقد وقبل بدء العمل، والثانية (' + money((total as number) - price) + ') ريال عند جاهزية الدراسة وقبل تسليمها. ولا ترتبط بحصول العميل على تمويل ولا بمقداره.'
-    : 'ويُسدَّد كاملاً قبل بدء العمل، ولا يرتبط بحصول العميل على تمويل ولا بمقداره.'} ولا يتقاضى الطرف المُصدِر أي عمولة من أي جهة.
+    : 'ويُسدَّد كاملاً قبل بدء العمل، ولا يرتبط بحصول العميل على تمويل ولا بمقداره.'} ولا يتقاضى الطرف المُصدِر أي عمولة من أي جهة.${payFirst(title, optionKey)
+  ? '\nوأتعاب النجاح عند صرف التمويل يحددها عقد الخدمة، ويصل العميلَ بعد السداد ليوقّعه قبل مخاطبة الجهات باسمه.'
+  : ''}
 
 الطرف الأول: المستشار/ عبدالحكيم — حلول المرضي للاستشارات المالية
 التوقيع: عبدالحكيم`;
@@ -110,6 +112,33 @@ export async function ensureDocument(sb: SupabaseClient, srId: string): Promise<
   }).select('id').single();
   if (error || !data) throw new Error('تعذّر إنشاء مسودّة العقد — ' + (error?.message || ''));
   return { kind, id: String(data.id), status: 'draft', created: true };
+}
+
+/**
+ * ★ ١٥ أكتوبر — «يدفع ثم يوقّع»: بعد سداد المقدَّم بسنده، يُنشأ عقد أتعاب النجاح مسودّةً
+ * بالنسبة الافتراضية، فيراجعها المالك ويُصدرها ويوقّعها العميل قبل مخاطبة الجهات.
+ * لا يمسّ عقداً قائماً لنفس الطلب.
+ */
+export async function ensureCommissionDraft(sb: SupabaseClient, srId: string): Promise<string | null> {
+  const sr = await loadSR(sb, srId);
+  if (!payFirst(sr.service_title, sr.option_key)) return null;
+  const { data: ex } = await sb.from('contracts').select('id').eq('service_request_id', sr.id).neq('contract_type', 'voucher').limit(1).maybeSingle();
+  if (ex) return null;
+  const s = await loadFeeSettings(sb);
+  const { data: co } = await sb.from('companies').select('company_name, cr_number').eq('id', sr.company_id).maybeSingle();
+  const type = COMMISSION_SERVICES[sr.service_title];
+  const pct = completionPctFor(s, sr.service_title);
+  const price = Number(sr.price || 0);
+  const fields = { feeType: 'deferred' as const, fixedAmount: price || undefined, feePercent: pct || undefined,
+    establishmentName: String(co?.company_name || ''), establishmentCr: co?.cr_number ? String(co.cr_number) : undefined, contractValue: sr.contract_value || undefined };
+  const { data, error } = await sb.from('contracts').insert({
+    company_id: sr.company_id, service_request_id: sr.id, contract_type: type, status: 'draft',
+    fee_type: 'deferred', fixed_amount: price || null, fee_percent: pct || null, success_base: 'financing',
+    deal_value: sr.contract_value, establishment_name: co?.company_name || null, establishment_cr: co?.cr_number || null,
+    contract_body: renderContract(type, fields),
+  }).select('id').single();
+  if (error || !data) throw new Error('تعذّر إنشاء عقد أتعاب النجاح — ' + (error?.message || ''));
+  return String(data.id);
 }
 
 /** يُعيد نصّ مسودّة العقد من صفّها وطلبها (المقدَّم · قيمة العقد · المنشأة) — لا يمسّ الصادر */

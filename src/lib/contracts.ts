@@ -633,7 +633,17 @@ export const CONTRACT_LABEL: Record<ContractType, string> = {
 //   والحارس في `@/lib/contractGate`.
 // ★ ٧ أكتوبر: الخيار السريع (٩٩٠ — الحكم/الفحص الائتماني) رسمٌ ثابت داخل خدمةٍ نسبتها في خيارها الكامل —
 //   فيصدر له سند خدمةٍ فوراً لا عقدٌ ينتظر المالك (كان يُحبس عقداً فلا يُرسَل لصاحبه رابط).
+// ★ ١٥ أكتوبر (المالك): «طريقة أسرع بدون عقد للي يبي تجهيز ملف تمويلي — يدفع وبعدين يوقّع العقد».
+//   فهذه الخدمات يصدر لها سند بالمقدَّم فوراً ويُدفع، ثم يُنشأ عقد أتعاب النجاح بعد السداد
+//   (`ensureCommissionDraft`) فيُصدره المالك ويوقّعه العميل قبل مخاطبة الجهات.
+export const PAY_FIRST = new Set<string>(['تجهيز ملف التمويل والتفاوض']);
+export const payFirst = (title: string, optionKey?: string | null): boolean =>
+  PAY_FIRST.has(String(title || '')) && optionKey !== 'quick' && optionKey !== 'balance';
+/** عقدٌ موقَّع **قبل الدفع** — وما كان «يدفع ثم يوقّع» ليس منه */
 export const needsSignedContract = (title: string, optionKey?: string | null): boolean =>
+  Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || '')) && optionKey !== 'quick' && !payFirst(title, optionKey);
+/** للخدمة عقد أتعاب نسبةٍ أصلاً (قبل الدفع أو بعده) */
+export const hasCommissionContract = (title: string, optionKey?: string | null): boolean =>
   Object.prototype.hasOwnProperty.call(COMMISSION_SERVICES_TABLE, String(title || '')) && optionKey !== 'quick';
 
 const COMMISSION_SERVICES_TABLE: Record<string, Exclude<ContractType, 'voucher'>> = {

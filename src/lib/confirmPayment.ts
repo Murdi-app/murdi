@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { canonicalTitle } from '@/lib/serviceCatalog';
 import { sendPush } from '@/lib/push';
+import { ensureCommissionDraft } from '@/lib/contractFirst';
 
 // تأكيد استلام دفعة — بابٌ واحد يمرّ منه المالك ومكتب الطلبات معاً.
 //
@@ -117,6 +118,11 @@ export async function confirmPayment(sb: SupabaseClient, id: string, by?: string
         // جهاته، فيبقى على المنح.
         // ★ ٧ أكتوبر (بأمر المالك): الفحص الائتماني كلّه سواء — فحص المشروع يسمّي جهاته أيضاً، فيُمنح المطابقة
         if (title && NEEDS_MATCH.has(canonicalTitle(String(title)))) await grant(String(pay.company_id));
+        // ★ ١٥ أكتوبر: «يدفع ثم يوقّع» — بعد المقدَّم يُنشأ عقد أتعاب النجاح ليُصدره المالك
+        try {
+          const draft = await ensureCommissionDraft(sb, String(target.id));
+          if (draft) notes.push('عقد أتعاب النجاح جاهز مسودّةً — راجعه وأصدره ليوقّعه قبل مخاطبة الجهات.');
+        } catch (e) { notes.push(e instanceof Error ? e.message : 'تعذّر إنشاء عقد أتعاب النجاح — أنشئه يدوياً.'); }
       }
       // وإن لم يُختم لأنه تجاوز الدفع، فلا ملاحظة: العمل جارٍ والدفعة قُيّدت له
     }
