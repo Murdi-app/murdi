@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { displayName } from '@/lib/serviceCatalog';
 import { createClient } from '@supabase/supabase-js';
 import { resolveShort } from '@/lib/shortLinks';
 import { contractHtml } from '@/lib/contractStamp';
@@ -43,7 +44,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ code: string }
     links = { pay: m.payLink, site: m.siteLink };
   }
   return NextResponse.json({
-    ok: true, kind: voucher ? 'voucher' : 'contract', status: c.status, title: sr?.service_title || '',
+    ok: true, kind: voucher ? 'voucher' : 'contract', status: c.status, title: sr?.service_title ? displayName(String(sr.service_title)) : '',
     amount: sr?.price ? Number(sr.price) : null, paid: sr ? !['priced', 'submitted'].includes(String(sr.status)) : false,
     html, links,
   });

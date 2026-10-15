@@ -122,7 +122,7 @@ const grid2: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repe
 // ★ نسخة تيك توك (`/t/jadwa`): رفضت المنصة الصفحة «فرصةً مالية مضلّلة»، فالنصّ
 //   المرئي بإطار «استشارات أعمال — دراسة جدوى احترافية» وبلا مفردات المال
 //   الممنوعة، ولا رقم ولا رابط يخرج من الصفحة. والنموذج والحفظ واحد.
-export const TIKTOK_H1 = 'دراسة جدوى احترافية لمشروعك';
+export const TIKTOK_H1 = 'دراسة جدوى ائتمانية واقتصادية لمشروعك';
 const TIKTOK_LEAD = 'مكتب استشارات أعمال. خمسة أسئلة سريعة عن مشروعك، ويتصل بك فريقنا اليوم.';
 export const TIKTOK_FOOTER = 'مكتب استشارات أعمال؛ لا نقدّم تمويلاً ولا نعد بنتيجة';
 const T_KIND: Record<string, { label: string; hint: string }> = {

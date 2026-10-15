@@ -94,8 +94,14 @@ export async function staffContacts(sb: SupabaseClient): Promise<Map<string, Con
 }
 
 /** يجعل نصّاً موجّهاً للعميل باسم صاحبته ورقمها */
+// ★ ١٥ أكتوبر (المالك): «دراسة الجدوى» وحدها تبيع نصف الخدمة — اسمها الكامل «الائتمانية والاقتصادية»
+export const fullServiceName = (text: string): string =>
+  !text ? text : text.replace(/دراسة الجدوى(?! الائتمانية)( الاقتصادية)?/g, 'دراسة الجدوى الائتمانية والاقتصادية');
+
 export function asOwner(text: string, c: Contact | null | undefined): string {
-  if (!text || !c) return text;
+  if (!text) return text;
+  text = fullServiceName(text);
+  if (!c) return text;
   let t = text.split('معك ضي من').join('معك ' + c.name + ' من')
     .split('زميلتنا <strong>ضي</strong>').join('زميلتنا <strong>' + c.name + '</strong>');
   if (c.wa) t = t.split('wa.me/' + COMPANY_WA).join('wa.me/' + c.wa);

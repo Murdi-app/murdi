@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { sendPush } from '@/lib/push';
 import { OWNER_EMAIL } from '@/lib/notifyLead';
+import { displayName } from '@/lib/serviceCatalog';
 
 // الاستشارة المختصرة لمن سجّل من الإعلانات (١٢ أكتوبر، المالك).
 //
@@ -16,6 +17,8 @@ import { OWNER_EMAIL } from '@/lib/notifyLead';
 
 const MODELS = ['claude-opus-5-5', 'claude-opus-4-8', 'claude-sonnet-4-6'];
 const DHAI_WA = '966570749196';
+// ★ ١٥ أكتوبر (المالك): الخدمة باسمها الكامل «الائتمانية والاقتصادية» أمام العميل، لا مفتاحها المخزَّن
+const svcName = (t: string | null | undefined) => displayName(String(t || 'دراسة الجدوى الاقتصادية'));
 const WAIT_MIN = 30;
 const MAX_TRIES = 3;
 
@@ -50,7 +53,7 @@ const numsOf = (s: string) => (toLatin(s).match(/\d+(?:\.\d+)?/g) || []);
 
 function prompt(r: InquiryRow, retryNote = ''): string {
   const who = r.company_name || r.full_name || 'المنشأة';
-  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${r.service_title || 'دراسة الجدوى'}» ثم أجاب على أسئلتنا. الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
+  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(r.service_title)}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(r.service_title)}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر). الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
 
 ## معطيات العميل (لا تستعمل غيرها)
 - الاسم: ${who}${r.company_name && r.full_name ? ' — ' + r.full_name : ''}
@@ -92,7 +95,7 @@ ${r.consult_owner_note ? '## ملاحظة الدكتور على المسودة �
  "crux_body": "العائق أو السؤال الحاسم في وضعه، من معطياته",
  "key": "الحل بالهيكلة: كيف يُرتَّب (تمويل/مستثمر/مراحل/ترتيب المستندات) — جملتان أو ثلاث",
  "note": "اختياري: ملاحظة واحدة ذكية (مثلاً أن الممول يوافق على رقمٍ معروف مصدره لا على نطاق)",
- "study_title": "ما الذي تفتحه دراسة الجدوى لك/لكم (أو: ما الذي يفتحه ملف التمويل — حسب الخدمة)",
+ "study_title": "ما الذي تفتحه دراسة الجدوى الائتمانية والاقتصادية لك/لكم (أو: ما الذي يفتحه ملف التمويل — حسب الخدمة)",
  "study": [{"h":"عنوان","t":"جملة"}],  // ٣ بنود
  "cta_line": "جملة تحثّه على البدء الآن دون ضغط، مرتبطة بوضعه (لا سعر)"
 }${retryNote}`;
@@ -150,7 +153,7 @@ async function review(c: Content, r: InquiryRow): Promise<string[]> {
 (د) وعد بموافقة أو مبالغة واضحة.
 المصادر:
 اسم المنشأة/العميل: ${r.company_name || ''} ${r.full_name ? '— ' + r.full_name : ''}
-الخدمة: ${r.service_title || ''}
+الخدمة: ${svcName(r.service_title)}
 النموذج: ${(r.note || '').replace(/\n+/g, ' | ')}
 ملاحظة الفريق: ${r.contact_note || '—'}
 رسالة الأسئلة: ${r.ask_message || ''}
@@ -170,7 +173,7 @@ const rich = (s: string) => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong
 
 export function consultHtml(c: Content, r: InquiryRow): string {
   const who = r.company_name || r.full_name || '';
-  const wa = 'https://wa.me/' + DHAI_WA + '?text=' + encodeURIComponent('أرغب في البدء — ' + (r.service_title || 'دراسة الجدوى') + (who ? ' · ' + who : ''));
+  const wa = 'https://wa.me/' + DHAI_WA + '?text=' + encodeURIComponent('أرغب في البدء — ' + svcName(r.service_title) + (who ? ' · ' + who : ''));
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>استشارة مبدئية — ${esc(who)}</title>
@@ -323,7 +326,7 @@ export async function runInquiryConsults(sb: SupabaseClient): Promise<string[]> 
 const N = '١٢٣٤٥';
 
 function askPrompt(r: InquiryRow): string {
-  return `عميلٌ سجّل في منصة مُرضي طلب «${r.service_title || 'دراسة الجدوى'}». هذه إجاباته في نموذج التسجيل:
+  return `عميلٌ سجّل في منصة مُرضي طلب «${svcName(r.service_title)}». هذه إجاباته في نموذج التسجيل:
 ${(r.note || '').replace(/\n+/g, ' | ')}
 ${r.contact_note ? 'وما سجّله فريقنا من المكالمة: ' + r.contact_note : ''}
 

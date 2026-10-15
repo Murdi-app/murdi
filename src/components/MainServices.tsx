@@ -121,7 +121,7 @@ export default function MainServices({ requested, onOrder, luresUrl = '/api/lure
         <div className="text-xs mt-2" style={{ color: '#8CA49B' }}>تقديرٌ بتكلفة مباشرة ٨٠٪ من القيمة وبلا دفعة مقدمة — والتحليل الكامل يدخل بنود عقدك نفسها.</div>
       </Card>
 
-      <Card title="دراسة الجدوى" sub="لمشروعٍ جديد أو توسعة" cta="خلّنا نشتغلها عنك" onCta={() => onOrder(MAIN_SERVICES[2])} pending={pend(MAIN_SERVICES[2])}>
+      <Card title="دراسة الجدوى الائتمانية والاقتصادية" sub="لمشروعٍ جديد أو توسعة" cta="خلّنا نشتغلها عنك" onCta={() => onOrder(MAIN_SERVICES[2])} pending={pend(MAIN_SERVICES[2])}>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <label className="text-xs font-bold" style={{ color: '#6B8A80' }}>حجم الاستثمار (ريال)<input className={inp} inputMode="numeric" value={fzInv} onChange={(e) => setFzInv(e.target.value)} placeholder="مثال: 2000000" /></label>
           <label className="text-xs font-bold" style={{ color: '#6B8A80' }}>نوعه<select className={inp} value={fzNew ? 'new' : 'exp'} onChange={(e) => setFzNew(e.target.value === 'new')}><option value="new">مشروع جديد</option><option value="exp">توسعة نشاط قائم</option></select></label>
