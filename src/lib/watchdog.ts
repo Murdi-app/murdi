@@ -5,7 +5,9 @@ import { recordRun } from '@/lib/jobRun';
 //   cron.job_run_details؛ (٢) مهمةٌ لم تعمل في نافذتها تُسجَّل فشلاً «لم يعمل». فيصل المالك
 //   إشعار الفشلين المتتاليين من `recordRun` نفسه.
 const MAX_GAP_H: Record<string, number> = {
-  'awards-pipeline': 1, 'check-links': 1, 'mail-watch': 1.5, 'awards-import': 26, digest: 14, followups: 26,
+  // mail-watch خارج المراقبة (١٥ أكتوبر): سكربت partners@ لا يتصل إلا إذا وصل بريدٌ جديد، فصمته
+  //   ليلاً ليس عطلاً — كان يُسجَّل «لم تعمل منذ ٢ ساعة» كاذباً كلما هدأ الصندوق.
+  'awards-pipeline': 1, 'check-links': 1, 'awards-import': 26, digest: 14, followups: 26,
   briefs: 74, 'briefs-send': 74, 'staff-noon': 74, 'ops-sweep': 17, 'decision-timeouts': 2,
 };
 
