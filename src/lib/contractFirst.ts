@@ -51,7 +51,7 @@ export function voucherBody(title: string, optionKey: string | null, price: numb
 ${writtenOn(new Date())}
 
 صادرٌ من: شركة حلول المرضي للاستشارات المالية، سجل تجاري رقم (7039663724)، ترخيص المستشار رقم (FL-457927015).
-إلى: ${company.name || '(..............)'}، سجل تجاري رقم (${company.cr || '..............'}).
+إلى: ${company.name || 'العميل'}${company.cr ? '، سجل تجاري رقم (' + company.cr + ')' : ''}.
 
 ما تشمله الخدمة:
 ${includes.map((x) => '- ' + x).join('\n')}

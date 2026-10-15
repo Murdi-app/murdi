@@ -47,6 +47,15 @@ export default function ContractLink() {
   const pill = (bg: string, fg = '#fff'): React.CSSProperties => ({ display: 'block', textAlign: 'center', background: bg, color: fg, padding: '14px', borderRadius: 999, fontWeight: 900, fontSize: 15, textDecoration: 'none', border: bg === '#fff' ? '1.5px solid ' + G : 'none', cursor: 'pointer', fontFamily: 'inherit' })
   const input: React.CSSProperties = { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #D9E5DF', fontFamily: 'inherit', fontSize: 15, fontWeight: 700, color: G, boxSizing: 'border-box' }
 
+  const payBox = doc?.links && !doc.paid ? (
+            <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 16, padding: 18, marginTop: doc.kind === 'voucher' ? 4 : 14, marginBottom: doc.kind === 'voucher' ? 4 : 0, display: 'grid', gap: 10 }}>
+              <div style={{ color: G, fontWeight: 900, fontSize: 16 }}>{doc.kind === 'contract' ? 'وصلنا العقد موقّعاً — شكراً لكم' : 'سداد الدفعة والبدء في دراستك'}</div>
+              {doc.amount ? <div style={{ color: M, fontWeight: 800, fontSize: 14 }}>{doc.kind === 'contract' ? 'المقدَّم' : 'المبلغ'}: {doc.amount.toLocaleString('en-US')} ريال</div> : null}
+              <a href={doc.links.pay} style={pill(G)}>{doc.kind === 'voucher' ? 'ادفع الآن ونبدأ العمل' : 'رابط السداد'}</a>
+              <a href={doc.links.site} style={pill('#fff', G)}>متابعة ملفك في المنصة</a>
+            </div>
+          ) : null
+
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: '#F4F7F6', fontFamily: 'Tajawal, Cairo, sans-serif', padding: '20px 14px 60px' }}>
       <div style={{ maxWidth: 820, margin: '0 auto' }}>
@@ -61,7 +70,11 @@ export default function ContractLink() {
             {doc.kind === 'voucher' ? 'سند خدمة' : 'عقد خدمة'} «{doc.title}»
             {doc.status === 'signed' && <span style={{ color: G2, fontSize: 14 }}> — موقَّع ✓</span>}
           </div>
-          <iframe title="الوثيقة" srcDoc={doc.html} style={{ width: '100%', height: '65vh', border: '1px solid #E1EDE8', borderRadius: 14, background: '#fff' }} />
+          {/* ★ ١٥ أكتوبر: السند يُدفع لا يُوقَّع — فالسداد فوق الوثيقة. كان تحت إطارٍ بطول ثلثي الشاشة،
+              ففتح السندَ ١٢ عميلاً من ١٤ ولم يصل زرَّ السداد إلا اثنان */}
+          {doc.kind === 'voucher' && payBox}
+          {doc.kind === 'voucher' && doc.links && !doc.paid && <div style={{ color: M, fontWeight: 800, fontSize: 13, margin: '14px 0 6px' }}>تفاصيل السند وما تشمله الخدمة:</div>}
+          <iframe title="الوثيقة" srcDoc={doc.html} style={{ width: '100%', height: doc.kind === 'voucher' ? '55vh' : '65vh', border: '1px solid #E1EDE8', borderRadius: 14, background: '#fff' }} />
 
           {doc.kind === 'contract' && doc.status === 'issued' && (
             <div style={{ background: '#fff', border: '1.5px solid #E1EDE8', borderRadius: 16, padding: 18, marginTop: 14 }}>
@@ -84,14 +97,7 @@ export default function ContractLink() {
             </div>
           )}
 
-          {doc.links && !doc.paid && (
-            <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 16, padding: 18, marginTop: 14, display: 'grid', gap: 10 }}>
-              <div style={{ color: G, fontWeight: 900, fontSize: 16 }}>{doc.kind === 'contract' ? 'وصلنا العقد موقّعاً — شكراً لكم' : 'السداد'}</div>
-              {doc.amount ? <div style={{ color: M, fontWeight: 800, fontSize: 14 }}>{doc.kind === 'contract' ? 'المقدَّم' : 'المبلغ'}: {doc.amount.toLocaleString('en-US')} ريال</div> : null}
-              <a href={doc.links.pay} style={pill(G)}>رابط السداد</a>
-              <a href={doc.links.site} style={pill('#fff', G)}>متابعة ملفك في المنصة</a>
-            </div>
-          )}
+          {doc.kind === 'contract' && payBox}
           {doc.paid && <div style={{ textAlign: 'center', color: G2, fontWeight: 900, marginTop: 14 }}>استلمنا سدادك — فريق مُرضي يتابع معك.</div>}
           <div style={{ textAlign: 'center', color: M, fontSize: 12.5, fontWeight: 700, marginTop: 16 }}>للاستفسار: <a href="tel:0570749196" style={{ color: G }}>0570749196</a></div>
         </>)}
