@@ -26,9 +26,9 @@ const whoOf = (r: { company_name?: string | null; full_name?: string | null }) =
   return (c.length >= 3 && !NOT_A_NAME.test(c) ? c : '') || String(r.full_name || '').trim();
 };
 // ★ ١٥ أكتوبر (المالك): منشأة قائمة تطلب سيولة لا يُباع لها دراسة جدوى — مسارها «الملف التمويلي والمخاطبة»
-const WANTS_CASH = /منشأة قائمة تحتاج سيولة/;
-const effTitle = (r: { service_title?: string | null; note?: string | null }) =>
-  WANTS_CASH.test(String(r.note || '')) ? 'تجهيز ملف التمويل والتفاوض' : String(r.service_title || 'دراسة الجدوى الاقتصادية');
+//   والتحويل يقع عند الطلب نفسه (/api/services/inquiry) فيُخزَّن بعنوانه — ومن كُلِّم قبل ذلك على الدراسة يبقى عليها.
+const CASH_TITLE = 'تجهيز ملف التمويل والتفاوض';
+const effTitle = (r: { service_title?: string | null }) => String(r.service_title || 'دراسة الجدوى الاقتصادية');
 const svcName = (t: string | null | undefined) => displayName(String(t || 'دراسة الجدوى الاقتصادية'));
 const WAIT_MIN = 30;
 const MAX_TRIES = 3;
@@ -64,7 +64,7 @@ const numsOf = (s: string) => (toLatin(s).match(/\d+(?:\.\d+)?/g) || []);
 
 function prompt(r: InquiryRow, retryNote = ''): string {
   const who = whoOf(r) || 'المنشأة';
-  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(effTitle(r))}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(effTitle(r))}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر).${WANTS_CASH.test(String(r.note || '')) ? ' ★ وهذه منشأة قائمة تطلب سيولة: الخدمة التي تعرضها «تجهيز الملف التمويلي والمخاطبة» — ملفٌ تمويلي بلغة لجنة الائتمان، ومطابقته مع الجهات التي تنطبق شروطها عليه، ومخاطبتها ومتابعة ردودها. لا تعرض عليها دراسة جدوى، واجعل «study_title» عن ما يفتحه الملف التمويلي.' : ''} الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
+  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(effTitle(r))}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(effTitle(r))}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر).${effTitle(r) === CASH_TITLE ? ' ★ وهذه منشأة قائمة تطلب سيولة: الخدمة التي تعرضها «تجهيز الملف التمويلي والمخاطبة» — ملفٌ تمويلي بلغة لجنة الائتمان، ومطابقته مع الجهات التي تنطبق شروطها عليه، ومخاطبتها ومتابعة ردودها. لا تعرض عليها دراسة جدوى، واجعل «study_title» عن ما يفتحه الملف التمويلي.' : ''} الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
 
 ## معطيات العميل (لا تستعمل غيرها)
 - الاسم: ${who}${r.company_name && r.full_name ? ' — ' + r.full_name : ''}
@@ -364,7 +364,7 @@ export async function runInquiryAsks(sb: SupabaseClient): Promise<string[]> {
   const since = new Date(Date.now() - 14 * 86400_000).toISOString();
   const { data, error } = await sb.from('service_inquiries').select(SELECT)
     .is('ask_message', null).gte('created_at', since)
-    .in('service_title', ['دراسة الجدوى الاقتصادية', 'تمويل العقد'])
+    .in('service_title', ['دراسة الجدوى الاقتصادية', 'تمويل العقد', CASH_TITLE])
     .not('full_name', 'ilike', 'اختبار%')
     .or('outcome.is.null,outcome.neq."غير مهتم"')
     .order('created_at').limit(5);

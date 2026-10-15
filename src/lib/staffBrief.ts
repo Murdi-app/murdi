@@ -141,8 +141,18 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
   const now = Date.parse(today + 'T09:00:00Z');
   const days = (iso: unknown) => Math.floor((now - Date.parse(String(iso || ''))) / 86400_000);
 
+  // ★ ١٥ أكتوبر (المالك): رغد تكتب ما فعلته مع الجهات في «سجّلي ما تم» (deal_events · file_update)،
+  //   والتوجيه كان لا يقرأ إلا صفوف المخاطبة — فيُقال لها «لم يُخاطَب لكينجدوم باب» وقد خاطبت أربع جهات.
+  //   فما سجّلته الموظفة على الملف يُعدّ عملاً عليه.
+  const { data: logged } = live.size
+    ? await sb.from('deal_events').select('company_id, created_at').in('company_id', [...live.keys()])
+        .eq('kind', 'file_update').eq('actor', 'staff')
+    : { data: [] as { company_id: string; created_at: string }[] };
+  const lastLog = new Map<string, string>();
+  for (const l of logged || []) { const k = String(l.company_id); if (!lastLog.has(k) || String(l.created_at) > (lastLog.get(k) as string)) lastLog.set(k, String(l.created_at)); }
+
   // ملفٌّ دفع صاحبه ولم يُخاطَب له بابٌ واحد — أخطر حالة
-  const touched = new Set((msgs || []).map((m) => String(m.company_id)));
+  const touched = new Set([...(msgs || []), ...(logged || [])].map((m) => String(m.company_id)));
   const untouched = [...live.entries()].filter(([id]) => !touched.has(id)).map(([, n]) => n);
 
   // ★ لا قسم «أبواب ساكتة» هنا: الباب الساكت يُذكَّر مرةً ثم يُترك، والمتابعة
@@ -153,7 +163,8 @@ async function raghadBrief(sb: SupabaseClient, today: string): Promise<Brief> {
   for (const r of rows) {
     const id = String(r.company_id);
     if (!live.has(id)) continue;
-    const d = days(r.updated_at);
+    // السكون من آخر ما كُتب على الملف — تحديث الطلب أو سطرٌ في «سجّلي ما تم»
+    const d = Math.min(days(r.updated_at), lastLog.has(id) ? days(lastLog.get(id)) : Infinity);
     if (!idle.has(id) || d > (idle.get(id) as number)) idle.set(id, d);
   }
   const stale = [...idle.entries()].sort((a, b) => b[1] - a[1]).filter(([, d]) => d >= 5).slice(0, 8)

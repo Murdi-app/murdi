@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   // `already` عندها نجاحٌ مثل غيره.
   if (cut(b?.website, 200) !== '') return NextResponse.json({ ok: true, already: true });
 
-  const title = canonicalTitle(cut(b?.service_title, 200));
+  let title = canonicalTitle(cut(b?.service_title, 200));
   const name = cut(b?.full_name, 120);
   const phoneRaw = cut(b?.phone, 40);
   const email = cut(b?.email, 160).toLowerCase();
@@ -51,6 +51,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'هذه الخدمة تُبنى على تشخيص ملفك — ابدأ بالتقييم المجاني' }, { status: 400 });
   }
   if (!name) return NextResponse.json({ error: 'الاسم مطلوب' }, { status: 400 });
+  // ★ ١٥ أكتوبر (المالك): من صفحة الجدوى، منشأةٌ قائمة تطلب سيولة لا تُباع لها دراسة — يُسجَّل طلبها
+  //   من أوّله «تجهيز الملف التمويلي والمخاطبة»، فتعرف الموظفة من البداية بأي خدمة تكلّمه.
+  if (title === 'دراسة الجدوى الاقتصادية' && /منشأة قائمة تحتاج سيولة/.test(note)) title = 'تجهيز ملف التمويل والتفاوض';
 
   const phone = waNumber(phoneRaw);
   if (!phone) return NextResponse.json({ error: 'رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx' }, { status: 400 });

@@ -425,7 +425,7 @@ function LeadCard({ r, reload, showOwner }: { r: Hot; reload: () => void; showOw
       {intake && (
         <div style={{ marginTop: 10, border: '1.5px solid ' + C.gold, borderRadius: 12, padding: 12, background: '#fff' }}>
           <CallIntake
-            service={/منشأة قائمة تحتاج سيولة/.test(r.reason || '') ? 'funding' /* ★ ١٥ أكتوبر (المالك): من يطلب سيولة لمنشأته يُفتح له «الملف التمويلي» لا الدراسة */ : (r.reason || '').match(/طلب «(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
+            service={(r.reason || '').match(/طلب «(.+?)»/)?.[1] || (/جدوى/.test(r.reason || '') ? 'feasibility' : 'funding')}
             seed={{ full_name: r.person || r.name || '', phone: r.phone || '', email: r.email || '', company_name: r.name && r.name !== r.person ? r.name : '' }}
             from={{ source: r.source, ref_id: r.ref_id }}
             quick size={sizeFromText(r.reason || '')}
