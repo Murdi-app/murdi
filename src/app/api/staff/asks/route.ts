@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
-import { ownerOf } from '@/lib/leadOwners';
+import { ownerOf, staffContacts, asOwner } from '@/lib/leadOwners';
 
 // أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك).
 //
@@ -37,16 +37,16 @@ export async function GET() {
     }
   }
   let rows = data || [];
-  // ★ القسمة (١٤ أكتوبر): الموظفة ترى أسئلة عملائها هي فقط
-  if (who.role === 'staff' && ids.length) {
-    const mine = new Set<string>();
-    for (let i = 0; i < ids.length; i += 200) {
-      const { data: o } = await sbAdmin().from('lead_owners').select('ref_id').eq('source', 'inquiry').eq('owner', who.userId).in('ref_id', ids.slice(i, i + 200));
-      for (const x of o || []) mine.add(String(x.ref_id));
-    }
-    rows = rows.filter((r) => mine.has(String(r.id)));
+  const ownerBy = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: o } = await sbAdmin().from('lead_owners').select('ref_id, owner').eq('source', 'inquiry').in('ref_id', ids.slice(i, i + 200));
+    for (const x of o || []) ownerBy.set(String(x.ref_id), String(x.owner));
   }
-  const asks = rows.map((r) => ({ ...r, call: last[String(r.id)] || null }));
+  // ★ القسمة (١٤ أكتوبر): الموظفة ترى أسئلة عملائها هي فقط
+  if (who.role === 'staff') rows = rows.filter((r) => ownerBy.get(String(r.id)) === who.userId);
+  // ★ ١٥ أكتوبر: الرسالة باسم صاحبة العميل
+  const contacts = await staffContacts(sbAdmin());
+  const asks = rows.map((r) => ({ ...r, ask_message: asOwner(String(r.ask_message || ''), contacts.get(ownerBy.get(String(r.id)) || '')), call: last[String(r.id)] || null }));
   return NextResponse.json({ ok: true, asks });
 }
 

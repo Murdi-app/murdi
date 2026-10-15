@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { DISPLAY } from '@/lib/serviceCatalog';
-import { assignOwners, ownerOf, claim } from '@/lib/leadOwners';
+import { assignOwners, ownerOf, claim, staffContacts, asOwner } from '@/lib/leadOwners';
 import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
@@ -155,9 +155,12 @@ export async function GET() {
   //   والموظفة ترى عملاء زميلتها **اسماً فقط** — يُحذف الباقي هنا في الخادم لا في المتصفّح.
   const { owners, pool } = await assignOwners(sb, merged.filter((m) => m.source !== 'account').map((m) => ({ source: m.source, ref_id: m.ref_id, phone: m.phone, at: m.at })));
   const nameOf = new Map(pool.map((p) => [p.id, p.name]));
+  const contacts = await staffContacts(sb);
   const withOwner = merged.map((m) => {
     const o = owners.get(m.source + '|' + m.ref_id) || null;
-    return { ...m, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
+    // ★ ١٥ أكتوبر: رسالة الأسئلة باسم صاحبة العميل لا «ضي» للجميع
+    const ask = m.ask && o ? { ...m.ask, ask_message: asOwner(String((m.ask as { ask_message?: string }).ask_message || ''), contacts.get(o)) } : m.ask;
+    return { ...m, ask, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
   });
   const visible = isStaffViewer
     ? withOwner.map((m) => m.mine ? m : {

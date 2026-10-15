@@ -72,6 +72,35 @@ export async function ownerOf(sb: SupabaseClient, source: string, refId: string)
   return data?.owner ? String(data.owner) : null;
 }
 
+// ═══ العميل يسمع اسم صاحبته هي (١٥ أكتوبر) ═══
+// كانت رسالة الأسئلة كلها «معك ضي» والاستشارة «تواصلوا مع زميلتنا ضي» — فعملاء رغد
+// يُكلَّمون من رغد ويُقال لهم ضي. فيُبدَّل الاسم (والرقم إن عُرف) عند العرض لا عند التوليد،
+// فيصحّ ما كُتب قبل القسمة وما يُكتب بعدها.
+// رقم واتساب كل موظفة في app_config.staff_wa = { "<user_id>": "9665…" } — ومن لا رقم لها يبقى رقم الشركة.
+export const COMPANY_WA = '966570749196';
+export type Contact = { name: string; wa: string | null };
+
+export async function staffContacts(sb: SupabaseClient): Promise<Map<string, Contact>> {
+  const [{ data: st }, { data: cfg }] = await Promise.all([
+    sb.from('staff').select('user_id, name').eq('active', true),
+    sb.from('app_config').select('value').eq('key', 'staff_wa').maybeSingle(),
+  ]);
+  const wa = (cfg?.value && typeof cfg.value === 'object' ? cfg.value : {}) as Record<string, string>;
+  return new Map((st || []).map((s) => [String(s.user_id), {
+    name: String(s.name || '').trim().split(/\s+/)[0] || 'ضي',
+    wa: /^9665\d{8}$/.test(String(wa[String(s.user_id)] || '')) ? String(wa[String(s.user_id)]) : null,
+  }]));
+}
+
+/** يجعل نصّاً موجّهاً للعميل باسم صاحبته ورقمها */
+export function asOwner(text: string, c: Contact | null | undefined): string {
+  if (!text || !c) return text;
+  let t = text.split('معك ضي من').join('معك ' + c.name + ' من')
+    .split('زميلتنا <strong>ضي</strong>').join('زميلتنا <strong>' + c.name + '</strong>');
+  if (c.wa) t = t.split('wa.me/' + COMPANY_WA).join('wa.me/' + c.wa);
+  return t;
+}
+
 /** يُسنَد العميل لمن عملت عليه إن لم يكن له صاحبة. */
 export async function claim(sb: SupabaseClient, source: string, refId: string, owner: string, phone?: string | null) {
   await sb.from('lead_owners').upsert({ source, ref_id: refId, owner, phone9: phone9(phone) }, { onConflict: 'source,ref_id', ignoreDuplicates: true });
