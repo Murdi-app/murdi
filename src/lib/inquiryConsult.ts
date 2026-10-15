@@ -18,6 +18,13 @@ import { displayName } from '@/lib/serviceCatalog';
 const MODELS = ['claude-opus-5-5', 'claude-opus-4-8', 'claude-sonnet-4-6'];
 const DHAI_WA = '966570749196';
 // ★ ١٥ أكتوبر (المالك): الخدمة باسمها الكامل «الائتمانية والاقتصادية» أمام العميل، لا مفتاحها المخزَّن
+// ★ ١٥ أكتوبر: خانة «اسم المنشأة» اختيارية، فيكتب فيها بعضهم المدينة أو «تطبيق» —
+//   فخرجت استشارةٌ «أُعدّت خصيصاً لـالرياض». ما ليس اسماً يُترك لاسم الشخص.
+const NOT_A_NAME = /^(الرياض|جد[ةه]|مك[ةه]( المكرمة)?|المدين[ةه]( المنورة)?|الدمام|الخبر|القصيم|بريد[ةه]|[أا]بها|تبوك|حائل|الطائف|جازان|نجران|ال[أا]حساء|ينبع|السعودي[ةه]|لا ?يوجد|لا ?شي[ءئ]?|لا|مشروع( جديد)?|فكر[ةه]|تطبيق|منص[ةه]|مؤسس[ةه]|شرك[ةه]|-+|\.+)$/;
+const whoOf = (r: { company_name?: string | null; full_name?: string | null }) => {
+  const c = String(r.company_name || '').trim();
+  return (c.length >= 3 && !NOT_A_NAME.test(c) ? c : '') || String(r.full_name || '').trim();
+};
 const svcName = (t: string | null | undefined) => displayName(String(t || 'دراسة الجدوى الاقتصادية'));
 const WAIT_MIN = 30;
 const MAX_TRIES = 3;
@@ -52,7 +59,7 @@ const toLatin = (s: string) => s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥
 const numsOf = (s: string) => (toLatin(s).match(/\d+(?:\.\d+)?/g) || []);
 
 function prompt(r: InquiryRow, retryNote = ''): string {
-  const who = r.company_name || r.full_name || 'المنشأة';
+  const who = whoOf(r) || 'المنشأة';
   return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(r.service_title)}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(r.service_title)}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر). الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
 
 ## معطيات العميل (لا تستعمل غيرها)
@@ -172,7 +179,7 @@ const esc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, 
 const rich = (s: string) => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
 export function consultHtml(c: Content, r: InquiryRow): string {
-  const who = r.company_name || r.full_name || '';
+  const who = whoOf(r);
   const wa = 'https://wa.me/' + DHAI_WA + '?text=' + encodeURIComponent('أرغب في البدء — ' + svcName(r.service_title) + (who ? ' · ' + who : ''));
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
