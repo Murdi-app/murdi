@@ -160,7 +160,8 @@ export async function GET() {
     const o = owners.get(m.source + '|' + m.ref_id) || null;
     // ★ ١٥ أكتوبر: رسالة الأسئلة باسم صاحبة العميل لا «ضي» للجميع
     const ask = m.ask && o ? { ...m.ask, ask_message: asOwner(String((m.ask as { ask_message?: string }).ask_message || ''), contacts.get(o)) } : m.ask;
-    return { ...m, ask, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
+    const opener = o && m.opener ? asOwner(String(m.opener).split('معك ضي من مُرضي').join('معك ضي من منصة مُرضي'), contacts.get(o)) : m.opener;
+    return { ...m, ask, opener, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
   });
   const visible = isStaffViewer
     ? withOwner.map((m) => m.mine ? m : {
