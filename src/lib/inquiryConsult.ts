@@ -25,6 +25,10 @@ const whoOf = (r: { company_name?: string | null; full_name?: string | null }) =
   const c = String(r.company_name || '').trim();
   return (c.length >= 3 && !NOT_A_NAME.test(c) ? c : '') || String(r.full_name || '').trim();
 };
+// ★ ١٥ أكتوبر (المالك): منشأة قائمة تطلب سيولة لا يُباع لها دراسة جدوى — مسارها «الملف التمويلي والمخاطبة»
+const WANTS_CASH = /منشأة قائمة تحتاج سيولة/;
+const effTitle = (r: { service_title?: string | null; note?: string | null }) =>
+  WANTS_CASH.test(String(r.note || '')) ? 'تجهيز ملف التمويل والتفاوض' : String(r.service_title || 'دراسة الجدوى الاقتصادية');
 const svcName = (t: string | null | undefined) => displayName(String(t || 'دراسة الجدوى الاقتصادية'));
 const WAIT_MIN = 30;
 const MAX_TRIES = 3;
@@ -60,7 +64,7 @@ const numsOf = (s: string) => (toLatin(s).match(/\d+(?:\.\d+)?/g) || []);
 
 function prompt(r: InquiryRow, retryNote = ''): string {
   const who = whoOf(r) || 'المنشأة';
-  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(r.service_title)}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(r.service_title)}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر). الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
+  return `أنت الدكتور عبدالحكيم المرضي، مستشار مالي معتمد، صاحب منصة مُرضي. تكتب **استشارة مبدئية مختصرة** لعميلٍ سجّل طلب «${svcName(effTitle(r))}» ثم أجاب على أسئلتنا. ★ اسم الخدمة كاملاً كلما ذكرتها: «${svcName(effTitle(r))}» — لا «دراسة الجدوى» وحدها ولا «الاقتصادية» وحدها (أمر المالك ١٥ أكتوبر).${WANTS_CASH.test(String(r.note || '')) ? ' ★ وهذه منشأة قائمة تطلب سيولة: الخدمة التي تعرضها «تجهيز الملف التمويلي والمخاطبة» — ملفٌ تمويلي بلغة لجنة الائتمان، ومطابقته مع الجهات التي تنطبق شروطها عليه، ومخاطبتها ومتابعة ردودها. لا تعرض عليها دراسة جدوى، واجعل «study_title» عن ما يفتحه الملف التمويلي.' : ''} الهدف: أن يقرأها فيقول «أطلب الآن» — بذكاءٍ وإغراءٍ مهني، بلا حشو ولا تشعّب.
 
 ## معطيات العميل (لا تستعمل غيرها)
 - الاسم: ${who}${r.company_name && r.full_name ? ' — ' + r.full_name : ''}
@@ -160,7 +164,7 @@ async function review(c: Content, r: InquiryRow): Promise<string[]> {
 (د) وعد بموافقة أو مبالغة واضحة.
 المصادر:
 اسم المنشأة/العميل: ${r.company_name || ''} ${r.full_name ? '— ' + r.full_name : ''}
-الخدمة: ${svcName(r.service_title)}
+الخدمة: ${svcName(effTitle(r))}
 النموذج: ${(r.note || '').replace(/\n+/g, ' | ')}
 ملاحظة الفريق: ${r.contact_note || '—'}
 رسالة الأسئلة: ${r.ask_message || ''}
@@ -180,7 +184,7 @@ const rich = (s: string) => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong
 
 export function consultHtml(c: Content, r: InquiryRow): string {
   const who = whoOf(r);
-  const wa = 'https://wa.me/' + DHAI_WA + '?text=' + encodeURIComponent('أرغب في البدء — ' + svcName(r.service_title) + (who ? ' · ' + who : ''));
+  const wa = 'https://wa.me/' + DHAI_WA + '?text=' + encodeURIComponent('أرغب في البدء — ' + svcName(effTitle(r)) + (who ? ' · ' + who : ''));
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
 <title>استشارة مبدئية — ${esc(who)}</title>
@@ -333,7 +337,7 @@ export async function runInquiryConsults(sb: SupabaseClient): Promise<string[]> 
 const N = '١٢٣٤٥';
 
 function askPrompt(r: InquiryRow): string {
-  return `عميلٌ سجّل في منصة مُرضي طلب «${svcName(r.service_title)}». هذه إجاباته في نموذج التسجيل:
+  return `عميلٌ سجّل في منصة مُرضي طلب «${svcName(effTitle(r))}». هذه إجاباته في نموذج التسجيل:
 ${(r.note || '').replace(/\n+/g, ' | ')}
 ${r.contact_note ? 'وما سجّله فريقنا من المكالمة: ' + r.contact_note : ''}
 

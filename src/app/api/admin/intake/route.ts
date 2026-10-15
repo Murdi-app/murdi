@@ -1,4 +1,4 @@
-import { claim } from '@/lib/leadOwners';
+import { claim, staffContacts } from '@/lib/leadOwners';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
@@ -260,6 +260,8 @@ export async function POST(req: Request) {
   } else {
     try { const m = await issuedMessage(sb, String(requestId), who.email); message = m.text; link = m.link; }
     catch (e) { return NextResponse.json({ error: 'صدر السند وتعذّر بناء الرسالة — ' + (e instanceof Error ? e.message : '') }, { status: 502 }); }
+    // ★ ١٥ أكتوبر: «للاستفسار» برقم من فتحت الملف — عميل رغد لا يُحال إلى جوال ضي
+    if (who.role === 'staff') { const c = (await staffContacts(sb)).get(who.userId); if (c?.wa) message = message.split('0570749196').join('0' + c.wa.slice(3)); }
   }
 
   await sb.from('deal_events').insert({
