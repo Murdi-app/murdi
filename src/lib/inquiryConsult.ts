@@ -324,7 +324,8 @@ export async function runInquiryConsults(sb: SupabaseClient): Promise<string[]> 
   const { data, error } = await sb.from('service_inquiries').select(SELECT)
     .not('ask_reply', 'is', null).lte('ask_reply_at', before)
     .or('consult_status.is.null,and(consult_status.eq.retry,consult_at.lte.' + hourAgo + '),and(consult_status.eq.generating,consult_at.lte.' + hourAgo + ')')
-    .order('ask_reply_at').limit(1);
+    // ★ ١٥ أكتوبر: الجديد قبل المُعاد — كانت الاستشارة المُعادة تتقدّم بتاريخ ردّها القديم فيتأخر من ردّ اليوم
+    .order('consult_tries', { ascending: true, nullsFirst: true }).order('ask_reply_at').limit(1);
   if (error) throw new Error(error.message);
   const out: string[] = [];
   for (const r of (data || []) as InquiryRow[]) out.push(await generateInquiryConsult(sb, r));
