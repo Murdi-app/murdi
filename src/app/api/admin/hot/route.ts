@@ -37,21 +37,28 @@ export async function GET() {
   if (denied || !who) return NextResponse.json({ error: denied || 'غير مصرح' }, { status: gate });
 
   const sb = admin();
-  const list = await sb.from('hot_list').select('*').order('tier').order('at', { ascending: false }).limit(400);
+  // ★ ١٧ أكتوبر: الإعلان يأتي بـ٥٠–١٠٠ طلب يومياً، فسقف ٤٠٠ كان سيُسقط عملاء حقيقيين من الشاشة
+  //   خلال يومين — فرُفع، وحسابات البريد تُستبعد في الاستعلام نفسه للموظفات لا بعد القصّ.
+  const isStaffViewer = who.role === 'staff';
+  let q = sb.from('hot_list').select('*');
+  if (isStaffViewer) q = q.neq('source', 'account');
+  const list = await q.order('tier').order('at', { ascending: false }).limit(1000);
   if (list.error) return NextResponse.json({ error: 'تعذّرت قراءة القائمة — ' + list.error.message }, { status: 500 });
   // ★ ١٣ أكتوبر (المالك): حسابات البريد فقط (٨٣ حساباً قديماً من يونيو–أغسطس، بلا جوال ولا منشأة)
   //   تُرفع عن شاشات الموظفات «حالياً ما أبيها تلخبطهم». وتبقى للمالك.
-  const isStaffViewer = who.role === 'staff';
   const rows = ((list.data || []) as Row[]).filter((r) => !(isStaffViewer && r.source === 'account'));
 
   // ★ اللمسات تُقرأ لصفوف القائمة نفسها لا «آخر ألف في المنصة»: بعد الألف
   //   كانت الفرصة المغلقة («غير مهتم») تفقد لمستها فتعود «لم تُلمس بعد».
   const refs = Array.from(new Set(rows.map((r) => r.ref_id)));
-  const touches = refs.length
-    ? await sb.from('hot_touches').select('*').in('ref_id', refs).order('created_at', { ascending: false })
-    : { data: [], error: null };
-  if (touches.error) return NextResponse.json({ error: 'تعذّرت قراءة سجلّ المكالمات — ' + touches.error.message }, { status: 500 });
-  const all = (touches.data || []) as Touch[];
+  // ★ على دفعات من ١٥٠ — قائمة من مئات المعرّفات في طلبٍ واحد تتجاوز طول الرابط
+  const all: Touch[] = [];
+  for (let i = 0; i < refs.length; i += 150) {
+    const t = await sb.from('hot_touches').select('*').in('ref_id', refs.slice(i, i + 150)).order('created_at', { ascending: false });
+    if (t.error) return NextResponse.json({ error: 'تعذّرت قراءة سجلّ المكالمات — ' + t.error.message }, { status: 500 });
+    all.push(...((t.data || []) as Touch[]));
+  }
+  all.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 
   // آخر لمسة لكل فرصة — ما يقرّر هل تُعرض اليوم أم تنتظر موعدها
   const last = new Map<string, Touch>();

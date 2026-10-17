@@ -22,16 +22,22 @@ export async function GET() {
     .select('id, full_name, company_name, phone, ask_message, ask_sent_at, ask_reply, ask_reply_at, created_at, consult_status, consult_code, consult_sent_at, consult_opened_at')
     .not('ask_message', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(200);
+    // ★ ١٧ أكتوبر: كان ٢٠٠ — والإعلان يأتي بمئة طلب في اليوم، فيسقط عميل الأمس من الشاشة
+    .limit(1000);
   if (qErr) { await logError('staff.asks.get', qErr, {}); return NextResponse.json({ error: 'تعذّر تحميل الأسئلة' }, { status: 500 }); }
   // ★ ١٤ أكتوبر (المالك): «رغد تخاف ترسل أسئلة وضي ما كلّمتهم» — فلكل طلبٍ آخرُ نتيجة مكالمة
   //   ومن كتبها. ورغد لا ترسل الأسئلة إلا لمن كُلِّم (أو اتُّصل به ولم يرد) — والمكالمة لضي أولاً.
   const ids = (data || []).map((r) => String(r.id));
   const last: Record<string, { outcome: string | null; note: string | null; actor: string | null; at: string }> = {};
-  if (ids.length) {
+  const tAll: { ref_id: string; outcome: string | null; note: string | null; actor_name: string | null; created_at: string }[] = [];
+  for (let i = 0; i < ids.length; i += 150) {
     const { data: t } = await sbAdmin().from('hot_touches').select('ref_id, outcome, note, actor_name, created_at')
-      .in('ref_id', ids).order('created_at', { ascending: false }).limit(1000);
-    for (const x of t || []) {
+      .in('ref_id', ids.slice(i, i + 150)).order('created_at', { ascending: false });
+    tAll.push(...(t || []));
+  }
+  tAll.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  {
+    for (const x of tAll) {
       const k = String(x.ref_id);
       if (!last[k] && x.outcome !== 'تحوّل عميلاً') last[k] = { outcome: x.outcome, note: x.note, actor: x.actor_name, at: String(x.created_at) };
     }
