@@ -6,6 +6,7 @@ import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { studyWeight } from '@/lib/leadWeight';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
 import { tiktokEvent } from '@/lib/tiktokPixel';
+import { KIND_QUESTIONS, type AskKind } from '@/lib/inquiryQuestions';
 
 // مدخل دراسة الجدوى — الصفحة التي ينزل عليها إعلان «دراسة جدوى».
 //
@@ -154,6 +155,42 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const sent = useRef(false);
+  // ★ ١٧ أكتوبر: أسئلة الاستشارة بعد التسجيل مباشرة — مفتاح الطلب، والإجابات، وحالة الاستشارة
+  const [ask, setAsk] = useState<{ id: string; k: string } | null>(null);
+  const [answers, setAnswers] = useState<string[]>(['', '', '', '']);
+  const [stage, setStage] = useState<'ask' | 'skip' | 'wait' | 'ready'>('ask');
+  const [consultCode, setConsultCode] = useState('');
+  const [askErr, setAskErr] = useState('');
+  const [askBusy, setAskBusy] = useState(false);
+
+  useEffect(() => {
+    if (stage !== 'wait' || !ask) return;
+    let n = 0;
+    const t = setInterval(async () => {
+      if (++n > 90) { clearInterval(t); return; }   // ٤٥ دقيقة ثم يكفي — تصله من الفريق
+      try {
+        const r = await fetch('/api/services/inquiry/answers?id=' + encodeURIComponent(ask.id) + '&k=' + encodeURIComponent(ask.k));
+        const d = await r.json();
+        if (d?.ready && d?.code) { setConsultCode(String(d.code)); setStage('ready'); clearInterval(t); }
+      } catch { /* يُعاد في الدورة التالية */ }
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [stage, ask]);
+
+  const sendAnswers = async () => {
+    if (!ask) return;
+    setAskErr(''); setAskBusy(true);
+    try {
+      const r = await fetch('/api/services/inquiry/answers', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ask.id, k: ask.k, answers }),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error) { setAskErr(d?.error || 'تعذّر الإرسال'); setAskBusy(false); return; }
+      setStage('wait');
+    } catch { setAskErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة'); }
+    setAskBusy(false);
+  };
 
   useEffect(() => {
     // المصدر من الرابط، وإلا من كوكي أول لمسة — التعريف في `@/lib/attribution`
@@ -195,6 +232,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         const w = studyWeight(sizeIdx ?? 0) * (share?.score === 3 ? 1.5 : 1);
         fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('SubmitForm'); tiktokEvent('Contact');
       }
+      if (d?.id && d?.k) setAsk({ id: String(d.id), k: String(d.k) }); else setStage('skip');
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');
@@ -235,7 +273,53 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
           </p>
         </div>
 
-        {done ? (
+        {done && ask && stage === 'ask' ? (
+          <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '28px 24px' }}>
+            <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 20, marginBottom: 6, textAlign: 'center' }}>وصلنا مشروعك ✓</div>
+            <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 1.95, margin: '0 0 20px', textAlign: 'center' }}>
+              باقي <b style={{ color: GREEN }}>٤ أسئلة سريعة</b> — ويكتب لك الدكتور عبدالحكيم <b style={{ color: GREEN }}>استشارة مبدئية على وضعك</b> تصلك هنا خلال دقائق، بدون أي التزام. سطر لكل سؤال يكفي.
+            </p>
+            {KIND_QUESTIONS[(kind || 'new') as AskKind].map((q, i) => (
+              <div key={q} style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', color: GREEN, fontWeight: 900, fontSize: 14, marginBottom: 7 }}>{'١٢٣٤'[i]} · {q}</label>
+                <textarea value={answers[i]} rows={2} maxLength={600}
+                  onChange={(e) => setAnswers((a) => a.map((x, j) => (j === i ? e.target.value : x)))}
+                  style={{ ...inputCls, resize: 'vertical', lineHeight: 1.8 }} />
+              </div>
+            ))}
+            {askErr && (
+              <div style={{ background: '#FDECEA', border: '1px solid #F3C4BE', borderRadius: 10, padding: '10px 13px', marginBottom: 12, color: '#A8342A', fontSize: 13, fontWeight: 800 }}>{askErr}</div>
+            )}
+            <button type="button" onClick={sendAnswers}
+              disabled={askBusy || answers.filter((a) => a.trim().length >= 2).length < 2}
+              style={{ width: '100%', background: GREEN, color: '#fff', border: 'none', borderRadius: 999, padding: '15px', fontSize: 16, fontWeight: 900, cursor: 'pointer', fontFamily: 'Tajawal, Cairo, sans-serif', opacity: (askBusy || answers.filter((a) => a.trim().length >= 2).length < 2) ? 0.5 : 1 }}>
+              {askBusy ? 'لحظة…' : 'أرسل إجاباتي — وجهّزوا استشارتي'}
+            </button>
+            <button type="button" onClick={() => setStage('skip')}
+              style={{ display: 'block', margin: '12px auto 0', background: 'none', border: 'none', color: '#9DB3AB', fontWeight: 800, fontSize: 12.5, cursor: 'pointer', fontFamily: 'Tajawal, Cairo, sans-serif' }}>
+              أفضّل أن يتصل بي الفريق ويسألني
+            </button>
+          </div>
+        ) : done && stage === 'wait' ? (
+          <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
+            <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 20, marginBottom: 10 }}>وصلت إجاباتك — استشارتك تُكتب الآن</div>
+            <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: 0 }}>
+              تظهر لك في هذه الصفحة حين تجهز — عادةً خلال دقائق، وقد تصل لنصف ساعة. خلّ الصفحة مفتوحة،
+              وإن أغلقتها يرسلها لك فريقنا على <b style={{ color: GREEN }}>{phone}</b>.
+            </p>
+          </div>
+        ) : done && stage === 'ready' ? (
+          <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
+            <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>استشارتك جاهزة ✓</div>
+            <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: '0 0 20px' }}>
+              كتبها الدكتور عبدالحكيم على ما أرسلته — اقرأها، ويتصل بك فريقنا على <b style={{ color: GREEN }}>{phone}</b> للخطوة التالية.
+            </p>
+            <a href={'/r/' + consultCode} target="_blank" rel="noopener"
+              style={{ display: 'inline-block', background: GREEN, color: '#fff', padding: '13px 34px', borderRadius: 999, fontWeight: 900, fontSize: 15, textDecoration: 'none' }}>
+              افتح استشارتك
+            </a>
+          </div>
+        ) : done ? (
           <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>وصلنا مشروعك</div>
             <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: '0 0 20px' }}>

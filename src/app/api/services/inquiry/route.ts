@@ -5,6 +5,8 @@ import { waNumber, prettyPhone } from '@/lib/phone';
 import { notifyTeam } from '@/lib/notifyLead';
 import { sourceFromRequest } from '@/lib/attribution';
 import { linkInquiryToAward } from '@/lib/awards';
+import { assignOwners } from '@/lib/leadOwners';
+import { inquiryKey } from '@/lib/inquiryToken';
 
 // طلب خدمة من الواجهة العامة — بلا حساب.
 //
@@ -115,5 +117,10 @@ export async function POST(req: Request) {
     tag: 'inq-' + phone,
   }).catch(() => {});
 
-  return NextResponse.json({ ok: true });
+  // ★ ١٧ أكتوبر: صاحبة العميل تُحدَّد لحظة تسجيله لا حين تُفتح الشاشة — فاستشارته تخرج
+  //   باسمها ورقمها من أول دقيقة، ولو سجّل يوم الجمعة.
+  await assignOwners(sb, [{ source: 'inquiry', ref_id: String(inq.id), phone, at: new Date().toISOString() }]).catch(() => null);
+
+  // ومفتاحٌ له وحده يجيب به على أسئلة استشارته من الصفحة نفسها
+  return NextResponse.json({ ok: true, id: inq.id, k: inquiryKey(String(inq.id)) });
 }
