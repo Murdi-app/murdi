@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { inquiryKey } from '@/lib/inquiryToken';
 
 // ═══ قسمة العملاء بين الموظفتين (١٤ أكتوبر، المالك) ═══
 // «وزّع العملاء بالمناصفة بينهم، وخلّهم يشوفون عملاء بعض كاسم فقط».
@@ -113,4 +114,11 @@ export function asOwner(text: string, c: Contact | null | undefined): string {
 /** يُسنَد العميل لمن عملت عليه إن لم يكن له صاحبة. */
 export async function claim(sb: SupabaseClient, source: string, refId: string, owner: string, phone?: string | null) {
   await sb.from('lead_owners').upsert({ source, ref_id: refId, owner, phone9: phone9(phone) }, { onConflict: 'source,ref_id', ignoreDuplicates: true });
+}
+
+// ★ ١٧ أكتوبر: رسالة الأسئلة تحمل رابط العميل الخاص — يجيب منه بنفسه وتظهر له استشارته هناك،
+//   فلا تلصق الموظفة ردّه بيدها. ومن ردّ على الواتساب يبقى طريقه كما كان.
+export function withAskLink(text: string, inquiryId: string): string {
+  if (!text || !inquiryId || text.includes('murdi.sa/q/')) return text;
+  return text + '\n\nأو أجب من هذا الرابط مباشرة، وتظهر لك استشارتك فيه:\nhttps://murdi.sa/q/' + inquiryId + '/' + inquiryKey(inquiryId);
 }

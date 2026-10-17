@@ -45,10 +45,10 @@ export async function GET(req: Request) {
   const id = String(u.searchParams.get('id') || ''), k = String(u.searchParams.get('k') || '');
   if (!checkInquiryKey(id, k)) return NextResponse.json({ error: 'الرابط غير صالح' }, { status: 403 });
   const sb = admin();
-  const { data: r } = await sb.from('service_inquiries').select('ask_reply, consult_status, consult_code, consult_sent_at').eq('id', id).maybeSingle();
+  const { data: r } = await sb.from('service_inquiries').select('note, ask_reply, consult_status, consult_code, consult_sent_at').eq('id', id).maybeSingle();
   if (!r) return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
   const ready = r.consult_status === 'ready' && !!r.consult_code;
   // عرضُها على صفحته هو إيصالها — فلا تظهر للموظفة «جاهزة لم تُرسل» وقد وصلته
   if (ready && !r.consult_sent_at) await sb.from('service_inquiries').update({ consult_sent_at: new Date().toISOString() }).eq('id', id).is('consult_sent_at', null);
-  return NextResponse.json({ ok: true, answered: !!r.ask_reply, ready, code: ready ? r.consult_code : null });
+  return NextResponse.json({ ok: true, kind: kindFromNote(r.note), answered: !!r.ask_reply, ready, code: ready ? r.consult_code : null });
 }
