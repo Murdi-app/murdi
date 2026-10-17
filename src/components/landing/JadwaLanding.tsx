@@ -6,8 +6,6 @@ import { fireConversion, LEAD_SUBMITTED } from '@/lib/adsConversion';
 import { studyWeight } from '@/lib/leadWeight';
 import { captureFirstTouch, currentSource } from '@/lib/attribution';
 import { tiktokEvent } from '@/lib/tiktokPixel';
-import type { AskKind } from '@/lib/inquiryQuestions';
-import AskBox from './AskBox';
 
 // مدخل دراسة الجدوى — الصفحة التي ينزل عليها إعلان «دراسة جدوى».
 //
@@ -156,10 +154,6 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
   const sent = useRef(false);
-  // ★ ١٧ أكتوبر: أسئلة الاستشارة بعد التسجيل مباشرة (AskBox)
-  const [ask, setAsk] = useState<{ id: string; k: string } | null>(null);
-  const [skip, setSkip] = useState(false);
-
   useEffect(() => {
     // المصدر من الرابط، وإلا من كوكي أول لمسة — التعريف في `@/lib/attribution`
     captureFirstTouch();
@@ -200,7 +194,6 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
         const w = studyWeight(sizeIdx ?? 0) * (share?.score === 3 ? 1.5 : 1);
         fireConversion(LEAD_SUBMITTED, { phone }, { value: Math.round(w) }); tiktokEvent('SubmitForm'); tiktokEvent('Contact');
       }
-      if (d?.id && d?.k) setAsk({ id: String(d.id), k: String(d.k) });
       setDone(true);
     } catch {
       setErr('تعذّر الاتصال — تحقق من الشبكة وأعد المحاولة');
@@ -241,9 +234,7 @@ export default function JadwaLanding({ tiktok = false }: { tiktok?: boolean }) {
           </p>
         </div>
 
-        {done && ask && !skip ? (
-          <AskBox id={ask.id} k={ask.k} kind={(kind || 'new') as AskKind} phone={phone} onSkip={() => setSkip(true)} />
-        ) : done ? (
+        {done ? (
           <div style={{ background: '#fff', border: '1.5px solid #BFE0D3', borderRadius: 18, padding: '34px 28px', textAlign: 'center' }}>
             <div style={{ color: '#1A5C46', fontWeight: 900, fontSize: 21, marginBottom: 10 }}>وصلنا مشروعك</div>
             <p style={{ color: MUTED, fontSize: 14, fontWeight: 700, lineHeight: 2, margin: '0 0 20px' }}>

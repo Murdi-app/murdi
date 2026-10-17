@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { DISPLAY } from '@/lib/serviceCatalog';
-import { assignOwners, ownerOf, claim, staffContacts, asOwner, withAskLink } from '@/lib/leadOwners';
+import { assignOwners, ownerOf, claim, staffContacts, asOwner } from '@/lib/leadOwners';
 import { OUTCOMES, isOutcome, closesOpportunity, FOLLOW_OUTCOMES, NO_ANSWER_LIMIT, NO_ANSWER_CLOSED, nextWorkday } from '@/lib/outcomes';
 
 // الفرص الساخنة — بديل «صيد العملاء» و«صيد الفرص».
@@ -166,7 +166,7 @@ export async function GET() {
   const withOwner = merged.map((m) => {
     const o = owners.get(m.source + '|' + m.ref_id) || null;
     // ★ ١٥ أكتوبر: رسالة الأسئلة باسم صاحبة العميل لا «ضي» للجميع
-    const ask = m.ask && o ? { ...m.ask, ask_message: withAskLink(asOwner(String((m.ask as { ask_message?: string }).ask_message || ''), contacts.get(o)), m.source === 'inquiry' ? String(m.ref_id) : '') } : m.ask;
+    const ask = m.ask && o ? { ...m.ask, ask_message: asOwner(String((m.ask as { ask_message?: string }).ask_message || ''), contacts.get(o)) } : m.ask;
     const opener = o && m.opener ? asOwner(String(m.opener).split('معك ضي من مُرضي').join('معك ضي من منصة مُرضي'), contacts.get(o)) : m.opener;
     return { ...m, ask, opener, owner: o, owner_name: o ? nameOf.get(o) || null : null, mine: !isStaffViewer || o === who.userId };
   });

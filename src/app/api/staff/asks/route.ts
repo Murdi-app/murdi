@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requirePage } from '@/lib/requireStaff';
 import { logError } from '@/lib/logError';
-import { ownerOf, staffContacts, asOwner, withAskLink } from '@/lib/leadOwners';
+import { ownerOf, staffContacts, asOwner } from '@/lib/leadOwners';
 
 // أسئلة الاستشارة المختصرة (١٢ أكتوبر، المالك).
 //
@@ -52,7 +52,7 @@ export async function GET() {
   if (who.role === 'staff') rows = rows.filter((r) => ownerBy.get(String(r.id)) === who.userId);
   // ★ ١٥ أكتوبر: الرسالة باسم صاحبة العميل
   const contacts = await staffContacts(sbAdmin());
-  const asks = rows.map((r) => ({ ...r, ask_message: withAskLink(asOwner(String(r.ask_message || ''), contacts.get(ownerBy.get(String(r.id)) || '')), String(r.id)), call: last[String(r.id)] || null }));
+  const asks = rows.map((r) => ({ ...r, ask_message: asOwner(String(r.ask_message || ''), contacts.get(ownerBy.get(String(r.id)) || '')), call: last[String(r.id)] || null }));
   return NextResponse.json({ ok: true, asks });
 }
 
