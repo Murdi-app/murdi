@@ -13,9 +13,17 @@ export const phone9 = (p: string | null | undefined) => String(p || '').replace(
 const key = (s: string, r: string) => s + '|' + r;
 
 export async function staffPool(sb: SupabaseClient): Promise<Owner[]> {
-  const { data } = await sb.from('staff').select('user_id, name, job, active').eq('active', true).in('job', ['followup', 'assistant']);
+  const [{ data }, { data: cfg }] = await Promise.all([
+    sb.from('staff').select('user_id, name, job, active').eq('active', true).in('job', ['followup', 'assistant']),
+    sb.from('app_config').select('value').eq('key', 'lead_pool').maybeSingle(),
+  ]);
+  // ★ ١٧ أكتوبر (المالك): «خلّ العملاء كلهم عند ضي حالياً، ورغد تستمر مع الجهات فقط».
+  //   app_config.lead_pool = ["<user_id>", …] يحصر من تُقسم عليهن العملاء — وبحذفه تعود القسمة على الكل.
+  let only: string[] = [];
+  try { const v = typeof cfg?.value === 'string' ? JSON.parse(cfg.value) : cfg?.value; if (Array.isArray(v)) only = v.map(String); } catch { only = []; }
+  const rows = (data || []).filter((s) => !only.length || only.includes(String(s.user_id)));
   // ضي (followup) أولاً عند التعادل
-  return (data || []).sort((a, b) => (a.job === 'followup' ? -1 : 1) - (b.job === 'followup' ? -1 : 1))
+  return rows.sort((a, b) => (a.job === 'followup' ? -1 : 1) - (b.job === 'followup' ? -1 : 1))
     .map((s) => ({ id: String(s.user_id), name: String(s.name || '') }));
 }
 
